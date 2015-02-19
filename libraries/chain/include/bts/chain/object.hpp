@@ -39,7 +39,7 @@ namespace bts { namespace chain {
       }
    };
 
-   class object : public std::enable_shared_from_this<object>
+   class object 
    {
       public:
          object( object_type t = base_object_type ):type(t){};

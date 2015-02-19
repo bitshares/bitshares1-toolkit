@@ -24,6 +24,7 @@ namespace bts { namespace chain {
           */
          vector<pair<asset_id_type,share_type> > balances;
    };
+
    class account_object : public object
    {
       public:

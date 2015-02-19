@@ -34,7 +34,7 @@ void database::flush()
    {
       if( item && item->is_dirty() )
       {
-         _object_id_to_object.store( item->object_id(), _object_factory[item->type]->pack( item ) );
+         _object_id_to_object.store( item->object_id(), _object_factory[item->type]->pack( item.get() ) );
       }
    }
 }
@@ -51,30 +51,31 @@ void database::open( const fc::path& data_dir )
    {
       const auto& obj = itr.value();
       auto obj_ptr    = load_object( itr.value() );
+      auto ptr = obj_ptr.get();
       auto id = obj_ptr->object_id();
       if( id >= _loaded_objects.size() )
          _loaded_objects.resize( id + 1 );
-      _loaded_objects[id] = obj_ptr;
+      _loaded_objects[id] = std::move(obj_ptr);
 
-      switch( obj_ptr->type.value )
+      switch( ptr->type.value )
       {
          case account_object_type:
          {
-            auto account_ptr = std::dynamic_pointer_cast<const account_object>(obj_ptr);
+            auto account_ptr = dynamic_cast<const account_object*>(ptr);
             FC_ASSERT( account_ptr );
             _account_index[account_ptr->name] = account_ptr->object_id();
             break;
          }
          case asset_object_type:
          {
-            auto asset_ptr = std::dynamic_pointer_cast<const asset_object>(obj_ptr);
+            auto asset_ptr = dynamic_cast<const asset_object*>(ptr);
             FC_ASSERT( asset_ptr );
             _symbol_index[asset_ptr->symbol] = asset_ptr->object_id();
             break;
          }
          case delegate_object_type:
          {
-            _delegates.push_back( obj_ptr->object_id() );
+            _delegates.push_back( ptr->object_id() );
             break;
          }
          default: // do nothing
@@ -94,7 +95,7 @@ asset database::current_delegate_registration_fee()const
 }
 
 
-void database::save_undo( const shared_ptr<object>& obj )
+void database::save_undo( object* obj )
 {
    FC_ASSERT( obj );
    auto id = obj->id;
@@ -124,7 +125,7 @@ void database::undo()
       else
       {
          FC_ASSERT( item.first < _loaded_objects.size() );
-         auto obj = _loaded_objects[item.first]; 
+         auto obj = _loaded_objects[item.first].get(); 
          FC_ASSERT( obj );
          _object_factory[obj->type]->unpack( obj, item.second );
          // obj->unpack( item.second );
@@ -156,7 +157,7 @@ void database::undo()
    _undo_state.pop_back();
 }
 
-void database::index_account( const shared_ptr<account_object>& a )
+void database::index_account( account_object* a )
 {
    auto name    = a->name;
    auto cur_itr = _account_index.find(name);
@@ -170,7 +171,7 @@ void database::index_account( const shared_ptr<account_object>& a )
    }
    _account_index[name] = a->object_id();
 }
-void database::index_symbol( const shared_ptr<asset_object>& a )
+void database::index_symbol( asset_object* a )
 {
    auto name    = a->symbol;
    auto cur_itr = _symbol_index.find(name);
@@ -261,28 +262,28 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
 
-shared_ptr<const account_object> database::lookup_account( const string& name )const
+const account_object* database::lookup_account( const string& name )const
 {
    auto itr = _account_index.find( name );
    if( itr == _account_index.end() )
-      return shared_ptr<account_object>();
+      return nullptr;
    return get<account_object>(itr->second);
 }
 
-shared_ptr<const asset_object> database::lookup_symbol( const string& name )const
+const asset_object* database::lookup_symbol( const string& name )const
 {
    auto itr = _symbol_index.find( name );
    if( itr == _symbol_index.end() )
-      return shared_ptr<asset_object>();
+      return nullptr;
    return get<asset_object>(itr->second);
 }
 
-shared_ptr<object>  database::load_object( const packed_object& obj )
+unique_ptr<object>  database::load_object( const packed_object& obj )
 { try {
    FC_ASSERT( obj.type.value < _object_factory.size() );
    FC_ASSERT( _object_factory[obj.type] );
    auto built_obj = _object_factory[obj.type]->create();
-   _object_factory[obj.type]->unpack( built_obj, obj );
+   _object_factory[obj.type]->unpack( built_obj.get(), obj );
    return built_obj;
 } FC_CAPTURE_AND_RETHROW( (obj) ) }
 

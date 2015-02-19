@@ -77,16 +77,16 @@ object_id_type create_account_operation::evaluate( transaction_evaluation_state&
 { try {
     database& db = eval_state.db();
 
-    shared_ptr<const account_object> current_account = db.lookup_account( this->name );
+    const account_object* current_account = db.lookup_account( this->name );
     FC_ASSERT( !current_account );
 
-    shared_ptr<account_object> new_account = db.create<account_object>();
+    account_object* new_account = db.create<account_object>();
     new_account->name = this->name;
     new_account->owner = this->owner;
     new_account->active = this->active;
     new_account->voting = this->voting;
 
-    shared_ptr<account_balance_object> balance_obj = db.create<account_balance_object>();
+    account_balance_object* balance_obj = db.create<account_balance_object>();
     new_account->balances = balance_obj->object_id();
 
     db.index_account( new_account );
@@ -105,10 +105,10 @@ object_id_type create_asset_operation::evaluate( transaction_evaluation_state& e
    FC_ASSERT( this->name.size() < BTS_MAX_ASSET_NAME_LENGTH );
 
 
-   shared_ptr<const asset_object> current_asset = db.lookup_symbol( this->symbol );
+   const asset_object* current_asset = db.lookup_symbol( this->symbol );
    FC_ASSERT( !current_asset );
 
-   shared_ptr<asset_object> new_asset = db.create<asset_object>();
+   asset_object* new_asset = db.create<asset_object>();
    new_asset->symbol        = this->symbol;
    new_asset->name          = this->name;
    new_asset->description   = this->description;
@@ -116,7 +116,7 @@ object_id_type create_asset_operation::evaluate( transaction_evaluation_state& e
 
    new_asset->issuer        = this->issuer;
    
-   shared_ptr<const account_object> issuer_account = db.get<account_object>( this->issuer ); 
+   const account_object* issuer_account = db.get<account_object>( this->issuer ); 
    FC_ASSERT( issuer_account );
 
    if( !eval_state.check_authority( issuer_account->active )  )
@@ -135,12 +135,12 @@ object_id_type register_delegate_operation::evaluate( transaction_evaluation_sta
    FC_ASSERT( this->delegate_registration_fee == db.current_delegate_registration_fee() );
    eval_state.withdraw_from_account( this->delegate_account, this->delegate_registration_fee );
 
-   shared_ptr<account_object> del_account = db.get_mutable<account_object>(this->delegate_account);
+   account_object* del_account = db.get_mutable<account_object>(this->delegate_account);
    FC_ASSERT( del_account );
    FC_ASSERT( del_account->delegate_id == 0 );
 
 
-   shared_ptr<delegate_object> del_obj = db.create<delegate_object>();
+   delegate_object* del_obj = db.create<delegate_object>();
    del_obj->delegate_account  = del_account->object_id();
    del_obj->signing_key       = this->block_signing_key;
    del_obj->pay_rate          = this->pay_rate;

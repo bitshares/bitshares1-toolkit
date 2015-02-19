@@ -12,8 +12,9 @@ namespace bts { namespace chain {
       uint32_t count = 0;
       for( auto a : auth.addresses )
       {
+         // TODO: enforce abs_required
          count += (signed_by.find( a ) != signed_by.end());
-         if( count >= auth.required ) return true;
+         if( count >= auth.min_required ) return true;
       }
       return false;
    }
