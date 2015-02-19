@@ -11,9 +11,6 @@ namespace bts { namespace chain {
 
          delegate_object():object(delegate_object_type){}
 
-         virtual packed_object pack()const override                        { return packed_object(*this);   }
-         virtual void          unpack( const packed_object& obj ) override { obj.unpack( *this ); }
-
          account_id_type                delegate_account;
          public_key_type                signing_key;
          secret_hash_type               previous_secret;
@@ -41,12 +38,9 @@ namespace bts { namespace chain {
 
          delegate_vote_object():object(delegate_vote_object_type){}
 
-         virtual packed_object pack()const override                        { return packed_object(*this);   }
-         virtual void          unpack( const packed_object& obj ) override { obj.unpack( *this ); }
-
-         share_type                     total_votes = 0;
+         share_type                     total_votes;
    };
 } } // bts::chain
 
-FC_REFLECT_DERIVED( bts::chain::delegate_object, (bts::chain::object), (delegate_account)(total_votes)(signing_key)(previous_secret)(fee_schedule)(vote) )
+FC_REFLECT_DERIVED( bts::chain::delegate_object, (bts::chain::object), (delegate_account)(signing_key)(previous_secret)(fee_schedule)(vote) )
 FC_REFLECT_DERIVED( bts::chain::delegate_vote_object, (bts::chain::object), (total_votes) )

@@ -2,6 +2,8 @@
 #include <bts/chain/asset_operations.hpp>
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
+#include <bts/chain/balance_object.hpp>
+#include <bts/chain/delegate_object.hpp>
 #include <bts/chain/exceptions.hpp>
 #include <fc/utf8.hpp>
 
@@ -49,6 +51,25 @@ void account_balance_object::add_balance( const asset& a )
    else
    {
       vec.insert( lb, std::make_pair( a.asset_id, a.amount ) );
+   }
+}
+asset account_balance_object::get_balance( asset_id_type what )const
+{
+   auto& vec = balances;
+   auto lb = std::lower_bound( vec.begin(), vec.end(), std::make_pair(what,share_type(0)) );
+   if( lb != vec.end() && lb->first == what ) return asset{lb->second,what};
+   return asset{0,what};
+}
+
+void account_balance_object::sub_balance( const asset& a )
+{
+   FC_ASSERT( a.amount > 0 );
+   auto& vec = balances;
+   auto lb = std::lower_bound( vec.begin(), vec.end(), std::make_pair(a.asset_id,share_type(0)) );
+   if( lb != vec.end() && lb->first == a.asset_id ) lb->second -= a.amount;
+   else
+   {
+      FC_ASSERT( false, "No current Balance for Asset" );
    }
 }
 
@@ -108,6 +129,8 @@ object_id_type create_asset_operation::evaluate( transaction_evaluation_state& e
 
 object_id_type register_delegate_operation::evaluate( transaction_evaluation_state& eval_state )
 { try {
+   database& db = eval_state.db();
+
    FC_ASSERT( this->pay_rate <= BTS_MAX_PAY_RATE );
    FC_ASSERT( this->delegate_registration_fee == db.current_delegate_registration_fee() );
    eval_state.withdraw_from_account( this->delegate_account, this->delegate_registration_fee );
@@ -127,7 +150,9 @@ object_id_type register_delegate_operation::evaluate( transaction_evaluation_sta
 
    del_account->delegate_id = del_obj->object_id();
 
-} FC_CAPTURE_AND_THROW( (*this) ) }
+   return del_account->delegate_id;
+
+} FC_CAPTURE_AND_RETHROW( (*this) ) }
 
 
 object_id_type update_asset_operation::evaluate( transaction_evaluation_state& eval_state )
@@ -194,7 +219,7 @@ object_id_type transfer_asset_operation::evaluate( transaction_evaluation_state&
    auto asset_obj = db.get<asset_object>( this->amount.asset_id );
    auto amount_with_fee = this->amount;
    amount_with_fee.amount += this->transfer_fee;
-   FC_ASSERT( this->transfer_fee == issuer_fee->transfer_fee );
+   FC_ASSERT( this->transfer_fee == asset_obj->transfer_fee );
 
    auto from_account = db.get<account_object>( this->from );
    if( from_account )

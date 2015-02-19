@@ -15,9 +15,6 @@ namespace bts { namespace chain {
          balance_object( const address_authority& o, const asset& b )
          :object(balance_object_type),owner(o),balance(b){}
 
-         virtual packed_object pack()const override                        { return packed_object(*this);   }
-         virtual void          unpack( const packed_object& obj ) override { obj.unpack( *this ); }
-
          address_authority  owner;
          asset              balance;
    };

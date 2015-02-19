@@ -1,8 +1,9 @@
 #pragma once
-#include <bts/chain/object.hpp>
-#include <bts/chain/block.hpp>
 #include <bts/db/level_map.hpp>
 #include <bts/db/level_pod_map.hpp>
+#include <bts/chain/object.hpp>
+#include <bts/chain/block.hpp>
+#include <bts/chain/asset.hpp>
 #include <map>
 
 namespace bts { namespace chain {
@@ -12,6 +13,9 @@ namespace bts { namespace chain {
       public:
          virtual ~object_builder(){}
          virtual std::shared_ptr<object> create()const = 0;
+         virtual packed_object pack( const shared_ptr<const object>& p )const = 0;
+         virtual void unpack( const shared_ptr<object>& p, const packed_object& obj )const = 0;
+         virtual variant to_variant( const shared_ptr<const object>& p )const = 0;
    };
 
    template<typename ObjectType>
@@ -21,6 +25,23 @@ namespace bts { namespace chain {
          virtual std::shared_ptr<object> create()const override
          {
             return std::make_shared<ObjectType>();
+         }
+         virtual packed_object pack( const shared_ptr<const object>& p )const override
+         {
+            const auto& cast = *((const ObjectType*)p.get());
+            return packed_object(cast);
+         }
+         virtual void unpack( const shared_ptr<object>& p, const packed_object& obj )const override
+         {
+            FC_ASSERT( obj.type == ObjectType::type );
+            auto& cast = *((ObjectType*)p.get());
+            obj.unpack(cast); 
+            FC_ASSERT( cast.type == ObjectType::type );
+         }
+         virtual variant to_variant( const shared_ptr<const object>& p )const override
+         {
+            const auto& cast = *((const ObjectType*)p.get());
+            return fc::variant(cast);
          }
    };
 
@@ -62,6 +83,8 @@ namespace bts { namespace chain {
          bool push_transaction( const signed_transaction& trx );
          void index_account( const std::shared_ptr<account_object>& account_obj );
          void index_symbol( const std::shared_ptr<asset_object>& asset_obj );
+
+         asset current_delegate_registration_fee()const;
 
          template<typename T>
          void register_object()
@@ -113,7 +136,7 @@ namespace bts { namespace chain {
       private:
          void init_genesis();
          void save_undo( const shared_ptr<object>& obj );
-         void apply_transaction( const signed_transaction& trx );
+         processed_transaction apply_transaction( const signed_transaction& trx );
          void pop_pending_block();
          void push_pending_block();
 

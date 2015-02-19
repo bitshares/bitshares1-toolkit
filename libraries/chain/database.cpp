@@ -5,6 +5,7 @@
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/balance_object.hpp>
 #include <bts/chain/delegate_object.hpp>
+#include <bts/chain/operation_factory.hpp>
 
 namespace bts { namespace chain {
 
@@ -33,7 +34,7 @@ void database::flush()
    {
       if( item && item->is_dirty() )
       {
-         _object_id_to_object.store( item->object_id(), item->pack() );
+         _object_id_to_object.store( item->object_id(), _object_factory[item->type]->pack( item ) );
       }
    }
 }
@@ -86,6 +87,13 @@ void database::init_genesis()
 {
 }
 
+
+asset database::current_delegate_registration_fee()const
+{
+   return asset();
+}
+
+
 void database::save_undo( const shared_ptr<object>& obj )
 {
    FC_ASSERT( obj );
@@ -93,7 +101,7 @@ void database::save_undo( const shared_ptr<object>& obj )
    auto current_undo = _undo_state.back().old_values.find(id);
    if( current_undo == _undo_state.back().old_values.end() )
    {
-      _undo_state.back().old_values[id] = obj->pack();
+      _undo_state.back().old_values[id] = _object_factory[obj->type]->pack( obj ); //obj->pack();
    }
 }
 void database::pop_undo_state()
@@ -118,7 +126,8 @@ void database::undo()
          FC_ASSERT( item.first < _loaded_objects.size() );
          auto obj = _loaded_objects[item.first]; 
          FC_ASSERT( obj );
-         obj->unpack( item.second );
+         _object_factory[obj->type]->unpack( obj, item.second );
+         // obj->unpack( item.second );
       }
    }
    for( auto item : _undo_state.back().old_account_index )
@@ -273,7 +282,7 @@ shared_ptr<object>  database::load_object( const packed_object& obj )
    FC_ASSERT( obj.type.value < _object_factory.size() );
    FC_ASSERT( _object_factory[obj.type] );
    auto built_obj = _object_factory[obj.type]->create();
-   built_obj->unpack(obj);
+   _object_factory[obj.type]->unpack( built_obj, obj );
    return built_obj;
 } FC_CAPTURE_AND_RETHROW( (obj) ) }
 

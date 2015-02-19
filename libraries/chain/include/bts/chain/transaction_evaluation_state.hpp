@@ -1,13 +1,16 @@
 #pragma once
 #include <bts/chain/operations.hpp>
 #include <bts/chain/authority.hpp>
+#include <bts/chain/asset.hpp>
 
 namespace bts { namespace chain { 
    class database;
 
    /**
     *  Place holder for state tracked while processing a
-    *  transaction.  
+    *  transaction.  This class provides helper methods
+    *  that are common to many different operations and
+    *  also tracks which keys have signed the transaction
     */
    class transaction_evaluation_state
    {

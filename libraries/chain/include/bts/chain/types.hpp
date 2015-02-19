@@ -7,6 +7,7 @@
 #include <fc/reflect/reflect.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/optional.hpp>
+#include <fc/safe.hpp>
 #include <memory>
 #include <vector>
 #include <deque>
@@ -22,14 +23,17 @@ namespace bts { namespace chain {
    using                               std::set;
    using                               std::pair;
    using                               std::enable_shared_from_this;
+   using                               std::tie;
 
    using                               fc::variant_object;
+   using                               fc::variant;
    using                               fc::enum_type;
    using                               fc::optional;
    using                               fc::unsigned_int;
    using                               fc::signed_int;
    using                               fc::time_point_sec;
    using                               fc::time_point;
+   using                               fc::safe;
 
    //typedef fc::unsigned_int            object_id_type;
    typedef uint32_t                    object_id_type;
@@ -39,7 +43,7 @@ namespace bts { namespace chain {
    typedef fc::sha224                  block_id_type;
    typedef fc::sha256                  digest_type;
    typedef fc::ecc::compact_signature  signature_type;
-   typedef int64_t                     share_type;
+   typedef safe<int64_t>               share_type;
    typedef object_id_type              sell_order_id_type;
    typedef object_id_type              short_order_id_type;
    typedef object_id_type              cover_id_type;

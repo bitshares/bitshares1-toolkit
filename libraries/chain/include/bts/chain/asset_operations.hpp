@@ -370,7 +370,7 @@ namespace bts { namespace chain {
 
       account_id_type   delegate_account;
       public_key_type   block_signing_key;
-      uint16_t          pay_rate; // 0 to 10,000
+      uint16_t          pay_rate; ///< 0 to BTS_MAX_PAY_RATE 
       secret_hash_type  first_secret;
       vector<asset>     fee_schedule;
       asset             delegate_registration_fee;
@@ -459,3 +459,12 @@ FC_REFLECT( bts::chain::create_account_operation,
 
 FC_REFLECT( bts::chain::update_asset_white_list_operation, (asset_id)(account_id)(authorize) )
 FC_REFLECT( bts::chain::issue_asset_operation, (to_account)(amount_to_issue) )
+FC_REFLECT( bts::chain::register_delegate_operation, 
+            (delegate_account)
+            (block_signing_key)
+            (pay_rate)
+            (first_secret)
+            (fee_schedule)
+            (delegate_registration_fee) )
+
+FC_REFLECT( bts::chain::transfer_asset_operation, (from)(to)(to_authority)(amount)(transfer_fee)(memo) )

@@ -45,15 +45,12 @@ namespace bts { namespace chain {
          object( object_type t = base_object_type ):type(t){};
          virtual ~object(){};
 
-         virtual packed_object pack()const = 0;
-         virtual void          unpack( const packed_object& obj ) = 0;
-
          uint64_t object_id()const    { return id & 0x7fffffffffffffff; }
          bool     is_dirty()const     { return id & 0x8000000000000000; }
          void     mark_dirty()        { id |= 0x8000000000000000;       }
 
-         enum_type<uint16_t,object_type> type;
-         object_id_type                  id = 0;
+         const enum_type<uint16_t,object_type> type;
+         object_id_type                        id = 0;
    };
 
 } }
@@ -65,6 +62,7 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (account_balance_object_type) 
                  (asset_object_type)
                  (delegate_object_type)
+                 (delegate_vote_object_type)
                  (balance_object_type)
                  (object_type_count)
                )

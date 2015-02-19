@@ -5,7 +5,7 @@
 #include <iostream>
 #include <algorithm>
 #include <fc/crypto/sha512.hpp>
-#include <bts/blockchain/config.hpp>
+//#include <bts/blockchain/config.hpp>
 
 #include <cstdio>
 #include <cstdlib>

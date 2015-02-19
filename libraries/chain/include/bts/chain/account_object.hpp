@@ -10,9 +10,6 @@ namespace bts { namespace chain {
          static const object_type type = account_balance_object_type;
          account_balance_object():object( account_balance_object_type ){};
 
-         virtual packed_object pack()const override { return packed_object( *this ); }
-         virtual void          unpack( const packed_object& obj ) override { obj.unpack(*this); }
-
          void                  add_balance( const asset& a );
          void                  sub_balance( const asset& a );
          asset                 get_balance( asset_id_type asset_id )const;
@@ -34,8 +31,6 @@ namespace bts { namespace chain {
 
          account_object():object( account_object_type ){};
 
-         virtual packed_object pack()const override { return packed_object( *this ); }
-         virtual void          unpack( const packed_object& obj ) override { obj.unpack(*this); }
          bool                  is_for_sale()const { return for_sale.first != 0; }
 
          void                  authorize_asset( asset_id_type asset_id, bool state );

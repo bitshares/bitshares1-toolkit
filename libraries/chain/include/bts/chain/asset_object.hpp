@@ -14,18 +14,13 @@ namespace bts { namespace chain {
 
          static bool is_valid_symbol( const string& symbol );
 
-         virtual packed_object pack()const override { return packed_object( *this ); }
-         virtual void          unpack( const packed_object& obj ) override { obj.unpack(*this); }
-
          bool enforce_white_list()const { return flags & white_list; }
 
          void issue( share_type amount ) 
          {
-            FC_ASSERT( amount > 0 );
-            FC_ASSERT( current_supply + amount <= max_supply );
-            // check for integer overflow
-            FC_ASSERT( uint64_t(current_supply) + uint64_t(amount) > uint64_t(current_supply) );
+            FC_ASSERT( amount > share_type(0ll) );
             current_supply += amount;
+            FC_ASSERT( current_supply < max_supply );
          }
 
          string                  symbol;
