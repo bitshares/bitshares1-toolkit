@@ -10,7 +10,7 @@
 namespace bts { namespace chain {
 
 database::database()
-:_object_factory(object_type_count)
+:_object_factory(3),_next_object_ids(3,0)
 {
   register_object<account_object>();
   register_object<balance_object>();
@@ -30,11 +30,12 @@ void database::close()
 }
 void database::flush()
 {
-   for( const auto& item : _loaded_objects )
+   for( const auto& space : _loaded_objects )
    {
-      if( item && item->is_dirty() )
+      for( const auto& item : space )
       {
-         _object_id_to_object.store( item->object_id(), _object_factory[item->type]->pack( item.get() ) );
+         if( item && item->is_dirty() )
+            _object_id_to_object.store( item->object_id(), get_object_builder(item->type)->pack( item.get() ) );
       }
    }
 }
@@ -53,9 +54,11 @@ void database::open( const fc::path& data_dir )
       auto obj_ptr    = load_object( itr.value() );
       auto ptr = obj_ptr.get();
       auto id = obj_ptr->object_id();
+      /* TODO: properly index this
       if( id >= _loaded_objects.size() )
          _loaded_objects.resize( id + 1 );
       _loaded_objects[id] = std::move(obj_ptr);
+      */
 
       switch( ptr->type.value )
       {
@@ -95,6 +98,12 @@ asset database::current_delegate_registration_fee()const
 }
 
 
+object_builder* database::get_object_builder( uint16_t type )const
+{
+   auto id_space = type >> 8;
+   auto type_in_space = type & 0x00ff;
+   return _object_factory[id_space][type_in_space].get();
+}
 void database::save_undo( object* obj )
 {
    FC_ASSERT( obj );
@@ -102,7 +111,8 @@ void database::save_undo( object* obj )
    auto current_undo = _undo_state.back().old_values.find(id);
    if( current_undo == _undo_state.back().old_values.end() )
    {
-      _undo_state.back().old_values[id] = _object_factory[obj->type]->pack( obj ); //obj->pack();
+      obj->mark_dirty();
+      _undo_state.back().old_values[id] = get_object_builder(obj->type)->pack( obj ); //obj->pack();
    }
 }
 void database::pop_undo_state()
@@ -112,7 +122,7 @@ void database::pop_undo_state()
 void database::push_undo_state()
 {
    _undo_state.push_back( undo_state() );
-   _undo_state.back().old_next_object_id = _next_object_id;
+   _undo_state.back().old_next_object_ids = _next_object_ids;
 }
 void database::undo()
 {
@@ -120,14 +130,13 @@ void database::undo()
    {
       if( item.second.type == null_object_type )
       {
-         _loaded_objects[item.first].reset();
+         get_object_ptr(item.first).reset();
       }
       else
       {
-         FC_ASSERT( item.first < _loaded_objects.size() );
-         auto obj = _loaded_objects[item.first].get(); 
+         auto obj = get_object_ptr(item.first).get();
          FC_ASSERT( obj );
-         _object_factory[obj->type]->unpack( obj, item.second );
+         get_object_builder(obj->type)->unpack( obj, item.second );
          // obj->unpack( item.second );
       }
    }
@@ -153,7 +162,7 @@ void database::undo()
          _symbol_index.erase( item.first );
       }
    }
-   _next_object_id = _undo_state.back().old_next_object_id;
+   _next_object_ids = _undo_state.back().old_next_object_ids;
    _undo_state.pop_back();
 }
 
@@ -280,10 +289,10 @@ const asset_object* database::lookup_symbol( const string& name )const
 
 unique_ptr<object>  database::load_object( const packed_object& obj )
 { try {
-   FC_ASSERT( obj.type.value < _object_factory.size() );
-   FC_ASSERT( _object_factory[obj.type] );
-   auto built_obj = _object_factory[obj.type]->create();
-   _object_factory[obj.type]->unpack( built_obj.get(), obj );
+   const auto& builder = get_object_builder( obj.type );
+   FC_ASSERT( builder );
+   auto built_obj = builder->create();
+   builder->unpack( built_obj.get(), obj );
    return built_obj;
 } FC_CAPTURE_AND_RETHROW( (obj) ) }
 

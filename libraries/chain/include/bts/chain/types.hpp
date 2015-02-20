@@ -37,7 +37,7 @@ namespace bts { namespace chain {
    using                               fc::safe;
 
    //typedef fc::unsigned_int            object_id_type;
-   typedef uint32_t                    object_id_type;
+   typedef uint64_t                    object_id_type;
    typedef object_id_type              account_id_type;
    typedef object_id_type              asset_id_type;
    typedef object_id_type              delegate_id_type;

@@ -49,8 +49,17 @@ namespace bts { namespace chain {
 
                   virtual object_id_type evaluate( transaction_evaluation_state& eval_state, const operation& op )
                   { try {
-                     return op.as<OperationType>().evaluate( eval_state );
+                     auto tmp_op = op.as<OperationType>();
+                     object_id_type result = tmp_op.evaluate( eval_state );
+
+                     for( const auto& peval : post_eval )
+                        peval( tmp_op, eval_state, result );
+
+                     return result;
                   } FC_CAPTURE_AND_RETHROW( (op) ) }
+
+                  /** post evaluation takes the op, the eval_state, and the result of the validation evaluate call */
+                  vector<std::function<void(const OperationType&, transaction_evaluation_state&, object_id_type )> > post_eval;
           };
 
           template<typename OperationType>
@@ -59,6 +68,16 @@ namespace bts { namespace chain {
              FC_ASSERT( _converters.find( OperationType::type ) == _converters.end(), 
                         "Operation ID already Registered ${id}", ("id",OperationType::type) );
             _converters[OperationType::type] = std::make_shared< operation_converter<OperationType> >(); 
+          }
+
+          /**
+           *  Register a method to be called after the blockchain validation has executed.
+           */
+          template<typename OperationType>
+          void  register_post_operation_eval( std::function<void(const OperationType&,transaction_evaluation_state&, object_id_type)> eval )
+          {
+             if( _converters[OperationType::type] ) register_operation<OperationType>();
+             std::dynamic_pointer_cast<operation_converter<OperationType>>(_converters[OperationType::type])->post_eval.push_back(eval);
           }
 
           object_id_type evaluate( transaction_evaluation_state& eval_state, const operation& op )

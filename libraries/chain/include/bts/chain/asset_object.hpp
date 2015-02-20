@@ -24,12 +24,9 @@ namespace bts { namespace chain {
          }
 
          string                  symbol;
-         string                  name;
-         string                  description;
          account_id_type         issuer;
 
          share_type              max_supply         = 0; // unlimited.
-         uint8_t                 precission_digits  = 0; // 0 to 10
          uint16_t                market_fee_percent = 0; // 10,000 = 100%
          share_type              transfer_fee       = 0;       
          uint32_t                issuer_permissions; 
@@ -50,19 +47,18 @@ namespace bts { namespace chain {
           *  in a more efficient record to serialize/modify frequently
           */
          object_id_type          dynamic_asset_data_id = 0;
+
+         // meta_info -> uint8_t                 precission_digits  = 0; // 0 to 10
+         //   name, description, and precission 
    };
 } } // bts::chain
 
 FC_REFLECT_DERIVED( bts::chain::asset_object, 
                     (bts::chain::object), 
-                    
                     (symbol)
-                    (name)
-                    (description)
                     (issuer)
                     (max_supply)
                     (current_supply)
-                    (precission_digits)
                     (market_fee_percent)
                     (transfer_fee)
                     (issuer_permissions)

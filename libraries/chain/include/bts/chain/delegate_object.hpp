@@ -34,9 +34,9 @@ namespace bts { namespace chain {
    class delegate_vote_object : public object 
    {
       public:
-         static const object_type type = delegate_vote_object_type;
+         static const object_type type = impl_delegate_vote_object_type;
 
-         delegate_vote_object():object(delegate_vote_object_type){}
+         delegate_vote_object():object(type){}
 
          share_type                     total_votes;
    };

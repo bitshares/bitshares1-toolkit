@@ -110,8 +110,8 @@ object_id_type create_asset_operation::evaluate( transaction_evaluation_state& e
 
    asset_object* new_asset = db.create<asset_object>();
    new_asset->symbol        = this->symbol;
-   new_asset->name          = this->name;
-   new_asset->description   = this->description;
+   //new_asset->name          = this->name; TODO: move to meta_info_asset_object in post_eval callback
+   //new_asset->description   = this->description;
    new_asset->max_supply    = this->max_supply;
 
    new_asset->issuer        = this->issuer;
