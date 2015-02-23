@@ -8,9 +8,8 @@ namespace bts { namespace chain {
    class asset_object : public object
    {
       public:
-         static const object_type type = asset_object_type;
-
-         asset_object():object( asset_object_type ){}
+         static const uint8_t space_id = protocal_ids;
+         static const uint8_t   type_id  = asset_object_type;
 
          static bool is_valid_symbol( const string& symbol );
 
@@ -46,7 +45,7 @@ namespace bts { namespace chain {
           *  Stores current supply, fee pool, and collected fees 
           *  in a more efficient record to serialize/modify frequently
           */
-         object_id_type          dynamic_asset_data_id = 0;
+         object_id_type          dynamic_asset_data_id;
 
          // meta_info -> uint8_t                 precission_digits  = 0; // 0 to 10
          //   name, description, and precission 

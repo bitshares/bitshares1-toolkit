@@ -12,6 +12,9 @@ namespace bts { namespace chain {
    {
       public:
          virtual ~object_builder(){}
+         virtual uint8_t   object_space_id()const = 0;
+         virtual uint8_t   object_type_id()const  = 0;
+
          virtual unique_ptr<object> create()const = 0;
          virtual packed_object pack( const object* p )const = 0;
          virtual void unpack( object* p, const packed_object& obj )const = 0;
@@ -22,7 +25,9 @@ namespace bts { namespace chain {
    class object_builder_impl : public object_builder
    {
       public:
-         virtual uint16_t           object_id_space()const { return ObjectType::id_space; }
+         virtual uint8_t   object_space_id()const override { return ObjectType::space_id; }
+         virtual uint8_t   object_type_id()const override  { return ObjectType::type_id; }
+
          virtual unique_ptr<object> create()const override
          {
             return unique_ptr<ObjectType>( new ObjectType() );
@@ -34,10 +39,8 @@ namespace bts { namespace chain {
          }
          virtual void unpack( object* p, const packed_object& obj )const override
          {
-            FC_ASSERT( obj.type == ObjectType::type );
             auto& cast = *((ObjectType*)p);
             obj.unpack(cast); 
-            FC_ASSERT( cast.type == ObjectType::type );
          }
          virtual variant to_variant( const object* p )const override
          {
@@ -52,10 +55,9 @@ namespace bts { namespace chain {
     */
    struct undo_state
    {
-       vector<object_id_type>                 old_next_object_ids;
-       map<object_id_type, packed_object>     old_values;
-       map<string,object_id_type >            old_account_index;
-       map<string,object_id_type >            old_symbol_index;
+       // [space][type] = old_instance
+       flat_map<pair<int,int>, object_id_type> old_next_object_ids;
+       map<object_id_type, packed_object>      old_values;
    };
 
    struct fork_block : public enable_shared_from_this<fork_block>
@@ -90,8 +92,8 @@ namespace bts { namespace chain {
          template<typename T>
          void register_object()
          {
-            auto id_space = uint16_t(T::type)>>8;
-            auto type_in_space = uint16_t(T::type)&0x00ff;
+            auto id_space      = T::space_id;
+            auto type_in_space = T::type_id;
             if( _object_factory.size() <= id_space ) 
                _object_factory.resize( id_space + 1 );
             if( _object_factory[id_space].size() <= type_in_space )
@@ -102,38 +104,41 @@ namespace bts { namespace chain {
          template<typename T>
          T* create()
          {
-            if( _next_object_ids.size() <= T::id_space )
-               _next_object_ids.resize( T::id_space + 1 );
-            auto local_obj_id = ++_next_object_ids[T::id_space];
+            undo_state& undo = _undo_state.back();
+            auto old_next_ids_itr = undo.old_next_object_ids.find( make_pair<int,int>( T::space_id, T::type_id ) );
+            if( old_next_ids_itr == undo.old_next_object_ids.end() )
+               undo.old_next_object_ids[ make_pair<int,int>(T::space_id,T::type_id) ] = _next_object_ids[T::space_id][T::type_id];
 
             unique_ptr<T> obj( new T() );
-            obj->id  = _next_object_ids[T::id_space] | (uint64_t(T::id_space) << 48);
-
-            _undo_state.back().old_values[obj->object_id()] = packed_object();
-            auto r = obj.get();
+            obj->id  = object_id_type( T::space_id, T::type_id, ++_next_object_ids[T::space_id][T::type_id] );
             obj->mark_dirty();
 
-            if( _loaded_objects.size() <= T::id_space )
-               _loaded_objects.resize( T::id_space + 1 );
-            if( _loaded_objects[T::id_space].size() <= local_obj_id )
-               _loaded_objects[T::id_space].resize( local_obj_id + 1 );
+            _undo_state.back().old_values[obj->id] = packed_object();
+
+            if( _loaded_objects.size() <= T::space_id )
+               _loaded_objects.resize( T::space_id + 1 );
+            if( _loaded_objects[T::space_id].size() <= T::type_id )
+               _loaded_objects[T::space_id].resize( T::type_id + 1 );
+            if( _loaded_objects[T::space_id][T::type_id].size() <= obj->id.instance() )
+               _loaded_objects[T::space_id][T::type_id].resize( obj->id.instance() + 1 );
                
-            _loaded_objects[T::id_space][local_obj_id] = std::move(obj);
+            auto r = obj.get();
+            _loaded_objects[T::space_id][T::type_id][obj->id.instance()] = std::move(obj);
             return r;
          }
 
          const object* get_object( object_id_type id )const
          {
-            if( id == 0 ) return nullptr;
-            return _loaded_objects[id>>48][id&0x0000ffffffffffff].get();
+            if( id.is_null() ) return nullptr;
+            return get_object_ptr( id ).get();
          }
 
          object* get_mutable_object( object_id_type id )
          {
-            if( id == 0 ) return nullptr;
-            auto obj = _loaded_objects[id>>48][id&0x0000ffffffffffff].get();
-            save_undo(obj);
-            return obj;
+            if( id.is_null()) return nullptr;
+            const auto& obj = get_object_ptr( id );
+            save_undo(obj.get());
+            return obj.get();
          }
          
          template<typename T>
@@ -162,31 +167,49 @@ namespace bts { namespace chain {
          void pop_pending_block();
          void push_pending_block();
 
-         unique_ptr<object>& get_object_ptr( object_id_type id )
+         const unique_ptr<object>& get_object_ptr( object_id_type id )const
          {
-            return _loaded_objects[id>>48][id&0x0000ffffffffffff];
+            FC_ASSERT( id.space()    < _loaded_objects.size() );
+            FC_ASSERT( id.type()     < _loaded_objects[id.space()].size() );
+            FC_ASSERT( id.instance() < _loaded_objects[id.space()][id.type()].size() );
+            return _loaded_objects[id.space()][id.type()][id.instance()];
          }
 
-         /** index in vector indicates which id space */
-         vector<object_id_type>                           _next_object_ids; 
-         deque<uint32_t>                                  _recent_block_prefixes;
+         unique_ptr<object>& get_object_ptr( object_id_type id )
+         {
+            FC_ASSERT( id.space()    < _loaded_objects.size() );
+            FC_ASSERT( id.type()     < _loaded_objects[id.space()].size() );
+            FC_ASSERT( id.instance() < _loaded_objects[id.space()][id.type()].size() );
+            return _loaded_objects[id.space()][id.type()][id.instance()];
+         }
+
+         /** 
+          *  Stores object IDs as _next_object_ids[SPACE_ID][TYPE_ID] = NEXT_INSTANCE_ID 
+          **/
+         vector< vector< object_id_type > >               _next_object_ids; 
+
+         /** store the last 32 bits of block_hash[0]%1024 */
+         vector<uint32_t>                                 _recent_block_prefixes;
+
          deque<undo_state>                                _undo_state;
                                                           
+         // track recent forks...
          shared_ptr<fork_block>                           _oldest_fork_point;
          vector< shared_ptr<fork_block> >                 _head_blocks;
+
          /**
           *  Object types are first filted by the upper 8 bits of the type
-          *  which identifies which "id_space" the object belongs to and
+          *  which identifies which "space_id" the object belongs to and
           *  then indexed by the lower 8 bits of the type which identifies
           *  the type within the space.   This allows for up to 255 objects
-          *  types per "id_space" and 255 "id_spaces" which should be
+          *  types per "space_id" and 255 "space_ids" which should be
           *  sufficient for most applications, but could easily be
           *  expanded upon for special cases.
           */
-         vector< vector< unique_ptr<object_builder> >  >  _object_factory;
-         object_builder* get_object_builder( uint16_t type )const;
+         vector< vector< unique_ptr<object_builder> >  >    _object_factory;
+         object_builder* get_object_builder( uint8_t space, uint8_t type )const;
 
-         vector< vector< unique_ptr<object> > >   _loaded_objects;
+         vector< vector< vector< unique_ptr<object> > >  >   _loaded_objects;
          map<string, account_id_type >            _account_index;
          map<string, asset_id_type >              _symbol_index;
          vector< delegate_id_type >               _delegates;
@@ -210,13 +233,10 @@ namespace bts { namespace chain {
 } }
 
 
-FC_REFLECT( bts::chain::packed_object, (type)(data) )
 
 FC_REFLECT( bts::chain::undo_state, 
             (old_next_object_ids)
             (old_values)
-            (old_account_index) 
-            (old_symbol_index)
           )
 
 

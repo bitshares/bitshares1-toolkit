@@ -22,10 +22,8 @@ namespace bts { namespace chain {
    class account_balance_object : public object
    {
       public:
-         static const object_type type = impl_account_balance_object_type;
-         static const uint16_t id_space = implementation_ids;
-
-         account_balance_object():object( impl_account_balance_object_type ){};
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_account_balance_object_type;
 
          void                  add_balance( const asset& a );
          void                  sub_balance( const asset& a );
@@ -42,9 +40,8 @@ namespace bts { namespace chain {
    class account_object : public object
    {
       public:
-         static const object_type type = account_object_type;
-
-         account_object():object( account_object_type ){};
+         static const uint8_t space_id = protocal_ids;
+         static const uint8_t   type_id  = account_object_type;
 
          bool                  is_for_sale()const { return for_sale.first != 0; }
 

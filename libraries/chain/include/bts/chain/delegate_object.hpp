@@ -7,9 +7,8 @@ namespace bts { namespace chain {
    class delegate_object : public object
    {
       public:
-         static const object_type type = delegate_object_type;
-
-         delegate_object():object(delegate_object_type){}
+         static const uint8_t space_id = protocal_ids;
+         static const uint8_t   type_id  = delegate_object_type;
 
          account_id_type                delegate_account;
          public_key_type                signing_key;
@@ -34,9 +33,8 @@ namespace bts { namespace chain {
    class delegate_vote_object : public object 
    {
       public:
-         static const object_type type = impl_delegate_vote_object_type;
-
-         delegate_vote_object():object(type){}
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t  type_id = impl_delegate_vote_object_type;
 
          share_type                     total_votes;
    };

@@ -11,16 +11,17 @@ namespace bts { namespace chain {
     *  are useful for building plugins that wish
     *  to leverage the same ID infrastructure.
     */
-   enum id_space_names
+   enum id_space_type
    {
       /** objects that may be directly referred to by the protocol operations */
-      protocoal_ids = 0,
+      protocal_ids = 0,
       /** objects created for implementation specific reasons such as maximizing performance */
       implementation_ids = 1,
       /** objects created for the purpose of tracking meta info not used by validation, 
        * such as names and descriptions of assets or the value of data objects. */
       meta_info_ids = 2
    };
+
 
    /**
     *  List all object types from all namespaces here so they can
@@ -31,22 +32,30 @@ namespace bts { namespace chain {
     */
    enum object_type
    {
-      null_object_type                  = protocoal_ids,
-      base_object_type                   ,
-      key_object_type                    ,
-      account_object_type                ,
-      asset_object_type                  ,
-      delegate_object_type               ,
-      impl_account_balance_object_type  = implementation_ids<<8,
-      impl_delegate_vote_object_type     ,
-      meta_info_asset_object_type       = meta_info_ids<<8
+      null_object_type,
+      base_object_type,
+      key_object_type,
+      account_object_type,
+      asset_object_type,
+      delegate_object_type               
+   };
+
+   enum impl_object_type
+   {
+      impl_account_balance_object_type,
+      impl_delegate_vote_object_type
+   };
+
+   enum meta_info_object_type
+   {
+      meta_asset_object_type 
    };
 
 
    struct packed_object
    {
-      enum_type<uint16_t,object_type>  type = null_object_type;
       vector<char>                     data;
+      bool is_null()const { return data.size() < 8; }
       
       packed_object(){}
       packed_object( packed_object&& ) = default;
@@ -54,17 +63,23 @@ namespace bts { namespace chain {
       packed_object& operator=(const packed_object&) = default;
       packed_object& operator=(packed_object&&) = default;
 
+      object_id_type id()const 
+      {
+         if( data.size() == 0 ) return object_id_type();
+         return fc::raw::unpack<object_id_type>(data);
+      }
+
       template<typename T>
       packed_object( const T& o )
       {
-         type = o.type;
          data = fc::raw::pack( o );
       }
 
       template<typename T>
       void unpack( T& o )const
       { 
-         FC_ASSERT( o.type == type ); 
+         FC_ASSERT( o.space_id == id().space() ); 
+         FC_ASSERT( o.type_id  == id().type()  ); 
          fc::raw::unpack( data, o ); 
       }
    };
@@ -99,35 +114,38 @@ namespace bts { namespace chain {
    class object 
    {
       public:
-         object( object_type t = base_object_type ):type(t){};
+         object(){}
          virtual ~object(){};
 
-         static const uint16_t id_space = 0;
+         static const uint8_t space_id = protocal_ids;
+         static const uint8_t type_id  = base_object_type;
 
-         uint64_t object_id()const       { return id & 0x7fffffffffffffff; }
-         /** local object ID is the ID within the individual sequence numbers
-          * of the id_space. 
-          */
-         uint64_t local_object_id()const { return id & 0x0000ffffffffffff; }
-         uint16_t get_id_space()const    { return (id >> 48) & 0x7fff; }
-         bool     is_dirty()const        { return id & 0x8000000000000000; }
-         void     mark_dirty()           { id |= 0x8000000000000000;       }
+         bool     is_dirty()const        { return _dirty; }
+         uint8_t  space()const           { return id.space(); }
+         uint8_t  type()const            { return id.type(); }
+         void     mark_dirty()           { _dirty = true; }
+         object_id_type object_id()const { return id; }
 
-         object_id_type                  get_annotation( uint16_t annotation_id_space )const;
+         /** return object_id_type() if no anotation is found for id_space */
+         object_id_type                  get_annotation( id_space_type annotation_id_space )const;
          void                            set_annotation( object_id_type id );
 
-         const enum_type<uint16_t,object_type> type;
-         object_id_type                  id = 0;
-
+         // serialized
+         object_id_type                       id;
          /**
           *  Annotations should be accessed via get_annotation and set_annotation so
           *  that they can be maintained in sorted order.
           */
-         vector<object_id_type>          annotations;
+         flat_map<uint8_t,object_id_type> annotations;
+
+
+         // not serialized
+         uint8_t                         _dirty = false;
    };
 
 } }
 
+FC_REFLECT_ENUM( bts::chain::id_space_type, (protocal_ids)(implementation_ids)(meta_info_ids) )
 FC_REFLECT_ENUM( bts::chain::object_type,
                  (null_object_type)
                  (base_object_type)
@@ -135,9 +153,11 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (account_object_type) 
                  (asset_object_type)
                  (delegate_object_type)
-                 (impl_account_balance_object_type) 
-                 (impl_delegate_vote_object_type)
-                 (meta_info_asset_object_type)
                )
+FC_REFLECT_ENUM( bts::chain::impl_object_type, 
+                 (impl_account_balance_object_type)
+                 (impl_delegate_vote_object_type) )
 
-FC_REFLECT( bts::chain::object, (type)(id) )
+FC_REFLECT( bts::chain::packed_object, (data) )
+FC_REFLECT_ENUM( bts::chain::meta_info_object_type, (meta_asset_object_type) )
+FC_REFLECT( bts::chain::object, (id)(annotations) )

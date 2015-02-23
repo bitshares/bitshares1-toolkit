@@ -27,6 +27,7 @@ namespace bts { namespace chain {
    using                               std::pair;
    using                               std::enable_shared_from_this;
    using                               std::tie;
+   using                               std::make_pair;
 
    using                               fc::variant_object;
    using                               fc::variant;
@@ -40,8 +41,41 @@ namespace bts { namespace chain {
    using                               fc::flat_map;
    using                               fc::flat_set;
 
+   struct object_id_bits
+   {
+      uint64_t space     : 8;
+      uint64_t type      : 8;
+      uint64_t instance  : 48;
+   };
+   union object_id_type
+   {
+      object_id_type( uint8_t s, uint8_t t, uint64_t i )
+      {
+         bits.space = s;
+         bits.type = t;
+         bits.instance = i;
+      }
+      object_id_type(){ number = 0; }
+   
+      uint8_t space()const { return bits.space; }
+      uint8_t type()const { return bits.type; }
+      uint8_t instance()const { return bits.instance; }
+      bool    is_null()const { return number == 0; }
+      operator uint64_t()const { return number; }
+
+      friend bool  operator == ( const object_id_type& a, const object_id_type& b )
+      {
+         return a.number == b.number;
+      }
+      object_id_type& operator++(int) { bits.instance++; return *this; }
+      object_id_type& operator++()    { bits.instance++; return *this; }
+
+      uint64_t        number;
+      object_id_bits  bits;
+   };
+
    //typedef fc::unsigned_int            object_id_type;
-   typedef uint64_t                    object_id_type;
+   //typedef uint64_t                    object_id_type;
    typedef object_id_type              account_id_type;
    typedef object_id_type              asset_id_type;
    typedef object_id_type              delegate_id_type;
@@ -93,3 +127,4 @@ namespace fc
 }
 FC_REFLECT( bts::chain::public_key_type, (key_data) )
 FC_REFLECT( bts::chain::public_key_type::binary_key, (data)(check) );
+FC_REFLECT( bts::chain::object_id_type, (number) )

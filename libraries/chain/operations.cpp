@@ -156,7 +156,7 @@ object_id_type register_delegate_operation::evaluate( transaction_evaluation_sta
 
 object_id_type update_asset_operation::evaluate( transaction_evaluation_state& eval_state )
 {
-   return 0;
+   return object_id_type();
 }
 
 object_id_type update_asset_white_list_operation::evaluate( transaction_evaluation_state& eval_state )
@@ -175,7 +175,7 @@ object_id_type update_asset_white_list_operation::evaluate( transaction_evaluati
 
    user_account->authorize_asset( this->asset_id, this->authorize );
 
-   return 0;
+   return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
 object_id_type issue_asset_operation::evaluate( transaction_evaluation_state& eval_state )
@@ -204,7 +204,7 @@ object_id_type issue_asset_operation::evaluate( transaction_evaluation_state& ev
    FC_ASSERT( balances );
    balances->add_balance( this->amount_to_issue );
    
-   return 0;
+   return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
 
@@ -215,7 +215,7 @@ object_id_type issue_asset_operation::evaluate( transaction_evaluation_state& ev
  ******************************************************************************/
 object_id_type transfer_asset_operation::evaluate( transaction_evaluation_state& eval_state )
 { try {
-   object_id_type result = 0;
+   object_id_type result = object_id_type();
 
    database& db = eval_state.db();
    FC_ASSERT( amount.amount > 0 );

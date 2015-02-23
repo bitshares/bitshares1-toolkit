@@ -35,7 +35,7 @@ namespace bts { namespace chain {
          else 
          {
             const object* auth_item = _db->get_object( auth.first );
-            switch( auth_item->type )
+            switch( auth_item->type() )
             {
                case account_object_type:
                {
@@ -60,7 +60,7 @@ namespace bts { namespace chain {
                   break;
                }
                default:
-                  FC_ASSERT( !"Invalid Auth Object Type", "type:${type}", ("type",auth_item->type) );
+                  FC_ASSERT( !"Invalid Auth Object Type", "type:${type}", ("type",auth_item->type()) );
             }
          }
          if( total_weight >= au->weight_threshold )

@@ -11,8 +11,11 @@
 namespace bts { namespace chain {
 
 database::database()
-:_object_factory(3),_next_object_ids(3,0)
+:_object_factory(3),_next_object_ids(3)
 {
+  _next_object_ids[0].resize(255);
+  _next_object_ids[1].resize(255);
+
   register_object<key_object>();
   register_object<account_object>();
   register_object<asset_object>();
@@ -33,10 +36,13 @@ void database::flush()
 {
    for( const auto& space : _loaded_objects )
    {
-      for( const auto& item : space )
+      for( const auto& type : space )
       {
-         if( item && item->is_dirty() )
-            _object_id_to_object.store( item->object_id(), get_object_builder(item->type)->pack( item.get() ) );
+         for( const auto& item : type )
+         {
+            if( item && item->is_dirty() )
+               _object_id_to_object.store( item->object_id(), get_object_builder(item->space(),item->type())->pack( item.get() ) );
+         }
       }
    }
 }
@@ -59,9 +65,8 @@ void database::open( const fc::path& data_dir )
       if( id >= _loaded_objects.size() )
          _loaded_objects.resize( id + 1 );
       _loaded_objects[id] = std::move(obj_ptr);
-      */
 
-      switch( ptr->type.value )
+      switch( ptr->type() )
       {
          case account_object_type:
          {
@@ -85,6 +90,7 @@ void database::open( const fc::path& data_dir )
          default: // do nothing
             break;
       }
+      */
    }
 } FC_CAPTURE_AND_RETHROW( (data_dir) ) }
 
@@ -99,11 +105,9 @@ asset database::current_delegate_registration_fee()const
 }
 
 
-object_builder* database::get_object_builder( uint16_t type )const
+object_builder* database::get_object_builder( uint8_t space, uint8_t type_in_space )const
 {
-   auto id_space = type >> 8;
-   auto type_in_space = type & 0x00ff;
-   return _object_factory[id_space][type_in_space].get();
+   return _object_factory[space][type_in_space].get();
 }
 void database::save_undo( object* obj )
 {
@@ -113,7 +117,7 @@ void database::save_undo( object* obj )
    if( current_undo == _undo_state.back().old_values.end() )
    {
       obj->mark_dirty();
-      _undo_state.back().old_values[id] = get_object_builder(obj->type)->pack( obj ); //obj->pack();
+      _undo_state.back().old_values[id] = get_object_builder(obj->space(),obj->type())->pack( obj ); //obj->pack();
    }
 }
 void database::pop_undo_state()
@@ -123,13 +127,12 @@ void database::pop_undo_state()
 void database::push_undo_state()
 {
    _undo_state.push_back( undo_state() );
-   _undo_state.back().old_next_object_ids = _next_object_ids;
 }
 void database::undo()
 {
    for( auto item : _undo_state.back().old_values )
    {
-      if( item.second.type == null_object_type )
+      if( item.second.is_null() )
       {
          get_object_ptr(item.first).reset();
       }
@@ -137,38 +140,18 @@ void database::undo()
       {
          auto obj = get_object_ptr(item.first).get();
          FC_ASSERT( obj );
-         get_object_builder(obj->type)->unpack( obj, item.second );
-         // obj->unpack( item.second );
+         // IF NO INDEXES THEN WE DO THIS... ELSE WE CANNOT MODIFY OBJECT...
+         get_object_builder(obj->space(),obj->type())->unpack( obj, item.second );
       }
    }
-   for( auto item : _undo_state.back().old_account_index )
-   {
-      if( item.second != 0 ) 
-      { 
-         _account_index[item.first] = item.second; 
-      }
-      else
-      {
-         _account_index.erase( item.first );
-      }
-   }
-   for( auto item : _undo_state.back().old_symbol_index )
-   {
-      if( item.second != 0 ) 
-      { 
-         _symbol_index[item.first] = item.second; 
-      }
-      else
-      {
-         _symbol_index.erase( item.first );
-      }
-   }
-   _next_object_ids = _undo_state.back().old_next_object_ids;
+   for( const auto& old_nxt_id : _undo_state.back().old_next_object_ids )
+      _next_object_ids[old_nxt_id.first.first][old_nxt_id.first.second] = old_nxt_id.second;
    _undo_state.pop_back();
 }
 
 void database::index_account( account_object* a )
 {
+   /*
    auto name    = a->name;
    auto cur_itr = _account_index.find(name);
    if( cur_itr != _account_index.end() )
@@ -180,9 +163,11 @@ void database::index_account( account_object* a )
       _undo_state.back().old_account_index[name] = 0;
    }
    _account_index[name] = a->object_id();
+   */
 }
 void database::index_symbol( asset_object* a )
 {
+   /* 
    auto name    = a->symbol;
    auto cur_itr = _symbol_index.find(name);
    if( cur_itr != _symbol_index.end() )
@@ -194,6 +179,7 @@ void database::index_symbol( asset_object* a )
       _undo_state.back().old_symbol_index[name] = 0;
    }
    _symbol_index[name] = a->object_id();
+   */
 }
 
 void database::push_block( const block& new_block )
@@ -290,7 +276,8 @@ const asset_object* database::lookup_symbol( const string& name )const
 
 unique_ptr<object>  database::load_object( const packed_object& obj )
 { try {
-   const auto& builder = get_object_builder( obj.type );
+   auto id = obj.id();
+   const auto& builder = get_object_builder( id.space(), id.type() );
    FC_ASSERT( builder );
    auto built_obj = builder->create();
    builder->unpack( built_obj.get(), obj );
