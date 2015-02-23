@@ -73,7 +73,10 @@ namespace bts { namespace chain {
        account_id_type paying_account;
        asset           registration_fee;
 
-       vector< public_key_type > register_keys;
+       vector< pair<public_key_type,uint16_t> > owner_register_keys; // new key/weight pair to add to owner
+       vector< pair<public_key_type,uint16_t> > active_register_keys; // new key/weight pair to add to active
+       vector< pair<public_key_type,uint16_t> > voter_register_keys; // new key/weight pair to add to voting
+      
        authority                 owner;
        authority                 active;
        authority                 voting;
@@ -118,7 +121,7 @@ namespace bts { namespace chain {
     *
     *  Assets can grant their issuers many different privileges so that
     *  the issuer can comply with all necessary regulatory compliance. Any
-    *  of these permissions can be perminentaly revoked to protect the
+    *  of these permissions can be permanently revoked to protect the
     *  owners of the asset.   
     *
     *  BitAssets (aka Market Issued Assets) can be created by anyone provided
@@ -137,13 +140,11 @@ namespace bts { namespace chain {
        static const operation_type type;
 
        string                  symbol;
-       string                  name;
-       string                  description;
        account_id_type         issuer;       /// the account that will pay the creation fee and has authority over this asset and receives all fees collected
        asset                   creation_fee; /// must match the expected creation fee
        asset                   data_fee;     /// must match the expected creation fee
        share_type              max_supply         = 0; // unlimited.
-       uint8_t                 precission_digits  = 0; // 0 to 10
+       uint8_t                 precision_digits   = 0; // 0 to 10
        uint16_t                market_fee_percent = 0; // 10,000 = 100%
        share_type              transfer_fee;       /// charged on all transfer involving the asset.
        uint32_t                issuer_permissions; /// freeze market, clawback @see asset_issuer_permission_flags
@@ -171,8 +172,6 @@ namespace bts { namespace chain {
 
       asset_id_type           asset_id;
       account_id_type         new_issuer; // 0 means don't change
-      string                  new_name; // empty string means don't change
-      string                  new_description; // empty string means don't change
       uint16_t                new_market_fee_percent = -1; // default value means don't change
       share_type              new_transfer_fee       = -1; // default value means don't change
       uint32_t                new_issuer_permissions = -1; // default value means don't change
@@ -269,14 +268,14 @@ namespace bts { namespace chain {
        account_id_type     from; 
        account_id_type     to;  
        asset               amount;
-       share_type          transfer_fee; // same unit as amount
-       /** encrypted message that uses the first active key of the
+       share_type          transfer_fee; // same as amount.asset_id
+       /** By convention, uses the memo_key of the to account and  
         * from account to derive a one time child key of the to
         * account using the transaction timestamp and blockhash as
         * the seed. Then use AES to encrypt the memo.
         */
-       vector<char>    memo;
-
+       vector<char>        memo; // MAX LENGTH 128 bytes (multiple of AES block size)
+       
        object_id_type evaluate( transaction_evaluation_state& eval_state );
    };
 
