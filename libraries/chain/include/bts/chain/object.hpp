@@ -33,10 +33,10 @@ namespace bts { namespace chain {
    {
       null_object_type                  = protocoal_ids,
       base_object_type                   ,
+      key_object_type                    ,
       account_object_type                ,
       asset_object_type                  ,
       delegate_object_type               ,
-      balance_object_type                ,
       impl_account_balance_object_type  = implementation_ids<<8,
       impl_delegate_vote_object_type     ,
       meta_info_asset_object_type       = meta_info_ids<<8
@@ -131,10 +131,10 @@ namespace bts { namespace chain {
 FC_REFLECT_ENUM( bts::chain::object_type,
                  (null_object_type)
                  (base_object_type)
+                 (key_object_type)
                  (account_object_type) 
                  (asset_object_type)
                  (delegate_object_type)
-                 (balance_object_type)
                  (impl_account_balance_object_type) 
                  (impl_delegate_vote_object_type)
                  (meta_info_asset_object_type)

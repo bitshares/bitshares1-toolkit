@@ -15,8 +15,6 @@ int main( int argc, char** argv )
       signed_transaction trx1;
         create_account_operation op;
         op.name = "dan";
-        op.owner.min_required = 1;
-        op.owner.keys.push_back( dans_key );
         op.active = op.owner;
 
       trx1.operations.push_back( op );

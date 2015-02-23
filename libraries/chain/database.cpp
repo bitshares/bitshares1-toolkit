@@ -1,9 +1,10 @@
 #include <bts/chain/database.hpp>
 #include <fc/io/raw.hpp>
+#include <fc/container/flat.hpp>
 
+#include <bts/chain/key_object.hpp>
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
-#include <bts/chain/balance_object.hpp>
 #include <bts/chain/delegate_object.hpp>
 #include <bts/chain/operation_factory.hpp>
 
@@ -12,8 +13,8 @@ namespace bts { namespace chain {
 database::database()
 :_object_factory(3),_next_object_ids(3,0)
 {
+  register_object<key_object>();
   register_object<account_object>();
-  register_object<balance_object>();
   register_object<asset_object>();
   register_object<delegate_object>();
 }

@@ -73,9 +73,11 @@ namespace bts { namespace chain {
        account_id_type paying_account;
        asset           registration_fee;
 
-       authority       owner;
-       authority       active;
-       authority       voting;
+       vector< public_key_type > register_keys;
+       authority                 owner;
+       authority                 active;
+       authority                 voting;
+       public_key_type           memo; 
 
        object_id_type evaluate( transaction_evaluation_state& eval_state );
    };
@@ -264,9 +266,8 @@ namespace bts { namespace chain {
    {
        static const operation_type type;
        
-       account_id_type     from; // May refer to a balance ID or account ID
-       account_id_type     to;   // May refer to a balance ID or account ID
-       optional<authority> to_authority; // specify to create a new balance id
+       account_id_type     from; 
+       account_id_type     to;  
        asset               amount;
        share_type          transfer_fee; // same unit as amount
        /** encrypted message that uses the first active key of the
@@ -467,4 +468,4 @@ FC_REFLECT( bts::chain::register_delegate_operation,
             (fee_schedule)
             (delegate_registration_fee) )
 
-FC_REFLECT( bts::chain::transfer_asset_operation, (from)(to)(to_authority)(amount)(transfer_fee)(memo) )
+FC_REFLECT( bts::chain::transfer_asset_operation, (from)(to)(amount)(transfer_fee)(memo) )

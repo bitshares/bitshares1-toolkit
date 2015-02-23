@@ -5,6 +5,7 @@
 
 namespace bts { namespace chain { 
    class database;
+   struct transaction;
 
    /**
     *  Place holder for state tracked while processing a
@@ -15,23 +16,24 @@ namespace bts { namespace chain {
    class transaction_evaluation_state
    {
       public:
-         bool check_authority( const authority& auth )const
-         {
-            if( _skip_signature_check ) return true;
-            return check_authority( address_authority(auth) );
-         }
-         bool check_authority( const address_authority& auth )const;
+         transaction_evaluation_state( database* db = nullptr, bool skip_sig_check = false )
+         :_db(db),_skip_signature_check(skip_sig_check){};
+
+         bool check_authority( const account_object*, authority::classification auth_class = authority::active, int depth = 0 );
          void adjust_votes( const vector<delegate_id_type>& delegates, share_type amount );
 
          void withdraw_from_account( account_id_type, const asset& what );
          void deposit_to_account( account_id_type, const asset& what );
 
-         transaction_evaluation_state( database* db = nullptr, bool skip_sig_check = false )
-         :_db(db),_skip_signature_check(skip_sig_check){};
 
          database& db()const { FC_ASSERT( _db ); return *_db; }
 
-         set<address> signed_by;
+         /** derived from signatures on transaction */
+         flat_set<address>                                          signed_by;
+         /** cached approval (accounts and keys) */
+         flat_set< pair<object_id_type,authority::classification> > approved_by;
+
+         transaction* _trx;
          database*    _db = nullptr;
          bool         _skip_signature_check = false;
    };

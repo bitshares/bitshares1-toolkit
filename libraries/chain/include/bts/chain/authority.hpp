@@ -4,34 +4,27 @@
 
 namespace bts { namespace chain {
 
+   /**
+    *  @class authority
+    *  @brief Identifies a weighted set of keys and accounts that must approve operations.
+    */
    struct authority
    {
-      /** this is the minimum signatures required, must be >= abs_required */
-      fc::unsigned_int        min_required;
-      /** the first N are absolutely required regardless of number of signatures */
-      fc::unsigned_int        abs_required;
-      vector<public_key_type> keys;
-   };
-
-   struct address_authority
-   {
-      address_authority(){}
-      address_authority( const address& single ):min_required(1),abs_required(1),addresses({single}){}
-      address_authority( const authority& a )
-      :min_required(a.min_required),abs_required(a.abs_required)
-      { 
-         addresses.reserve( a.keys.size() );
-         for( auto key : a.keys ) addresses.push_back( key );
-      }
-
-      /** this is the minimum signatures required, must be >= abs_required */
-      fc::unsigned_int        min_required;
-      /** the first N are absolutely required regardless of number of signatures */
-      fc::unsigned_int        abs_required;
-      vector<address> addresses;
+      enum classification
+      {
+         /** the key that is authorized to change owner, active, and voting keys */
+         owner  = 0,
+         /** the key that is able to perform normal operations */
+         active = 1,
+         /** a key that is only authorized to change voting behavior */
+         voting = 2,
+         key    = 3
+      };
+      uint32_t                             weight_threshold = 0;
+      flat_map<object_id_type,weight_type> auths;
    };
 
 } } // namespace bts::chain
 
-FC_REFLECT( bts::chain::authority, (min_required)(abs_required)(keys)  )
-FC_REFLECT( bts::chain::address_authority, (min_required)(abs_required)(addresses)  )
+FC_REFLECT( bts::chain::authority, (weight_threshold)(auths) )
+FC_REFLECT_ENUM( bts::chain::authority::classification, (owner)(active)(voting)(key) )

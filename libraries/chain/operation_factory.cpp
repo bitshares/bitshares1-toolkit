@@ -2,6 +2,7 @@
 #include <bts/chain/account_operations.hpp>
 #include <bts/chain/asset_operations.hpp>
 #include <fc/io/raw.hpp>
+#include <fc/container/flat.hpp>
 
 namespace bts { namespace chain { 
    const operation_type create_account_operation::type  = create_account_op_type;

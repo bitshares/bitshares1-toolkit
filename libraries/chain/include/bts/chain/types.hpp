@@ -1,4 +1,5 @@
 #pragma once
+#include <fc/container/flat_fwd.hpp>
 #include <fc/io/varint.hpp>
 #include <fc/io/raw_fwd.hpp>
 #include <fc/io/enum_type.hpp>
@@ -8,6 +9,7 @@
 #include <fc/reflect/variant.hpp>
 #include <fc/optional.hpp>
 #include <fc/safe.hpp>
+#include <fc/container/flat.hpp>
 #include <memory>
 #include <vector>
 #include <deque>
@@ -35,6 +37,8 @@ namespace bts { namespace chain {
    using                               fc::time_point_sec;
    using                               fc::time_point;
    using                               fc::safe;
+   using                               fc::flat_map;
+   using                               fc::flat_set;
 
    //typedef fc::unsigned_int            object_id_type;
    typedef uint64_t                    object_id_type;
@@ -50,6 +54,7 @@ namespace bts { namespace chain {
    typedef object_id_type              cover_id_type;
    typedef object_id_type              edge_id_type;
    typedef fc::sha224                  secret_hash_type;
+   typedef uint16_t                    weight_type;
 
    class account_object;
    class delegate_object;

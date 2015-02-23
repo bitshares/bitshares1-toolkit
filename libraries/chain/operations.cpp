@@ -2,7 +2,6 @@
 #include <bts/chain/asset_operations.hpp>
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
-#include <bts/chain/balance_object.hpp>
 #include <bts/chain/delegate_object.hpp>
 #include <bts/chain/exceptions.hpp>
 #include <fc/utf8.hpp>
@@ -119,7 +118,7 @@ object_id_type create_asset_operation::evaluate( transaction_evaluation_state& e
    const account_object* issuer_account = db.get<account_object>( this->issuer ); 
    FC_ASSERT( issuer_account );
 
-   if( !eval_state.check_authority( issuer_account->active )  )
+   if( !eval_state.check_authority( issuer_account, authority::active )  )
       FC_CAPTURE_AND_THROW( missing_signature, (issuer_account->active) );
 
    db.index_symbol( new_asset );
@@ -171,7 +170,7 @@ object_id_type update_asset_white_list_operation::evaluate( transaction_evaluati
    auto user_account = db.get_mutable<account_object>( this->account_id );
    FC_ASSERT( user_account );
 
-   if( !eval_state.check_authority( issuer_account->active )  )
+   if( !eval_state.check_authority( issuer_account, authority::active )  )
       FC_CAPTURE_AND_THROW( missing_signature, (issuer_account->active) );
 
    user_account->authorize_asset( this->asset_id, this->authorize );
@@ -193,7 +192,7 @@ object_id_type issue_asset_operation::evaluate( transaction_evaluation_state& ev
    auto to_account_obj = db.get<account_object>( this->to_account );
    FC_ASSERT( to_account_obj );
 
-   if( !eval_state.check_authority( issuer_account->active )  )
+   if( !eval_state.check_authority( issuer_account, authority::active )  )
       FC_CAPTURE_AND_THROW( missing_signature, (issuer_account->active) );
 
    if( asset_obj->enforce_white_list() )
@@ -209,6 +208,11 @@ object_id_type issue_asset_operation::evaluate( transaction_evaluation_state& ev
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
 
+/******************************************************************************
+ *  transfer_asset_operation 
+ *
+ *
+ ******************************************************************************/
 object_id_type transfer_asset_operation::evaluate( transaction_evaluation_state& eval_state )
 { try {
    object_id_type result = 0;
@@ -222,42 +226,13 @@ object_id_type transfer_asset_operation::evaluate( transaction_evaluation_state&
    FC_ASSERT( this->transfer_fee == asset_obj->transfer_fee );
 
    auto from_account = db.get<account_object>( this->from );
-   if( from_account )
-   {
+   FC_ASSERT( from_account );
       eval_state.withdraw_from_account( this->from, amount_with_fee );
-   }
-   else 
-   {
-      auto from_balance = db.get_mutable<balance_object>( this->from );
-      FC_ASSERT( from_balance );
-      if( !eval_state.check_authority( from_balance->owner )  )
-         FC_CAPTURE_AND_THROW( missing_signature, (from_balance->owner) );
-      FC_ASSERT( from_balance->balance >= amount_with_fee );
-      from_balance->balance -= amount_with_fee;
-   }
 
-   if( this->to_authority ) 
-   {
-      FC_ASSERT( this->to == 0 );
-      auto balance_obj = db.create<balance_object>();
-      balance_obj->owner = *to_authority;
-      balance_obj->balance = this->amount;
-      result = balance_obj->object_id();
-   }
-   else
-   {
-      auto to_account = db.get<account_object>( this->to ); FC_ASSERT( to_account );
-      if( to_account )
-         eval_state.deposit_to_account( this->to, this->amount );
-      else
-      {
-         auto  to_balance = db.get_mutable<balance_object>( this->to );
-         FC_ASSERT(to_balance);
-         FC_ASSERT(to_balance->balance.asset_id == this->amount.asset_id);
-         to_balance->balance += this->amount;
-      }
-   }
-
+   auto to_account = db.get<account_object>( this->to ); FC_ASSERT( to_account );
+   FC_ASSERT( to_account );
+      eval_state.deposit_to_account( this->to, this->amount );
+  
 
    return result;
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
