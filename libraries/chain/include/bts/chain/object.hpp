@@ -120,6 +120,7 @@ namespace bts { namespace chain {
          static const uint8_t space_id = protocal_ids;
          static const uint8_t type_id  = base_object_type;
 
+         uint64_t get_id()const { return id.number; }
          bool     is_dirty()const        { return _dirty; }
          uint8_t  space()const           { return id.space(); }
          uint8_t  type()const            { return id.type(); }

@@ -45,6 +45,8 @@ namespace bts { namespace chain {
 
          bool                  is_for_sale()const { return for_sale.first != 0; }
 
+         const string& get_name()const { return name; }
+
          void                  authorize_asset( asset_id_type asset_id, bool state );
          bool                  is_authorized_asset( asset_id_type )const;
 

@@ -74,6 +74,7 @@ namespace bts { namespace chain {
 
    void transaction_evaluation_state::withdraw_from_account( account_id_type account_id, const asset& what )
    { try {
+       /*
        FC_ASSERT( what.amount > 0 );
        auto asset_obj = _db->get<asset_object>(what.asset_id);
        FC_ASSERT( asset_obj );
@@ -91,11 +92,13 @@ namespace bts { namespace chain {
 
        if( asset_obj->issuer == 0 )
           adjust_votes( from_account->delegate_votes, -what.amount );
+       */
 
    } FC_CAPTURE_AND_RETHROW( (account_id)(what) ) }
 
    void transaction_evaluation_state::deposit_to_account( account_id_type account_id, const asset& what )
    { try {
+            /*
        auto asset_obj = _db->get<asset_object>(what.asset_id);
        FC_ASSERT( asset_obj );
        auto acc = _db->get<account_object>( account_id );
@@ -106,10 +109,12 @@ namespace bts { namespace chain {
 
        if( asset_obj->issuer == 0 )
           adjust_votes( acc->delegate_votes, what.amount );
+          */
    } FC_CAPTURE_AND_RETHROW( (account_id)(what) ) }
 
    void transaction_evaluation_state::adjust_votes( const vector<delegate_id_type>& delegates, share_type amount )
    { try {
+       /*
       for( auto d : delegates )
       {
          auto delegate_obj = _db->get<delegate_object>(d);
@@ -118,6 +123,7 @@ namespace bts { namespace chain {
          FC_ASSERT( delegate_vote_obj );
          delegate_vote_obj->total_votes += amount;
       }
+      */
    } FC_CAPTURE_AND_RETHROW( (delegates)(amount) ) }
 
 } } // namespace bts::chain

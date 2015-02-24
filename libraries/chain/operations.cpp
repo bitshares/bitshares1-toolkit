@@ -1,6 +1,7 @@
 #include <bts/chain/database.hpp>
 #include <bts/chain/asset_operations.hpp>
 #include <bts/chain/account_object.hpp>
+#include <bts/chain/account_index.hpp>
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/delegate_object.hpp>
 #include <bts/chain/exceptions.hpp>
@@ -76,19 +77,22 @@ object_id_type create_account_operation::evaluate( transaction_evaluation_state&
 { try {
     database& db = eval_state.db();
 
-    const account_object* current_account = db.lookup_account( this->name );
+    const account_object* current_account = db.get_account_index().get( this->name );
     FC_ASSERT( !current_account );
 
-    account_object* new_account = db.create<account_object>();
-    new_account->name = this->name;
-    new_account->owner = this->owner;
-    new_account->active = this->active;
-    new_account->voting = this->voting;
+    account_balance_object* balance_obj = 
+       db.create<account_balance_object>( [&](account_balance_object* n){
+             /** nothing to set initially */
+          });
 
-    account_balance_object* balance_obj = db.create<account_balance_object>();
-    new_account->balances = balance_obj->object_id();
-
-    db.index_account( new_account );
+    account_object* new_account = 
+       db.create<account_object>( [&](account_object* n) {
+             n->name = this->name;
+             n->owner = this->owner;
+             n->active = this->active;
+             n->voting = this->voting;
+             n->balances = balance_obj->id;
+          });
 
     return new_account->object_id();
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
@@ -104,6 +108,7 @@ object_id_type create_asset_operation::evaluate( transaction_evaluation_state& e
    FC_ASSERT( this->name.size() < BTS_MAX_ASSET_NAME_LENGTH );
 
 
+   /*
    const asset_object* current_asset = db.lookup_symbol( this->symbol );
    FC_ASSERT( !current_asset );
 
@@ -124,12 +129,15 @@ object_id_type create_asset_operation::evaluate( transaction_evaluation_state& e
    db.index_symbol( new_asset );
 
    return new_asset->object_id();
+   */
+   return object_id_type(); // TODO fix this
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
 object_id_type register_delegate_operation::evaluate( transaction_evaluation_state& eval_state )
 { try {
    database& db = eval_state.db();
 
+   /*
    FC_ASSERT( this->pay_rate <= BTS_MAX_PAY_RATE );
    FC_ASSERT( this->delegate_registration_fee == db.current_delegate_registration_fee() );
    eval_state.withdraw_from_account( this->delegate_account, this->delegate_registration_fee );
@@ -149,7 +157,10 @@ object_id_type register_delegate_operation::evaluate( transaction_evaluation_sta
 
    del_account->delegate_id = del_obj->object_id();
 
+
    return del_account->delegate_id;
+   */
+   return object_id_type(); // TODO fix this
 
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
@@ -162,6 +173,7 @@ object_id_type update_asset_operation::evaluate( transaction_evaluation_state& e
 object_id_type update_asset_white_list_operation::evaluate( transaction_evaluation_state& eval_state )
 { try {
    database& db = eval_state.db();
+   /*
    auto asset_obj      = db.get<asset_object>( this->asset_id );
    FC_ASSERT( asset_obj );
    auto issuer_account = db.get<account_object>( asset_obj->issuer );
@@ -174,6 +186,7 @@ object_id_type update_asset_white_list_operation::evaluate( transaction_evaluati
       FC_CAPTURE_AND_THROW( missing_signature, (issuer_account->active) );
 
    user_account->authorize_asset( this->asset_id, this->authorize );
+   */
 
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
@@ -181,6 +194,7 @@ object_id_type update_asset_white_list_operation::evaluate( transaction_evaluati
 object_id_type issue_asset_operation::evaluate( transaction_evaluation_state& eval_state )
 { try {
    database& db = eval_state.db();
+   /*
    FC_ASSERT( this->amount_to_issue.amount > 0 );
 
    auto asset_obj      = db.get_mutable<asset_object>( this->amount_to_issue.asset_id );
@@ -203,6 +217,7 @@ object_id_type issue_asset_operation::evaluate( transaction_evaluation_state& ev
    auto balances = db.get_mutable<account_balance_object>(to_account_obj->balances);
    FC_ASSERT( balances );
    balances->add_balance( this->amount_to_issue );
+   */
    
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
@@ -217,6 +232,7 @@ object_id_type transfer_asset_operation::evaluate( transaction_evaluation_state&
 { try {
    object_id_type result = object_id_type();
 
+   /*
    database& db = eval_state.db();
    FC_ASSERT( amount.amount > 0 );
 
@@ -232,6 +248,7 @@ object_id_type transfer_asset_operation::evaluate( transaction_evaluation_state&
    auto to_account = db.get<account_object>( this->to ); FC_ASSERT( to_account );
    FC_ASSERT( to_account );
       eval_state.deposit_to_account( this->to, this->amount );
+      */
   
 
    return result;
