@@ -15,6 +15,14 @@ namespace bts { namespace chain {
 
          ~account_index(){}
 
+         virtual object_id_type get_next_available_id()const override;
+
+         /**
+          * Builds a new object and assigns it the next available ID and then
+          * initializes it with constructor and lastly inserts it into the index.
+          */
+         virtual const object*  create( const std::function<void(object*)>& constructor );
+
          virtual int64_t size()const;
 
          virtual void modify( const object* obj, const std::function<void(object*)>& m )override;

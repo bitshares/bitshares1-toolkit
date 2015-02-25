@@ -64,6 +64,9 @@ namespace bts { namespace chain {
     *  a user asset.  By carefully organizing how information is organized and
     *  tracked systems can minimize the workload to only that which is necessary
     *  to perform their function.  
+    *
+    *  @note Do not use multiple inheritance with object because the code assumes
+    *  a static_cast will work between object and derived types.  
     */
    class object 
    {

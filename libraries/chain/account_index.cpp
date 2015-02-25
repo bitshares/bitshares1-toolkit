@@ -4,6 +4,25 @@
 
 namespace bts { namespace chain {
 
+object_id_type account_index::get_next_available_id()const 
+{ 
+   return account_id_type(size()); 
+}
+
+/**
+ * Builds a new object and assigns it the next available ID and then
+ * initializes it with constructor and lastly inserts it into the index.
+ */
+const object*  account_index::create( const std::function<void(object*)>& constructor )
+{
+    unique_ptr<account_object> obj( new account_object() );
+    obj->id = get_next_available_id();
+    constructor( obj.get() );
+    auto result = obj.get();
+    add( std::move(obj) );
+    return result;
+}
+
 int64_t account_index::size()const { return accounts.size(); }
 
 void  account_index::modify( const object* obj, const std::function<void(object*)>& modify_callback )
@@ -62,7 +81,10 @@ void account_index::remove( object_id_type id )
    assert( id.type() == account_object::type_id );
    auto&  a = accounts[id.instance()];
    if( a ) name_to_id.erase(a->name);
-   a.reset();
+   if( id.instance() == accounts.size() - 1 )
+      accounts.pop_back();
+   else
+      a.reset();
 }
 
 const object* account_index::get( object_id_type id )const 

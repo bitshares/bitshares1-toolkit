@@ -9,6 +9,21 @@ namespace bts { namespace chain {
       public:
          typedef T object_type;
 
+         virtual object_id_type get_next_available_id()const override
+         { 
+            return object_id_type( T::space_id, T::type_id, size()); 
+         }
+         virtual const object*  create( const std::function<void(object*)>& constructor ) override
+         {
+             auto next_id = get_next_available_id();
+             auto instance = next_id.instance();
+             if( instance >= _objects.size() ) _objects.resize( instance + 1 );
+             _objects[instance].reset(new T);
+             auto result = _objects[instance].get();
+             constructor( result );
+             return result;
+         }
+
          virtual int64_t size()const { return _objects.size(); }
 
          virtual void modify( const object* obj, const std::function<void(object*)>& modify_callback ) override

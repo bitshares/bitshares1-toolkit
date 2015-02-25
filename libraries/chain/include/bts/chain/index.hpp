@@ -24,6 +24,26 @@ namespace bts { namespace chain {
          virtual uint8_t object_space_id()const = 0;
          virtual uint8_t object_type_id()const = 0;
 
+         /**
+          * This method must be deterministic based upon the set of
+          * elements in the index.  Object IDs can be reused so long
+          * as the order that they are added/removed does not change
+          * the ID selection.  
+          *
+          * @note - you can assume that when the UNDO state is
+          * applied it will remove items from the highest ID first which
+          * means that in a batch UNDO you can resize when the last
+          * element is removed and reuse that ID
+          */
+         virtual object_id_type get_next_available_id()const = 0;
+
+         /**
+          * Builds a new object and assigns it the next available ID and then
+          * initializes it with constructor and lastly inserts it into the index.
+          */
+         virtual const object*  create( const std::function<void(object*)>& constructor ) = 0;
+
+
          virtual packed_object pack( const object* p )const  = 0;
          virtual void unpack( object* p, const packed_object& obj )const  = 0;
          virtual variant to_variant( const object* p )const  = 0;
@@ -33,7 +53,12 @@ namespace bts { namespace chain {
           */
          virtual void open( const bts::db::level_map<object_id_type, packed_object>& db ){};
 
-         virtual unique_ptr<object> create()const = 0;
+         /**
+          * Creates a new object that is free from the index and does not
+          * claim the next_available_id.  This method is meant to be a helper for
+          * dynamic deserialization of objects.
+          */
+         virtual unique_ptr<object> create_free_object()const = 0;
          virtual const object*      get( object_id_type id )const = 0;
          virtual int64_t            size()const = 0;  
                                     
@@ -118,7 +143,7 @@ namespace bts { namespace chain {
          }
 
          /** does not add it to the index */
-         virtual unique_ptr<object> create()const override
+         virtual unique_ptr<object> create_free_object()const override
          {
             return unique_ptr<ObjectType>( new ObjectType() );
          }

@@ -80,12 +80,12 @@ object_id_type create_account_operation::evaluate( transaction_evaluation_state&
     const account_object* current_account = db.get_account_index().get( this->name );
     FC_ASSERT( !current_account );
 
-    account_balance_object* balance_obj = 
+    const account_balance_object* balance_obj = 
        db.create<account_balance_object>( [&](account_balance_object* n){
              /** nothing to set initially */
           });
 
-    account_object* new_account = 
+    const account_object* new_account = 
        db.create<account_object>( [&](account_object* n) {
              n->name = this->name;
              n->owner = this->owner;

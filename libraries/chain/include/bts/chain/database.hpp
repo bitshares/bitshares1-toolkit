@@ -13,12 +13,14 @@ namespace bts { namespace chain {
 
    /**
     *  Undo State saves off the initial values associated 
-    *  with each object prior to making changes.
+    *  with each object prior to making changes. When
+    *  applying the undo_state the old_values should be
+    *  restored in REVERSE ORDER to make sure that
+    *  indexes can effeciently resize when the last
+    *  element is removed.
     */
    struct undo_state
    {
-       // [space][type] = old_instance
-       flat_map<pair<int,int>, object_id_type> old_next_object_ids;
        map<object_id_type, packed_object>      old_values;
    };
 
@@ -50,24 +52,17 @@ namespace bts { namespace chain {
          asset current_delegate_registration_fee()const;
 
          template<typename T, typename F>
-         T* create( F&& constructor )
+         const T* create( F&& constructor )
          {
             undo_state& undo = _undo_state.back();
-            /*
-            auto old_next_ids_itr = undo.old_next_object_ids.find( make_pair<int,int>( T::space_id, T::type_id ) );
-            if( old_next_ids_itr == undo.old_next_object_ids.end() )
-               undo.old_next_object_ids[ make_pair<int,int>(T::space_id,T::type_id) ] = _next_object_ids[T::space_id][T::type_id];
-            */
             auto& idx = get_index<T>();
-
-            unique_ptr<T> obj( new T() );
-            obj->id  = object_id_type( T::space_id, T::type_id, idx.size() );
-            _undo_state.back().old_values[obj->id] = packed_object();
-               
-            auto r = obj.get();
-            constructor(r);
-            get_index<T>().add(std::move(obj));
-            return r;
+            auto next_id = idx.get_next_available_id();
+            auto old_obj = get<T>( next_id );
+            if( old_obj ) save_undo(old_obj);
+            else _undo_state.back().old_values[next_id] = packed_object();
+            const object* result = idx.create( [&](object* o){constructor( static_cast<T*>(o) );} );
+            assert( next_id == result->id );
+            return static_cast<const T*>(result);
          }
 
          const object* get_object( object_id_type id )const;
@@ -143,10 +138,7 @@ namespace bts { namespace chain {
 
 
 
-FC_REFLECT( bts::chain::undo_state, 
-            (old_next_object_ids)
-            (old_values)
-          )
+FC_REFLECT( bts::chain::undo_state, (old_values) )
 
 
 
