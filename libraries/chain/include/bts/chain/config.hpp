@@ -7,6 +7,7 @@
 #define BTS_MAX_SHARE_SUPPLY 1000000000000ll
 #define BTS_MAX_PAY_RATE 10000 /* 100% */
 #define BTS_MAX_SIG_CHECK_DEPTH 2
+#define BTS_MIN_DELEGATE_COUNT 10
 /**
  * Don't allow the delegates to publish a limit that would
  * make the network unable to operate.

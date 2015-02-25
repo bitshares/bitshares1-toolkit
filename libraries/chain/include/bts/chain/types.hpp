@@ -54,7 +54,9 @@ namespace bts { namespace chain {
       transaction_fee_type, ///< a base price for every transaction
       data_fee_type, ///< a price per byte of user data
       delegate_registration_fee, ///< fixed fee for registering as a delegate, used to discourage frivioulous delegates
-      signature_fee_type ///< a surcharge on transactions with more than 2 signatures.
+      signature_fee_type, ///< a surcharge on transactions with more than 2 signatures.
+
+      FEE_TYPE_COUNT ///< Sentry value which contains the number of different fee types
    };
 
 

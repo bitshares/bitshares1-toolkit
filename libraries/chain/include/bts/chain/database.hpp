@@ -79,7 +79,7 @@ namespace bts { namespace chain {
                undo.set_old_index_meta_object<T>( idx.get_meta_object() );
 
             auto next_id = idx.get_next_available_id();
-            wdump( (next_id) );
+            wdump( (next_id.space())(next_id.type())(next_id.instance()) );
 
             auto old_obj = get<T>( next_id );
             if( old_obj ) save_undo(old_obj);

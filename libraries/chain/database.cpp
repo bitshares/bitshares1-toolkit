@@ -116,38 +116,85 @@ void database::open( const fc::path& data_dir )
 void database::init_genesis()
 {
    _save_undo = false;
+   ilog("Begin genesis initialization.");
+
+   const key_object* genesis_key =
+      create<key_object>( [](key_object* k) {
+         k->public_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis"))).get_public_key();
+         k->key_address = k->public_key;
+      });
+   ilog("Genesis key created");
 
    const account_balance_object* balance_obj =
-       create<account_balance_object>( [&](account_balance_object* n){
+      create<account_balance_object>( [&](account_balance_object* n){
          /** nothing to set initially */
-       });
+      });
 
-    const account_object* genesis_account =
-       create<account_object>( [&](account_object* n) {
-          n->balances = balance_obj->id;
-       });
+   const account_object* genesis_account =
+      create<account_object>( [&](account_object* n) {
+         n->owner.auths[genesis_key->id] = 1;
+         n->owner.weight_threshold = 1;
+         n->active = n->owner;
+         n->voting = n->active;
+         n->balances = balance_obj->id;
+      });
+   ilog("Genesis account created");
 
-   const asset_dynamic_data* dyn_asset = create<asset_dynamic_data>( [&]( asset_dynamic_data* a ) {
-           a->current_supply = BTS_INITIAL_SUPPLY;
-       });
+   vector<delegate_id_type> init_delegates;
 
-   const asset_object* base_asset = create<asset_object>( [&]( asset_object* a ) {
-           a->symbol = BTS_SYMBOL;
-           a->max_supply = BTS_INITIAL_SUPPLY;
-           a->transfer_fee = BTS_DEFAULT_TRANSFER_FEE;
-           a->flags = 0;
-           a->issuer_permissions = 0;
-           a->issuer = genesis_account->id; // NONE
-           a->base_exchange_rate.base.amount = 1;
-           a->base_exchange_rate.base.asset_id = 0;
-           a->base_exchange_rate.quote.amount = 1;
-           a->base_exchange_rate.quote.asset_id = 0;
-           a->dynamic_asset_data_id = dyn_asset->id;
-       });
+   for( int i = 0; i < BTS_MIN_DELEGATE_COUNT; ++i )
+   {
+      const account_object* delegate =
+         create<account_object>( [&](account_object* a) {
+            a->active = a->owner = a->voting = genesis_account->owner;
+            a->name = string("init") + fc::to_string(i);
+         });
+      const delegate_vote_object* vote =
+         create<delegate_vote_object>( [&](delegate_vote_object* v) {
+            // Nothing to do here...
+         });
+      const delegate_object* init_delegate = create<delegate_object>( [&](delegate_object* d) {
+         d->delegate_account = delegate->id;
+         d->signing_key = genesis_key->id;
+         d->vote = vote->id;
+      });
+      init_delegates.push_back(init_delegate->id);
+      ilog("Delegate init${i} created", ("i", i));
+   }
+
+   const global_property_object* properties =
+      create<global_property_object>( [&](global_property_object* p) {
+         p->active_delegates = init_delegates;
+         p->current_fees.resize(FEE_TYPE_COUNT);
+      });
+   (void)properties;
+   ilog("Genesis properties created");
+
+   const asset_dynamic_data* dyn_asset =
+      create<asset_dynamic_data>( [&]( asset_dynamic_data* a ) {
+         a->current_supply = BTS_INITIAL_SUPPLY;
+      });
+
+   const asset_object* base_asset =
+     create<asset_object>( [&]( asset_object* a ) {
+         a->symbol = BTS_SYMBOL;
+         a->max_supply = BTS_INITIAL_SUPPLY;
+         a->transfer_fee = BTS_DEFAULT_TRANSFER_FEE;
+         a->flags = 0;
+         a->issuer_permissions = 0;
+         a->issuer = genesis_account->id;
+         a->base_exchange_rate.base.amount = 1;
+         a->base_exchange_rate.base.asset_id = 0;
+         a->base_exchange_rate.quote.amount = 1;
+         a->base_exchange_rate.quote.asset_id = 0;
+         a->dynamic_asset_data_id = dyn_asset->id;
+      });
    (void)base_asset;
+   ilog("Core asset initialized");
 
    push_undo_state();
    _save_undo = true;
+   ilog("End genesis initialization.");
 }
 
 
