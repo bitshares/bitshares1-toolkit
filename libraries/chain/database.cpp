@@ -14,8 +14,10 @@ namespace bts { namespace chain {
 
 database::database()
 {
+   _object_id_to_object = std::make_shared<db::level_map<object_id_type,packed_object>>();
+
    _index.resize(255);
-   _index[protocal_ids].resize( 10 );
+   _index[protocol_ids].resize( 10 );
    _index[implementation_ids].resize( 10 );
    _index[meta_info_ids].resize( 10 );
 
@@ -32,7 +34,8 @@ void database::close()
 
    _block_num_to_block.close();
    _block_id_to_num.close();
-   _object_id_to_object.close();
+   _undo_db.close();
+   _object_id_to_object->close();
 }
 
 const object* database::get_object( object_id_type id )const
@@ -84,7 +87,8 @@ void database::open( const fc::path& data_dir )
    init_genesis();
    _block_num_to_block.open( data_dir / "database" / "block_num_to_block" );
    _block_id_to_num.open( data_dir / "database" / "block_id_to_num" );
-   _object_id_to_object.open( data_dir / "database" / "objects" );
+   _undo_db.open( data_dir / "database" / "undo_db" );
+   _object_id_to_object->open( data_dir / "database" / "objects" );
 
    for( auto& space : _index )
    {

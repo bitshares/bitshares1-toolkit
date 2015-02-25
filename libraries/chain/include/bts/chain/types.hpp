@@ -90,13 +90,15 @@ namespace bts { namespace chain {
     */
    enum id_space_type
    {
+      /** objects that may reference other objects created as part of the same transaction */
+      relative_protocol_ids = 0,
       /** objects that may be directly referred to by the protocol operations */
-      protocal_ids = 0,
+      protocol_ids          = 1,
       /** objects created for implementation specific reasons such as maximizing performance */
-      implementation_ids = 1,
+      implementation_ids    = 2,
       /** objects created for the purpose of tracking meta info not used by validation, 
        * such as names and descriptions of assets or the value of data objects. */
-      meta_info_ids = 2
+      meta_info_ids = 3
    };
 
 
@@ -155,9 +157,9 @@ namespace bts { namespace chain {
 
    //typedef fc::unsigned_int            object_id_type;
    //typedef uint64_t                    object_id_type;
-   typedef object_id< (protocal_ids<<8) | account_object_type>   account_id_type;
-   typedef object_id< (protocal_ids<<8) | asset_object_type>     asset_id_type;
-   typedef object_id< (protocal_ids<<8) | delegate_object_type>  delegate_id_type;
+   typedef object_id< (protocol_ids<<8) | account_object_type>   account_id_type;
+   typedef object_id< (protocol_ids<<8) | asset_object_type>     asset_id_type;
+   typedef object_id< (protocol_ids<<8) | delegate_object_type>  delegate_id_type;
    typedef fc::sha224                                   block_id_type;
    typedef fc::sha256                                   digest_type;
    typedef fc::ecc::compact_signature                   signature_type;
@@ -213,7 +215,7 @@ FC_REFLECT( bts::chain::public_key_type::binary_key, (data)(check) );
 FC_REFLECT( bts::chain::object_id_type, (number) )
 FC_REFLECT_TEMPLATE( (uint16_t SpaceTypeID), bts::chain::object_id<SpaceTypeID>, (instance) )
 
-FC_REFLECT_ENUM( bts::chain::id_space_type, (protocal_ids)(implementation_ids)(meta_info_ids) )
+FC_REFLECT_ENUM( bts::chain::id_space_type, (relative_protocol_ids)(protocol_ids)(implementation_ids)(meta_info_ids) )
 FC_REFLECT_ENUM( bts::chain::object_type,
                  (null_object_type)
                  (base_object_type)

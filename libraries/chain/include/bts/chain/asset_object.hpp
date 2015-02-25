@@ -8,7 +8,7 @@ namespace bts { namespace chain {
    class asset_object : public object
    {
       public:
-         static const uint8_t space_id = protocal_ids;
+         static const uint8_t space_id = protocol_ids;
          static const uint8_t   type_id  = asset_object_type;
 
          static bool is_valid_symbol( const string& symbol );

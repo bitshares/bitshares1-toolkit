@@ -62,7 +62,7 @@ namespace bts { namespace chain {
          /**
           *  Opens the index loading objects from a level_db database
           */
-         virtual void open( const bts::db::level_map<object_id_type, packed_object>& db ){};
+         virtual void open( const shared_ptr<bts::db::level_map<object_id_type, packed_object>>& db ){};
 
          /**
           * Creates a new object that is free from the index and does not
@@ -113,11 +113,11 @@ namespace bts { namespace chain {
          virtual uint8_t object_type_id()const override 
          { return ObjectType::type_id; };
 
-         virtual void open( const bts::db::level_map<object_id_type, packed_object>& db )
+         virtual void open( const shared_ptr<bts::db::level_map<object_id_type, packed_object>>& db )
          {
             auto first = object_id_type( DerivedIndex::object_type::space_id, DerivedIndex::object_type::type_id, 0 );
             auto last = object_id_type( DerivedIndex::object_type::space_id, DerivedIndex::object_type::type_id+1, 0 );
-            auto itr = db.lower_bound( first );
+            auto itr = db->lower_bound( first );
             while( itr.valid() && itr.key() < last )
             {
                unique_ptr<ObjectType> next_obj( new ObjectType() );
