@@ -103,10 +103,6 @@ object_id_type create_asset_operation::evaluate( transaction_evaluation_state& e
    database& db = eval_state.db();
 
    FC_ASSERT( asset_object::is_valid_symbol( this->symbol ) );
-   FC_ASSERT( fc::is_utf8( this->description ) );
-   FC_ASSERT( fc::is_utf8( this->name ) );
-   FC_ASSERT( this->name.size() < BTS_MAX_ASSET_NAME_LENGTH );
-
 
    /*
    const asset_object* current_asset = db.lookup_symbol( this->symbol );
