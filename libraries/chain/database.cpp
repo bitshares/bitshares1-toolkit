@@ -116,12 +116,19 @@ void database::open( const fc::path& data_dir )
 void database::init_genesis()
 {
    _save_undo = false;
+
+   const account_balance_object* balance_obj =
+       create<account_balance_object>( [&](account_balance_object* n){
+         /** nothing to set initially */
+       });
+
+    const account_object* genesis_account =
+       create<account_object>( [&](account_object* n) {
+          n->balances = balance_obj->id;
+       });
+
    const asset_dynamic_data* dyn_asset = create<asset_dynamic_data>( [&]( asset_dynamic_data* a ) {
            a->current_supply = BTS_INITIAL_SUPPLY;
-           a->base_exchange_rate.base.amount = 1;
-           a->base_exchange_rate.base.asset_id = 0;
-           a->base_exchange_rate.quote.amount = 1;
-           a->base_exchange_rate.quote.asset_id = 0;
        });
 
    const asset_object* base_asset = create<asset_object>( [&]( asset_object* a ) {
@@ -130,9 +137,15 @@ void database::init_genesis()
            a->transfer_fee = BTS_DEFAULT_TRANSFER_FEE;
            a->flags = 0;
            a->issuer_permissions = 0;
-           a->issuer = account_id_type(); // NONE
+           a->issuer = genesis_account->id; // NONE
+           a->base_exchange_rate.base.amount = 1;
+           a->base_exchange_rate.base.asset_id = 0;
+           a->base_exchange_rate.quote.amount = 1;
+           a->base_exchange_rate.quote.asset_id = 0;
            a->dynamic_asset_data_id = dyn_asset->id;
        });
+   (void)base_asset;
+
    push_undo_state();
    _save_undo = true;
 }
