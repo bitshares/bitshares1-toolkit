@@ -75,10 +75,8 @@ namespace bts { namespace chain {
          static const uint8_t type_id  = base_object_type;
 
          uint64_t get_id()const { return id.number; }
-         bool     is_dirty()const        { return _dirty; }
          uint8_t  space()const           { return id.space(); }
          uint8_t  type()const            { return id.type(); }
-         void     mark_dirty()           { _dirty = true; }
          object_id_type object_id()const { return id; }
 
          /** return object_id_type() if no anotation is found for id_space */
@@ -93,9 +91,6 @@ namespace bts { namespace chain {
           */
          flat_map<uint8_t,object_id_type> annotations;
 
-
-         // not serialized
-         uint8_t                         _dirty = false;
    };
 
 } }

@@ -92,15 +92,24 @@ namespace bts { namespace chain {
 
          template<typename T>
          index& get_index() { return get_index(T::space_id,T::type_id); }
+
+         template<typename T>
+         const index& get_index()const { return get_index(T::space_id,T::type_id); }
+
          index& get_index(uint8_t space_id, uint8_t type_id);
          const index& get_index(uint8_t space_id, uint8_t type_id)const;
 
-         account_index& get_account_index()const;
-         asset_index&   get_asset_index()const;
+         const account_index& get_account_index()const;
+         const asset_index&   get_asset_index()const;
+
+         account_index&       get_account_index();
+         asset_index&         get_asset_index();
 
       private:
+         friend class base_primary_index;
+
          void init_genesis();
-         void save_undo( object* obj );
+         void save_undo( const object* obj );
          processed_transaction apply_transaction( const signed_transaction& trx );
          void pop_pending_block();
          void push_pending_block();

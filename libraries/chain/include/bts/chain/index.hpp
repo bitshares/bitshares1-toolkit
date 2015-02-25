@@ -95,13 +95,13 @@ namespace bts { namespace chain {
          {
             object* obj = o.get();
             DerivedIndex::add(std::move(o));
-            on_add(obj); //for( auto ob : _observers ) ob->on_add( obj );
+            on_add(obj);
          }
         
          virtual void  remove( object_id_type id ) override
          {
             DerivedIndex::remove(id);
-            on_remove(id); // for( auto o : _observers ) o->on_remove( id );
+            on_remove(id); 
          }
 
          virtual void modify( const object* obj, const std::function<void(object*)>& m )override
@@ -109,7 +109,7 @@ namespace bts { namespace chain {
             assert( obj != nullptr );
             save_undo( obj );
             DerivedIndex::modify( obj, m );
-            on_modify( obj->id, obj ); // for( auto o : _observers ) o->changed( obj->id, obj );
+            on_modify( obj->id, obj ); 
          }
 
          virtual void add_observer( const shared_ptr<index_observer>& o ) override

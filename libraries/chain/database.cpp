@@ -57,6 +57,22 @@ index& database::get_index(uint8_t space_id, uint8_t type_id)
    return *tmp;
 }
 
+const account_index& database::get_account_index()const
+{
+   return dynamic_cast<const account_index&>( get_index<account_object>() ); 
+}
+account_index& database::get_account_index()
+{
+   return dynamic_cast<account_index&>( get_index<account_object>() ); 
+}
+
+const asset_index&   database::get_asset_index()const
+{
+}
+asset_index&   database::get_asset_index()
+{
+}
+
 
 void database::flush()
 {
@@ -92,14 +108,13 @@ asset database::current_delegate_registration_fee()const
    return asset();
 }
 
-void database::save_undo( object* obj )
+void database::save_undo( const object* obj )
 {
    FC_ASSERT( obj );
    auto id = obj->id;
    auto current_undo = _undo_state.back().old_values.find(id);
    if( current_undo == _undo_state.back().old_values.end() )
    {
-      obj->mark_dirty();
       _undo_state.back().old_values[id] = get_index(obj->space(),obj->type()).pack( obj ); 
    }
 }
