@@ -98,18 +98,6 @@ namespace bts { namespace chain {
 
 } }
 
-FC_REFLECT_ENUM( bts::chain::id_space_type, (protocal_ids)(implementation_ids)(meta_info_ids) )
-FC_REFLECT_ENUM( bts::chain::object_type,
-                 (null_object_type)
-                 (base_object_type)
-                 (key_object_type)
-                 (account_object_type) 
-                 (asset_object_type)
-                 (delegate_object_type)
-               )
-FC_REFLECT_ENUM( bts::chain::impl_object_type, 
-                 (impl_account_balance_object_type)
-                 (impl_delegate_vote_object_type) )
 
 FC_REFLECT( bts::chain::packed_object, (data) )
 FC_REFLECT_ENUM( bts::chain::meta_info_object_type, (meta_asset_object_type) )

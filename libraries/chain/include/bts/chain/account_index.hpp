@@ -16,6 +16,8 @@ namespace bts { namespace chain {
          ~account_index(){}
 
          virtual object_id_type get_next_available_id()const override;
+         virtual packed_object  get_meta_object()const override;
+         virtual void           set_meta_object( const packed_object& obj ) override;
 
          /**
           * Builds a new object and assigns it the next available ID and then

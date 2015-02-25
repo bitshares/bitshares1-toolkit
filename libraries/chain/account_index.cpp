@@ -104,4 +104,21 @@ const account_object* account_index::get( const string& name )const
    if( itr == name_to_id.end() ) return nullptr;
    return itr->second;
 }
-} }
+
+packed_object  account_index::get_meta_object()const
+{
+   return packed_object( index_meta_object( get_next_available_id() ) );
+}
+void           account_index::set_meta_object( const packed_object& obj )
+{
+   index_meta_object meta;
+   obj.unpack(meta);
+   for( uint64_t i = meta.next_object_instance; i < accounts.size(); ++i )
+   {
+      if( !accounts[i]->name.empty() )
+         name_to_id.erase( accounts[i]->name );
+   }
+   accounts.resize( meta.next_object_instance );
+}
+
+} } // bts::chain

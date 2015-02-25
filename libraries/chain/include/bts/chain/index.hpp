@@ -16,6 +16,15 @@ namespace bts { namespace chain {
          virtual void on_remove( object_id_type id ){};
    };
 
+   class index_meta_object : public object
+   {
+      public:
+       static const uint8_t space_id = implementation_ids;
+       static const uint8_t type_id  = impl_index_meta_object_type;
+       index_meta_object( uint64_t instance = 0 ):next_object_instance(instance){}
+       uint64_t next_object_instance = 0;
+   };
+
    class index
    {
       public:
@@ -36,6 +45,8 @@ namespace bts { namespace chain {
           * element is removed and reuse that ID
           */
          virtual object_id_type get_next_available_id()const = 0;
+         virtual packed_object  get_meta_object()const = 0;
+         virtual void           set_meta_object( const packed_object& obj ) = 0;
 
          /**
           * Builds a new object and assigns it the next available ID and then
@@ -169,5 +180,6 @@ namespace bts { namespace chain {
    };
 
 
-
 } }
+FC_REFLECT_DERIVED( bts::chain::index_meta_object, (bts::chain::object), (next_object_instance) );
+

@@ -127,7 +127,19 @@ void database::pop_undo_state()
 void database::push_undo_state()
 {
    _undo_state.push_back( undo_state() );
+   if( _undo_state.size() > 2 )
+   {
+      const auto& prev = _undo_state[_undo_state.size()-2];
+      auto& cur = _undo_state.back();
+      for( auto new_id : prev.new_ids )
+      {
+         const object* obj = get_object( new_id );
+         assert( obj != nullptr );
+         cur.old_values[obj->id] = get_index(obj->id.space(),obj->id.type()).pack(obj);
+      }
+   }
 }
+
 void database::undo()
 {
    for( auto item : _undo_state.back().old_values )

@@ -13,6 +13,18 @@ namespace bts { namespace chain {
          { 
             return object_id_type( T::space_id, T::type_id, size()); 
          }
+
+         virtual packed_object  get_meta_object()const override
+         {
+            return packed_object( index_meta_object( get_next_available_id() ) );
+         }
+         virtual void           set_meta_object( const packed_object& obj ) override
+         {
+            index_meta_object meta;
+            obj.unpack(meta);
+            _objects.resize( meta.next_object_instance );
+         }
+
          virtual const object*  create( const std::function<void(object*)>& constructor ) override
          {
              auto next_id = get_next_available_id();
@@ -38,8 +50,6 @@ namespace bts { namespace chain {
              assert( o );
              assert( o->id.space() == T::space_id );
              assert( o->id.type() == T::type_id );
-             const auto instance = o->id.instance();
-             assert( instance == _objects.size() );
              _objects.push_back( std::move(o) );
          }
 

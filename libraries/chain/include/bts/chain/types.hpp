@@ -119,6 +119,7 @@ namespace bts { namespace chain {
 
    enum impl_object_type
    {
+      impl_index_meta_object_type,
       impl_account_balance_object_type,
       impl_delegate_vote_object_type
    };
@@ -211,3 +212,17 @@ FC_REFLECT( bts::chain::public_key_type, (key_data) )
 FC_REFLECT( bts::chain::public_key_type::binary_key, (data)(check) );
 FC_REFLECT( bts::chain::object_id_type, (number) )
 FC_REFLECT_TEMPLATE( (uint16_t SpaceTypeID), bts::chain::object_id<SpaceTypeID>, (instance) )
+
+FC_REFLECT_ENUM( bts::chain::id_space_type, (protocal_ids)(implementation_ids)(meta_info_ids) )
+FC_REFLECT_ENUM( bts::chain::object_type,
+                 (null_object_type)
+                 (base_object_type)
+                 (key_object_type)
+                 (account_object_type) 
+                 (asset_object_type)
+                 (delegate_object_type)
+               )
+FC_REFLECT_ENUM( bts::chain::impl_object_type, 
+                 (impl_index_meta_object_type)
+                 (impl_account_balance_object_type)
+                 (impl_delegate_vote_object_type) )

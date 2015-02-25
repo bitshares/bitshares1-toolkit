@@ -22,6 +22,21 @@ namespace bts { namespace chain {
    struct undo_state
    {
        map<object_id_type, packed_object>      old_values;
+       vector<object_id_type>                  new_ids;
+       map<object_id_type, packed_object>      old_index_meta_objects;
+
+       template<typename T>
+       bool has_old_index_meta_object()const 
+       { 
+          return old_index_meta_objects.find( object_id_type(T::space_id,T::type_id,-1) ) != old_index_meta_objects.end(); 
+       }
+
+       template<typename T>
+       void set_old_index_meta_object(packed_object o)
+       { 
+          old_index_meta_objects[ object_id_type(T::space_id,T::type_id,-1) ] = std::move(o); 
+       }
+
    };
 
    struct fork_block : public enable_shared_from_this<fork_block>
@@ -56,12 +71,16 @@ namespace bts { namespace chain {
          {
             undo_state& undo = _undo_state.back();
             auto& idx = get_index<T>();
+            if( !undo.has_old_index_meta_object<T>() )
+               undo.set_old_index_meta_object<T>( idx.get_meta_object() );
+
             auto next_id = idx.get_next_available_id();
             auto old_obj = get<T>( next_id );
             if( old_obj ) save_undo(old_obj);
             else _undo_state.back().old_values[next_id] = packed_object();
             const object* result = idx.create( [&](object* o){constructor( static_cast<T*>(o) );} );
             assert( next_id == result->id );
+            undo.new_ids.push_back(result->id);
             return static_cast<const T*>(result);
          }
 
@@ -138,7 +157,7 @@ namespace bts { namespace chain {
 
 
 
-FC_REFLECT( bts::chain::undo_state, (old_values) )
+FC_REFLECT( bts::chain::undo_state, (old_values)(new_ids)(old_index_meta_objects) )
 
 
 
