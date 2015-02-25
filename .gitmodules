@@ -1,9 +1,12 @@
 [submodule "libraries/fc"]
 	path = libraries/fc
 	url = git@github.com:BitShares/fc.git
+  ignore = dirty
 [submodule "libraries/leveldb"]
 	path = libraries/leveldb
 	url = https://github.com/bitcoin/leveldb.git
+  ignore = dirty
 [submodule "vendor"]
 	path = vendor
 	url = https://github.com/BitShares/vendor.git
+  ignore = dirty

@@ -14,7 +14,6 @@ namespace bts { namespace chain {
          share_type current_supply;    
          share_type accumulated_fees; // fees accumulate to be paid out over time
          share_type fee_pool;         // in asset
-         price base_exchange_rate;    // base asset vs this asset
    };
 
    class asset_object : public object
@@ -40,7 +39,9 @@ namespace bts { namespace chain {
          vector< account_id_type >  feed_producers; 
          asset_id_type              short_backing_asset; 
 
-         /** 
+         price base_exchange_rate;    // base asset vs this asset
+
+         /**
           *  Stores current supply, fee pool, and collected fees 
           *  in a more efficient record to serialize/modify frequently
           */
@@ -51,7 +52,7 @@ namespace bts { namespace chain {
    };
 } } // bts::chain
 FC_REFLECT_DERIVED( bts::chain::asset_dynamic_data, (bts::chain::object),
-                    (accumulated_fees)(fee_pool)(base_exchange_rate) )
+                    (accumulated_fees)(fee_pool) )
 
 FC_REFLECT_DERIVED( bts::chain::asset_object, 
                     (bts::chain::object), 
@@ -64,5 +65,6 @@ FC_REFLECT_DERIVED( bts::chain::asset_object,
                     (flags)
                     (feed_producers)
                     (short_backing_asset)
+                    (base_exchange_rate)
                     (dynamic_asset_data_id)
                   ) 
