@@ -41,6 +41,23 @@ namespace bts { namespace chain {
    using                               fc::flat_map;
    using                               fc::flat_set;
 
+   /**
+    *  There are many types of fees charged by the network
+    *  for different operations. These fees are published by
+    *  the delegates and can change over time.
+    */
+   enum fee_type
+   {
+      account_registration_fee_type, ///< the cost to register the cheapest non-free account
+      asset_registration_fee_type, ///< the cost to register the cheapest asset
+      market_fee_type, ///< a percentage charged on market orders
+      transaction_fee_type, ///< a base price for every transaction
+      data_fee_type, ///< a price per byte of user data
+      delegate_registration_fee, ///< fixed fee for registering as a delegate, used to discourage frivioulous delegates
+      signature_fee_type ///< a surcharge on transactions with more than 2 signatures.
+   };
+
+
    struct object_id_bits
    {
       uint64_t space     : 8;
@@ -122,13 +139,15 @@ namespace bts { namespace chain {
    enum impl_object_type
    {
       impl_index_meta_object_type,
+      impl_asset_dynamic_data_type,
       impl_account_balance_object_type,
       impl_delegate_vote_object_type
    };
 
    enum meta_info_object_type
    {
-      meta_asset_object_type 
+      meta_asset_object_type,
+      meta_account_object_type
    };
 
 
@@ -157,6 +176,7 @@ namespace bts { namespace chain {
 
    //typedef fc::unsigned_int            object_id_type;
    //typedef uint64_t                    object_id_type;
+   typedef object_id< (protocol_ids<<8) | key_object_type>       key_id_type;
    typedef object_id< (protocol_ids<<8) | account_object_type>   account_id_type;
    typedef object_id< (protocol_ids<<8) | asset_object_type>     asset_id_type;
    typedef object_id< (protocol_ids<<8) | delegate_object_type>  delegate_id_type;
@@ -226,5 +246,8 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                )
 FC_REFLECT_ENUM( bts::chain::impl_object_type, 
                  (impl_index_meta_object_type)
+                 (impl_asset_dynamic_data_type)
                  (impl_account_balance_object_type)
                  (impl_delegate_vote_object_type) )
+
+FC_REFLECT_ENUM( bts::chain::meta_info_object_type, (meta_account_object_type)(meta_asset_object_type) )

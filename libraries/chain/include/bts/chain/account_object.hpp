@@ -41,9 +41,7 @@ namespace bts { namespace chain {
    {
       public:
          static const uint8_t space_id = protocol_ids;
-         static const uint8_t   type_id  = account_object_type;
-
-         bool                  is_for_sale()const { return for_sale.first != 0; }
+         static const uint8_t type_id  = account_object_type;
 
          const string& get_name()const { return name; }
 
@@ -55,23 +53,33 @@ namespace bts { namespace chain {
          authority             active;
          authority             voting;
 
-         vector<delegate_id_type>      delegate_votes;
+         vector<delegate_id_type> delegate_votes;
 
-         /**
-          *  If the account is for sale, list the price and account that
-          *  should be paid.  If the account that should be paid is 0 then
-          *  this account is not for sale.
-          */
-         pair<account_id_type, asset>  for_sale;
+         object_id_type           balances;
+         vector<asset_id_type>    authorized_assets;
+   };
 
-         object_id_type                          balances;
-         vector<asset_id_type>                   authorized_assets;
-         delegate_id_type                        delegate_id; // optional
+   /**
+    *  This object is attacked as the meta annotation on the account object, this
+    *  information is not relevant to validation.
+    */
+   class meta_account_object : public object
+   {
+      public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = meta_account_object_type;
+
+         key_id_type         memo_key;
+         delegate_id_type    delegate_id; // optional
    };
 
 }} 
 FC_REFLECT_DERIVED( bts::chain::account_object, 
                     (bts::chain::object), 
-                    (name)(owner)(active)(voting)(delegate_votes)(for_sale)(balances)(authorized_assets)(delegate_id) )
+                    (name)(owner)(active)(voting)(delegate_votes)(balances)(authorized_assets) )
+
+FC_REFLECT_DERIVED( bts::chain::meta_account_object, 
+                    (bts::chain::object), 
+                    (memo_key)(delegate_id) )
 
 FC_REFLECT_DERIVED( bts::chain::account_balance_object, (bts::chain::object), (balances) )

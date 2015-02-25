@@ -9,6 +9,7 @@
 #include <bts/chain/operation_factory.hpp>
 #include <bts/chain/simple_index.hpp>
 #include <bts/chain/account_index.hpp>
+#include <bts/chain/asset_index.hpp>
 
 namespace bts { namespace chain {
 
@@ -21,9 +22,15 @@ database::database()
    _index[implementation_ids].resize( 10 );
    _index[meta_info_ids].resize( 10 );
 
-   add_index<primary_index<simple_index<key_object>> >();
+   add_index<primary_index<asset_index> >();
    add_index<primary_index<account_index> >();
-   //add_index<primary_index<asset_index> >();
+   add_index<primary_index<simple_index<key_object>> >();
+   add_index<primary_index<simple_index<delegate_object>> >();
+
+   add_index<primary_index<simple_index<global_property_object>> >();
+   add_index<primary_index<simple_index<account_balance_object>> >();
+   add_index<primary_index<simple_index<asset_dynamic_data>> >();
+   add_index<primary_index<simple_index<delegate_vote_object>> >();
 }
 
 database::~database(){}
@@ -71,9 +78,11 @@ account_index& database::get_account_index()
 
 const asset_index&   database::get_asset_index()const
 {
+   return dynamic_cast<const asset_index&>( get_index<asset_object>() ); 
 }
 asset_index&   database::get_asset_index()
 {
+   return dynamic_cast<asset_index&>( get_index<asset_object>() ); 
 }
 
 
@@ -104,6 +113,23 @@ void database::open( const fc::path& data_dir )
 
 void database::init_genesis()
 {
+   const asset_dynamic_data* dyn_asset = create<asset_dynamic_data>( [&]( asset_dynamic_data* a ) {
+           a->current_supply = BTS_INITIAL_SUPPLY;
+           a->base_exchange_rate.base.amount = 1;
+           a->base_exchange_rate.base.asset_id = 0;
+           a->base_exchange_rate.quote.amount = 1;
+           a->base_exchange_rate.quote.asset_id = 0;
+       });
+
+   const asset_object* base_asset = create<asset_object>( [&]( asset_object* a ) {
+           a->symbol = BTS_SYMBOL;
+           a->max_supply = BTS_INITIAL_SUPPLY;
+           a->transfer_fee = BTS_DEFAULT_TRANSFER_FEE;
+           a->flags = 0;
+           a->issuer_permissions = 0;
+           a->issuer = object_id_type(); // NONE
+           a->dynamic_asset_data_id = dyn_asset->id;
+       });
 }
 
 

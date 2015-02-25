@@ -3,6 +3,7 @@ file(GLOB HEADERS "include/bts/chain/*.hpp")
 add_library( bts_chain 
              index.cpp
              account_index.cpp
+             asset_index.cpp
              block.cpp 
              types.cpp
              database.cpp

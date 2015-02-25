@@ -5,6 +5,8 @@
 #include <bts/chain/block.hpp>
 #include <bts/chain/asset.hpp>
 #include <bts/chain/index.hpp>
+#include <bts/chain/global_property_object.hpp>
+#include <bts/chain/asset_object.hpp>
 #include <map>
 
 namespace bts { namespace chain {
@@ -118,6 +120,9 @@ namespace bts { namespace chain {
 
          account_index&       get_account_index();
          asset_index&         get_asset_index();
+
+         const asset_object*  get_base_asset()const;
+         const global_property_object* get_global_properties()const;
 
       private:
          friend class base_primary_index;

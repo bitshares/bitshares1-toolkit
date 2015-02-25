@@ -21,21 +21,6 @@ namespace bts { namespace chain {
       market_issued       = 0x40
    };
 
-   /**
-    *  There are many types of fees charged by the network
-    *  for different operations. These fees are published by
-    *  the delegates and can change over time.
-    */
-   enum fee_type
-   {
-      account_registration_fee_type, ///< the cost to register the cheapest non-free account
-      asset_registration_fee_type, ///< the cost to register the cheapest asset
-      market_fee_type, ///< a percentage charged on market orders
-      transaction_fee_type, ///< a base price for every transaction
-      data_fee_type, ///< a price per byte of user data
-      delegate_registration_fee, ///< fixed fee for registering as a delegate, used to discourage frivioulous delegates
-      signature_fee_type ///< a surcharge on transactions with more than 2 signatures.
-   };
 
    /**
     *  @class create_account_operation
@@ -243,8 +228,8 @@ namespace bts { namespace chain {
    {
        static const operation_type type;
        
-       delegate_id_type                                     delegate_id;
-       vector< pair< enum_type<uint8_t,fee_type>, asset > > fee_schedule;
+       delegate_id_type                                          delegate_id;
+       flat_map< enum_type<uint8_t,fee_type>, share_type >       fee_schedule;
        object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };
 

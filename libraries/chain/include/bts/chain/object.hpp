@@ -100,5 +100,4 @@ namespace bts { namespace chain {
 
 
 FC_REFLECT( bts::chain::packed_object, (data) )
-FC_REFLECT_ENUM( bts::chain::meta_info_object_type, (meta_asset_object_type) )
 FC_REFLECT( bts::chain::object, (id)(annotations) )

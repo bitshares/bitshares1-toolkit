@@ -11,9 +11,9 @@ namespace bts { namespace chain {
          static const uint8_t   type_id  = delegate_object_type;
 
          account_id_type                delegate_account;
-         public_key_type                signing_key;
+         key_id_type                    signing_key;
          secret_hash_type               previous_secret;
-         vector<asset>                  fee_schedule;
+         vector<share_type>             fee_schedule;
          uint16_t                       pay_rate = 0;
          object_id_type                 vote;
    };
@@ -36,7 +36,7 @@ namespace bts { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t  type_id = impl_delegate_vote_object_type;
 
-         share_type                     total_votes;
+         share_type  total_votes;
    };
 } } // bts::chain
 

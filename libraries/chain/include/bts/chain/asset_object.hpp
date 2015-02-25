@@ -5,6 +5,18 @@
 namespace bts { namespace chain { 
    class account_object;
 
+   class asset_dynamic_data : public object
+   {
+      public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_asset_dynamic_data_type;
+
+         share_type current_supply;    
+         share_type accumulated_fees; // fees accumulate to be paid out over time
+         share_type fee_pool;         // in asset
+         price base_exchange_rate;    // base asset vs this asset
+   };
+
    class asset_object : public object
    {
       public:
@@ -14,13 +26,6 @@ namespace bts { namespace chain {
          static bool is_valid_symbol( const string& symbol );
 
          bool enforce_white_list()const { return flags & white_list; }
-
-         void issue( share_type amount ) 
-         {
-            FC_ASSERT( amount > share_type(0ll) );
-            current_supply += amount;
-            FC_ASSERT( current_supply < max_supply );
-         }
 
          string                  symbol;
          account_id_type         issuer;
@@ -35,12 +40,6 @@ namespace bts { namespace chain {
          vector< account_id_type >  feed_producers; 
          asset_id_type              short_backing_asset; 
 
-         /** DYNAMIC properties such as the current supply, fee pool, etc 
-          * that are updated frequently should probably be cached separately 
-          * because serializing the whole asset struct could be very
-          * burdensome on the undo buffer.
-          */
-         share_type              current_supply     = 0; 
          /** 
           *  Stores current supply, fee pool, and collected fees 
           *  in a more efficient record to serialize/modify frequently
@@ -51,17 +50,19 @@ namespace bts { namespace chain {
          //   name, description, and precission 
    };
 } } // bts::chain
+FC_REFLECT_DERIVED( bts::chain::asset_dynamic_data, (bts::chain::object),
+                    (accumulated_fees)(fee_pool)(base_exchange_rate) )
 
 FC_REFLECT_DERIVED( bts::chain::asset_object, 
                     (bts::chain::object), 
                     (symbol)
                     (issuer)
                     (max_supply)
-                    (current_supply)
                     (market_fee_percent)
                     (transfer_fee)
                     (issuer_permissions)
                     (flags)
                     (feed_producers)
                     (short_backing_asset)
+                    (dynamic_asset_data_id)
                   ) 
