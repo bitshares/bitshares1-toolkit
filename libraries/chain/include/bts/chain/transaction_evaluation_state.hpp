@@ -33,6 +33,11 @@ namespace bts { namespace chain {
          /** cached approval (accounts and keys) */
          flat_set< pair<object_id_type,authority::classification> > approved_by;
 
+         /**
+          * Used to lookup new objects using transaction relative IDs
+          */
+         vector<object_id_type>                                     new_object_ids;
+
          transaction* _trx;
          database*    _db = nullptr;
          bool         _skip_signature_check = false;

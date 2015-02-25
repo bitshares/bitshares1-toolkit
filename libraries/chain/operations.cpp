@@ -73,12 +73,14 @@ void account_balance_object::sub_balance( const asset& a )
    }
 }
 
-object_id_type create_account_operation::evaluate( transaction_evaluation_state& eval_state )
+object_id_type create_account_operation::evaluate( transaction_evaluation_state& eval_state, bool apply )
 { try {
     database& db = eval_state.db();
 
     const account_object* current_account = db.get_account_index().get( this->name );
     FC_ASSERT( !current_account );
+
+    if( !apply ) return object_id_type();
 
     const account_balance_object* balance_obj = 
        db.create<account_balance_object>( [&](account_balance_object* n){
@@ -98,7 +100,7 @@ object_id_type create_account_operation::evaluate( transaction_evaluation_state&
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
 
-object_id_type create_asset_operation::evaluate( transaction_evaluation_state& eval_state )
+object_id_type create_asset_operation::evaluate( transaction_evaluation_state& eval_state, bool apply )
 { try {
    database& db = eval_state.db();
 
@@ -129,7 +131,7 @@ object_id_type create_asset_operation::evaluate( transaction_evaluation_state& e
    return object_id_type(); // TODO fix this
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
-object_id_type register_delegate_operation::evaluate( transaction_evaluation_state& eval_state )
+object_id_type register_delegate_operation::evaluate( transaction_evaluation_state& eval_state, bool apply )
 { try {
    database& db = eval_state.db();
 
@@ -161,12 +163,12 @@ object_id_type register_delegate_operation::evaluate( transaction_evaluation_sta
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
 
-object_id_type update_asset_operation::evaluate( transaction_evaluation_state& eval_state )
+object_id_type update_asset_operation::evaluate( transaction_evaluation_state& eval_state, bool apply )
 {
    return object_id_type();
 }
 
-object_id_type update_asset_white_list_operation::evaluate( transaction_evaluation_state& eval_state )
+object_id_type update_asset_white_list_operation::evaluate( transaction_evaluation_state& eval_state, bool apply )
 { try {
    database& db = eval_state.db();
    /*
@@ -187,7 +189,7 @@ object_id_type update_asset_white_list_operation::evaluate( transaction_evaluati
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
-object_id_type issue_asset_operation::evaluate( transaction_evaluation_state& eval_state )
+object_id_type issue_asset_operation::evaluate( transaction_evaluation_state& eval_state, bool apply )
 { try {
    database& db = eval_state.db();
    /*
@@ -224,7 +226,7 @@ object_id_type issue_asset_operation::evaluate( transaction_evaluation_state& ev
  *
  *
  ******************************************************************************/
-object_id_type transfer_asset_operation::evaluate( transaction_evaluation_state& eval_state )
+object_id_type transfer_asset_operation::evaluate( transaction_evaluation_state& eval_state, bool apply )
 { try {
    object_id_type result = object_id_type();
 

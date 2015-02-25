@@ -22,14 +22,14 @@ namespace bts { namespace chain {
                   virtual ~operation_converter_base(){};
                   virtual void to_variant( const bts::chain::operation& in, fc::variant& out ) = 0;
                   virtual void from_variant( const fc::variant& in, bts::chain::operation& out ) = 0;
-                  virtual object_id_type evaluate( transaction_evaluation_state& eval_state, const operation& op ) = 0;
+                  virtual object_id_type evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply ) = 0;
           };
 
           template<typename OperationType>
           class operation_converter : public operation_converter_base
           {
              public:
-                  virtual void to_variant( const bts::chain::operation& in, fc::variant& output )
+                  virtual void to_variant( const bts::chain::operation& in, fc::variant& output ) override
                   { try {
                      FC_ASSERT( in.type == OperationType::type );
                      fc::mutable_variant_object obj( "type", in.type );
@@ -39,7 +39,7 @@ namespace bts { namespace chain {
                      output = std::move(obj);
                   } FC_RETHROW_EXCEPTIONS( warn, "" ) }
 
-                  virtual void from_variant( const fc::variant& in, bts::chain::operation& output )
+                  virtual void from_variant( const fc::variant& in, bts::chain::operation& output ) override
                   { try {
                      auto obj = in.get_object();
 
@@ -47,19 +47,19 @@ namespace bts { namespace chain {
                      output.data = fc::raw::pack( obj["data"].as<OperationType>() );
                   } FC_RETHROW_EXCEPTIONS( warn, "type: ${type}", ("type",fc::get_typename<OperationType>::name()) ) }
 
-                  virtual object_id_type evaluate( transaction_evaluation_state& eval_state, const operation& op )
+                  virtual object_id_type evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply = true ) override
                   { try {
                      auto tmp_op = op.as<OperationType>();
-                     object_id_type result = tmp_op.evaluate( eval_state );
+                     object_id_type result = tmp_op.evaluate( eval_state, apply );
 
                      for( const auto& peval : post_eval )
-                        peval( tmp_op, eval_state, result );
+                        peval( tmp_op, eval_state, result, apply );
 
                      return result;
                   } FC_CAPTURE_AND_RETHROW( (op) ) }
 
                   /** post evaluation takes the op, the eval_state, and the result of the validation evaluate call */
-                  vector<std::function<void(const OperationType&, transaction_evaluation_state&, object_id_type )> > post_eval;
+                  vector<std::function<void(const OperationType&, transaction_evaluation_state&, object_id_type, bool )> > post_eval;
           };
 
           template<typename OperationType>
@@ -74,18 +74,18 @@ namespace bts { namespace chain {
            *  Register a method to be called after the blockchain validation has executed.
            */
           template<typename OperationType>
-          void  register_post_operation_eval( std::function<void(const OperationType&,transaction_evaluation_state&, object_id_type)> eval )
+          void  register_post_operation_eval( std::function<void(const OperationType&,transaction_evaluation_state&, object_id_type, bool )> eval )
           {
              if( _converters[OperationType::type] ) register_operation<OperationType>();
              std::dynamic_pointer_cast<operation_converter<OperationType>>(_converters[OperationType::type])->post_eval.push_back(eval);
           }
 
-          object_id_type evaluate( transaction_evaluation_state& eval_state, const operation& op )
+          object_id_type evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply = true )
           {
              auto itr = _converters.find( uint16_t(op.type) );
              if( itr == _converters.end() )
                 FC_THROW_EXCEPTION( bts::chain::unsupported_chain_operation, "", ("op",op) );
-             return itr->second->evaluate( eval_state, op );
+             return itr->second->evaluate( eval_state, op, apply );
           }
 
           /// defined in operations.cpp
