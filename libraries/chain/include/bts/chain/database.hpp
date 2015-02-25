@@ -131,6 +131,7 @@ namespace bts { namespace chain {
          /** store the last 32 bits of block_hash[0]%1024 */
          vector<uint32_t>                                 _recent_block_prefixes;
          deque<undo_state>                                _undo_state;
+         bool                                             _save_undo = true;
                                                           
          // track recent forks...
          shared_ptr<fork_block>                 _oldest_fork_point;

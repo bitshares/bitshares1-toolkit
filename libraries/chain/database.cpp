@@ -110,6 +110,7 @@ asset database::current_delegate_registration_fee()const
 
 void database::save_undo( const object* obj )
 {
+   if( !_save_undo ) return;
    FC_ASSERT( obj );
    auto id = obj->id;
    auto current_undo = _undo_state.back().old_values.find(id);
@@ -142,25 +143,31 @@ void database::push_undo_state()
 
 void database::undo()
 {
+   _save_undo = false;
    for( auto item : _undo_state.back().old_values )
    {
+      auto& index = get_index( item.first.space(), item.first.type() );
       if( item.second.is_null() )
       {
-         //get_object_ptr(item.first).reset();
+         index.remove( item.first );
       }
       else
       {
-         /*
-         auto obj = get_object_ptr(item.first).get();
-         FC_ASSERT( obj );
-         // IF NO INDEXES THEN WE DO THIS... ELSE WE CANNOT MODIFY OBJECT...
-         get_object_builder(obj->space(),obj->type())->unpack( obj, item.second );
-         */
+         const object* obj = index.get( item.first );
+         if( obj )
+         {
+            index.modify( obj, [&](object* o){
+                          index.unpack( o, item.second );
+                         });
+         }
       }
    }
-   //for( const auto& old_nxt_id : _undo_state.back().old_next_object_ids )
-   //   _next_object_ids[old_nxt_id.first.first][old_nxt_id.first.second] = old_nxt_id.second;
+   for( const auto& old_index_meta : _undo_state.back().old_index_meta_objects )
+   {
+      get_index( old_index_meta.first.space(), old_index_meta.first.type() ).set_meta_object( old_index_meta.second );
+   }
    _undo_state.pop_back();
+   _save_undo = true;
 }
 
 
