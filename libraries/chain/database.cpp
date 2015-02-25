@@ -31,6 +31,8 @@ database::database()
    add_index<primary_index<simple_index<account_balance_object>> >();
    add_index<primary_index<simple_index<asset_dynamic_data>> >();
    add_index<primary_index<simple_index<delegate_vote_object>> >();
+
+   push_undo_state();
 }
 
 database::~database(){}
@@ -113,6 +115,7 @@ void database::open( const fc::path& data_dir )
 
 void database::init_genesis()
 {
+   _save_undo = false;
    const asset_dynamic_data* dyn_asset = create<asset_dynamic_data>( [&]( asset_dynamic_data* a ) {
            a->current_supply = BTS_INITIAL_SUPPLY;
            a->base_exchange_rate.base.amount = 1;
@@ -127,9 +130,11 @@ void database::init_genesis()
            a->transfer_fee = BTS_DEFAULT_TRANSFER_FEE;
            a->flags = 0;
            a->issuer_permissions = 0;
-           a->issuer = object_id_type(); // NONE
+           a->issuer = account_id_type(); // NONE
            a->dynamic_asset_data_id = dyn_asset->id;
        });
+   push_undo_state();
+   _save_undo = true;
 }
 
 

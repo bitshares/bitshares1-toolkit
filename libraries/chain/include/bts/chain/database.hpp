@@ -9,6 +9,8 @@
 #include <bts/chain/asset_object.hpp>
 #include <map>
 
+#include <fc/log/logger.hpp>
+
 namespace bts { namespace chain {
    class account_index;
    class asset_index;
@@ -77,10 +79,15 @@ namespace bts { namespace chain {
                undo.set_old_index_meta_object<T>( idx.get_meta_object() );
 
             auto next_id = idx.get_next_available_id();
+            wdump( (next_id) );
+
             auto old_obj = get<T>( next_id );
             if( old_obj ) save_undo(old_obj);
             else _undo_state.back().old_values[next_id] = packed_object();
             const object* result = idx.create( [&](object* o){constructor( static_cast<T*>(o) );} );
+            wdump( (next_id.space())(next_id.type())(next_id.instance()) );
+            wdump( (result->id.space())(result->id.type())(result->id.instance()) );
+            wdump( (next_id)(result->id)(uint64_t(result)) );
             assert( next_id == result->id );
             undo.new_ids.push_back(result->id);
             return static_cast<const T*>(result);
@@ -124,10 +131,10 @@ namespace bts { namespace chain {
          const asset_object*  get_base_asset()const;
          const global_property_object* get_global_properties()const;
 
+         void init_genesis();
       private:
          friend class base_primary_index;
 
-         void init_genesis();
          void save_undo( const object* obj );
          processed_transaction apply_transaction( const signed_transaction& trx );
          void pop_pending_block();

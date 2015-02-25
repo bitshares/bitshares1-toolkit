@@ -32,6 +32,7 @@ namespace bts { namespace chain {
              if( instance >= _objects.size() ) _objects.resize( instance + 1 );
              _objects[instance].reset(new T);
              auto result = _objects[instance].get();
+             result->id = next_id;
              constructor( result );
              return result;
          }

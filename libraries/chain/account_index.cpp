@@ -63,8 +63,8 @@ void account_index::add( unique_ptr<object> o )
 }
 void account_index::remove_after( object_id_type id )
 {
-   assert( id.space() == T::space_id );
-   assert( id.type() == T::type_id );
+   assert( id.space() == account_object::space_id );
+   assert( id.type() == account_object::type_id );
    for( uint64_t i = id.instance(); i < accounts.size(); ++i )
    {
       remove( object_id_type( account_object::space_id, account_object::type_id, i ) );

@@ -60,8 +60,8 @@ namespace bts { namespace chain {
 
    struct object_id_bits
    {
-      uint64_t space     : 8;
       uint64_t type      : 8;
+      uint64_t space     : 8;
       uint64_t instance  : 48;
    };
    struct object_id_space_type_bits
@@ -161,7 +161,8 @@ namespace bts { namespace chain {
       }
       object_id( object_id_type id ):instance(id.instance())
       {
-         FC_ASSERT( id.space_type() == SpaceTypeID );
+         assert( id.space_type() == SpaceTypeID );
+         FC_ASSERT( id.space_type() == SpaceTypeID, "", ("id.space_type",id.space_type())("SpaceTypeID",SpaceTypeID) );
       }
       operator object_id_type()const { return object_id_type( SpaceTypeID>>8, SpaceTypeID&0x00ff, instance.value ); }
       operator uint64_t()const { return object_id_type( *this ).number; }
