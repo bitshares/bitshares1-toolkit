@@ -11,16 +11,16 @@ namespace bts { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_asset_dynamic_data_type;
 
-         share_type current_supply;    
+         share_type current_supply;
          share_type accumulated_fees; // fees accumulate to be paid out over time
-         share_type fee_pool;         // in asset
+         share_type fee_pool;         // in core asset
    };
 
    class asset_object : public object
    {
       public:
          static const uint8_t space_id = protocol_ids;
-         static const uint8_t   type_id  = asset_object_type;
+         static const uint8_t type_id  = asset_object_type;
 
          static bool is_valid_symbol( const string& symbol );
 
@@ -39,7 +39,7 @@ namespace bts { namespace chain {
          vector< account_id_type >  feed_producers; 
          asset_id_type              short_backing_asset; 
 
-         price base_exchange_rate;    // base asset vs this asset
+         price core_exchange_rate;    // base asset vs this asset
 
          /**
           *  Stores current supply, fee pool, and collected fees 
@@ -47,7 +47,7 @@ namespace bts { namespace chain {
           */
          object_id_type          dynamic_asset_data_id;
 
-         // meta_info -> uint8_t                 precission_digits  = 0; // 0 to 10
+         // meta_info -> uint8_t                 precision_digits  = 0; // 0 to 10
          //   name, description, and precission 
    };
 } } // bts::chain
@@ -65,6 +65,6 @@ FC_REFLECT_DERIVED( bts::chain::asset_object,
                     (flags)
                     (feed_producers)
                     (short_backing_asset)
-                    (base_exchange_rate)
+                    (core_exchange_rate)
                     (dynamic_asset_data_id)
                   ) 

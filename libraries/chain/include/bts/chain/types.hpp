@@ -53,8 +53,10 @@ namespace bts { namespace chain {
       market_fee_type, ///< a percentage charged on market orders
       transaction_fee_type, ///< a base price for every transaction
       data_fee_type, ///< a price per byte of user data
-      delegate_registration_fee, ///< fixed fee for registering as a delegate, used to discourage frivioulous delegates
-      signature_fee_type ///< a surcharge on transactions with more than 2 signatures.
+      delegate_registration_fee_type, ///< fixed fee for registering as a delegate, used to discourage frivioulous delegates
+      signature_fee_type, ///< a surcharge on transactions with more than 2 signatures.
+
+      FEE_TYPE_COUNT ///< Sentry value which contains the number of different fee types
    };
 
 
@@ -133,11 +135,12 @@ namespace bts { namespace chain {
       key_object_type,
       account_object_type,
       asset_object_type,
-      delegate_object_type               
+      delegate_object_type
    };
 
    enum impl_object_type
    {
+      impl_global_property_object_type,
       impl_index_meta_object_type,
       impl_asset_dynamic_data_type,
       impl_account_balance_object_type,
@@ -246,6 +249,7 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (delegate_object_type)
                )
 FC_REFLECT_ENUM( bts::chain::impl_object_type, 
+                 (impl_global_property_object_type)
                  (impl_index_meta_object_type)
                  (impl_asset_dynamic_data_type)
                  (impl_account_balance_object_type)

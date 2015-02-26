@@ -61,16 +61,6 @@ void account_index::add( unique_ptr<object> o )
    name_to_id[new_account->name] = new_account.get();
    accounts[id.instance()] = std::move(new_account);
 }
-void account_index::remove_after( object_id_type id )
-{
-   assert( id.space() == account_object::space_id );
-   assert( id.type() == account_object::type_id );
-   for( uint64_t i = id.instance(); i < accounts.size(); ++i )
-   {
-      remove( object_id_type( account_object::space_id, account_object::type_id, i ) );
-   }
-   accounts.resize( id.instance() );
-}
 
 void account_index::remove( object_id_type id )
 {

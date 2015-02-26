@@ -61,16 +61,6 @@ void asset_index::add( unique_ptr<object> o )
    symbol_to_id[new_asset->symbol] = new_asset.get();
    assets[id.instance()] = std::move(new_asset);
 }
-void asset_index::remove_after( object_id_type id )
-{
-   assert( id.space() == asset_object::space_id );
-   assert( id.type() == asset_object::type_id );
-   for( uint64_t i = id.instance(); i < assets.size(); ++i )
-   {
-      remove( object_id_type( asset_object::space_id, asset_object::type_id, i ) );
-   }
-   assets.resize( id.instance() );
-}
 
 void asset_index::remove( object_id_type id )
 {

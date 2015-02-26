@@ -8,7 +8,7 @@ namespace bts { namespace chain {
    {
       public:
          static const uint8_t space_id = protocol_ids;
-         static const uint8_t   type_id  = delegate_object_type;
+         static const uint8_t type_id  = delegate_object_type;
 
          account_id_type                delegate_account;
          key_id_type                    signing_key;

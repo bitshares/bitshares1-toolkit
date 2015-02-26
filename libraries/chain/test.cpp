@@ -2,6 +2,7 @@
 #include <bts/chain/asset_operations.hpp>
 
 using namespace bts::chain;
+
 int main( int argc, char** argv )
 {
    try {
@@ -16,7 +17,6 @@ int main( int argc, char** argv )
       create_account_operation op;
       op.name = "dan";
       op.active = op.owner;
-
    } 
    catch ( const fc::exception& e )
    {

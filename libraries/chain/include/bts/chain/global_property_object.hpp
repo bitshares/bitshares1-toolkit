@@ -18,7 +18,7 @@ namespace bts { namespace chain {
    {
       public:
          static const uint8_t space_id = implementation_ids;
-         static const uint8_t type_id  = account_object_type;
+         static const uint8_t type_id  = impl_global_property_object_type;
 
          vector<delegate_id_type> active_delegates; // updated once per round
          vector<share_type>       current_fees; // indexed by fee_type, median of active delegate fee schedules
