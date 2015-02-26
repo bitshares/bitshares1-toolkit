@@ -6,8 +6,8 @@ namespace bts { namespace chain {
    class key_object : public object
    {
       public:
-         static const id_space_type space_id = protocol_ids;
-         static const object_type   type_id  = key_object_type;
+         static const uint8_t space_id = protocol_ids;
+         static const uint8_t type_id  = key_object_type;
          address         key_address;
          public_key_type public_key;
    };

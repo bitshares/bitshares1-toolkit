@@ -84,7 +84,12 @@ namespace bts { namespace chain {
             auto old_obj = get<T>( next_id );
             if( old_obj ) save_undo(old_obj);
             else _undo_state.back().old_values[next_id] = packed_object();
-            const object* result = idx.create( [&](object* o){constructor( static_cast<T*>(o) );} );
+            wdump( (idx.object_space_id())(idx.object_type_id())(T::type_id)(T::space_id));
+            const object* result = idx.create( [&](object* o)
+            {
+                  assert( dynamic_cast<T*>(o) );
+                  constructor( static_cast<T*>(o) );
+            });
             wdump( (next_id.space())(next_id.type())(next_id.instance()) );
             wdump( (result->id.space())(result->id.type())(result->id.instance()) );
             wdump( (next_id)(result->id)(uint64_t(result)) );
@@ -108,6 +113,7 @@ namespace bts { namespace chain {
          {
             typedef typename IndexType::object_type ObjectType;
             unique_ptr<index> indexptr( new IndexType(this) );
+            assert(!_index[ObjectType::space_id][ObjectType::type_id]);
             _index[ObjectType::space_id][ObjectType::type_id] = std::move(indexptr);
             return static_cast<const IndexType*>(_index[ObjectType::space_id][ObjectType::type_id].get());
          }

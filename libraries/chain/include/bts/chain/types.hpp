@@ -135,11 +135,12 @@ namespace bts { namespace chain {
       key_object_type,
       account_object_type,
       asset_object_type,
-      delegate_object_type               
+      delegate_object_type
    };
 
    enum impl_object_type
    {
+      impl_global_property_object_type,
       impl_index_meta_object_type,
       impl_asset_dynamic_data_type,
       impl_account_balance_object_type,
@@ -248,6 +249,7 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (delegate_object_type)
                )
 FC_REFLECT_ENUM( bts::chain::impl_object_type, 
+                 (impl_global_property_object_type)
                  (impl_index_meta_object_type)
                  (impl_asset_dynamic_data_type)
                  (impl_account_balance_object_type)

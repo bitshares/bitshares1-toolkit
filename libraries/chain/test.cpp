@@ -2,6 +2,7 @@
 #include <bts/chain/asset_operations.hpp>
 
 using namespace bts::chain;
+
 int main( int argc, char** argv )
 {
    try {
