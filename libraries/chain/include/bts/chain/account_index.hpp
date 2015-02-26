@@ -29,7 +29,6 @@ namespace bts { namespace chain {
 
          virtual void modify( const object* obj, const std::function<void(object*)>& m )override;
          virtual void add( unique_ptr<object> o )override;
-         virtual void remove_after( object_id_type id )override;
          virtual void remove( object_id_type id )override;
          virtual const object* get( object_id_type id )const override;
 

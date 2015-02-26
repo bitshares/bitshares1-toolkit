@@ -5,6 +5,9 @@ namespace bts { namespace chain {
 
    struct asset 
    {
+      asset( share_type a = 0, asset_id_type id = asset_id_type() )
+      :amount(a),asset_id(id){}
+
       share_type    amount;
       asset_id_type asset_id;
 

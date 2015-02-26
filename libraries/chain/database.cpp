@@ -125,10 +125,12 @@ void database::init_genesis()
       });
    ilog("Genesis key created");
 
-   const account_balance_object* balance_obj =
-      create<account_balance_object>( [&](account_balance_object* n){
-         /** nothing to set initially */
-      });
+   auto gen_key = fc::ecc::private_key::regenerate( fc::sha256::hash("genesis",7) );
+   const key_object* gen_key_obj = 
+       create<key_object>( [&]( key_object* k ){
+              k->public_key = gen_key.get_public_key();
+              k->key_address = k->public_key;
+       });
 
    const account_object* genesis_account =
       create<account_object>( [&](account_object* n) {
@@ -136,7 +138,6 @@ void database::init_genesis()
          n->owner.weight_threshold = 1;
          n->active = n->owner;
          n->voting = n->active;
-         n->balances = balance_obj->id;
       });
    ilog("Genesis account created");
 
@@ -144,17 +145,22 @@ void database::init_genesis()
 
    for( int i = 0; i < BTS_MIN_DELEGATE_COUNT; ++i )
    {
-      const account_object* delegate =
+      const account_balance_object* balance_obj =
+         create<account_balance_object>( [&](account_balance_object* n){
+            n->add_balance( asset( BTS_INITIAL_SUPPLY / BTS_MIN_DELEGATE_COUNT, 0 ) );
+         });
+      const account_object* delegate_account =
          create<account_object>( [&](account_object* a) {
             a->active = a->owner = a->voting = genesis_account->owner;
             a->name = string("init") + fc::to_string(i);
+            a->balances = balance_obj->id;
          });
       const delegate_vote_object* vote =
          create<delegate_vote_object>( [&](delegate_vote_object* v) {
             // Nothing to do here...
          });
       const delegate_object* init_delegate = create<delegate_object>( [&](delegate_object* d) {
-         d->delegate_account = delegate->id;
+         d->delegate_account = delegate_account->id;
          d->signing_key = genesis_key->id;
          d->vote = vote->id;
       });
@@ -189,6 +195,7 @@ void database::init_genesis()
          a->base_exchange_rate.quote.asset_id = 0;
          a->dynamic_asset_data_id = dyn_asset->id;
       });
+   assert( base_asset->id.instance() == 0 );
    (void)base_asset;
    ilog("Core asset initialized");
 
