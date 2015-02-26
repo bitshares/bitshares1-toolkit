@@ -99,6 +99,9 @@ namespace bts { namespace chain {
             return result;
          }
 
+         template<uint8_t SpaceID, uint8_t TypeID, typename T>
+         const T* get( object_id<SpaceID,TypeID,T> id ) { return get<T>(id); }
+
          template<typename IndexType>
          const IndexType* add_index()
          {
