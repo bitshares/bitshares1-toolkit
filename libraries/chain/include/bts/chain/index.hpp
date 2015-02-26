@@ -52,7 +52,8 @@ namespace bts { namespace chain {
           * Builds a new object and assigns it the next available ID and then
           * initializes it with constructor and lastly inserts it into the index.
           */
-         virtual const object*  create( const std::function<void(object*)>& constructor ) = 0;
+         virtual const object*  create( const std::function<void(object*)>& constructor,
+                                        object_id_type requested_id = object_id_type() ) = 0;
 
 
          virtual packed_object pack( const object* p )const  = 0;

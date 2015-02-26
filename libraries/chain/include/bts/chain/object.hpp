@@ -77,27 +77,28 @@ namespace bts { namespace chain {
          static const uint8_t space_id = protocol_ids;
          static const uint8_t type_id  = base_object_type;
 
-         uint64_t get_id()const { return id.number; }
-         uint8_t  space()const           { return id.space(); }
-         uint8_t  type()const            { return id.type(); }
-         object_id_type object_id()const { return id; }
-
          /** return object_id_type() if no anotation is found for id_space */
          object_id_type                  get_annotation( id_space_type annotation_id_space )const;
          void                            set_annotation( object_id_type id );
 
          // serialized
          object_id_type                       id;
+
+   };
+
+   class annotated_object : public object
+   {
+      public:
          /**
           *  Annotations should be accessed via get_annotation and set_annotation so
           *  that they can be maintained in sorted order.
           */
          flat_map<uint8_t,object_id_type> annotations;
-
    };
 
 } }
 
 
 FC_REFLECT( bts::chain::packed_object, (data) )
-FC_REFLECT( bts::chain::object, (id)(annotations) )
+FC_REFLECT( bts::chain::object, (id) )
+FC_REFLECT_DERIVED( bts::chain::annotated_object, (bts::chain::object), (annotations) )

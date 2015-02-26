@@ -13,7 +13,8 @@ object_id_type account_index::get_next_available_id()const
  * Builds a new object and assigns it the next available ID and then
  * initializes it with constructor and lastly inserts it into the index.
  */
-const object*  account_index::create( const std::function<void(object*)>& constructor )
+const object*  account_index::create( const std::function<void(object*)>& constructor, 
+                                      object_id_type /*requested_id*/ )
 {
     unique_ptr<account_object> obj( new account_object() );
     obj->id = get_next_available_id();

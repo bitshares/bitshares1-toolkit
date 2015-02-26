@@ -10,6 +10,7 @@ int main( int argc, char** argv )
 
       database db;
       db.init_genesis();
+      wdump( (sizeof( object )) );
 
       signed_block first_block;
       first_block.block_num = 1;

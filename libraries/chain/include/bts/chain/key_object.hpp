@@ -8,6 +8,9 @@ namespace bts { namespace chain {
       public:
          static const uint8_t space_id = protocol_ids;
          static const uint8_t type_id  = key_object_type;
+
+         key_id_type get_id()const { return key_id_type( id.instance() ); }
+
          address         key_address;
          public_key_type public_key;
    };

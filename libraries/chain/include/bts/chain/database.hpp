@@ -27,18 +27,19 @@ namespace bts { namespace chain {
    {
        map<object_id_type, packed_object>      old_values;
        vector<object_id_type>                  new_ids;
+       vector<object_id_type>                  removed_ids;
        map<object_id_type, packed_object>      old_index_meta_objects;
 
        template<typename T>
        bool has_old_index_meta_object()const 
        { 
-          return old_index_meta_objects.find( object_id_type(T::space_id,T::type_id,-1) ) != old_index_meta_objects.end(); 
+          return old_index_meta_objects.find( object_id_type(T::space_id,T::type_id,BTS_MAX_INSTANCE_ID) ) != old_index_meta_objects.end(); 
        }
 
        template<typename T>
        void set_old_index_meta_object(packed_object o)
        { 
-          old_index_meta_objects[ object_id_type(T::space_id,T::type_id,-1) ] = std::move(o); 
+          old_index_meta_objects[ object_id_type(T::space_id,T::type_id,BTS_MAX_INSTANCE_ID) ] = std::move(o); 
        }
 
    };
@@ -71,29 +72,19 @@ namespace bts { namespace chain {
          asset current_delegate_registration_fee()const;
 
          template<typename T, typename F>
-         const T* create( F&& constructor )
+         const T* create( F&& constructor, object_id_type requested_id = object_id_type() )
          {
             undo_state& undo = _undo_state.back();
             auto& idx = get_index<T>();
             if( !undo.has_old_index_meta_object<T>() )
                undo.set_old_index_meta_object<T>( idx.get_meta_object() );
 
-            auto next_id = idx.get_next_available_id();
-            wdump( (next_id.space())(next_id.type())(next_id.instance()) );
-
-            auto old_obj = get<T>( next_id );
-            if( old_obj ) save_undo(old_obj);
-            else _undo_state.back().old_values[next_id] = packed_object();
-            wdump( (idx.object_space_id())(idx.object_type_id())(T::type_id)(T::space_id));
             const object* result = idx.create( [&](object* o)
             {
-                  assert( dynamic_cast<T*>(o) );
-                  constructor( static_cast<T*>(o) );
-            });
-            wdump( (next_id.space())(next_id.type())(next_id.instance()) );
-            wdump( (result->id.space())(result->id.type())(result->id.instance()) );
-            wdump( (next_id)(result->id)(uint64_t(result)) );
-            assert( next_id == result->id );
+               assert( dynamic_cast<T*>(o) );
+               constructor( static_cast<T*>(o) );
+            }, requested_id );
+
             undo.new_ids.push_back(result->id);
             return static_cast<const T*>(result);
          }
@@ -177,7 +168,7 @@ namespace bts { namespace chain {
 
 
 
-FC_REFLECT( bts::chain::undo_state, (old_values)(new_ids)(old_index_meta_objects) )
+FC_REFLECT( bts::chain::undo_state, (old_values)(new_ids)(removed_ids)(old_index_meta_objects) )
 
 
 

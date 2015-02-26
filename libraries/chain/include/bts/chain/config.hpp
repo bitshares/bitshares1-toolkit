@@ -21,3 +21,4 @@
 #define BTS_BLOCKCHAIN_PRECISION_DIGITS                    5
 #define BTS_INITIAL_SUPPLY                                 BTS_BLOCKCHAIN_MAX_SHARES
 #define BTS_DEFAULT_TRANSFER_FEE                           (1*BTS_BLOCKCHAIN_PRECISION)
+#define BTS_MAX_INSTANCE_ID                                (uint64_t(-1)>>16)

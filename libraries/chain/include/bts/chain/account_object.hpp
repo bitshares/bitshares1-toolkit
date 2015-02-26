@@ -37,7 +37,13 @@ namespace bts { namespace chain {
          vector<pair<asset_id_type,share_type> > balances;
    };
 
-   class account_object : public object
+   class account_debt_object : public object
+   {
+      public:
+         flat_map<asset_id_type, object_id_type> call_orders;
+   };
+
+   class account_object : public annotated_object
    {
       public:
          static const uint8_t space_id = protocol_ids;
@@ -56,6 +62,7 @@ namespace bts { namespace chain {
          vector<delegate_id_type> delegate_votes;
 
          object_id_type           balances;
+         object_id_type           debts;
          vector<asset_id_type>    authorized_assets;
    };
 
@@ -75,8 +82,8 @@ namespace bts { namespace chain {
 
 }} 
 FC_REFLECT_DERIVED( bts::chain::account_object, 
-                    (bts::chain::object), 
-                    (name)(owner)(active)(voting)(delegate_votes)(balances)(authorized_assets) )
+                    (bts::chain::annotated_object), 
+                    (name)(owner)(active)(voting)(delegate_votes)(balances)(debts)(authorized_assets) )
 
 FC_REFLECT_DERIVED( bts::chain::meta_account_object, 
                     (bts::chain::object), 

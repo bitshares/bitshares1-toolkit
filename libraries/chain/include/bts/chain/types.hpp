@@ -10,6 +10,7 @@
 #include <fc/optional.hpp>
 #include <fc/safe.hpp>
 #include <fc/container/flat.hpp>
+#include <fc/string.hpp>
 #include <memory>
 #include <vector>
 #include <deque>
@@ -60,31 +61,20 @@ namespace bts { namespace chain {
    };
 
 
-   struct object_id_bits
-   {
-      uint64_t type      : 8;
-      uint64_t space     : 8;
-      uint64_t instance  : 48;
-   };
-   struct object_id_space_type_bits
-   {
-      uint64_t space_type : 16;
-      uint64_t instance   : 48;
-   };
-   union object_id_type
+   struct object_id_type
    {
       object_id_type( uint8_t s, uint8_t t, uint64_t i )
       {
-         bits.space = s;
-         bits.type = t;
-         bits.instance = i;
+         assert( i>>48 == 0 );
+         FC_ASSERT( i >> 48 == 0, "instance overflow", ("instance",i) );
+         number = (uint64_t(s)<<56) | (uint64_t(t)<<48) | i;
       }
       object_id_type(){ number = 0; }
    
-      uint8_t space()const { return bits.space; }
-      uint8_t type()const { return bits.type; }
-      uint16_t space_type()const { return space_type_bits.space_type; }
-      uint8_t instance()const { return bits.instance; }
+      uint8_t space()const       { return number >> 56;              }
+      uint8_t type()const        { return number >> 48 & 0x00ff;     }
+      uint16_t space_type()const { return number >> 48;              }
+      uint8_t instance()const { return number & BTS_MAX_INSTANCE_ID; }
       bool    is_null()const { return number == 0; }
       operator uint64_t()const { return number; }
 
@@ -92,12 +82,10 @@ namespace bts { namespace chain {
       {
          return a.number == b.number;
       }
-      object_id_type& operator++(int) { bits.instance++; return *this; }
-      object_id_type& operator++()    { bits.instance++; return *this; }
+      object_id_type& operator++(int) { ++number; return *this; }
+      object_id_type& operator++()    { ++number; return *this; }
 
       uint64_t                   number;
-      object_id_bits             bits;
-      object_id_space_type_bits  space_type_bits;
    };
 
    /**
@@ -135,7 +123,8 @@ namespace bts { namespace chain {
       key_object_type,
       account_object_type,
       asset_object_type,
-      delegate_object_type
+      delegate_object_type,
+      market_order_object_type
    };
 
    enum impl_object_type
@@ -154,9 +143,18 @@ namespace bts { namespace chain {
    };
 
 
-   template<uint16_t SpaceTypeID>
+   class object;
+   class database;
+
+      
+
+   template<uint8_t SpaceID, uint8_t TypeID, typename T = object>
    struct object_id
    {
+      typedef T type;
+      static const uint8_t space_id = SpaceID;
+      static const uint8_t type_id = TypeID;
+
       object_id(){}
       object_id( uint64_t i ):instance(i)
       {
@@ -164,11 +162,16 @@ namespace bts { namespace chain {
       }
       object_id( object_id_type id ):instance(id.instance())
       {
-         assert( id.space_type() == SpaceTypeID );
-         FC_ASSERT( id.space_type() == SpaceTypeID, "", ("id.space_type",id.space_type())("SpaceTypeID",SpaceTypeID) );
+         assert( id.space() == SpaceID && id.type() == TypeID );
+         FC_ASSERT( id.space() == SpaceID && id.type() == TypeID, "", 
+                    ("id.space",id.space())("SpaceID",SpaceID) 
+                    ("id.type",id.type())("TypeID",TypeID) );
       }
-      operator object_id_type()const { return object_id_type( SpaceTypeID>>8, SpaceTypeID&0x00ff, instance.value ); }
+      operator object_id_type()const { return object_id_type( SpaceID, TypeID, instance.value ); }
       operator uint64_t()const { return object_id_type( *this ).number; }
+
+      template<typename DB>
+      const T* operator()(const DB& db)const { return db.get(*this); }
 
       friend bool  operator == ( const object_id& a, const object_id& b )
       {
@@ -180,10 +183,18 @@ namespace bts { namespace chain {
 
    //typedef fc::unsigned_int            object_id_type;
    //typedef uint64_t                    object_id_type;
-   typedef object_id< (protocol_ids<<8) | key_object_type>       key_id_type;
-   typedef object_id< (protocol_ids<<8) | account_object_type>   account_id_type;
-   typedef object_id< (protocol_ids<<8) | asset_object_type>     asset_id_type;
-   typedef object_id< (protocol_ids<<8) | delegate_object_type>  delegate_id_type;
+   class account_object;
+   class delegate_object;
+   class market_order_object;
+   class asset_object;
+   class balance_object;
+   class key_object;
+
+   typedef object_id< protocol_ids, key_object_type, key_object>                  key_id_type;
+   typedef object_id< protocol_ids, account_object_type, account_object>          account_id_type;
+   typedef object_id< protocol_ids, asset_object_type,asset_object>               asset_id_type;
+   typedef object_id< protocol_ids, delegate_object_type,delegate_object>         delegate_id_type;
+   typedef object_id< protocol_ids, market_order_object_type,market_order_object> market_order_id_type;;
    typedef fc::sha224                                   block_id_type;
    typedef fc::sha256                                   digest_type;
    typedef fc::ecc::compact_signature                   signature_type;
@@ -195,10 +206,6 @@ namespace bts { namespace chain {
    typedef fc::sha224                                   secret_hash_type;
    typedef uint16_t                                     weight_type;
 
-   class account_object;
-   class delegate_object;
-   class asset_object;
-   class balance_object;
 
    struct public_key_type
    {
@@ -229,15 +236,81 @@ namespace fc
 {
     void to_variant( const bts::chain::public_key_type& var,  fc::variant& vo );
     void from_variant( const fc::variant& var,  bts::chain::public_key_type& vo );
-    template<uint8_t SpaceTypeID>
-    void to_variant( const bts::chain::object_id<SpaceTypeID>& var,  fc::variant& vo ) { to_variant( var.instance, vo ); }
-    template<uint8_t SpaceTypeID>
-    void from_variant( const fc::variant& var,  bts::chain::object_id<SpaceTypeID>& vo ) { from_variant( var, vo.instance ); }
+
+    inline void to_variant( const bts::chain::object_id_type& var,  fc::variant& vo )
+    {
+       vo = fc::to_string(var.space()) + "." + fc::to_string(var.type()) + "." + fc::to_string(var.instance());
+    }
+    inline void from_variant( const fc::variant& var,  bts::chain::object_id_type& vo )
+    {
+       vo.number = 0;
+       const auto& s = var.get_string();
+       auto first_dot = s.find('.');
+       auto second_dot = s.find('.',first_dot+1);
+       FC_ASSERT( first_dot != second_dot );
+       FC_ASSERT( first_dot != 0 && first_dot != std::string::npos );
+       vo.number = fc::to_uint64(s.substr( second_dot+1 ));
+       FC_ASSERT( vo.number <= BTS_MAX_INSTANCE_ID );
+       auto space_id = fc::to_uint64( s.substr( 0, first_dot ) );
+       FC_ASSERT( space_id <= 0xff );
+       auto type_id =  fc::to_uint64( s.substr( first_dot+1, second_dot ) );
+       FC_ASSERT( type_id <= 0xff );
+       vo.number |= (space_id << 56) | (type_id << 48);
+    }
+    template<uint8_t SpaceID, uint8_t TypeID, typename T>
+    void to_variant( const bts::chain::object_id<SpaceID,TypeID,T>& var,  fc::variant& vo ) 
+    { 
+       vo = fc::to_string(SpaceID) + "." + fc::to_string(TypeID) + "." + fc::to_string(var.instance.value);
+    }
+    template<uint8_t SpaceID, uint8_t TypeID, typename T>
+    void from_variant( const fc::variant& var,  bts::chain::object_id<SpaceID,TypeID,T>& vo ) 
+    { 
+       const auto& s = var.get_string();
+       auto first_dot = s.find('.');
+       auto second_dot = s.find('.',first_dot+1);
+       FC_ASSERT( first_dot != second_dot );
+       FC_ASSERT( first_dot != 0 && first_dot != std::string::npos );
+       FC_ASSERT( fc::to_uint64( s.substr( 0, first_dot ) ) == SpaceID &&
+                  fc::to_uint64( s.substr( first_dot+1, second_dot ) ) == TypeID );
+       vo.instance = fc::to_uint64(s.substr( second_dot+1 ));
+    }
 }
 FC_REFLECT( bts::chain::public_key_type, (key_data) )
 FC_REFLECT( bts::chain::public_key_type::binary_key, (data)(check) );
 FC_REFLECT( bts::chain::object_id_type, (number) )
-FC_REFLECT_TEMPLATE( (uint16_t SpaceTypeID), bts::chain::object_id<SpaceTypeID>, (instance) )
+
+// REFLECT object_id manually because it has 2 template params
+namespace fc {  
+template<uint8_t SpaceID, uint8_t TypeID, typename T> 
+struct get_typename<bts::chain::object_id<SpaceID,TypeID,T>>  
+{ 
+   static const char* name() { 
+      return typeid(get_typename).name();
+      static std::string _str = string("bts::chain::object_id<")+fc::to_string(SpaceID) + ":" + fc::to_string(TypeID)+">";
+      return _str.c_str();
+   } 
+}; 
+
+template<uint8_t SpaceID, uint8_t TypeID, typename T> 
+struct reflector<bts::chain::object_id<SpaceID,TypeID,T> >
+{
+    typedef bts::chain::object_id<SpaceID,TypeID,T> type; 
+    typedef fc::true_type  is_defined; 
+    typedef fc::false_type is_enum; 
+    enum  member_count_enum {  
+      local_member_count = 1,
+      total_member_count = 1
+    }; 
+    template<typename Visitor>
+    static inline void visit( const Visitor& visitor ) 
+    { 
+       typedef decltype(((type*)nullptr)->instance) member_type;  
+       visitor.TEMPLATE operator()<member_type,type,&type::instance>( "instance" ); 
+    }
+}; 
+} // namespace fc
+
+
 
 FC_REFLECT_ENUM( bts::chain::id_space_type, (relative_protocol_ids)(protocol_ids)(implementation_ids)(meta_info_ids) )
 FC_REFLECT_ENUM( bts::chain::object_type,
@@ -247,6 +320,7 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (account_object_type) 
                  (asset_object_type)
                  (delegate_object_type)
+                 (market_order_object_type)
                )
 FC_REFLECT_ENUM( bts::chain::impl_object_type, 
                  (impl_global_property_object_type)

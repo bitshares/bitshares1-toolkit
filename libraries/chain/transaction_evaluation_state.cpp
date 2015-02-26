@@ -35,7 +35,7 @@ namespace bts { namespace chain {
          else 
          {
             const object* auth_item = _db->get_object( auth.first );
-            switch( auth_item->type() )
+            switch( auth_item->id.type() )
             {
                case account_object_type:
                {
@@ -43,7 +43,7 @@ namespace bts { namespace chain {
                      return false;
                   if( check_authority( dynamic_cast<const account_object*>( auth_item ), auth_class, depth + 1 ) )
                   {
-                     approved_by.insert( std::make_pair(auth_item->object_id(),auth_class) );
+                     approved_by.insert( std::make_pair(auth_item->id,auth_class) );
                      total_weight += auth.second;
                   }
                   break;
@@ -54,18 +54,18 @@ namespace bts { namespace chain {
                   FC_ASSERT( key_obj );
                   if( signed_by.find( key_obj->key_address ) != signed_by.end() )
                   {
-                     approved_by.insert( std::make_pair(auth_item->object_id(),authority::key) );
+                     approved_by.insert( std::make_pair(auth_item->id,authority::key) );
                      total_weight += auth.second;
                   }
                   break;
                }
                default:
-                  FC_ASSERT( !"Invalid Auth Object Type", "type:${type}", ("type",auth_item->type()) );
+                  FC_ASSERT( !"Invalid Auth Object Type", "type:${type}", ("type",auth_item->id.type()) );
             }
          }
          if( total_weight >= au->weight_threshold )
          {
-            approved_by.insert( std::make_pair(account->object_id(), auth_class) );
+            approved_by.insert( std::make_pair(account->id, auth_class) );
             return true;
          }
       }

@@ -96,7 +96,7 @@ object_id_type create_account_operation::evaluate( transaction_evaluation_state&
              n->balances = balance_obj->id;
           });
 
-    return new_account->object_id();
+    return new_account->id;
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
 

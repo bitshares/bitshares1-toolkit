@@ -39,6 +39,7 @@ namespace bts { namespace chain {
       asset base;
       asset quote;
    };
+   bool operator < ( const price& a, const price& b );
 
 } }
 

@@ -125,16 +125,9 @@ void database::init_genesis()
       });
    ilog("Genesis key created");
 
-   auto gen_key = fc::ecc::private_key::regenerate( fc::sha256::hash("genesis",7) );
-   const key_object* gen_key_obj = 
-       create<key_object>( [&]( key_object* k ){
-              k->public_key = gen_key.get_public_key();
-              k->key_address = k->public_key;
-       });
-
    const account_object* genesis_account =
       create<account_object>( [&](account_object* n) {
-         n->owner.auths[genesis_key->id] = 1;
+         n->owner.add_authority(genesis_key->get_id(), 1);
          n->owner.weight_threshold = 1;
          n->active = n->owner;
          n->voting = n->active;
@@ -218,7 +211,7 @@ void database::save_undo( const object* obj )
    auto current_undo = _undo_state.back().old_values.find(id);
    if( current_undo == _undo_state.back().old_values.end() )
    {
-      _undo_state.back().old_values[id] = get_index(obj->space(),obj->type()).pack( obj ); 
+      _undo_state.back().old_values[id] = get_index(obj->id.space(),obj->id.type()).pack( obj ); 
    }
 }
 

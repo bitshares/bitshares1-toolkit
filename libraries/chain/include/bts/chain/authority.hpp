@@ -20,6 +20,14 @@ namespace bts { namespace chain {
          voting = 2,
          key    = 3
       };
+      void add_authority( key_id_type k, weight_type w )
+      {
+         auths[k] = w;
+      }
+      void add_authority( account_id_type k, weight_type w )
+      {
+         auths[k] = w;
+      }
       uint32_t                             weight_threshold = 0;
       flat_map<object_id_type,weight_type> auths;
    };

@@ -45,7 +45,7 @@ namespace bts { namespace chain {
          typedef multi_index_container< 
             transaction_object,
             ordered_by<  
-               ordered_unique< tag<instance>, const_mem_fun< transaction_object, uint64_t, &transaction_object::instance>> >,
+               hashed_unique< tag<instance>, const_mem_fun< transaction_object, uint64_t, &transaction_object::instance>> >,
                hashed_unique< tag<trx_id>, BOOST_MULTI_INDEX_MEMBER( transaction_object, sha224, transaction_id )>,
                ordered_non_unique< tag<expiration>, BOOST_MULTI_INDEX_MEMBER( transaction_object, time_point_sec, expiration)>
             >
@@ -55,7 +55,9 @@ namespace bts { namespace chain {
          virtual packed_object  get_meta_object()const override;
          virtual void           set_meta_object( const packed_object& obj ) override;
                     
-         virtual const object*  create( const std::function<void(object*)>& constructor );
+         virtual const object*  create( const std::function<void(object*)>& constructor, 
+                                        object_id_type requested_id = object_id_type() );
+
          virtual int64_t size()const { return _index.size(); }
 
          virtual void modify( const object* obj, const std::function<void(object*)>& m )override;

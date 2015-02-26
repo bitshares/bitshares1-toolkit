@@ -25,7 +25,8 @@ namespace bts { namespace chain {
             _objects.resize( meta.next_object_instance );
          }
 
-         virtual const object*  create( const std::function<void(object*)>& constructor ) override
+         virtual const object*  create( const std::function<void(object*)>& constructor, 
+                                        object_id_type /*requested_id*/ ) override
          {
              auto next_id = get_next_available_id();
              auto instance = next_id.instance();
