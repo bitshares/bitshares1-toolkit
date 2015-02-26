@@ -76,7 +76,6 @@ namespace bts { namespace chain {
          virtual void               add( unique_ptr<object> o ) = 0;
          virtual void               modify( const object* obj, const std::function<void(object*)>& ) = 0;
          virtual void               remove( object_id_type id ) = 0;
-         virtual void               remove_after( object_id_type id ) = 0;
                                     
          virtual void               add_observer( const shared_ptr<index_observer>& ) = 0;
    };

@@ -117,14 +117,26 @@ void database::init_genesis()
 {
    _save_undo = false;
 
+   auto gen_key = fc::ecc::private_key::regenerate( fc::sha256::hash("genesis",7) );
+   const key_object* gen_key_obj = 
+       create<key_object>( [&]( key_object* k ){
+              k->public_key = gen_key.get_public_key();
+              k->key_address = k->public_key;
+       });
+
    const account_balance_object* balance_obj =
        create<account_balance_object>( [&](account_balance_object* n){
          /** nothing to set initially */
+            n->add_balance( asset( BTS_INITIAL_SUPPLY, 0 ) );
        });
 
     const account_object* genesis_account =
        create<account_object>( [&](account_object* n) {
           n->balances = balance_obj->id;
+          n->owner.weight_threshold = 1;
+          n->owner.auths[gen_key_obj->id] = 1;
+          n->active = n->owner;
+          n->voting = n->owner;
        });
 
    const asset_dynamic_data* dyn_asset = create<asset_dynamic_data>( [&]( asset_dynamic_data* a ) {
@@ -144,6 +156,7 @@ void database::init_genesis()
            a->base_exchange_rate.quote.asset_id = 0;
            a->dynamic_asset_data_id = dyn_asset->id;
        });
+   assert( base_asset->id.instance() == 0 );
    (void)base_asset;
 
    push_undo_state();

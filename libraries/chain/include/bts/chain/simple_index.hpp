@@ -54,13 +54,6 @@ namespace bts { namespace chain {
              _objects.push_back( std::move(o) );
          }
 
-         virtual void remove_after( object_id_type id )override
-         {
-            assert( id.space() == T::space_id );
-            assert( id.type() == T::type_id );
-            _objects.resize( id.instance() );
-         }
-
          virtual void remove( object_id_type id ) override
          {
             assert( id.space() == T::space_id );

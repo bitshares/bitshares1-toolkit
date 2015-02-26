@@ -19,4 +19,4 @@ target_include_directories( bts_chain
 
 
 add_executable( chain_test test.cpp)
-target_link_libraries( chain_test bts_chain fc )
+target_link_libraries( chain_test bts_chain fc z )
