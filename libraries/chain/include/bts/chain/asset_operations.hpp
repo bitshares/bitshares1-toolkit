@@ -297,7 +297,7 @@ namespace bts { namespace chain {
    {
        static const operation_type type;
        
-       sell_order_id_type sell_order_id;
+       market_order_id_type market_order_id;
 
        object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };
@@ -334,7 +334,6 @@ namespace bts { namespace chain {
       static const operation_type type;
 
       account_id_type cover_account_id;
-      cover_id_type   cover_order_id;
       asset           amount_to_cover; 
       asset           collateral_to_add;
       price           new_call_price;   // desired call price
@@ -385,31 +384,6 @@ namespace bts { namespace chain {
 
 
    /**
-    *  Any one can publish an edge connecting any two objects
-    *  in the network and specifying arbitrary data associated
-    *  with the edge.  It is up to 3rd party applications to
-    *  interpret the published edges.  For example shareholders
-    *  could vote on a board approval by creating an edge between
-    *  their account and the proposal data object.  
-    */
-   struct set_edge_operation
-   {
-      static const operation_type type;
-
-      account_id_type updater; // account performing the update and paying fee
-      edge_id_type    edge_id; // 0 to create a new edge
-      string          from_name; // label on the from side. ie: Son
-      object_id_type  from;
-      string          to_name; // label on the to side.  ie: Father
-      object_id_type  to;
-      uint8_t         data_format;
-      vector<char>    data;
-      asset           data_fee;
-
-      object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
-   };
-
-   /**
     *  If data_object_id is 0 then create a new data object.  Fees
     *  are charged based upon how much data is stored on an edge.  The
     *  format of the data can be anything from binary, text, json, protobuf,
@@ -420,11 +394,11 @@ namespace bts { namespace chain {
    {
       static const operation_type type;
 
-      account_id_type updater; // account performing the update and paying fee
-      object_id_type  data_object_id; // 0 to create a new data object
-      uint8_t         data_format;
-      vector<char>    data;
-      asset           data_fee;
+      account_id_type      updater; // account performing the update and paying fee
+      data_object_id_type  data_object_id; // 0 to create a new data object
+      uint8_t              data_format;
+      vector<char>         data;
+      asset                data_fee;
 
       object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };

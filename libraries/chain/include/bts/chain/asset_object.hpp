@@ -5,7 +5,7 @@
 namespace bts { namespace chain { 
    class account_object;
 
-   class asset_dynamic_data : public object
+   class asset_dynamic_data_object : public object
    {
       public:
          static const uint8_t space_id = implementation_ids;
@@ -16,7 +16,7 @@ namespace bts { namespace chain {
          share_type fee_pool;         // in core asset
    };
 
-   class asset_object : public object
+   class asset_object : public annotated_object
    {
       public:
          static const uint8_t space_id = protocol_ids;
@@ -45,17 +45,17 @@ namespace bts { namespace chain {
           *  Stores current supply, fee pool, and collected fees 
           *  in a more efficient record to serialize/modify frequently
           */
-         object_id_type          dynamic_asset_data_id;
+         dynamic_asset_data_id_type  dynamic_asset_data_id;
 
          // meta_info -> uint8_t                 precision_digits  = 0; // 0 to 10
          //   name, description, and precission 
    };
 } } // bts::chain
-FC_REFLECT_DERIVED( bts::chain::asset_dynamic_data, (bts::chain::object),
+FC_REFLECT_DERIVED( bts::chain::asset_dynamic_data_object, (bts::chain::object),
                     (accumulated_fees)(fee_pool) )
 
 FC_REFLECT_DERIVED( bts::chain::asset_object, 
-                    (bts::chain::object), 
+                    (bts::chain::annotated_object), 
                     (symbol)
                     (issuer)
                     (max_supply)

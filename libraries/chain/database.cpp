@@ -29,7 +29,7 @@ database::database()
 
    add_index<primary_index<simple_index<global_property_object>> >();
    add_index<primary_index<simple_index<account_balance_object>> >();
-   add_index<primary_index<simple_index<asset_dynamic_data>> >();
+   add_index<primary_index<simple_index<asset_dynamic_data_object>> >();
    add_index<primary_index<simple_index<delegate_vote_object>> >();
 
    push_undo_state();
@@ -169,8 +169,8 @@ void database::init_genesis()
    (void)properties;
    ilog("Genesis properties created");
 
-   const asset_dynamic_data* dyn_asset =
-      create<asset_dynamic_data>( [&]( asset_dynamic_data* a ) {
+   const asset_dynamic_data_object* dyn_asset =
+      create<asset_dynamic_data_object>( [&]( asset_dynamic_data_object* a ) {
          a->current_supply = BTS_INITIAL_SUPPLY;
       });
 

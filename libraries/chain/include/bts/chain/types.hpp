@@ -124,7 +124,10 @@ namespace bts { namespace chain {
       account_object_type,
       asset_object_type,
       delegate_object_type,
-      market_order_object_type
+      market_order_object_type,
+      short_order_object_type,
+      call_order_object_type,
+      data_object_type
    };
 
    enum impl_object_type
@@ -133,7 +136,9 @@ namespace bts { namespace chain {
       impl_index_meta_object_type,
       impl_asset_dynamic_data_type,
       impl_account_balance_object_type,
-      impl_delegate_vote_object_type
+      impl_account_debt_object_type,
+      impl_delegate_vote_object_type,
+      impl_transaction_object_type
    };
 
    enum meta_info_object_type
@@ -185,24 +190,43 @@ namespace bts { namespace chain {
    //typedef uint64_t                    object_id_type;
    class account_object;
    class delegate_object;
-   class market_order_object;
    class asset_object;
-   class balance_object;
    class key_object;
+   class market_order_object;
+   class short_order_object;
+   class call_order_object;
+   class data_object;
 
-   typedef object_id< protocol_ids, key_object_type, key_object>                  key_id_type;
-   typedef object_id< protocol_ids, account_object_type, account_object>          account_id_type;
-   typedef object_id< protocol_ids, asset_object_type,asset_object>               asset_id_type;
-   typedef object_id< protocol_ids, delegate_object_type,delegate_object>         delegate_id_type;
-   typedef object_id< protocol_ids, market_order_object_type,market_order_object> market_order_id_type;;
+   typedef object_id< protocol_ids, key_object_type,          key_object>           key_id_type;
+   typedef object_id< protocol_ids, account_object_type,      account_object>       account_id_type;
+   typedef object_id< protocol_ids, asset_object_type,        asset_object>         asset_id_type;
+   typedef object_id< protocol_ids, delegate_object_type,     delegate_object>      delegate_id_type;
+   typedef object_id< protocol_ids, market_order_object_type, market_order_object>  market_order_id_type;
+   typedef object_id< protocol_ids, short_order_object_type,  short_order_object>   short_order_id_type;
+   typedef object_id< protocol_ids, call_order_object_type,   call_order_object>    call_order_id_type;
+   typedef object_id< protocol_ids, data_object_type,         data_object>          data_object_id_type;
+
+   // implementation types
+   class global_property_object;
+   class index_meta_object;
+   class delegate_vote_object;
+   class asset_dynamic_data_object;
+   class account_balance_object;
+   class account_debt_object;
+   class transaction_object;
+
+   typedef object_id< implementation_ids, impl_global_property_object_type,  global_property_object>    global_property_id_type;
+   typedef object_id< implementation_ids, impl_asset_dynamic_data_type,      asset_dynamic_data_object> dynamic_asset_data_id_type;
+   typedef object_id< implementation_ids, impl_account_balance_object_type,  account_balance_object>    account_balance_id_type;
+   typedef object_id< implementation_ids, impl_account_debt_object_type,     account_debt_object>       account_debt_id_type;
+   typedef object_id< implementation_ids, impl_delegate_vote_object_type,    delegate_vote_object>      delegate_vote_id_type;
+   typedef object_id< implementation_ids, impl_transaction_object_type,      transaction_object>        transaction_obj_id_type;
+
+
    typedef fc::sha224                                   block_id_type;
    typedef fc::sha256                                   digest_type;
    typedef fc::ecc::compact_signature                   signature_type;
    typedef safe<int64_t>                                share_type;
-   typedef object_id_type                               sell_order_id_type;
-   typedef object_id_type                               short_order_id_type;
-   typedef object_id_type                               cover_id_type;
-   typedef object_id_type                               edge_id_type;
    typedef fc::sha224                                   secret_hash_type;
    typedef uint16_t                                     weight_type;
 

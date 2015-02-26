@@ -17,9 +17,9 @@ namespace bts { namespace chain {
   {
      public:
         account_id_type  seller;   
-        share_type available_collateral; ///< asset_id == sell_price.base.asset_id
-        uint16_t   interest_rate; ///< in units of 0.001% APR
-        price      limit_price; ///< the feed price at which the order will be canceled
+        share_type       available_collateral; ///< asset_id == sell_price.base.asset_id
+        uint16_t         interest_rate; ///< in units of 0.001% APR
+        price            limit_price; ///< the feed price at which the order will be canceled
 
   };
 
