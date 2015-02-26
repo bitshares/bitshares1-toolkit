@@ -181,7 +181,7 @@ void database::init_genesis()
          a->current_supply = BTS_INITIAL_SUPPLY;
       });
 
-   const asset_object* base_asset =
+   const asset_object* core_asset =
      create<asset_object>( [&]( asset_object* a ) {
          a->symbol = BTS_SYMBOL;
          a->max_supply = BTS_INITIAL_SUPPLY;
@@ -189,14 +189,14 @@ void database::init_genesis()
          a->flags = 0;
          a->issuer_permissions = 0;
          a->issuer = genesis_account->id;
-         a->base_exchange_rate.base.amount = 1;
-         a->base_exchange_rate.base.asset_id = 0;
-         a->base_exchange_rate.quote.amount = 1;
-         a->base_exchange_rate.quote.asset_id = 0;
+         a->core_exchange_rate.base.amount = 1;
+         a->core_exchange_rate.base.asset_id = 0;
+         a->core_exchange_rate.quote.amount = 1;
+         a->core_exchange_rate.quote.asset_id = 0;
          a->dynamic_asset_data_id = dyn_asset->id;
       });
-   assert( base_asset->id.instance() == 0 );
-   (void)base_asset;
+   assert( core_asset->id.instance() == 0 );
+   (void)core_asset;
    ilog("Core asset initialized");
 
    push_undo_state();
