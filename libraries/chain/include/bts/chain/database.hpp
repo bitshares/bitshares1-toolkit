@@ -140,7 +140,8 @@ namespace bts { namespace chain {
          template<typename EvaluatorType>
          void register_evaluator()
          {
-            _operation_evaluators[EvaluatorType::operation_class_type::type].reset( new op_evaluator_impl<EvaluatorType>() );
+            _operation_evaluators[ 
+               operation::tag<typename EvaluatorType::operation_class_type>::value].reset( new op_evaluator_impl<EvaluatorType>() );
          }
 
       private:
