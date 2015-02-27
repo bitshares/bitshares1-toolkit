@@ -6,10 +6,11 @@
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/delegate_object.hpp>
-#include <bts/chain/operation_factory.hpp>
 #include <bts/chain/simple_index.hpp>
 #include <bts/chain/account_index.hpp>
 #include <bts/chain/asset_index.hpp>
+
+#include <bts/chain/transaction_evaluation_state.hpp>
 
 namespace bts { namespace chain {
 
@@ -120,8 +121,7 @@ void database::init_genesis()
 
    const key_object* genesis_key =
       create<key_object>( [](key_object* k) {
-         k->public_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis"))).get_public_key();
-         k->key_address = k->public_key;
+         k->key_data = public_key_type(fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis"))).get_public_key());
       });
    ilog("Genesis key created");
 

@@ -1,8 +1,11 @@
 #pragma once
+#include <bts/chain/operations.hpp>
 
 namespace bts { namespace chain {
 
    class generic_evaluator;
+   class transaction_evaluation_state;
+
    class post_evaluator
    {
       public:
@@ -15,7 +18,7 @@ namespace bts { namespace chain {
       public:
          virtual ~generic_evaluator();
 
-         virtual operation_type get_type()const = 0;
+         virtual int get_type()const = 0;
          virtual object_id_type evaluate( transaction_evaluation_state& eval_state, const operation& op )
          {
             trx_state   = &eval_state;
@@ -63,12 +66,14 @@ namespace bts { namespace chain {
       public:
          typedef OperationClass  operation_class_type;
 
-         virtual operation_type get_type()const { return operation_class_type::type; }
+         virtual int get_type()const { return operation::tag<operation_class_type>::value; }
 
          virtual object_id_type evaluate( const operation& gop ) override
          {
             current_op = &gop;
-            _op = gop.as<operation_class_type>();
+            //_op = gop.as<operation_class_type>();
+            //gop.visit( [this]( const operation_class_type& o ){ _op = &o; } );
+            _op = &gop.get<operation_class_type>();
             return evaluate();
          }
          const OperationClass& op()const { return _op; }

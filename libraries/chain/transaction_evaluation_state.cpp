@@ -52,7 +52,7 @@ namespace bts { namespace chain {
                {
                   auto key_obj = dynamic_cast<const key_object*>( auth_item );
                   FC_ASSERT( key_obj );
-                  if( signed_by.find( key_obj->key_address ) != signed_by.end() )
+                  if( signed_by.find( key_obj->key_address() ) != signed_by.end() )
                   {
                      approved_by.insert( std::make_pair(auth_item->id,authority::key) );
                      total_weight += auth.second;
