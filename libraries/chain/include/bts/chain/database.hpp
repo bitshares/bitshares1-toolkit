@@ -7,6 +7,7 @@
 #include <bts/chain/index.hpp>
 #include <bts/chain/global_property_object.hpp>
 #include <bts/chain/asset_object.hpp>
+#include <bts/chain/evaluator.hpp>
 #include <map>
 
 #include <fc/log/logger.hpp>
@@ -132,8 +133,18 @@ namespace bts { namespace chain {
          const global_property_object* get_global_properties()const;
 
          void init_genesis();
+
+         template<typename EvaluatorType>
+         void register_evaluator()
+         {
+            _operation_evaluators[EvaluatorType::operation_class_type::type].reset( new op_evaluator_impl<EvaluatorType>() );
+         }
+
       private:
          friend class base_primary_index;
+
+         vector< unique_ptr<op_evaluator> >     _operation_evaluators;
+
 
          void save_undo( const object* obj );
          processed_transaction apply_transaction( const signed_transaction& trx );

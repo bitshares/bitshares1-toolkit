@@ -66,8 +66,6 @@ namespace bts { namespace chain {
        authority                 active;
        authority                 voting;
        public_key_type           memo; 
-
-       object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true);
    };
 
    /**
@@ -137,8 +135,6 @@ namespace bts { namespace chain {
        /** max producers = 101 */
        vector<account_id_type> feed_producers; 
        asset_id_type           short_backing_asset; // for bitassets, specifies what may be used as collateral.
-
-       object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };
 
    /**
@@ -163,8 +159,6 @@ namespace bts { namespace chain {
       uint32_t                new_flags   = -1; // default value means don't change
       vector<account_id_type> feed_producers; 
       asset                   data_fee;     /// must match the expected data fee
-
-      object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };
 
    /**
@@ -181,8 +175,6 @@ namespace bts { namespace chain {
       asset_id_type   asset_id;
       account_id_type account_id; // or balance ID
       bool            authorize = false;
-
-      object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };
 
    /**
@@ -198,8 +190,6 @@ namespace bts { namespace chain {
 
        account_id_type to_account;
        asset           amount_to_issue;
-
-       object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };
 
    /**
@@ -217,8 +207,6 @@ namespace bts { namespace chain {
 
        account_id_type publisher;
        price           asset_price;  // if price is 0, then price should follow base asset id
-
-       object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };
 
    /**
@@ -230,7 +218,6 @@ namespace bts { namespace chain {
        
        delegate_id_type                                          delegate_id;
        flat_map< enum_type<uint8_t,fee_type>, share_type >       fee_schedule;
-       object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };
 
    /**
@@ -260,8 +247,6 @@ namespace bts { namespace chain {
         * the seed. Then use AES to encrypt the memo.
         */
        vector<char>        memo; // MAX LENGTH 128 bytes (multiple of AES block size)
-       
-       object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };
 
    /**
@@ -284,8 +269,6 @@ namespace bts { namespace chain {
        asset             min_amount_to_receive;
        time_point_sec    offer_expiration;
        uint16_t          max_market_fee;
-
-       object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };
 
    /**
@@ -298,8 +281,6 @@ namespace bts { namespace chain {
        static const operation_type type;
        
        market_order_id_type market_order_id;
-
-       object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };
 
    /**
@@ -326,7 +307,6 @@ namespace bts { namespace chain {
       price           call_price;   // desired call price, must be greater than min call price (2x)
       uint16_t        interest_rate_apr = 0; // 0 to 10,000 
 
-      object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };
 
    struct update_cover_order_operation
@@ -338,7 +318,6 @@ namespace bts { namespace chain {
       asset           collateral_to_add;
       price           new_call_price;   // desired call price
 
-      object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };
 
 
@@ -359,7 +338,6 @@ namespace bts { namespace chain {
       vector<asset>     fee_schedule;
       asset             delegate_registration_fee;
 
-      object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };
 
    /**
@@ -379,7 +357,6 @@ namespace bts { namespace chain {
       account_id_type paying_account; // or balance_id
       asset           fee;
 
-      object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };
 
 
@@ -399,8 +376,6 @@ namespace bts { namespace chain {
       uint8_t              data_format;
       vector<char>         data;
       asset                data_fee;
-
-      object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true );
    };
 
 } }

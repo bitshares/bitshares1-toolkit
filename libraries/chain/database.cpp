@@ -335,8 +335,8 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    processed_transaction ptrx(trx);
    for( auto op : ptrx.operations )
    {
-      auto r = operation_factory::instance().evaluate( eval_state, op );
-      ptrx.operation_results.push_back(r);
+      //auto r = operation_factory::instance().evaluate( eval_state, op );
+      //ptrx.operation_results.push_back(r);
    }
    return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }

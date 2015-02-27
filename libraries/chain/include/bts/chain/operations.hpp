@@ -7,7 +7,8 @@ namespace bts { namespace chain {
       null_op_type               = 0,
       create_account_op_type     = 1,
       create_asset_op_type       = 2,
-      transfer_asset_op_type     = 3
+      transfer_asset_op_type     = 3,
+      operations_count
    };
 
    struct operation 
@@ -63,4 +64,5 @@ FC_REFLECT_ENUM( bts::chain::operation_type,
                  (create_account_op_type)
                  (create_asset_op_type)
                  (transfer_asset_op_type)
+                 (operations_count)
                )
