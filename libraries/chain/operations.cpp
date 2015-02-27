@@ -73,6 +73,7 @@ void account_balance_object::sub_balance( const asset& a )
    }
 }
 
+#if 0
 object_id_type create_account_operation::evaluate( transaction_evaluation_state& eval_state, bool apply )
 { try {
     database& db = eval_state.db();
@@ -252,5 +253,7 @@ object_id_type transfer_asset_operation::evaluate( transaction_evaluation_state&
 
    return result;
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
+
+#endif
 
 } } // namespace bts::chain

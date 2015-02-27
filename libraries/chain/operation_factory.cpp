@@ -22,9 +22,8 @@ namespace bts { namespace chain {
 
    void operation_factory::to_variant( const bts::chain::operation& in, fc::variant& output )
    { try {
-      auto converter_itr = _converters.find( in.type.value );
-      FC_ASSERT( converter_itr != _converters.end() );
-      converter_itr->second->to_variant( in, output );
+      FC_ASSERT( _converters[in.type.value] );
+      _converters[in.type.value]->to_variant( in, output );
    } FC_RETHROW_EXCEPTIONS( warn, "" ) }
 
    void operation_factory::from_variant( const fc::variant& in, bts::chain::operation& output )
@@ -32,9 +31,8 @@ namespace bts { namespace chain {
       auto obj = in.get_object();
       output.type = obj["type"].as<operation_type>();
 
-      auto converter_itr = _converters.find( output.type.value );
-      FC_ASSERT( converter_itr != _converters.end() );
-      converter_itr->second->from_variant( in, output );
+      FC_ASSERT( _converters[output.type] );
+      _converters[output.type]->from_variant( in, output );
    } FC_RETHROW_EXCEPTIONS( warn, "", ("in",in) ) }
 
 } }
