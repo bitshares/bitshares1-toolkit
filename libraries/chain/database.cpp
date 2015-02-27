@@ -72,20 +72,20 @@ index& database::get_index(uint8_t space_id, uint8_t type_id)
 
 const account_index& database::get_account_index()const
 {
-   return dynamic_cast<const account_index&>( get_index<account_object>() ); 
+   return dynamic_cast<const account_index&>( get_index<account_object>() );
 }
 account_index& database::get_account_index()
 {
-   return dynamic_cast<account_index&>( get_index<account_object>() ); 
+   return dynamic_cast<account_index&>( get_index<account_object>() );
 }
 
 const asset_index&   database::get_asset_index()const
 {
-   return dynamic_cast<const asset_index&>( get_index<asset_object>() ); 
+   return dynamic_cast<const asset_index&>( get_index<asset_object>() );
 }
 asset_index&   database::get_asset_index()
 {
-   return dynamic_cast<asset_index&>( get_index<asset_object>() ); 
+   return dynamic_cast<asset_index&>( get_index<asset_object>() );
 }
 
 const asset_object*database::get_base_asset() const
@@ -100,8 +100,8 @@ void database::flush()
 
 void database::open( const fc::path& data_dir )
 { try {
-      init_genesis();
-      _block_num_to_block.open( data_dir / "database" / "block_num_to_block" );
+   init_genesis();
+   _block_num_to_block.open( data_dir / "database" / "block_num_to_block" );
    _block_id_to_num.open( data_dir / "database" / "block_id_to_num" );
    _undo_db.open( data_dir / "database" / "undo_db" );
    _object_id_to_object->open( data_dir / "database" / "objects" );
@@ -118,7 +118,7 @@ void database::open( const fc::path& data_dir )
    }
 } FC_CAPTURE_AND_RETHROW( (data_dir) ) }
 
-void database::init_genesis()
+void database::init_genesis(const genesis_allocation& initial_allocation)
 {
    _save_undo = false;
    ilog("Begin genesis initialization.");
@@ -129,7 +129,10 @@ void database::init_genesis()
          k->key_address = k->public_key;
       });
    ilog("Genesis key created");
-
+   const account_balance_object* genesis_balance =
+      create<account_balance_object>( [&](account_balance_object* b){
+         b->add_balance(asset(BTS_INITIAL_SUPPLY));
+      });
    const account_object* genesis_account =
       create<account_object>( [&](account_object* n) {
          n->owner.add_authority(genesis_key->get_id(), 1);
@@ -137,6 +140,7 @@ void database::init_genesis()
          n->active = n->owner;
          n->voting_key = genesis_key->id;
          n->memo_key = genesis_key->id;
+         n->balances = genesis_balance->id;
       });
    ilog("Genesis account created");
 
@@ -145,8 +149,8 @@ void database::init_genesis()
    for( int i = 0; i < BTS_MIN_DELEGATE_COUNT; ++i )
    {
       const account_balance_object* balance_obj =
-         create<account_balance_object>( [&](account_balance_object* n){
-            n->add_balance( asset( BTS_INITIAL_SUPPLY / BTS_MIN_DELEGATE_COUNT, 0 ) );
+         create<account_balance_object>( [&](account_balance_object* b){
+            (void)b;
          });
       const account_object* delegate_account =
          create<account_object>( [&](account_object* a) {
@@ -157,6 +161,7 @@ void database::init_genesis()
       const delegate_vote_object* vote =
          create<delegate_vote_object>( [&](delegate_vote_object* v) {
             // Nothing to do here...
+            (void)v;
          });
       const delegate_object* init_delegate = create<delegate_object>( [&](delegate_object* d) {
          d->delegate_account = delegate_account->id;
@@ -194,9 +199,27 @@ void database::init_genesis()
          a->core_exchange_rate.quote.asset_id = 0;
          a->dynamic_asset_data_id = dyn_asset->id;
       });
-   assert( core_asset->id.instance() == 0 );
+   assert( asset_id_type(core_asset->id) == asset().asset_id );
+   assert( genesis_balance->get_balance(core_asset->id) == asset(dyn_asset->current_supply) );
    (void)core_asset;
    ilog("Core asset initialized");
+
+   if( !genesis_allocation.empty() )
+   {
+      ilog("Applying genesis allocation");
+      fc::time_point start_time = fc::time_point::now();
+
+      for( const auto& handout : genesis_allocation )
+      {
+         signed_transaction trx;
+
+         //NEED OPERATIONS DEFINED MERRRR
+      }
+
+      fc::microseconds duration = fc::time_point::now() - start_time;
+      ilog("Finished allocating to ${n} accounts in ${t} milliseconds.",
+           ("n", genesis_allocation.size())("t", duration.count() / 1000));
+   }
 
    push_undo_state();
    _save_undo = true;
@@ -217,7 +240,7 @@ void database::save_undo( const object* obj )
    auto current_undo = _undo_state.back().old_values.find(id);
    if( current_undo == _undo_state.back().old_values.end() )
    {
-      _undo_state.back().old_values[id] = get_index(obj->id.space(),obj->id.type()).pack( obj ); 
+      _undo_state.back().old_values[id] = get_index(obj->id.space(),obj->id.type()).pack( obj );
    }
 }
 
@@ -287,11 +310,11 @@ void database::push_block( const block& new_block )
              * for transactions when validating broadcast transactions or
              * when building a block.
              */
-            apply_transaction( trx ); 
+            apply_transaction( trx );
          }
-      } 
+      }
       catch ( const fc::exception& e ) { except = e; }
-      if( except ) 
+      if( except )
       {
          undo();
          throw *except;
@@ -305,7 +328,7 @@ void database::push_block( const block& new_block )
  */
 bool database::push_transaction( const signed_transaction& trx )
 {
-   push_undo_state(); // trx undo 
+   push_undo_state(); // trx undo
    optional<fc::exception> except;
    try {
       apply_transaction( trx );

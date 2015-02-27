@@ -9,6 +9,7 @@
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/evaluator.hpp>
 #include <map>
+#include <boost/rational.hpp>
 
 #include <fc/log/logger.hpp>
 
@@ -16,8 +17,10 @@ namespace bts { namespace chain {
    class account_index;
    class asset_index;
 
+   typedef std::map<fc::static_variant<public_key_type, address>, boost::rational<int64_t> > genesis_allocation;
+
    /**
-    *  Undo State saves off the initial values associated 
+    *  Undo State saves off the initial values associated
     *  with each object prior to making changes. When
     *  applying the undo_state the old_values should be
     *  restored in REVERSE ORDER to make sure that
@@ -32,15 +35,15 @@ namespace bts { namespace chain {
        map<object_id_type, packed_object>      old_index_meta_objects;
 
        template<typename T>
-       bool has_old_index_meta_object()const 
-       { 
-          return old_index_meta_objects.find( object_id_type(T::space_id,T::type_id,BTS_MAX_INSTANCE_ID) ) != old_index_meta_objects.end(); 
+       bool has_old_index_meta_object()const
+       {
+          return old_index_meta_objects.find( object_id_type(T::space_id,T::type_id,BTS_MAX_INSTANCE_ID) ) != old_index_meta_objects.end();
        }
 
        template<typename T>
        void set_old_index_meta_object(packed_object o)
-       { 
-          old_index_meta_objects[ object_id_type(T::space_id,T::type_id,BTS_MAX_INSTANCE_ID) ] = std::move(o); 
+       {
+          old_index_meta_objects[ object_id_type(T::space_id,T::type_id,BTS_MAX_INSTANCE_ID) ] = std::move(o);
        }
 
    };
@@ -50,7 +53,7 @@ namespace bts { namespace chain {
       shared_ptr<fork_block>           prev_block;
       vector< shared_ptr<fork_block> > next_blocks;
       signed_block                     block_data;
-      optional<undo_state>             changes;                      
+      optional<undo_state>             changes;
    };
 
    class database
@@ -132,7 +135,7 @@ namespace bts { namespace chain {
          const asset_object*  get_base_asset()const;
          const global_property_object* get_global_properties()const;
 
-         void init_genesis();
+         void init_genesis(const genesis_allocation& initial_allocation = genesis_allocation());
 
          template<typename EvaluatorType>
          void register_evaluator()
@@ -155,7 +158,7 @@ namespace bts { namespace chain {
          vector<uint32_t>                                 _recent_block_prefixes;
          deque<undo_state>                                _undo_state;
          bool                                             _save_undo = true;
-                                                          
+
          // track recent forks...
          shared_ptr<fork_block>                 _oldest_fork_point;
          vector< shared_ptr<fork_block> >       _head_blocks;
@@ -166,7 +169,7 @@ namespace bts { namespace chain {
          /**
           *  Note: we can probably store blocks by block num rather than
           *  block id because after the undo window is past the block ID
-          *  is no longer relevant and its number is irreversible. 
+          *  is no longer relevant and its number is irreversible.
           *
           *  Durring the "fork window" we can cache blocks in memory
           *  until the fork is resolved.  This should make maintaining
