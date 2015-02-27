@@ -1,68 +1,114 @@
 #pragma once
 #include <bts/chain/types.hpp>
+#include <bts/chain/asset.hpp>
 
 namespace bts { namespace chain { 
-   enum operation_type
+
+   struct key_create_operation
    {
-      null_op_type               = 0,
-      create_account_op_type     = 1,
-      create_asset_op_type       = 2,
-      transfer_asset_op_type     = 3,
-      operations_count
+      account_id_type  fee_paying_account;
+      asset            fee;
+      static_variant<address,public_key_type> key_data;
    };
 
-   struct operation 
+   struct account_create_operation
    {
-      enum_type<uint16_t,operation_type> type = null_op_type;
-      vector<char>                       data;
-
-      operation(){}
-
-      operation( operation&& o )
-      :type(o.type),data(std::move(o.data)){}
-
-      operation( const operation& o )
-      :type(o.type),data(o.data){}
-
-      template<typename OperationType>
-      operation( const OperationType& t )
-      {
-         type = OperationType::type;
-         data = fc::raw::pack( t );
-      }
-
-      template<typename OperationType>
-      OperationType as()const
-      {
-         FC_ASSERT( (operation_type)type == OperationType::type, 
-                    "", ("type",type)("OperationType",OperationType::type) );
-
-         return fc::raw::unpack<OperationType>(data);
-      }
-
-      operation& operator=( const operation& o )
-      {
-         if( this == &o ) return *this;
-         type = o.type;
-         data = o.data;
-         return *this;
-      }
-
-      operation& operator=( operation&& o )
-      {
-         if( this == &o ) return *this;
-         type = o.type;
-         data = std::move(o.data);
-         return *this;
-      }
+      account_id_type fee_paying_account;
+      asset           fee;
    };
+
+   struct account_update_operation
+   {
+      account_id_type fee_paying_account;
+      asset           fee;
+   };
+
+   struct asset_create_operation
+   {
+      account_id_type fee_paying_account;
+      asset           fee;
+   };
+
+   struct asset_update_operation
+   {
+      account_id_type fee_paying_account;
+      asset           fee;
+   };
+
+   struct delegate_create_operation
+   {
+      account_id_type fee_paying_account;
+      asset           fee;
+   };
+
+   struct delegate_update_operation
+   {
+      account_id_type fee_paying_account;
+      asset           fee;
+   };
+
+   struct account_set_vote_operation
+   {
+      account_id_type fee_paying_account;
+      asset           fee;
+   };
+
+   struct custom_id_create_operation
+   {
+      account_id_type  owner;
+   };
+
+   struct custom_id_transfer_operation
+   {
+      custom_id_type   custom_id;
+      account_id_type  new_owner;
+   };
+
+   struct custom_operation
+   {
+      account_id_type fee_paying_account;
+      asset           fee;
+      uint16_t        type;
+      vector<char>    data;
+   };
+
+
+   typedef fc::static_variant<
+            key_create_operation,
+            account_create_operation,
+            account_update_operation,
+            delegate_create_operation,
+            delegate_update_operation,
+            asset_create_operation,
+            asset_update_operation,
+            account_set_vote_operation
+         > operation;
+      
 } } // bts::chain
 
-FC_REFLECT( bts::chain::operation, (type)(data) )
-FC_REFLECT_ENUM( bts::chain::operation_type, 
-                 (null_op_type) 
-                 (create_account_op_type)
-                 (create_asset_op_type)
-                 (transfer_asset_op_type)
-                 (operations_count)
-               )
+FC_REFLECT( bts::chain::key_create_operation,
+            (fee_paying_account)(fee)
+            (key_data)
+          )
+FC_REFLECT( bts::chain::account_create_operation,
+            (fee_paying_account)(fee) 
+          )
+FC_REFLECT( bts::chain::account_update_operation,
+            (fee_paying_account)(fee) 
+          )
+FC_REFLECT( bts::chain::asset_create_operation,
+            (fee_paying_account)(fee) 
+          )
+FC_REFLECT( bts::chain::asset_update_operation,
+            (fee_paying_account)(fee) 
+          )
+FC_REFLECT( bts::chain::delegate_create_operation,
+            (fee_paying_account)(fee) 
+          )
+FC_REFLECT( bts::chain::delegate_update_operation,
+            (fee_paying_account)(fee) 
+          )
+FC_REFLECT( bts::chain::account_set_vote_operation,
+            (fee_paying_account)(fee) 
+          )
+

@@ -78,11 +78,11 @@ namespace bts { namespace chain {
          static const uint8_t type_id  = base_object_type;
 
          /** return object_id_type() if no anotation is found for id_space */
-         object_id_type                  get_annotation( id_space_type annotation_id_space )const;
-         void                            set_annotation( object_id_type id );
+         object_id_type          get_annotation( id_space_type annotation_id_space )const;
+         void                    set_annotation( object_id_type id );
 
          // serialized
-         object_id_type                       id;
+         object_id_type          id;
 
    };
 

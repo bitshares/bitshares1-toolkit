@@ -1,6 +1,6 @@
 #pragma once
 #include <bts/chain/object.hpp>
-#include <bts/chain/asset_operations.hpp>
+#include <bts/chain/asset.hpp>
 
 namespace bts { namespace chain { 
    class account_object;

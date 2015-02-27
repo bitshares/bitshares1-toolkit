@@ -41,6 +41,22 @@ namespace bts { namespace chain {
    using                               fc::safe;
    using                               fc::flat_map;
    using                               fc::flat_set;
+   using                               fc::static_variant;
+
+   /**
+    *   
+    */
+   enum asset_issuer_permission_flags
+   {
+      charge_transfer_fee = 0x01,
+      charge_market_fee   = 0x02,
+      white_list          = 0x04,
+      halt_market         = 0x08,
+      halt_transfer       = 0x10,
+      override_authority  = 0x20,
+      market_issued       = 0x40
+   };
+
 
    /**
     *  There are many types of fees charged by the network
@@ -127,7 +143,7 @@ namespace bts { namespace chain {
       market_order_object_type,
       short_order_object_type,
       call_order_object_type,
-      data_object_type
+      custom_object_type,
    };
 
    enum impl_object_type
@@ -195,7 +211,7 @@ namespace bts { namespace chain {
    class market_order_object;
    class short_order_object;
    class call_order_object;
-   class data_object;
+   class custom_object;
 
    typedef object_id< protocol_ids, key_object_type,          key_object>           key_id_type;
    typedef object_id< protocol_ids, account_object_type,      account_object>       account_id_type;
@@ -204,7 +220,7 @@ namespace bts { namespace chain {
    typedef object_id< protocol_ids, market_order_object_type, market_order_object>  market_order_id_type;
    typedef object_id< protocol_ids, short_order_object_type,  short_order_object>   short_order_id_type;
    typedef object_id< protocol_ids, call_order_object_type,   call_order_object>    call_order_id_type;
-   typedef object_id< protocol_ids, data_object_type,         data_object>          data_object_id_type;
+   typedef object_id< protocol_ids, custom_object_type,       custom_object>        custom_id_type;
 
    // implementation types
    class global_property_object;
@@ -347,7 +363,7 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (market_order_object_type)
                  (short_order_object_type)
                  (call_order_object_type)
-                 (data_object_type)
+                 (custom_object_type)
                )
 FC_REFLECT_ENUM( bts::chain::impl_object_type, 
                  (impl_global_property_object_type)
