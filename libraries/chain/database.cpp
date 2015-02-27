@@ -30,6 +30,7 @@ database::database()
 
    add_index<primary_index<simple_index<global_property_object>> >();
    add_index<primary_index<simple_index<account_balance_object>> >();
+   add_index<primary_index<simple_index<account_debt_object>> >();
    add_index<primary_index<simple_index<asset_dynamic_data_object>> >();
    add_index<primary_index<simple_index<delegate_vote_object>> >();
 
@@ -130,7 +131,8 @@ void database::init_genesis()
          n->owner.add_authority(genesis_key->get_id(), 1);
          n->owner.weight_threshold = 1;
          n->active = n->owner;
-         n->voting = n->active;
+         n->voting_key = genesis_key->id;
+         n->memo_key = genesis_key->id;
       });
    ilog("Genesis account created");
 
@@ -144,7 +146,7 @@ void database::init_genesis()
          });
       const account_object* delegate_account =
          create<account_object>( [&](account_object* a) {
-            a->active = a->owner = a->voting = genesis_account->owner;
+            a->active = a->owner = genesis_account->owner;
             a->name = string("init") + fc::to_string(i);
             a->balances = balance_obj->id;
          });

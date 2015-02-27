@@ -40,6 +40,9 @@ namespace bts { namespace chain {
    class account_debt_object : public object
    {
       public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_account_debt_object_type;
+
          flat_map<asset_id_type, object_id_type> call_orders;
    };
 
@@ -57,12 +60,13 @@ namespace bts { namespace chain {
          string                name;
          authority             owner;
          authority             active;
-         authority             voting;
+         key_id_type           memo_key;
+         key_id_type           voting_key;
 
          vector<delegate_id_type> delegate_votes;
 
-         object_id_type           balances;
-         object_id_type           debts;
+         account_balance_id_type  balances;
+         account_debt_id_type     debts;
          vector<asset_id_type>    authorized_assets;
    };
 
@@ -83,10 +87,11 @@ namespace bts { namespace chain {
 }} 
 FC_REFLECT_DERIVED( bts::chain::account_object, 
                     (bts::chain::annotated_object), 
-                    (name)(owner)(active)(voting)(delegate_votes)(balances)(debts)(authorized_assets) )
+                    (name)(owner)(active)(memo_key)(voting_key)(delegate_votes)(balances)(debts)(authorized_assets) )
 
 FC_REFLECT_DERIVED( bts::chain::meta_account_object, 
                     (bts::chain::object), 
                     (memo_key)(delegate_id) )
 
 FC_REFLECT_DERIVED( bts::chain::account_balance_object, (bts::chain::object), (balances) )
+FC_REFLECT_DERIVED( bts::chain::account_debt_object, (bts::chain::object), (call_orders) );

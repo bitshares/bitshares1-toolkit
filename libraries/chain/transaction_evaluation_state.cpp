@@ -20,9 +20,6 @@ namespace bts { namespace chain {
          case authority::active:
             au = &account->active;
             break;
-         case authority::voting:
-            au = &account->voting;
-            break;
          default:
             FC_ASSERT( false, "Invalid Account Auth Class" );
       };
