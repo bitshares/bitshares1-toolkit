@@ -58,29 +58,12 @@ namespace bts { namespace chain {
        account_id_type paying_account;
        asset           registration_fee;
 
-       vector< pair<public_key_type,uint16_t> > owner_register_keys; // new key/weight pair to add to owner
-       vector< pair<public_key_type,uint16_t> > active_register_keys; // new key/weight pair to add to active
-       vector< pair<public_key_type,uint16_t> > voter_register_keys; // new key/weight pair to add to voting
-      
        authority                 owner;
        authority                 active;
-       authority                 voting;
-       public_key_type           memo; 
+       key_id_type               memo_key;
+       key_id_type               voting_key;
 
        object_id_type evaluate( transaction_evaluation_state& eval_state, bool apply = true);
-   };
-
-   /**
-    *  This operation will set the delegates that a particular account
-    *  is voting for.  This is only valid if any of the voting, active, or
-    *  owner authorities have signed.
-    */
-   struct delegate_vote_account 
-   {
-       static const operation_type type;
-
-       account_id_type          account_id;
-       vector<delegate_id_type> approved_delegates;
    };
 
    /**
@@ -412,8 +395,9 @@ FC_REFLECT( bts::chain::create_account_operation,
             (paying_account)
             (registration_fee)
             (owner)
-            (active) 
-            (voting)
+            (active)
+            (memo_key)
+            (voting_key)
           )
 
 FC_REFLECT( bts::chain::update_asset_white_list_operation, (asset_id)(account_id)(authorize) )

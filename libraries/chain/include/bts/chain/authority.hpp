@@ -16,9 +16,7 @@ namespace bts { namespace chain {
          owner  = 0,
          /** the key that is able to perform normal operations */
          active = 1,
-         /** a key that is only authorized to change voting behavior */
-         voting = 2,
-         key    = 3
+         key    = 2
       };
       void add_authority( key_id_type k, weight_type w )
       {
@@ -35,4 +33,4 @@ namespace bts { namespace chain {
 } } // namespace bts::chain
 
 FC_REFLECT( bts::chain::authority, (weight_threshold)(auths) )
-FC_REFLECT_ENUM( bts::chain::authority::classification, (owner)(active)(voting)(key) )
+FC_REFLECT_ENUM( bts::chain::authority::classification, (owner)(active)(key) )

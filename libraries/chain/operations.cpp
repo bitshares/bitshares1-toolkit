@@ -92,7 +92,8 @@ object_id_type create_account_operation::evaluate( transaction_evaluation_state&
              n->name = this->name;
              n->owner = this->owner;
              n->active = this->active;
-             n->voting = this->voting;
+             n->memo_key = this->memo_key;
+             n->voting_key = this->voting_key;
              n->balances = balance_obj->id;
           });
 
