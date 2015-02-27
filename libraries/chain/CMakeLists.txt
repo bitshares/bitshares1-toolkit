@@ -4,6 +4,7 @@ add_library( bts_chain
              asset.cpp
              index.cpp
              account_object.cpp
+             key_object.cpp
              account_index.cpp
              asset_index.cpp
              block.cpp 
