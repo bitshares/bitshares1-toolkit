@@ -3,6 +3,8 @@
 #include <bts/chain/account_index.hpp>
 #include <bts/chain/key_object.hpp>
 
+#include <fc/crypto/digest.hpp>
+
 #define BOOST_TEST_MODULE ChainDatabaseTests
 #include <boost/test/included/unit_test.hpp>
 
@@ -10,33 +12,47 @@ using namespace bts::chain;
 
 struct database_fixture {
    database db;
+   signed_transaction trx;
+   key_id_type genesis_key;
+   fc::ecc::private_key private_key = fc::ecc::private_key::generate();
 
    database_fixture()
    {
       db.init_genesis();
+      BOOST_REQUIRE(key_id_type()(db));
+      genesis_key = key_id_type()(db)->id;
       db.push_undo_state();
    }
    ~database_fixture(){}
+
+   create_account_operation make_account() {
+      create_account_operation create_account;
+      create_account.name = "nathan";
+
+      create_account.paying_account = db.get_account_index().get("init0")->id;
+      create_account.owner.add_authority(genesis_key, 123);
+      create_account.active.add_authority(genesis_key, 321);
+      create_account.memo_key = genesis_key;
+      create_account.voting_key = genesis_key;
+      create_account.registration_fee = asset();
+
+      return create_account;
+   }
 };
 
 BOOST_FIXTURE_TEST_SUITE( operation_unit_tests, database_fixture )
 
+BOOST_AUTO_TEST_CASE( fail_create_account )
+{
+   trx.operations.push_back(make_account());
+   //Transaction is not signed; should fail.
+   BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
+}
+
 BOOST_AUTO_TEST_CASE( create_account )
 {
-   signed_transaction trx;
-   create_account_operation create_account;
-   create_account.name = "nathan";
-
-   fc::ecc::private_key prk = fc::ecc::private_key::generate();
-   create_account.paying_account = db.get_account_index().get("init0")->id;
-   key_id_type genesis_key = create_account.paying_account(db)->owner.auths.begin()->first;
-   create_account.owner.add_authority(genesis_key, 123);
-   create_account.active.add_authority(genesis_key, 321);
-   create_account.memo_key = genesis_key;
-   create_account.voting_key = genesis_key;
-   create_account.registration_fee = asset();
-
-   trx.operations.push_back(create_account);
+   trx.operations.push_back(make_account());
+   trx.signatures.push_back(fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis"))).sign_compact(fc::digest(trx)));
    db.push_transaction(trx);
 
    const account_object* nathan_account = db.get_account_index().get("nathan");
