@@ -5,10 +5,10 @@
 #include <bts/chain/operations.hpp>
 #include <bts/chain/asset.hpp>
 
-namespace bts { namespace chain { 
+namespace bts { namespace chain {
 
    /**
-    *   
+    *
     */
    enum asset_issuer_permission_flags
    {
@@ -24,21 +24,21 @@ namespace bts { namespace chain {
 
    /**
     *  @class create_account_operation
-    *  @brief Creates a new account 
+    *  @brief Creates a new account
     *
     *  An account is a named pair authorities (permissions) that are assigned a name.   An
-    *  authority is simply a N-of-M multi-signature specification. 
+    *  authority is simply a N-of-M multi-signature specification.
     *
     *  These authorities are separated into two categories: owner and active.  The *owner*
     *  authority is designed to be kept in "cold-storage" and is not required for day-to-day
     *  operations.   The *active* authority maintains spending control over the account. The
-    *  *owner* may change the *active* authority at any time. 
+    *  *owner* may change the *active* authority at any time.
     *
-    *  Accounts are transferrable if signed by the owner and a new registration_fee is paid. 
-    *  You "transfer" an account by "re-registering it".   
+    *  Accounts are transferrable if signed by the owner and a new registration_fee is paid.
+    *  You "transfer" an account by "re-registering it".
     *
     *  Names may only contain [a-z0-9] or '-' and must start with [a-z] and not have more
-    *  than one '-' in a row.   A name can have up to 63 characters.  
+    *  than one '-' in a row.   A name can have up to 63 characters.
     *
     *  Sub-accounts can be created by specifying a "/", ie: root/child/grandchild.   The root account active
     *  key has signing authority over all children.  The full name "root/child/grandchild" is part of
@@ -47,7 +47,7 @@ namespace bts { namespace chain {
     *  The registration_fee depends upon the number of characters in the name and the
     *  current median registration_fee published by the delegates.  Names with more than
     *  8 characters or that include a number are free.  The registration fee can be
-    *  calculated as follows registration_fee*10^(8-NUM_CHARACTERS). There is no registration 
+    *  calculated as follows registration_fee*10^(8-NUM_CHARACTERS). There is no registration
     *  fee for child accounts.
     */
    struct create_account_operation
@@ -66,7 +66,7 @@ namespace bts { namespace chain {
 
    /**
     *  @class create_asset_operation
-    *  @brief Creates a new asset 
+    *  @brief Creates a new asset
     *
     *  An asset can be used for everything from stocks, to bonds, to
     *  rewards points, tickets or even a market-issued asset.
@@ -83,19 +83,19 @@ namespace bts { namespace chain {
     *  63 characters and the description field is charged a data fee.
     *
     *  Ability to issue and update an asset depend entirely upon the
-    *  issuer's owner and active keys.  
+    *  issuer's owner and active keys.
     *
     *  Assets can grant their issuers many different privileges so that
     *  the issuer can comply with all necessary regulatory compliance. Any
     *  of these permissions can be permanently revoked to protect the
-    *  owners of the asset.   
+    *  owners of the asset.
     *
     *  BitAssets (aka Market Issued Assets) can be created by anyone provided
-    *  they specify a set of feed producers. 
+    *  they specify a set of feed producers.
     *
     *  The issuer of an asset can specify a transfer fee that will be paid to
     *  the issuer on every transfer operation for the specified asset.
-    *  
+    *
     *  The issuer can also specify a market fee as a percent of the proceeds
     *  of every order denominated this asset type.  This is designed to
     *  allow exchanges to make money in the traditional maner.
@@ -116,17 +116,17 @@ namespace bts { namespace chain {
        uint32_t                issuer_permissions; /// freeze market, clawback @see asset_issuer_permission_flags
        uint32_t                flags; /// white_list, halt_market, halt_transfer @see asset_issuer_permission_flags
        /** max producers = 101 */
-       vector<account_id_type> feed_producers; 
+       vector<account_id_type> feed_producers;
        asset_id_type           short_backing_asset; // for bitassets, specifies what may be used as collateral.
    };
 
    /**
-    *  Used to update assets records.  
-    *  
-    *  This operation is only valid if signed by the owner key of the issuer. 
-    *  Permissions can be removed but not added. 
+    *  Used to update assets records.
+    *
+    *  This operation is only valid if signed by the owner key of the issuer.
+    *  Permissions can be removed but not added.
     *  Flags can only be set if there exist proper permissions.
-    *  Certain fee fields can only be specified if permissions permit. 
+    *  Certain fee fields can only be specified if permissions permit.
     *
     *  A data fee will be charged on the bytes in the description.
     */
@@ -140,7 +140,7 @@ namespace bts { namespace chain {
       share_type              new_transfer_fee       = -1; // default value means don't change
       uint32_t                new_issuer_permissions = -1; // default value means don't change
       uint32_t                new_flags   = -1; // default value means don't change
-      vector<account_id_type> feed_producers; 
+      vector<account_id_type> feed_producers;
       asset                   data_fee;     /// must match the expected data fee
    };
 
@@ -177,7 +177,7 @@ namespace bts { namespace chain {
 
    /**
     *  This operation will publish a price feed and is only valid
-    *  if the publisher is in the set of feed_producers or the 
+    *  if the publisher is in the set of feed_producers or the
     *  active set of delegates.  Published feeds are only
     *  valid for 24 hours.
     *
@@ -198,20 +198,20 @@ namespace bts { namespace chain {
    struct public_fee_schedule_operation
    {
        static const operation_type type;
-       
+
        delegate_id_type                                          delegate_id;
        flat_map< enum_type<uint8_t,fee_type>, share_type >       fee_schedule;
    };
 
    /**
-    *  Transfers an asset from one account to another account (optionally an authority).  
+    *  Transfers an asset from one account to another account (optionally an authority).
     *
-    *  The from field must specify either a valid account *or* a valid balance ID.  
+    *  The from field must specify either a valid account *or* a valid balance ID.
     *  A balance ID refers to a particular authority and asset type.  It is designed for
-    *  operating without accounts and compatibility with other crypto-systems.  
+    *  operating without accounts and compatibility with other crypto-systems.
     *
     *  The to field refers to either a valid account or balance ID or 0 if to_authority
-    *  is set in which case a new authority will be defined. 
+    *  is set in which case a new authority will be defined.
     *
     *  Some transfers of user issued assets require a fee to be paid to the issuer.  This
     *  fee will be taken from the "from account".
@@ -219,12 +219,12 @@ namespace bts { namespace chain {
    struct transfer_asset_operation
    {
        static const operation_type type;
-       
-       account_id_type     from; 
-       account_id_type     to;  
+
+       account_id_type     from;
+       account_id_type     to;
        asset               amount;
        share_type          transfer_fee; // same as amount.asset_id
-       /** By convention, uses the memo_key of the to account and  
+       /** By convention, uses the memo_key of the to account and
         * from account to derive a one time child key of the to
         * account using the transaction timestamp and blockhash as
         * the seed. Then use AES to encrypt the memo.
@@ -246,7 +246,7 @@ namespace bts { namespace chain {
    struct sell_asset_operation
    {
        static const operation_type type;
-       
+
        account_id_type   from_account;
        asset             amount_for_sale;
        asset             min_amount_to_receive;
@@ -262,23 +262,23 @@ namespace bts { namespace chain {
    struct cancel_sell_asset_operation
    {
        static const operation_type type;
-       
+
        market_order_id_type market_order_id;
    };
 
    /**
-    *  A short operation will take out a loan at the given APR interest 
-    *  rate.   All short operations execute at the price feed. The short 
+    *  A short operation will take out a loan at the given APR interest
+    *  rate.   All short operations execute at the price feed. The short
     *  seller can specifiy any call price above the minimum required call price
-    *  to stop losses.  
+    *  to stop losses.
     *
     *  A margin call is triggered when the price feed *AND* the highest bid is
     *  below the call price.  The collateral will be used to buy back and cover
-    *  the full balance at any price up to 10% above the feed.  Don't get 
-    *  margin called in a thin market. 
+    *  the full balance at any price up to 10% above the feed.  Don't get
+    *  margin called in a thin market.
     *
     *
-    *  
+    *
     */
    struct short_asset_operation
    {
@@ -288,7 +288,7 @@ namespace bts { namespace chain {
       asset           total_collateral;
       price           limit_price;  // protect the short from feed movements.
       price           call_price;   // desired call price, must be greater than min call price (2x)
-      uint16_t        interest_rate_apr = 0; // 0 to 10,000 
+      uint16_t        interest_rate_apr = 0; // 0 to 10,000
 
    };
 
@@ -297,7 +297,7 @@ namespace bts { namespace chain {
       static const operation_type type;
 
       account_id_type cover_account_id;
-      asset           amount_to_cover; 
+      asset           amount_to_cover;
       asset           collateral_to_add;
       price           new_call_price;   // desired call price
 
@@ -307,7 +307,7 @@ namespace bts { namespace chain {
    /**
     *  All delegates must pay a basic registration fee to
     *  be considered.  This fee is to discourage the creation
-    *  of frivious delegates that may dilute voter attention 
+    *  of frivious delegates that may dilute voter attention
     *  and make certain blockchain operations more expensive.
     */
    struct register_delegate_operation
@@ -316,7 +316,7 @@ namespace bts { namespace chain {
 
       account_id_type   delegate_account;
       public_key_type   block_signing_key;
-      uint16_t          pay_rate; ///< 0 to BTS_MAX_PAY_RATE 
+      uint16_t          pay_rate; ///< 0 to BTS_MAX_PAY_RATE
       secret_hash_type  first_secret;
       vector<asset>     fee_schedule;
       asset             delegate_registration_fee;
@@ -365,7 +365,7 @@ namespace bts { namespace chain {
 
 FC_REFLECT( bts::chain::create_asset_operation, (symbol) )
 
-FC_REFLECT( bts::chain::create_account_operation, 
+FC_REFLECT( bts::chain::create_account_operation,
             (name)
             (paying_account)
             (registration_fee)
@@ -377,7 +377,7 @@ FC_REFLECT( bts::chain::create_account_operation,
 
 FC_REFLECT( bts::chain::update_asset_white_list_operation, (asset_id)(account_id)(authorize) )
 FC_REFLECT( bts::chain::issue_asset_operation, (to_account)(amount_to_issue) )
-FC_REFLECT( bts::chain::register_delegate_operation, 
+FC_REFLECT( bts::chain::register_delegate_operation,
             (delegate_account)
             (block_signing_key)
             (pay_rate)

@@ -88,6 +88,10 @@ asset_index&   database::get_asset_index()
    return dynamic_cast<asset_index&>( get_index<asset_object>() ); 
 }
 
+const asset_object*database::get_base_asset() const
+{
+   return get_asset_index().get(BTS_SYMBOL);
+}
 
 void database::flush()
 {
@@ -96,8 +100,8 @@ void database::flush()
 
 void database::open( const fc::path& data_dir )
 { try {
-   init_genesis();
-   _block_num_to_block.open( data_dir / "database" / "block_num_to_block" );
+      init_genesis();
+      _block_num_to_block.open( data_dir / "database" / "block_num_to_block" );
    _block_id_to_num.open( data_dir / "database" / "block_id_to_num" );
    _undo_db.open( data_dir / "database" / "undo_db" );
    _object_id_to_object->open( data_dir / "database" / "objects" );
