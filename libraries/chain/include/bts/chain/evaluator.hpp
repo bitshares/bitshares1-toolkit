@@ -9,14 +9,14 @@ namespace bts { namespace chain {
    class post_evaluator
    {
       public:
-         virtual ~post_evaluator(){};
+         virtual ~post_evaluator(){}
          virtual void post_evaluate( generic_evaluator* ge )const = 0;
    };
 
    class generic_evaluator
    {
       public:
-         virtual ~generic_evaluator();
+         virtual ~generic_evaluator(){}
 
          virtual int get_type()const = 0;
          virtual object_id_type start_evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply  );
@@ -51,7 +51,6 @@ namespace bts { namespace chain {
          }
    };
 
-
    template<typename OperationClass>
    class evaluator : public generic_evaluator
    {
@@ -59,6 +58,4 @@ namespace bts { namespace chain {
          typedef OperationClass  operation_class_type;
          virtual int get_type()const { return operation::tag<operation_class_type>::value; }
    };
-
-
 } }

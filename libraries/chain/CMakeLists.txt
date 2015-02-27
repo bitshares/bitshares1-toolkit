@@ -12,6 +12,7 @@ add_library( bts_chain
              database.cpp
              address.cpp
              transaction_evaluation_state.cpp
+             evaluator.cpp
            )
 
 target_link_libraries( bts_chain fc bts_db leveldb )

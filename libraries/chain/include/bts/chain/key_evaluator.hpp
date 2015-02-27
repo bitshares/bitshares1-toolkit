@@ -9,7 +9,7 @@ namespace bts { namespace chain {
          virtual object_id_type evaluate( const operation& o ) override
          {
             const auto& op = o.get<key_create_operation>();
-            fee_paying_account = op.fee_paying_account(db()); 
+            fee_paying_account = op.fee_paying_account(db());
             FC_ASSERT( fee_paying_account != nullptr );
             fee_paying_account_balance = fee_paying_account->balances(db());
             FC_ASSERT( fee_paying_account_balance );
@@ -27,6 +27,7 @@ namespace bts { namespace chain {
             new_key_object = db().create<key_object>( [&]( key_object* obj ){
                 obj->key_data = op.key_data;
             });
+            FC_ASSERT( new_key_object );
             return new_key_object->id;
          }
 
