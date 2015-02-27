@@ -19,19 +19,14 @@ namespace bts { namespace chain {
          virtual ~generic_evaluator();
 
          virtual int get_type()const = 0;
-         virtual object_id_type evaluate( transaction_evaluation_state& eval_state, const operation& op )
-         {
-            trx_state   = &eval_state;
-            current_op  = &op;
-            auto result = evaluate( op );
-            return result;
-         }
+         virtual object_id_type start_evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply  );
+
          virtual object_id_type evaluate( const operation& op ) = 0;
-         virtual object_id_type evaluate() = 0;
-         virtual object_id_type apply() = 0;
+         virtual object_id_type apply( const operation& op ) = 0;
+
+         database& db()const;
 
       protected:
-         const operation*                     current_op;
          transaction_evaluation_state*        trx_state;
    };
 
@@ -47,14 +42,11 @@ namespace bts { namespace chain {
    class op_evaluator_impl : public op_evaluator
    {
       public:
-         virtual object_id_type evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply = true )
+         virtual object_id_type evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply = true ) override
          {
              T eval;
-             auto result = eval.evaluate( eval_state, op );
-             if( apply )
-                result = eval.apply();
-             for( const auto& pe : post_evals )
-                pe->post_evaluate( &eval );
+             auto result = eval.start_evaluate( eval_state, op, apply );
+             for( const auto& pe : post_evals ) pe->post_evaluate( &eval );
              return result;
          }
    };
@@ -65,53 +57,8 @@ namespace bts { namespace chain {
    {
       public:
          typedef OperationClass  operation_class_type;
-
          virtual int get_type()const { return operation::tag<operation_class_type>::value; }
-
-         virtual object_id_type evaluate( const operation& gop ) override
-         {
-            current_op = &gop;
-            //_op = gop.as<operation_class_type>();
-            //gop.visit( [this]( const operation_class_type& o ){ _op = &o; } );
-            _op = &gop.get<operation_class_type>();
-            return evaluate();
-         }
-         const OperationClass& op()const { return _op; }
-
-      private:
-         operation_class_type  _op;
    };
 
-   /*
-   class create_account_evaluator : public evaluator<create_account_operation>
-   {
-      public:
-         typedef create_account_operation operation_class_type;
-
-         virtual object_id_type evaluate()
-         {
-            op().field... 
-         }
-
-         virtual object_id_type apply()
-         {
-         }
-         all of my state variables here... that normally exist on the stack.
-   };
-   class advanced_create_account_eval : public create_account_evaluator
-   {
-         virtual object_id_type evaluate()
-         {
-            base::evaluate();
-            op().field... 
-         }
-
-         virtual object_id_type apply()
-         {
-           base::apply();
-           ... 
-         }
-   };
-   */
 
 } }
