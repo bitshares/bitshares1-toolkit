@@ -44,7 +44,7 @@ namespace bts { namespace chain {
    using                               fc::static_variant;
 
    /**
-    *   
+    *
     */
    enum asset_issuer_permission_flags
    {
@@ -86,7 +86,7 @@ namespace bts { namespace chain {
          number = (uint64_t(s)<<56) | (uint64_t(t)<<48) | i;
       }
       object_id_type(){ number = 0; }
-   
+
       uint8_t space()const       { return number >> 56;              }
       uint8_t type()const        { return number >> 48 & 0x00ff;     }
       uint16_t space_type()const { return number >> 48;              }
@@ -105,7 +105,7 @@ namespace bts { namespace chain {
    };
 
    /**
-    *  Objects are divided into namespaces each with 
+    *  Objects are divided into namespaces each with
     *  their own unique sequence numbers for both
     *  object IDs and types.  These namespaces
     *  are useful for building plugins that wish
@@ -113,13 +113,13 @@ namespace bts { namespace chain {
     */
    enum id_space_type
    {
-      /** objects that may reference other objects created as part of the same transaction */
+      /** objects that may be referenced by other objects created as part of the same transaction */
       relative_protocol_ids = 0,
       /** objects that may be directly referred to by the protocol operations */
       protocol_ids          = 1,
       /** objects created for implementation specific reasons such as maximizing performance */
       implementation_ids    = 2,
-      /** objects created for the purpose of tracking meta info not used by validation, 
+      /** objects created for the purpose of tracking meta info not used by validation,
        * such as names and descriptions of assets or the value of data objects. */
       meta_info_ids = 3
    };
@@ -167,7 +167,7 @@ namespace bts { namespace chain {
    class object;
    class database;
 
-      
+
 
    template<uint8_t SpaceID, uint8_t TypeID, typename T = object>
    struct object_id
@@ -184,10 +184,11 @@ namespace bts { namespace chain {
       object_id( object_id_type id ):instance(id.instance())
       {
          assert( id.space() == SpaceID && id.type() == TypeID );
-         FC_ASSERT( id.space() == SpaceID && id.type() == TypeID, "", 
-                    ("id.space",id.space())("SpaceID",SpaceID) 
+         FC_ASSERT( id.space() == SpaceID && id.type() == TypeID, "",
+                    ("id.space",id.space())("SpaceID",SpaceID)
                     ("id.type",id.type())("TypeID",TypeID) );
       }
+
       operator object_id_type()const { return object_id_type( SpaceID, TypeID, instance.value ); }
       operator uint64_t()const { return object_id_type( *this ).number; }
 
@@ -298,13 +299,13 @@ namespace fc
        vo.number |= (space_id << 56) | (type_id << 48);
     }
     template<uint8_t SpaceID, uint8_t TypeID, typename T>
-    void to_variant( const bts::chain::object_id<SpaceID,TypeID,T>& var,  fc::variant& vo ) 
-    { 
+    void to_variant( const bts::chain::object_id<SpaceID,TypeID,T>& var,  fc::variant& vo )
+    {
        vo = fc::to_string(SpaceID) + "." + fc::to_string(TypeID) + "." + fc::to_string(var.instance.value);
     }
     template<uint8_t SpaceID, uint8_t TypeID, typename T>
-    void from_variant( const fc::variant& var,  bts::chain::object_id<SpaceID,TypeID,T>& vo ) 
-    { 
+    void from_variant( const fc::variant& var,  bts::chain::object_id<SpaceID,TypeID,T>& vo )
+    {
        const auto& s = var.get_string();
        auto first_dot = s.find('.');
        auto second_dot = s.find('.',first_dot+1);
@@ -320,34 +321,34 @@ FC_REFLECT( bts::chain::public_key_type::binary_key, (data)(check) );
 FC_REFLECT( bts::chain::object_id_type, (number) )
 
 // REFLECT object_id manually because it has 2 template params
-namespace fc {  
-template<uint8_t SpaceID, uint8_t TypeID, typename T> 
-struct get_typename<bts::chain::object_id<SpaceID,TypeID,T>>  
-{ 
-   static const char* name() { 
+namespace fc {
+template<uint8_t SpaceID, uint8_t TypeID, typename T>
+struct get_typename<bts::chain::object_id<SpaceID,TypeID,T>>
+{
+   static const char* name() {
       return typeid(get_typename).name();
       static std::string _str = string("bts::chain::object_id<")+fc::to_string(SpaceID) + ":" + fc::to_string(TypeID)+">";
       return _str.c_str();
-   } 
-}; 
+   }
+};
 
-template<uint8_t SpaceID, uint8_t TypeID, typename T> 
+template<uint8_t SpaceID, uint8_t TypeID, typename T>
 struct reflector<bts::chain::object_id<SpaceID,TypeID,T> >
 {
-    typedef bts::chain::object_id<SpaceID,TypeID,T> type; 
-    typedef fc::true_type  is_defined; 
-    typedef fc::false_type is_enum; 
-    enum  member_count_enum {  
+    typedef bts::chain::object_id<SpaceID,TypeID,T> type;
+    typedef fc::true_type  is_defined;
+    typedef fc::false_type is_enum;
+    enum  member_count_enum {
       local_member_count = 1,
       total_member_count = 1
-    }; 
+    };
     template<typename Visitor>
-    static inline void visit( const Visitor& visitor ) 
-    { 
-       typedef decltype(((type*)nullptr)->instance) member_type;  
-       visitor.TEMPLATE operator()<member_type,type,&type::instance>( "instance" ); 
+    static inline void visit( const Visitor& visitor )
+    {
+       typedef decltype(((type*)nullptr)->instance) member_type;
+       visitor.TEMPLATE operator()<member_type,type,&type::instance>( "instance" );
     }
-}; 
+};
 } // namespace fc
 
 
@@ -357,7 +358,7 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (null_object_type)
                  (base_object_type)
                  (key_object_type)
-                 (account_object_type) 
+                 (account_object_type)
                  (asset_object_type)
                  (delegate_object_type)
                  (market_order_object_type)
@@ -365,13 +366,13 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (call_order_object_type)
                  (custom_object_type)
                )
-FC_REFLECT_ENUM( bts::chain::impl_object_type, 
+FC_REFLECT_ENUM( bts::chain::impl_object_type,
                  (impl_global_property_object_type)
                  (impl_index_meta_object_type)
                  (impl_asset_dynamic_data_type)
                  (impl_account_balance_object_type)
                  (impl_account_debt_object_type)
-                 (impl_delegate_vote_object_type) 
+                 (impl_delegate_vote_object_type)
                  (impl_transaction_object_type)
                )
 

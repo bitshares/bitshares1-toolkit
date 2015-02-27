@@ -17,7 +17,7 @@ namespace bts { namespace chain {
    class account_index;
    class asset_index;
 
-   typedef std::map<fc::static_variant<public_key_type, address>, boost::rational<int64_t> > genesis_allocation;
+   typedef std::map<fc::static_variant<address, public_key_type>, boost::rational<int64_t> > genesis_allocation;
 
    /**
     *  Undo State saves off the initial values associated

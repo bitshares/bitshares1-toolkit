@@ -212,8 +212,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
       for( const auto& handout : initial_allocation )
       {
          signed_transaction trx;
-
-         //NEED OPERATIONS DEFINED MERRRR
+         trx.operations.push_back(key_create_operation({genesis_account->id, asset(), handout.first}));
       }
 
       fc::microseconds duration = fc::time_point::now() - start_time;
