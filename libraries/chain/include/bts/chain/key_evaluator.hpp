@@ -9,15 +9,7 @@ namespace bts { namespace chain {
          virtual object_id_type evaluate( const operation& o ) override
          {
             const auto& op = o.get<key_create_operation>();
-            fee_paying_account = op.fee_paying_account(db());
-            FC_ASSERT( fee_paying_account != nullptr );
-            fee_paying_account_balance = fee_paying_account->balances(db());
-            FC_ASSERT( fee_paying_account_balance );
-            FC_ASSERT( fee_paying_account_balance->get_balance( op.fee.asset_id ) >= op.fee );
-            fee_asset = op.fee.asset_id(db());
-            FC_ASSERT( fee_asset );
-            fee_asset_dyn_data = fee_asset->dynamic_asset_data_id(db());
-            FC_ASSERT( fee_asset_dyn_data );
+            pay_fee( op.fee_paying_account, op.fee );
             return object_id_type();
          }
 
@@ -31,10 +23,6 @@ namespace bts { namespace chain {
             return new_key_object->id;
          }
 
-         const account_object*            fee_paying_account = nullptr;
-         const account_balance_object*    fee_paying_account_balance = nullptr;
-         const asset_object*              fee_asset = nullptr;
-         const asset_dynamic_data_object* fee_asset_dyn_data = nullptr;
          const key_object*                new_key_object = nullptr;
    };
 

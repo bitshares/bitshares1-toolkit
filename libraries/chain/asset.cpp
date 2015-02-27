@@ -13,4 +13,19 @@ namespace bts { namespace chain {
                 <
                 boost::rational<uint64_t>(b.quote.amount.value,b.base.amount.value);
       }
+      asset operator * ( const asset& a, const price& b )
+      {
+         if( a.asset_id == b.base.asset_id )
+         {
+            // TODO: use uint128 to ensure that we can do (amount * numberator) / denominator
+            // MAKE SURE THE RESULT does not overflow
+            return asset(boost::rational_cast<uint64_t>(a.amount.value *
+                   boost::rational<uint64_t>(b.quote.amount.value,b.base.amount.value)), b.quote.asset_id);
+         }
+         else if( a.asset_id == b.quote.asset_id )
+         {
+            return asset();
+         }
+         FC_ASSERT( !"invalid asset * price", "", ("asset",a)("price",b) );
+      }
 } } // bts::chain

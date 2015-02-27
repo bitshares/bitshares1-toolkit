@@ -27,7 +27,34 @@ namespace bts { namespace chain {
          database& db()const;
 
       protected:
-         transaction_evaluation_state*        trx_state;
+         /**
+          *  Pays the fee and returns the number of CORE asset that were provided,
+          *  after it is don, the fee_paying_account property will be set.
+          */
+         share_type pay_fee( account_id_type account_id, asset fee );
+
+         /**
+          *  Gets the balance of the account after all modifications that have been applied 
+          *  while evaluating this operation.
+          */
+         asset      get_account_balance( const account_object* for_account, const asset_object* for_asset )const;
+
+         struct fee_stats 
+         { 
+            share_type to_issuer; 
+            share_type from_pool;
+         };
+
+         const account_object*            fee_paying_account = nullptr;
+         const asset_object*              fee_asset          = nullptr;
+         const asset_dynamic_data_object* fee_asset_dyn_data = nullptr;
+
+         /** Tracks the total fees paid in each asset type and the
+          * total amount taken from the fee pool of that asset.
+          */
+         flat_map<const asset_object*, fee_stats>                               fees_paid;
+         flat_map< pair<const account_object*,const asset_object*>, share_type> delta_balance;
+         transaction_evaluation_state*                                          trx_state;
    };
 
    class op_evaluator
