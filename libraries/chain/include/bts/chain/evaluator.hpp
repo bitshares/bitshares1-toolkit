@@ -1,5 +1,6 @@
 #pragma once
 #include <bts/chain/operations.hpp>
+#include <bts/chain/authority.hpp>
 
 namespace bts { namespace chain {
 
@@ -32,12 +33,17 @@ namespace bts { namespace chain {
           *  after it is don, the fee_paying_account property will be set.
           */
          share_type pay_fee( account_id_type account_id, asset fee );
+         bool       verify_authority( const account_object*, authority::classification );
 
          /**
           *  Gets the balance of the account after all modifications that have been applied 
           *  while evaluating this operation.
           */
-         asset      get_account_balance( const account_object* for_account, const asset_object* for_asset )const;
+         asset      get_balance( const account_object* for_account, const asset_object* for_asset )const;
+         void       adjust_balance( const account_object* for_account, const asset_object* for_asset, share_type delta );
+
+         void       apply_delta_balances();
+         void       apply_delta_fee_pools();
 
          struct fee_stats 
          { 
@@ -46,15 +52,16 @@ namespace bts { namespace chain {
          };
 
          const account_object*            fee_paying_account = nullptr;
+         const account_balance_object*    fee_paying_account_balances = nullptr;
          const asset_object*              fee_asset          = nullptr;
          const asset_dynamic_data_object* fee_asset_dyn_data = nullptr;
 
          /** Tracks the total fees paid in each asset type and the
           * total amount taken from the fee pool of that asset.
           */
-         flat_map<const asset_object*, fee_stats>                               fees_paid;
-         flat_map< pair<const account_object*,const asset_object*>, share_type> delta_balance;
-         transaction_evaluation_state*                                          trx_state;
+         flat_map<const asset_object*, fee_stats>                                     fees_paid;
+         flat_map< const account_object*, flat_map<const asset_object*, share_type> > delta_balance;
+         transaction_evaluation_state*                                                trx_state;
    };
 
    class op_evaluator

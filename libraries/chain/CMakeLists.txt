@@ -1,6 +1,7 @@
 file(GLOB HEADERS "include/bts/chain/*.hpp")
 
 add_library( bts_chain 
+             evaluator.cpp
              asset.cpp
              index.cpp
              account_object.cpp
@@ -12,7 +13,6 @@ add_library( bts_chain
              database.cpp
              address.cpp
              transaction_evaluation_state.cpp
-             evaluator.cpp
            )
 
 target_link_libraries( bts_chain fc bts_db leveldb )

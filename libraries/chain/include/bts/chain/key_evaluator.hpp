@@ -18,6 +18,9 @@ namespace bts { namespace chain {
 
          virtual object_id_type apply( const operation& o ) override
          {
+            apply_delta_balances();
+            apply_delta_fee_pools();
+
             const auto& op = o.get<key_create_operation>();
             new_key_object = db().create<key_object>( [&]( key_object* obj ){
                 obj->key_data = op.key_data;

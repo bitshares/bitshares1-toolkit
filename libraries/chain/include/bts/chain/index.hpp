@@ -76,6 +76,15 @@ namespace bts { namespace chain {
                                     
          virtual void               add( unique_ptr<object> o ) = 0;
          virtual void               modify( const object* obj, const std::function<void(object*)>& ) = 0;
+
+         /**
+          *   Lambda should have the signature:  void(Object*)
+          */
+         template<typename Object, typename Lambda>
+         void modify( const Object* obj, const Lambda& l ) { 
+            modify( obj, std::function<void(object*)>( [&]( object* o ){ l( static_cast<Object*>(o) ); } ) ); 
+         }
+
          virtual void               remove( object_id_type id ) = 0;
                                     
          virtual void               add_observer( const shared_ptr<index_observer>& ) = 0;
