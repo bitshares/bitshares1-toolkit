@@ -179,7 +179,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
    const global_property_object* properties =
       create<global_property_object>( [&](global_property_object* p) {
          p->active_delegates = init_delegates;
-         p->current_fees.resize(FEE_TYPE_COUNT);
       });
    (void)properties;
    ilog("Genesis properties created");

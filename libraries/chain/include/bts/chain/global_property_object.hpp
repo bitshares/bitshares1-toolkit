@@ -20,13 +20,13 @@ namespace bts { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_global_property_object_type;
 
-         vector<delegate_id_type> active_delegates; // updated once per round
-         vector<share_type>       current_fees; // indexed by fee_type, median of active delegate fee schedules
-         uint8_t                  block_interval = 5; // seconds
-         uint32_t                 maximum_transaction_size = 10*1024; // 10KB
-         uint32_t                 maximum_block_size = 1024*1024; // 1 MB, 200KB/sec
-         uint32_t                 maximum_undo_history = 1024;
-         uint32_t                 maximum_time_until_expiration = 60*60*24; // 1 day
+         vector<delegate_id_type>              active_delegates; // updated once per round
+         fc::array<share_type,FEE_TYPE_COUNT>  current_fees; // indexed by fee_type, median of active delegate fee schedules
+         uint8_t                               block_interval = 5; // seconds
+         uint32_t                              maximum_transaction_size = 10*1024; // 10KB
+         uint32_t                              maximum_block_size = 1024*1024; // 1 MB, 200KB/sec
+         uint32_t                              maximum_undo_history = 1024;
+         uint32_t                              maximum_time_until_expiration = 60*60*24; // 1 day
    };
 }} 
 
