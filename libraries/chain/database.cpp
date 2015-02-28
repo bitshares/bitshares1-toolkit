@@ -376,5 +376,8 @@ const global_property_object* database::get_global_properties()const
 {
    return get<global_property_object>( object_id_type( global_property_object::space_id, global_property_object::type_id, 0 ) );
 }
-
+share_type  database::current_fee( fee_type f )const
+{
+   return get_global_properties()->current_fees.at( f );
+}
 } } // namespace bts::chain
