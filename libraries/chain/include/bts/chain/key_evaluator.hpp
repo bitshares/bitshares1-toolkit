@@ -9,7 +9,10 @@ namespace bts { namespace chain {
          virtual object_id_type evaluate( const operation& o ) override
          {
             const auto& op = o.get<key_create_operation>();
-            pay_fee( op.fee_paying_account, op.fee );
+            auto bts_fee_paid = pay_fee( op.fee_paying_account, op.fee );
+            auto bts_fee_required = db().get_global_properties()->current_fees[ key_creation_fee_type ];
+            FC_ASSERT( bts_fee_paid >= bts_fee_required );
+
             return object_id_type();
          }
 

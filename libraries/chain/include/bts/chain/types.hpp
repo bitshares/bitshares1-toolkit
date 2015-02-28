@@ -65,6 +65,7 @@ namespace bts { namespace chain {
     */
    enum fee_type
    {
+      key_creation_fee_type,
       account_registration_fee_type, ///< the cost to register the cheapest non-free account
       asset_registration_fee_type, ///< the cost to register the cheapest asset
       market_fee_type, ///< a percentage charged on market orders

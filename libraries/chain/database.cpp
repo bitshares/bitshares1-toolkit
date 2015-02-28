@@ -373,5 +373,9 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
+const global_property_object* database::get_global_properties()const
+{
+   return get<global_property_object>( object_id_type( global_property_object::space_id, global_property_object::type_id, 0 ) );
+}
 
 } } // namespace bts::chain
