@@ -30,9 +30,11 @@ namespace bts { namespace chain {
       {
          fee_from_pool = fee * fee_asset->core_exchange_rate;
          FC_ASSERT( fee_from_pool.asset_id == asset_id_type() );
-         FC_ASSERT( fee_from_pool.amount <= fee_asset_dyn_data->fee_pool );
+         FC_ASSERT( fee_from_pool.amount <= fee_asset_dyn_data->fee_pool - fees_paid[fee_asset].from_pool );
+         fees_paid[fee_asset].from_pool += fee_from_pool.amount;
       }
       adjust_balance( fee_paying_account, fee_asset, -fee.amount );
+      fees_paid[fee_asset].to_issuer += fee.amount;
 
       return fee_from_pool.amount;
    } FC_CAPTURE_AND_RETHROW( (account_id)(fee) ) }
@@ -67,7 +69,7 @@ namespace bts { namespace chain {
       for( const auto& acnt : delta_balance )
       {
          auto balances = acnt.first->balances(db());
-         db().get_index<account_balance_object>().modify( 
+         db().modify( 
              balances, [&]( account_balance_object* bal ){
                 for( const auto& delta : acnt.second )
                 {
@@ -81,7 +83,14 @@ namespace bts { namespace chain {
    }
    void generic_evaluator::apply_delta_fee_pools()
    {
-
+      for( const auto& fee : fees_paid )
+      {
+         auto dyn_asst_data = fee.first->dynamic_asset_data_id(db());
+         db().modify( dyn_asst_data, [&]( asset_dynamic_data_object* dyn ){
+                          dyn->fee_pool         -= fee.second.from_pool;  
+                          dyn->accumulated_fees += fee.second.to_issuer;
+                     });
+      }
    }
 
 } }

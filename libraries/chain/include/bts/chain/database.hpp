@@ -92,6 +92,11 @@ namespace bts { namespace chain {
             undo.new_ids.push_back(result->id);
             return static_cast<const T*>(result);
          }
+         template<typename T, typename Lambda>
+         void modify( const T* obj, const Lambda& m )
+         {
+            get_index<T>().modify( obj, m );
+         }
 
          const object* get_object( object_id_type id )const;
 
