@@ -1,6 +1,7 @@
 #pragma once
 #include <bts/chain/types.hpp>
 #include <bts/chain/asset.hpp>
+#include <bts/chain/authority.hpp>
 
 namespace bts { namespace chain { 
 
@@ -15,6 +16,11 @@ namespace bts { namespace chain {
    {
       account_id_type fee_paying_account;
       asset           fee;
+      string          name;
+      authority       owner;
+      authority       active;
+      key_id_type     voting_key;
+      key_id_type     memo_key;
    };
 
    struct account_update_operation
@@ -92,6 +98,8 @@ FC_REFLECT( bts::chain::key_create_operation,
           )
 FC_REFLECT( bts::chain::account_create_operation,
             (fee_paying_account)(fee) 
+            (name)
+            (owner)(active)(voting_key)(memo_key) 
           )
 FC_REFLECT( bts::chain::account_update_operation,
             (fee_paying_account)(fee) 

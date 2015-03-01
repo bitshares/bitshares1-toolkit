@@ -12,6 +12,7 @@
 
 #include <bts/chain/transaction_evaluation_state.hpp>
 #include <bts/chain/key_evaluator.hpp>
+#include <bts/chain/account_evaluator.hpp>
 
 namespace bts { namespace chain {
 
@@ -19,6 +20,7 @@ database::database()
 {
    _operation_evaluators.resize(255);
    register_evaluator<key_create_evaluator>();
+   register_evaluator<account_create_evaluator>();
 
    _object_id_to_object = std::make_shared<db::level_map<object_id_type,packed_object>>();
 

@@ -10,7 +10,7 @@ namespace bts { namespace chain {
          {
             const auto& op = o.get<key_create_operation>();
             auto bts_fee_paid = pay_fee( op.fee_paying_account, op.fee );
-            auto bts_fee_required = db().current_fee( key_creation_fee_type );
+            auto bts_fee_required = db().current_fee( key_create_fee_type );
             FC_ASSERT( bts_fee_paid >= bts_fee_required );
 
             return object_id_type();
@@ -26,6 +26,7 @@ namespace bts { namespace chain {
                 obj->key_data = op.key_data;
             });
             FC_ASSERT( new_key_object );
+
             return new_key_object->id;
          }
 

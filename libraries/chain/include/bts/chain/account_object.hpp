@@ -67,7 +67,7 @@ namespace bts { namespace chain {
 
          account_balance_id_type  balances;
          account_debt_id_type     debts;
-         vector<asset_id_type>    authorized_assets;
+         flat_set<asset_id_type>  authorized_assets;
    };
 
    /**
