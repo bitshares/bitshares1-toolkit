@@ -14,6 +14,7 @@ namespace bts { namespace chain {
    }
    share_type generic_evaluator::pay_fee( account_id_type account_id, asset fee )
    { try {
+      FC_ASSERT( fee.amount >= 0 );
       fee_paying_account = account_id(db());
       FC_ASSERT( fee_paying_account );
 
