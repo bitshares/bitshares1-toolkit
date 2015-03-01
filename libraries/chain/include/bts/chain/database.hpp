@@ -29,6 +29,11 @@ namespace bts { namespace chain {
     */
    struct undo_state
    {
+       /** note: we could use clones of objects rather than packed objects as
+        * a potentail performance optimization.  We should only have to serialize 
+        * when we go to disk.  This would make applying an "undo" operation much
+        * faster because we can simply swap pointers.
+        */
        map<object_id_type, packed_object>      old_values;
        vector<object_id_type>                  new_ids;
        vector<object_id_type>                  removed_ids;

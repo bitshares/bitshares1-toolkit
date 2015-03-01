@@ -29,6 +29,15 @@ namespace bts { namespace chain {
       asset           fee;
    };
 
+   struct transfer_operation
+   {
+      account_id_type from;
+      account_id_type to;
+      asset           amount;
+      share_type      fee; /// same asset_id as amount.asset_id
+      vector<char>    memo;
+   };
+
    struct asset_create_operation
    {
       account_id_type fee_paying_account;
@@ -45,6 +54,7 @@ namespace bts { namespace chain {
    {
       account_id_type fee_paying_account;
       asset           fee;
+      account_id_type delegate_account;
    };
 
    struct delegate_update_operation
@@ -80,6 +90,7 @@ namespace bts { namespace chain {
 
 
    typedef fc::static_variant<
+            transfer_operation,
             key_create_operation,
             account_create_operation,
             account_update_operation,
@@ -104,6 +115,9 @@ FC_REFLECT( bts::chain::account_create_operation,
 FC_REFLECT( bts::chain::account_update_operation,
             (fee_paying_account)(fee) 
           )
+FC_REFLECT( bts::chain::transfer_operation,
+            (from)(to)(amount)(fee)(memo) )
+
 FC_REFLECT( bts::chain::asset_create_operation,
             (fee_paying_account)(fee) 
           )

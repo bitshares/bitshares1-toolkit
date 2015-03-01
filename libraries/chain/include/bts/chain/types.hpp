@@ -67,6 +67,7 @@ namespace bts { namespace chain {
    {
       key_create_fee_type,
       account_create_fee_type, ///< the cost to register the cheapest non-free account
+      transfer_fee_type,
       asset_create_fee_type, ///< the cost to register the cheapest asset
       market_fee_type, ///< a percentage charged on market orders
       transaction_fee_type, ///< a base price for every transaction
