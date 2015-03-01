@@ -45,6 +45,10 @@ namespace bts { namespace chain {
          void       apply_delta_balances();
          void       apply_delta_fee_pools();
 
+         object_id_type get_relative_id( object_id_type rel_id )const;
+
+         authority resolve_relative_ids( const authority& a )const;
+
          struct fee_stats 
          { 
             share_type to_issuer; 

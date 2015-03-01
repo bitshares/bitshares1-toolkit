@@ -107,7 +107,11 @@ object_id_type account_create_evaluator::apply( const operation& o )
    apply_delta_balances();
    apply_delta_fee_pools();
 
+
+
    const auto& op = o.get<account_create_operation>();
+   auto owner  = resolve_relative_ids( op.owner );
+   auto active = resolve_relative_ids( op.active );
 
    auto bal_obj = db().create<account_balance_object>( [&]( account_balance_object* obj ){
             /* no balances right now */
@@ -118,10 +122,10 @@ object_id_type account_create_evaluator::apply( const operation& o )
 
    auto new_acnt_object = db().create<account_object>( [&]( account_object* obj ){
          obj->name       = op.name;
-         obj->owner      = op.owner;
-         obj->active     = op.active;
-         obj->memo_key   = op.memo_key;
-         obj->voting_key = op.voting_key;
+         obj->owner      = owner;
+         obj->active     = active;
+         obj->memo_key   = get_relative_id(op.memo_key);
+         obj->voting_key = get_relative_id(op.voting_key);
          obj->balances   = bal_obj->id;
          obj->debts      = dbt_obj->id;
    });

@@ -344,6 +344,7 @@ bool database::push_transaction( const signed_transaction& trx )
    } catch ( const fc::exception& e ) { except = e; }
    if( except )
    {
+      wlog( "${e}", ("e",except->to_detail_string() ) );
       undo();
    }
    return false;
@@ -366,13 +367,20 @@ void database::pop_pending_block()
 
 processed_transaction database::apply_transaction( const signed_transaction& trx )
 { try {
-   transaction_evaluation_state eval_state(this);
+   transaction_evaluation_state eval_state(this, true /* skip signature check */);
+   for( auto sig : trx.signatures )
+   {
+      // TODO: eval_state.signed_by.insert( address )
+   }
+   eval_state.operation_results.reserve( trx.operations.size() );
+
    processed_transaction ptrx(trx);
    for( auto op : ptrx.operations )
    {
-      //auto r = operation_factory::instance().evaluate( eval_state, op );
-      //ptrx.operation_results.push_back(r);
+      auto r = _operation_evaluators[op.which()]->evaluate( eval_state, op, true );
+      eval_state.operation_results.push_back(r);
    }
+   ptrx.operation_results = std::move( eval_state.operation_results );
    return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 

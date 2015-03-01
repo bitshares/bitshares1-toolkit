@@ -93,5 +93,30 @@ namespace bts { namespace chain {
                      });
       }
    }
+   object_id_type generic_evaluator::get_relative_id( object_id_type rel_id )const
+   {
+      if( rel_id.space() == relative_protocol_ids )
+      {
+         FC_ASSERT( rel_id.instance() < trx_state->operation_results.size() );
+         return trx_state->operation_results[rel_id.instance()];
+      }
+      return rel_id;
+   }
+
+   authority generic_evaluator::resolve_relative_ids( const authority& a )const
+   {
+      authority result;
+      result.auths.reserve( a.auths.size() );
+      result.weight_threshold = a.weight_threshold;
+
+      for( const auto& item : a.auths )
+      {
+          auto id = get_relative_id( item.first );
+          FC_ASSERT( id.type() == key_object_type || id.type() == account_object_type );
+          result.auths[id] = item.second;
+      }
+
+      return result;
+   }
 
 } }
