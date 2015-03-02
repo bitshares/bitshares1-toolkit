@@ -86,11 +86,11 @@ namespace bts { namespace chain {
       }
       object_id_type(){ number = 0; }
 
-      uint8_t space()const       { return number >> 56;              }
-      uint8_t type()const        { return number >> 48 & 0x00ff;     }
+      uint8_t  space()const       { return number >> 56;              }
+      uint8_t  type()const        { return number >> 48 & 0x00ff;     }
       uint16_t space_type()const { return number >> 48;              }
       uint64_t instance()const { return number & BTS_MAX_INSTANCE_ID; }
-      bool    is_null()const { return number == 0; }
+      bool     is_null()const { return number == 0; }
       operator uint64_t()const { return number; }
 
       friend bool  operator == ( const object_id_type& a, const object_id_type& b )
