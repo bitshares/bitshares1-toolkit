@@ -1,6 +1,7 @@
 file(GLOB HEADERS "include/bts/chain/*.hpp")
 
 add_library( bts_chain 
+             operations.cpp
              evaluator.cpp
              account_evaluator.cpp
              transfer_evaluator.cpp

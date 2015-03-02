@@ -5,13 +5,18 @@
 
 namespace bts { namespace chain { 
 
+   bool is_valid_symbol( const string& symbol );
+   bool is_valid_name( const string& s );
+   bool is_premium_name( const string& n );
+   bool is_cheap_name( const string& n );
+
    struct key_create_operation
    {
       account_id_type  fee_paying_account;
       asset            fee;
       static_variant<address,public_key_type> key_data;
 
-      share_type calculate_fee( const fee_schedule_type& k ){ return k.at( key_create_fee_type ); }
+      share_type calculate_fee( const fee_schedule_type& k )const{ return k.at( key_create_fee_type ); }
    };
 
    struct account_create_operation
@@ -25,7 +30,7 @@ namespace bts { namespace chain {
       key_id_type     memo_key;
 
 
-      share_type calculate_fee( const fee_schedule_type& k );
+      share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct account_update_operation
@@ -41,6 +46,8 @@ namespace bts { namespace chain {
       asset           amount;
       share_type      fee; /// same asset_id as amount.asset_id
       vector<char>    memo;
+
+      share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct asset_create_operation
@@ -55,6 +62,8 @@ namespace bts { namespace chain {
       price                   core_exchange_rate; // used for the fee pool
       vector<account_id_type> feed_producers; // for bitassets, specifies who produces the feeds (empty for delegates)
       asset_id_type           short_backing_asset; // for bitassets, specifies what may be used as collateral.
+
+      share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct asset_update_operation

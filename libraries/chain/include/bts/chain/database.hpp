@@ -144,7 +144,7 @@ namespace bts { namespace chain {
 
          const asset_object*  get_base_asset()const;
          const global_property_object* get_global_properties()const;
-         share_type           current_fee( fee_type )const;
+         const fee_schedule_type&   current_fee_schedule()const;
 
          void init_genesis(const genesis_allocation& initial_allocation = genesis_allocation());
 

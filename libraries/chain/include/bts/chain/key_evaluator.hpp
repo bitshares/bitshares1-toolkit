@@ -10,7 +10,7 @@ namespace bts { namespace chain {
          {
             const auto& op = o.get<key_create_operation>();
             auto bts_fee_paid = pay_fee( op.fee_paying_account, op.fee );
-            auto bts_fee_required = db().current_fee( key_create_fee_type );
+            auto bts_fee_required = op.calculate_fee( db().current_fee_schedule() );
             FC_ASSERT( bts_fee_paid >= bts_fee_required );
 
             return object_id_type();

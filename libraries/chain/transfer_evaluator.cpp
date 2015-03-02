@@ -11,8 +11,7 @@ object_id_type transfer_evaluator::evaluate( const operation& o )
    database& d = db();
 
    auto bts_fee_paid = pay_fee( op.from, op.fee );
-   auto bts_fee_required = d.current_fee( transfer_fee_type );
-   bts_fee_required += share_type((op.memo.size() * d.current_fee( data_fee_type ).value)/1024);
+   auto bts_fee_required = op.calculate_fee( d.current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
 
    const account_object* from_account = fee_paying_account;
