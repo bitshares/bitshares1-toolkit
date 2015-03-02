@@ -1,5 +1,6 @@
 #include <bts/chain/database.hpp>
 #include <fc/io/raw.hpp>
+#include <fc/crypto/digest.hpp>
 #include <fc/container/flat.hpp>
 
 #include <bts/chain/key_object.hpp>
@@ -137,9 +138,10 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
    _save_undo = false;
    ilog("Begin genesis initialization.");
 
+   fc::ecc::private_key genesis_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
    const key_object* genesis_key =
-      create<key_object>( [](key_object* k) {
-         k->key_data = public_key_type(fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis"))).get_public_key());
+      create<key_object>( [&genesis_private_key](key_object* k) {
+         k->key_data = public_key_type(genesis_private_key.get_public_key());
       });
    ilog("Genesis key created");
    const account_balance_object* genesis_balance =
@@ -218,12 +220,44 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
    if( !initial_allocation.empty() )
    {
       ilog("Applying genesis allocation");
+      share_type total_allocation = 0;
+      for( const auto& handout : initial_allocation )
+         total_allocation += handout.second;
+
       fc::time_point start_time = fc::time_point::now();
 
       for( const auto& handout : initial_allocation )
       {
+         asset amount(handout.second);
+         amount.amount = ((fc::uint128(amount.amount.value) * BTS_INITIAL_SUPPLY)/total_allocation.value).to_uint64();
+         if( amount.amount == 0 )
+         {
+            wlog("Skipping zero allocation to ${k}", ("k", handout.first));
+            continue;
+         }
+
          signed_transaction trx;
-         trx.operations.push_back(key_create_operation({genesis_account->id, asset(), handout.first}));
+         trx.operations.emplace_back(key_create_operation({genesis_account->id, asset(), handout.first}));
+         object_id_type key_id(relative_protocol_ids, 0, 0);
+         authority account_authority;
+         account_authority.add_authority(key_id_type(key_id), 1);
+         trx.operations.emplace_back(account_create_operation({genesis_account->id,
+                                                               asset(),
+                                                               string(),
+                                                               account_authority,
+                                                               account_authority,
+                                                               key_id,
+                                                               key_id
+                                                              }));
+         object_id_type account_id(relative_protocol_ids, 0, 1);
+         trx.operations.emplace_back(transfer_operation({genesis_account->id,
+                                                         account_id,
+                                                         amount,
+                                                         0,
+                                                         vector<char>()
+                                                        }));
+
+         apply_transaction(trx);
       }
 
       fc::microseconds duration = fc::time_point::now() - start_time;

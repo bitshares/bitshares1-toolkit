@@ -6,8 +6,6 @@ object_id_type transfer_evaluator::evaluate( const operation& o )
 {
    const auto& op = o.get<transfer_operation>();
 
-   FC_ASSERT( op.amount.amount > share_type(0) );
-
    database& d = db();
 
    auto bts_fee_paid = pay_fee( op.from, op.fee );
@@ -19,8 +17,11 @@ object_id_type transfer_evaluator::evaluate( const operation& o )
    const asset_object*   asset_type   = op.amount.asset_id(d);
    asset( asset_type == fee_asset );
 
-   FC_ASSERT( to_account->is_authorized_asset( op.amount.asset_id ) );
-   FC_ASSERT( from_account->is_authorized_asset( op.amount.asset_id ) );
+   if( asset_type->flags & white_list )
+   {
+      FC_ASSERT( to_account->is_authorized_asset( op.amount.asset_id ) );
+      FC_ASSERT( from_account->is_authorized_asset( op.amount.asset_id ) );
+   }
 
    FC_ASSERT( verify_authority( from_account, authority::active ) );
    FC_ASSERT( get_balance( from_account, asset_type ) >= op.amount );

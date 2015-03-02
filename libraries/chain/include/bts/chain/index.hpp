@@ -7,13 +7,13 @@
 namespace bts { namespace chain {
    class database;
 
-   class index_observer 
+   class index_observer
    {
       public:
          virtual ~index_observer(){}
          virtual void on_modify( object_id_type id, const object* obj ){}
          virtual void on_add( const object* obj ){}
-         virtual void on_remove( object_id_type id ){};
+         virtual void on_remove( object_id_type id ){}
    };
 
    class index_meta_object : public object
@@ -37,7 +37,7 @@ namespace bts { namespace chain {
           * This method must be deterministic based upon the set of
           * elements in the index.  Object IDs can be reused so long
           * as the order that they are added/removed does not change
-          * the ID selection.  
+          * the ID selection.
           *
           * @note - you can assume that when the UNDO state is
           * applied it will remove items from the highest ID first which
@@ -63,7 +63,7 @@ namespace bts { namespace chain {
          /**
           *  Opens the index loading objects from a level_db database
           */
-         virtual void open( const shared_ptr<bts::db::level_map<object_id_type, packed_object>>& db ){};
+         virtual void open( const shared_ptr<bts::db::level_map<object_id_type, packed_object>>& db ){}
 
          /**
           * Creates a new object that is free from the index and does not
@@ -72,7 +72,7 @@ namespace bts { namespace chain {
           */
          virtual unique_ptr<object> create_free_object()const = 0;
          virtual const object*      get( object_id_type id )const = 0;
-         virtual int64_t            size()const = 0;  
+         virtual int64_t            size()const = 0;
          virtual void               add( unique_ptr<object> o ) = 0;
          virtual void               modify( const object* obj, const std::function<void(object*)>& ) = 0;
 
@@ -80,16 +80,16 @@ namespace bts { namespace chain {
           *   Lambda should have the signature:  void(Object*)
           */
          template<typename Object, typename Lambda>
-         void modify( const Object* obj, const Lambda& l ) { 
-            modify( obj, std::function<void(object*)>( [&]( object* o ){ l( static_cast<Object*>(o) ); } ) ); 
+         void modify( const Object* obj, const Lambda& l ) {
+            modify( static_cast<const object*>(obj), std::function<void(object*)>( [&]( object* o ){ l( static_cast<Object*>(o) ); } ) );
          }
 
          virtual void               remove( object_id_type id ) = 0;
-                                    
+
          virtual void               add_observer( const shared_ptr<index_observer>& ) = 0;
    };
 
-   class base_primary_index 
+   class base_primary_index
    {
       public:
          base_primary_index( database* db ):_db(db){}
@@ -115,11 +115,11 @@ namespace bts { namespace chain {
          primary_index( database* db )
          :base_primary_index(db){}
 
-         virtual uint8_t object_space_id()const override 
+         virtual uint8_t object_space_id()const override
          { return ObjectType::space_id; }
 
-         virtual uint8_t object_type_id()const override 
-         { return ObjectType::type_id; };
+         virtual uint8_t object_type_id()const override
+         { return ObjectType::type_id; }
 
          virtual void open( const shared_ptr<bts::db::level_map<object_id_type, packed_object>>& db )
          {
@@ -137,15 +137,16 @@ namespace bts { namespace chain {
 
          virtual void  add( unique_ptr<object> o ) override
          {
+            assert(o);
             object* obj = o.get();
             DerivedIndex::add(std::move(o));
             on_add(obj);
          }
-        
+
          virtual void  remove( object_id_type id ) override
          {
             DerivedIndex::remove(id);
-            on_remove(id); 
+            on_remove(id);
          }
 
          virtual void modify( const object* obj, const std::function<void(object*)>& m )override
@@ -153,7 +154,7 @@ namespace bts { namespace chain {
             assert( obj != nullptr );
             save_undo( obj );
             DerivedIndex::modify( obj, m );
-            on_modify( obj->id, obj ); 
+            on_modify( obj->id, obj );
          }
 
          virtual void add_observer( const shared_ptr<index_observer>& o ) override
@@ -176,7 +177,7 @@ namespace bts { namespace chain {
          virtual void unpack( object* p, const packed_object& obj )const override
          {
             auto& cast = *((ObjectType*)p);
-            obj.unpack(cast); 
+            obj.unpack(cast);
          }
 
          virtual variant to_variant( const object* p )const override

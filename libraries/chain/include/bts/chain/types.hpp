@@ -89,7 +89,7 @@ namespace bts { namespace chain {
       uint8_t  space()const       { return number >> 56;              }
       uint8_t  type()const        { return number >> 48 & 0x00ff;     }
       uint16_t space_type()const { return number >> 48;              }
-      uint8_t  instance()const { return number & BTS_MAX_INSTANCE_ID; }
+      uint64_t instance()const { return number & BTS_MAX_INSTANCE_ID; }
       bool     is_null()const { return number == 0; }
       operator uint64_t()const { return number; }
 
@@ -182,10 +182,8 @@ namespace bts { namespace chain {
       }
       object_id( object_id_type id ):instance(id.instance())
       {
-         assert( id.space() == SpaceID && id.type() == TypeID );
-         FC_ASSERT( id.space() == SpaceID && id.type() == TypeID, "",
-                    ("id.space",id.space())("SpaceID",SpaceID)
-                    ("id.type",id.type())("TypeID",TypeID) );
+         assert( (id.space() == SpaceID && id.type() == TypeID)
+                 || id.space() == relative_protocol_ids );
       }
 
       operator object_id_type()const { return object_id_type( SpaceID, TypeID, instance.value ); }

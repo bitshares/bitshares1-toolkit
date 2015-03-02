@@ -4,16 +4,16 @@
 
 namespace bts { namespace chain {
 
-object_id_type account_index::get_next_available_id()const 
-{ 
-   return account_id_type(size()); 
+object_id_type account_index::get_next_available_id()const
+{
+   return account_id_type(size());
 }
 
 /**
  * Builds a new object and assigns it the next available ID and then
  * initializes it with constructor and lastly inserts it into the index.
  */
-const object*  account_index::create( const std::function<void(object*)>& constructor, 
+const object*  account_index::create( const std::function<void(object*)>& constructor,
                                       object_id_type /*requested_id*/ )
 {
     unique_ptr<account_object> obj( new account_object() );
@@ -38,8 +38,9 @@ void  account_index::modify( const object* obj, const std::function<void(object*
    assert( a->name == original_name );
 }
 
-void account_index::add( unique_ptr<object> o ) 
+void account_index::add( unique_ptr<object> o )
 {
+   assert(o);
    const auto id = o->id;
    assert( id.space()    == account_object::space_id );
    assert( id.type()     == account_object::type_id );
@@ -56,7 +57,7 @@ void account_index::add( unique_ptr<object> o )
       FC_ASSERT( itr == name_to_id.end(), "name: ${name} is not unique", ("name",new_account->name) );
    }
 
-   if( id.instance() >= accounts.size() ) 
+   if( id.instance() >= accounts.size() )
       accounts.resize( id.instance() + 1 );
 
    name_to_id[new_account->name] = new_account.get();
@@ -65,7 +66,7 @@ void account_index::add( unique_ptr<object> o )
 
 void account_index::remove( object_id_type id )
 {
-   if( id.instance() >= accounts.size() ) 
+   if( id.instance() >= accounts.size() )
       return;
 
    assert( id.space() == account_object::space_id );
@@ -78,7 +79,7 @@ void account_index::remove( object_id_type id )
       a.reset();
 }
 
-const object* account_index::get( object_id_type id )const 
+const object* account_index::get( object_id_type id )const
 {
    if( id.instance() >= accounts.size()       ||
        id.type() != account_object::type_id   ||
