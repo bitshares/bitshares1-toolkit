@@ -34,6 +34,10 @@ namespace bts { namespace chain {
 
          const account_object* get( const string& name )const;
 
+         typedef vector<unique_ptr<account_object>>::const_iterator const_iterator;
+         const_iterator begin()const { return accounts.begin(); }
+         const_iterator end()const   { return accounts.end();   }
+
       private:
          vector<unique_ptr<account_object> >   accounts;
          unordered_map<string,account_object*>  name_to_id;
