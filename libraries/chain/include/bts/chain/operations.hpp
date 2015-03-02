@@ -80,6 +80,8 @@ namespace bts { namespace chain {
       secret_hash_type                      first_secret_hash;
       key_id_type                           signing_key;
       fc::array<share_type,FEE_TYPE_COUNT>  fee_schedule;
+
+      share_type calculate_fee( const fee_schedule_type& k )const{ return k.at( delegate_create_fee_type ); }
    };
 
    struct delegate_update_operation

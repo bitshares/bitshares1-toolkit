@@ -4,6 +4,7 @@ add_library( bts_chain
              operations.cpp
              evaluator.cpp
              account_evaluator.cpp
+             delegate_evaluator.cpp
              transfer_evaluator.cpp
              asset_evaluator.cpp
              asset.cpp

@@ -12,8 +12,8 @@ namespace bts { namespace chain {
 
          account_id_type                delegate_account;
          key_id_type                    signing_key;
-         secret_hash_type               previous_secret;
-         vector<share_type>             fee_schedule;
+         secret_hash_type               next_secret;
+         fee_schedule_type              fee_schedule;
          uint16_t                       pay_rate = 0;
          delegate_vote_id_type          vote;
    };
@@ -40,5 +40,5 @@ namespace bts { namespace chain {
    };
 } } // bts::chain
 
-FC_REFLECT_DERIVED( bts::chain::delegate_object, (bts::chain::object), (delegate_account)(signing_key)(previous_secret)(fee_schedule)(vote) )
+FC_REFLECT_DERIVED( bts::chain::delegate_object, (bts::chain::object), (delegate_account)(signing_key)(next_secret)(fee_schedule)(vote) )
 FC_REFLECT_DERIVED( bts::chain::delegate_vote_object, (bts::chain::object), (total_votes) )

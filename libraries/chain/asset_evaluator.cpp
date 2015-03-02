@@ -4,10 +4,7 @@
 namespace bts { namespace chain {
 object_id_type asset_create_evaluator::evaluate( const operation& o )
 {
-   const auto& op = o.get<transfer_operation>();
-
-   FC_ASSERT( op.amount.amount > share_type(0) );
-
+   const auto& op = o.get<asset_create_operation>();
    database& d = db();
 
    /*

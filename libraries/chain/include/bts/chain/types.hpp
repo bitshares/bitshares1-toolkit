@@ -67,14 +67,13 @@ namespace bts { namespace chain {
    {
       key_create_fee_type,
       account_create_fee_type, ///< the cost to register the cheapest non-free account
+      delegate_create_fee_type, ///< fixed fee for registering as a delegate, used to discourage frivioulous delegates
       transfer_fee_type,
       asset_create_fee_type, ///< the cost to register the cheapest asset
       market_fee_type, ///< a percentage charged on market orders
       transaction_fee_type, ///< a base price for every transaction
       data_fee_type, ///< a price per 1024 bytes of user data
-      delegate_registration_fee_type, ///< fixed fee for registering as a delegate, used to discourage frivioulous delegates
       signature_fee_type, ///< a surcharge on transactions with more than 2 signatures.
-
       FEE_TYPE_COUNT ///< Sentry value which contains the number of different fee types
    };
 
