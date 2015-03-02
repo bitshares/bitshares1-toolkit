@@ -23,3 +23,4 @@
 #define BTS_DEFAULT_TRANSFER_FEE                           (1*BTS_BLOCKCHAIN_PRECISION)
 #define BTS_MAX_INSTANCE_ID                                (uint64_t(-1)>>16)
 #define BTS_MAX_MARKET_FEE_PERCENT                         10000
+#define BTS_MAX_FEED_PRODUCERS                             200

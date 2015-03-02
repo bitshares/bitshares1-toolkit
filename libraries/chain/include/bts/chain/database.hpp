@@ -136,15 +136,15 @@ namespace bts { namespace chain {
          index& get_index(uint8_t space_id, uint8_t type_id);
          const index& get_index(uint8_t space_id, uint8_t type_id)const;
 
-         const account_index& get_account_index()const;
-         const asset_index&   get_asset_index()const;
-
-         account_index&       get_account_index();
-         asset_index&         get_asset_index();
-
-         const asset_object*  get_base_asset()const;
+         const account_index&          get_account_index()const;
+         const asset_index&            get_asset_index()const;
+                                       
+         account_index&                get_account_index();
+         asset_index&                  get_asset_index();
+                                       
+         const asset_object*           get_base_asset()const;
          const global_property_object* get_global_properties()const;
-         const fee_schedule_type&   current_fee_schedule()const;
+         const fee_schedule_type&      current_fee_schedule()const;
 
          void init_genesis(const genesis_allocation& initial_allocation = genesis_allocation());
 

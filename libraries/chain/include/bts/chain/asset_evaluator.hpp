@@ -10,6 +10,8 @@ namespace bts { namespace chain {
       public:
          virtual object_id_type evaluate( const operation& o ) override;
          virtual object_id_type apply( const operation& o ) override;
+
+         share_type bts_fee_required;
    };
 
 } } // bts::chain

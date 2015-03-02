@@ -115,11 +115,13 @@ struct key_data_validate
 };
 void key_create_operation::validate()const
 {
+   FC_ASSERT( fee.amount >= 0 );
    key_data.visit( key_data_validate() );
 }
 
 void account_create_operation::validate()const
 {
+   FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( is_valid_name( name ) );
    auto pos = name.find( '/' );
    if( pos != string::npos )
@@ -138,11 +140,29 @@ void transfer_operation::validate()const
 
 void  asset_create_operation::validate()const
 {
+   FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( is_valid_symbol( symbol ) );
    FC_ASSERT( max_supply <= BTS_MAX_SHARE_SUPPLY );
    FC_ASSERT( market_fee_percent <= BTS_MAX_MARKET_FEE_PERCENT );
    FC_ASSERT( permissions <= market_issued );
    FC_ASSERT( flags <= market_issued );
+   FC_ASSERT( core_exchange_rate.quote.asset_id == asset_id_type() );
+   FC_ASSERT( core_exchange_rate.base.asset_id == asset_id_type() );
+   FC_ASSERT( core_exchange_rate.base.amount > 0 );
+   FC_ASSERT( feed_producers.size() <= BTS_MAX_FEED_PRODUCERS );
+
+   FC_ASSERT( !(flags & ~permissions ) );
+   if( permissions & market_issued )
+   {
+      FC_ASSERT( !(permissions & ~(white_list) ) );
+      FC_ASSERT( !(permissions & ~(override_authority) ) );
+      FC_ASSERT( !(permissions & ~(halt_transfer) ) );
+   }
+   if( feed_producers.size() )
+   {
+      FC_ASSERT( permissions & market_issued );
+      FC_ASSERT( flags & market_issued );
+   }
 }
 
 } } // namespace bts::chain
