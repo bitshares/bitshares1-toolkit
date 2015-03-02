@@ -7,6 +7,7 @@
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/delegate_object.hpp>
 #include <bts/chain/simple_index.hpp>
+#include <bts/chain/flat_index.hpp>
 #include <bts/chain/account_index.hpp>
 #include <bts/chain/asset_index.hpp>
 
@@ -40,7 +41,7 @@ database::database()
    add_index<primary_index<simple_index<account_balance_object>> >();
    add_index<primary_index<simple_index<account_debt_object>> >();
    add_index<primary_index<simple_index<asset_dynamic_data_object>> >();
-   add_index<primary_index<simple_index<delegate_vote_object>> >();
+   add_index<primary_index<flat_index<delegate_vote_object>> >();
 
    push_undo_state();
 }

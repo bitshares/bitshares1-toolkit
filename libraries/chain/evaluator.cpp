@@ -2,6 +2,7 @@
 #include<bts/chain/transaction_evaluation_state.hpp>
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/account_object.hpp>
+#include <bts/chain/delegate_object.hpp>
 
 namespace bts { namespace chain {
    database& generic_evaluator::db()const { return trx_state->db(); }
@@ -80,8 +81,25 @@ namespace bts { namespace chain {
                       bal->sub_balance( asset(-delta.second,delta.first->id) );
                 }
          });
+         auto itr = acnt.second.find( asset_id_type()(db()) );
+         if( itr != acnt.second.end() )
+         {
+            adjust_votes( acnt.first->delegate_votes, itr->second );
+         }
       }
    }
+
+   void generic_evaluator::adjust_votes( const vector<delegate_id_type>& delegate_ids, share_type delta )
+   {
+      database& d = db();
+      for( auto id : delegate_ids )
+      {
+         d.modify( id(d)->vote(d), [&]( delegate_vote_object* v ){
+                   v->total_votes += delta;
+            });
+      }
+   }
+
    void generic_evaluator::apply_delta_fee_pools()
    {
       for( const auto& fee : fees_paid )

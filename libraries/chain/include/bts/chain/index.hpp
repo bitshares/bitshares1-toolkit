@@ -73,7 +73,6 @@ namespace bts { namespace chain {
          virtual unique_ptr<object> create_free_object()const = 0;
          virtual const object*      get( object_id_type id )const = 0;
          virtual int64_t            size()const = 0;  
-                                    
          virtual void               add( unique_ptr<object> o ) = 0;
          virtual void               modify( const object* obj, const std::function<void(object*)>& ) = 0;
 

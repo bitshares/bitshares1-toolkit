@@ -15,7 +15,7 @@ namespace bts { namespace chain {
          secret_hash_type               previous_secret;
          vector<share_type>             fee_schedule;
          uint16_t                       pay_rate = 0;
-         object_id_type                 vote;
+         delegate_vote_id_type          vote;
    };
 
    /**
