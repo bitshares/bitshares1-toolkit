@@ -1,5 +1,5 @@
 #include <bts/chain/account_object.hpp>
-namespace bts { namespace chain { 
+namespace bts { namespace chain {
 bool  account_object::is_authorized_asset( asset_id_type asset_id )const
 {
    return std::binary_search( authorized_assets.begin(), authorized_assets.end(), asset_id );

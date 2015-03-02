@@ -17,7 +17,7 @@ namespace bts { namespace chain {
    class account_index;
    class asset_index;
 
-   typedef std::map<fc::static_variant<address, public_key_type>, boost::rational<int64_t> > genesis_allocation;
+   typedef vector<std::pair<fc::static_variant<address, public_key_type>, share_type >> genesis_allocation;
 
    /**
     *  Undo State saves off the initial values associated
@@ -30,7 +30,7 @@ namespace bts { namespace chain {
    struct undo_state
    {
        /** note: we could use clones of objects rather than packed objects as
-        * a potentail performance optimization.  We should only have to serialize 
+        * a potentail performance optimization.  We should only have to serialize
         * when we go to disk.  This would make applying an "undo" operation much
         * faster because we can simply swap pointers.
         */
@@ -151,7 +151,7 @@ namespace bts { namespace chain {
          template<typename EvaluatorType>
          void register_evaluator()
          {
-            _operation_evaluators[ 
+            _operation_evaluators[
                operation::tag<typename EvaluatorType::operation_class_type>::value].reset( new op_evaluator_impl<EvaluatorType>() );
          }
 

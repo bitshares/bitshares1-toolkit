@@ -3,7 +3,7 @@
 #include <bts/chain/authority.hpp>
 #include <bts/chain/asset.hpp>
 
-namespace bts { namespace chain { 
+namespace bts { namespace chain {
    class database;
    struct transaction;
 
@@ -17,7 +17,7 @@ namespace bts { namespace chain {
    {
       public:
          transaction_evaluation_state( database* db = nullptr, bool skip_sig_check = false )
-         :_db(db),_skip_signature_check(skip_sig_check){};
+         :_db(db),_skip_signature_check(skip_sig_check){}
 
          bool check_authority( const account_object*, authority::classification auth_class = authority::active, int depth = 0 );
          void adjust_votes( const vector<delegate_id_type>& delegates, share_type amount );
@@ -42,4 +42,4 @@ namespace bts { namespace chain {
          database*    _db = nullptr;
          bool         _skip_signature_check = false;
    };
-} } // namespace bts::chain 
+} } // namespace bts::chain
