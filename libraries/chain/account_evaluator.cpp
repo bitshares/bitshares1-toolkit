@@ -1,5 +1,6 @@
 #include <bts/chain/account_evaluator.hpp>
 #include <bts/chain/account_index.hpp>
+#include <bts/chain/key_object.hpp>
 
 namespace bts { namespace chain {
 
@@ -59,6 +60,28 @@ object_id_type account_create_evaluator::apply( const operation& o )
    });
 
    return new_acnt_object->id;
+}
+
+
+object_id_type account_update_evaluator::evaluate( const operation& op )
+{
+   const auto& o = op.get<account_update_operation>();
+   database&   d = db();
+
+   auto bts_fee_paid = pay_fee( o.account, o.fee );
+   FC_ASSERT( bts_fee_paid == o.calculate_fee( d.current_fee_schedule() ) );
+
+   const account_object* acnt = o.account(d);
+   FC_ASSERT( acnt ); 
+   if( o.owner ) FC_ASSERT( verify_authority( acnt, authority::owner ) );
+   else if( o.active || o.voting_key || o.memo_key ) FC_ASSERT( verify_authority( acnt, authority::active ) );
+   else if( o.vote ) FC_ASSERT( verify_signature( acnt->voting_key(d) ) );
+
+   return object_id_type();
+}
+object_id_type account_update_evaluator::apply( const operation& o ) 
+{
+   return object_id_type();
 }
 
 } } // bts::chain

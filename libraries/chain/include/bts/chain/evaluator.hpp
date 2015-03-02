@@ -38,6 +38,7 @@ namespace bts { namespace chain {
           */
          share_type pay_fee( account_id_type account_id, asset fee );
          bool       verify_authority( const account_object*, authority::classification );
+         bool       verify_signature( const key_object* );
 
          /**
           *  Gets the balance of the account after all modifications that have been applied 

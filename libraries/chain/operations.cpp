@@ -88,6 +88,15 @@ share_type account_create_operation::calculate_fee( const fee_schedule_type& sch
    }
    return bts_fee_required;
 }
+share_type account_update_operation::calculate_fee( const fee_schedule_type& schedule )const
+{
+   return schedule.at(account_create_fee_type);
+}
+void account_update_operation::validate()const
+{
+   FC_ASSERT( fee.amount > 0 );
+   FC_ASSERT( owner || active || voting_key || memo_key || vote );
+}
 
 
 share_type asset_create_operation::calculate_fee( const fee_schedule_type& schedule )const

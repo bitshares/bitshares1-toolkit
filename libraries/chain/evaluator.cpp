@@ -1,5 +1,6 @@
 #include<bts/chain/evaluator.hpp>
 #include<bts/chain/transaction_evaluation_state.hpp>
+#include <bts/chain/key_object.hpp>
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/delegate_object.hpp>
@@ -44,6 +45,12 @@ namespace bts { namespace chain {
    bool generic_evaluator::verify_authority( const account_object* a, authority::classification c )
    {
        return trx_state->check_authority( a, c );
+   }
+
+   bool generic_evaluator::verify_signature( const key_object* k )
+   {
+      FC_ASSERT( k != nullptr );
+      return trx_state->_skip_signature_check || trx_state->signed_by.find( k->key_address() ) != trx_state->signed_by.end();
    }
 
    void generic_evaluator::adjust_balance( const account_object* for_account, const asset_object* for_asset, share_type delta )

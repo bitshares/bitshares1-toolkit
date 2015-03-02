@@ -37,8 +37,13 @@ namespace bts { namespace chain {
 
    struct account_update_operation
    {
-      account_id_type fee_paying_account;
-      asset           fee;
+      account_id_type                     account;
+      asset                               fee;
+      optional<authority>                 owner;
+      optional<authority>                 active;
+      optional<authority>                 voting_key;
+      optional<authority>                 memo_key;
+      optional<vector<delegate_id_type>>  vote;
 
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -173,7 +178,7 @@ FC_REFLECT( bts::chain::account_create_operation,
             (owner)(active)(voting_key)(memo_key) 
           )
 FC_REFLECT( bts::chain::account_update_operation,
-            (fee_paying_account)(fee) 
+            (account)(fee)(owner)(active)(voting_key)(memo_key)(vote) 
           )
 FC_REFLECT( bts::chain::transfer_operation,
             (from)(to)(amount)(fee)(memo) )
