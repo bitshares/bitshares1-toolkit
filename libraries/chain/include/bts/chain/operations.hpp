@@ -10,6 +10,8 @@ namespace bts { namespace chain {
       account_id_type  fee_paying_account;
       asset            fee;
       static_variant<address,public_key_type> key_data;
+
+      share_type calculate_fee( const fee_schedule_type& k ){ return k.at( key_create_fee_type ); }
    };
 
    struct account_create_operation
@@ -21,6 +23,9 @@ namespace bts { namespace chain {
       authority       active;
       key_id_type     voting_key;
       key_id_type     memo_key;
+
+
+      share_type calculate_fee( const fee_schedule_type& k );
    };
 
    struct account_update_operation
@@ -40,8 +45,16 @@ namespace bts { namespace chain {
 
    struct asset_create_operation
    {
-      account_id_type fee_paying_account;
-      asset           fee;
+      account_id_type         issuer; // same as fee paying account
+      asset                   fee;
+      symbol_type             symbol;
+      share_type              max_supply;
+      uint16_t                market_fee_percent = 0;
+      uint32_t                permissions = 0;
+      uint32_t                flags = 0;
+      price                   core_exchange_rate; // used for the fee pool
+      vector<account_id_type> feed_producers; // for bitassets, specifies who produces the feeds (empty for delegates)
+      asset_id_type           short_backing_asset; // for bitassets, specifies what may be used as collateral.
    };
 
    struct asset_update_operation
@@ -52,9 +65,12 @@ namespace bts { namespace chain {
 
    struct delegate_create_operation
    {
-      account_id_type fee_paying_account;
-      asset           fee;
-      account_id_type delegate_account;
+      account_id_type                       delegate_account; // same as fee_paying account
+      asset                                 fee;
+      uint8_t                               pay_rate;  // 0 to 100% 
+      secret_hash_type                      first_secret_hash;
+      key_id_type                           signing_key;
+      fc::array<share_type,FEE_TYPE_COUNT>  fee_schedule;
    };
 
    struct delegate_update_operation
@@ -119,13 +135,24 @@ FC_REFLECT( bts::chain::transfer_operation,
             (from)(to)(amount)(fee)(memo) )
 
 FC_REFLECT( bts::chain::asset_create_operation,
-            (fee_paying_account)(fee) 
+            (issuer)
+            (fee)
+            (symbol)
+            (max_supply)
+            (market_fee_percent)
+            (permissions)
+            (flags)
+            (core_exchange_rate)
+            (feed_producers)
+            (short_backing_asset) 
           )
 FC_REFLECT( bts::chain::asset_update_operation,
             (fee_paying_account)(fee) 
           )
 FC_REFLECT( bts::chain::delegate_create_operation,
-            (fee_paying_account)(fee) 
+            (delegate_account)(fee)(pay_rate)
+            (first_secret_hash)(signing_key)
+            (fee_schedule) 
           )
 FC_REFLECT( bts::chain::delegate_update_operation,
             (fee_paying_account)(fee) 
