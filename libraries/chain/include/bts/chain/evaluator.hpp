@@ -22,6 +22,10 @@ namespace bts { namespace chain {
          virtual int get_type()const = 0;
          virtual object_id_type start_evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply  );
 
+         /** @note derived classes should ASSUME that the default validation that is
+          * indepenent of chain state should be performed by op.validate() and should
+          * not perform these extra checks.
+          */
          virtual object_id_type evaluate( const operation& op ) = 0;
          virtual object_id_type apply( const operation& op ) = 0;
 

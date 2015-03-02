@@ -88,6 +88,18 @@ share_type account_create_operation::calculate_fee( const fee_schedule_type& sch
    }
    return bts_fee_required;
 }
+
+
+share_type asset_create_operation::calculate_fee( const fee_schedule_type& schedule )const
+{
+   auto bts_fee_required = schedule.at(asset_create_fee_type);
+
+   uint32_t s = symbol.size();
+   while( s <= 6 ) {  bts_fee_required *= 30; ++s; }
+
+   return bts_fee_required;
+}
+
 share_type transfer_operation::calculate_fee( const fee_schedule_type& schedule )const
 {
    auto bts_fee_required = schedule.at( transfer_fee_type );
@@ -95,5 +107,42 @@ share_type transfer_operation::calculate_fee( const fee_schedule_type& schedule 
    return bts_fee_required;
 }
 
+struct key_data_validate
+{
+   typedef void result_type;
+   void operator()( const address& a )const { FC_ASSERT( a != address() ); }
+   void operator()( const public_key_type& a )const { FC_ASSERT( a != public_key_type() ); }
+};
+void key_create_operation::validate()const
+{
+   key_data.visit( key_data_validate() );
+}
+
+void account_create_operation::validate()const
+{
+   FC_ASSERT( is_valid_name( name ) );
+   auto pos = name.find( '/' );
+   if( pos != string::npos )
+   {
+      FC_ASSERT( owner.weight_threshold == 1 );
+      FC_ASSERT( owner.auths.size() == 1 );
+   }
+}
+
+void transfer_operation::validate()const
+{
+   FC_ASSERT( from != to );
+   FC_ASSERT( amount.amount > 0 );
+   FC_ASSERT( fee >= 0 );
+}
+
+void  asset_create_operation::validate()const
+{
+   FC_ASSERT( is_valid_symbol( symbol ) );
+   FC_ASSERT( max_supply <= BTS_MAX_SHARE_SUPPLY );
+   FC_ASSERT( market_fee_percent <= BTS_MAX_MARKET_FEE_PERCENT );
+   FC_ASSERT( permissions <= market_issued );
+   FC_ASSERT( flags <= market_issued );
+}
 
 } } // namespace bts::chain

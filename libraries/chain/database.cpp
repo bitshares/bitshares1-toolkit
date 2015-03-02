@@ -201,7 +201,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
      create<asset_object>( [&]( asset_object* a ) {
          a->symbol = BTS_SYMBOL;
          a->max_supply = BTS_INITIAL_SUPPLY;
-         a->transfer_fee = BTS_DEFAULT_TRANSFER_FEE;
          a->flags = 0;
          a->issuer_permissions = 0;
          a->issuer = genesis_account->id;

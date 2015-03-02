@@ -31,7 +31,6 @@ namespace bts { namespace chain {
 
          share_type              max_supply         = 0; // unlimited.
          uint16_t                market_fee_percent = 0; // 10,000 = 100%
-         share_type              transfer_fee       = 0;       
          uint32_t                issuer_permissions; 
          uint32_t                flags; 
 
@@ -60,7 +59,6 @@ FC_REFLECT_DERIVED( bts::chain::asset_object,
                     (issuer)
                     (max_supply)
                     (market_fee_percent)
-                    (transfer_fee)
                     (issuer_permissions)
                     (flags)
                     (feed_producers)

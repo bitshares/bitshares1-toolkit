@@ -48,13 +48,11 @@ namespace bts { namespace chain {
     */
    enum asset_issuer_permission_flags
    {
-      charge_transfer_fee = 0x01,
-      charge_market_fee   = 0x02,
-      white_list          = 0x04,
-      halt_market         = 0x08,
-      halt_transfer       = 0x10,
-      override_authority  = 0x20,
-      market_issued       = 0x40
+      charge_market_fee   = 0x01,
+      white_list          = 0x02,
+      halt_transfer       = 0x04,
+      override_authority  = 0x08,
+      market_issued       = 0x10
    };
 
 

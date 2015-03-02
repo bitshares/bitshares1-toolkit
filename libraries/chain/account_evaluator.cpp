@@ -6,10 +6,8 @@ namespace bts { namespace chain {
 object_id_type account_create_evaluator::evaluate( const operation& o ) 
 {
    const auto& op = o.get<account_create_operation>();
-   FC_ASSERT( op.name.size() < 64 );
 
    auto bts_fee_paid = pay_fee( op.fee_paying_account, op.fee );
-
    auto bts_fee_required = op.calculate_fee( db().current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
 
@@ -28,8 +26,6 @@ object_id_type account_create_evaluator::evaluate( const operation& o )
       auto parent_account = db().get_account_index().get( op.name.substr(0,pos) );
       FC_ASSERT( parent_account );
       verify_authority( parent_account, authority::owner );
-      FC_ASSERT( op.owner.weight_threshold == 1 );
-      FC_ASSERT( op.owner.auths.size() == 1 );
       FC_ASSERT( op.owner.auths.find( parent_account->id ) != op.owner.auths.end() );
    }
 
@@ -38,11 +34,8 @@ object_id_type account_create_evaluator::evaluate( const operation& o )
 
 object_id_type account_create_evaluator::apply( const operation& o ) 
 {
-   // TODO: verify that all relative IDs in authority checkout 
    apply_delta_balances();
    apply_delta_fee_pools();
-
-
 
    const auto& op = o.get<account_create_operation>();
    auto owner  = resolve_relative_ids( op.owner );

@@ -17,6 +17,7 @@ namespace bts { namespace chain {
       static_variant<address,public_key_type> key_data;
 
       share_type calculate_fee( const fee_schedule_type& k )const{ return k.at( key_create_fee_type ); }
+      void       validate()const;
    };
 
    struct account_create_operation
@@ -30,6 +31,7 @@ namespace bts { namespace chain {
       key_id_type     memo_key;
 
 
+      void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
@@ -37,6 +39,9 @@ namespace bts { namespace chain {
    {
       account_id_type fee_paying_account;
       asset           fee;
+
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct transfer_operation
@@ -47,6 +52,7 @@ namespace bts { namespace chain {
       share_type      fee; /// same asset_id as amount.asset_id
       vector<char>    memo;
 
+      void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
@@ -54,15 +60,16 @@ namespace bts { namespace chain {
    {
       account_id_type         issuer; // same as fee paying account
       asset                   fee;
-      symbol_type             symbol;
+      string                  symbol;
       share_type              max_supply;
       uint16_t                market_fee_percent = 0;
-      uint32_t                permissions = 0;
-      uint32_t                flags = 0;
+      uint16_t                permissions = 0;
+      uint16_t                flags = 0;
       price                   core_exchange_rate; // used for the fee pool
       vector<account_id_type> feed_producers; // for bitassets, specifies who produces the feeds (empty for delegates)
       asset_id_type           short_backing_asset; // for bitassets, specifies what may be used as collateral.
 
+      void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
@@ -88,23 +95,35 @@ namespace bts { namespace chain {
    {
       account_id_type fee_paying_account;
       asset           fee;
+
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct account_set_vote_operation
    {
       account_id_type fee_paying_account;
       asset           fee;
+
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct custom_id_create_operation
    {
       account_id_type  owner;
+
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct custom_id_transfer_operation
    {
       custom_id_type   custom_id;
       account_id_type  new_owner;
+
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct custom_operation
@@ -113,6 +132,9 @@ namespace bts { namespace chain {
       asset           fee;
       uint16_t        type;
       vector<char>    data;
+
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
 
@@ -127,6 +149,17 @@ namespace bts { namespace chain {
             asset_update_operation,
             account_set_vote_operation
          > operation;
+
+   /**
+    * @brief Performs default validation / sanity checks on operations that do not depend upon blockchain state.
+    */
+   struct operation_validator
+   {
+      typedef void result_type;
+      template<typename T>
+      void operator()( const T& v )const { v.validate(); } 
+   };
+
       
 } } // bts::chain
 
