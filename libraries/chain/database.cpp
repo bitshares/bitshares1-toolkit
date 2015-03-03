@@ -112,12 +112,18 @@ const asset_object*database::get_base_asset() const
 
 void database::flush()
 {
-
+   for( auto& space : _index )
+      for( const unique_ptr<index>& type_index : space )
+         if( type_index )
+            type_index->inspect_all_objects([&] (const object* object) {
+               _object_id_to_object->store(object->id, type_index->pack(object));
+            });
 }
 
-void database::open( const fc::path& data_dir )
+void database::open( const fc::path& data_dir, const genesis_allocation& initial_allocation )
 { try {
-   init_genesis();
+   ilog("Open database in ${d}", ("d", data_dir));
+
    _block_num_to_block.open( data_dir / "database" / "block_num_to_block" );
    _block_id_to_num.open( data_dir / "database" / "block_id_to_num" );
    _undo_db.open( data_dir / "database" / "undo_db" );
@@ -133,6 +139,10 @@ void database::open( const fc::path& data_dir )
          }
       }
    }
+
+   if( !get_global_properties() )
+      init_genesis(initial_allocation);
+   assert(get_global_properties());
 } FC_CAPTURE_AND_RETHROW( (data_dir) ) }
 
 void database::init_genesis(const genesis_allocation& initial_allocation)
@@ -403,7 +413,6 @@ void database::pop_pending_block()
 {
    undo();
 }
-
 
 processed_transaction database::apply_transaction( const signed_transaction& trx )
 { try {

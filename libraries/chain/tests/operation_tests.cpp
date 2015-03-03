@@ -54,13 +54,15 @@ BOOST_AUTO_TEST_CASE( create_account )
 BOOST_AUTO_TEST_CASE( transfer )
 {
    try {
+      account_id_type genesis_account;
+      asset genesis_balance = genesis_account(db)->balances(db)->get_balance(asset_id_type());
+
       trx.operations.push_back(make_account());
       trx.validate();
       db.push_transaction(trx);
 
       trx = signed_transaction();
       const account_object* nathan_account = db.get_account_index().get("nathan");
-      account_id_type genesis_account;
       trx.operations.push_back(transfer_operation({genesis_account,
                                                    nathan_account->id,
                                                    asset(10000),
@@ -69,8 +71,13 @@ BOOST_AUTO_TEST_CASE( transfer )
                                                   }));
       for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
 
+      asset fee = trx.operations.front().get<transfer_operation>().fee;
       trx.validate();
       db.push_transaction(trx);
+
+      BOOST_CHECK(genesis_account(db)->balances(db)->get_balance(asset_id_type()).amount == genesis_balance.amount -
+                                                                                            10000 - fee.amount);
+      genesis_balance = genesis_account(db)->balances(db)->get_balance(asset_id_type());
 
       BOOST_REQUIRE(nathan_account);
       const account_balance_object* nathan_balances = nathan_account->balances(db);
@@ -86,13 +93,12 @@ BOOST_AUTO_TEST_CASE( transfer )
                                                   }));
       for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
 
+      fee = trx.operations.front().get<transfer_operation>().fee;
       trx.validate();
       db.push_transaction(trx);
 
-      BOOST_CHECK(nathan_balances->get_balance(asset_id_type()) == asset(10000 -
-                                                                         2000 -
-                                                                         trx.operations.front().get<transfer_operation>()
-                                                                                               .fee.amount));
+      BOOST_CHECK(genesis_account(db)->balances(db)->get_balance(asset_id_type()).amount == genesis_balance.amount + 2000);
+      BOOST_CHECK(nathan_balances->get_balance(asset_id_type()) == asset(10000 - 2000 - fee.amount));
 
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));

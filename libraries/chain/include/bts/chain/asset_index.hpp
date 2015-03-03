@@ -4,9 +4,9 @@
 #include <bts/chain/asset_object.hpp>
 
 namespace bts { namespace chain {
-    
+
    /**
-    *  @class asset_index 
+    *  @class asset_index
     *  @brief enable asset lookup by NAME or INSTANCE and enforce uniqueness
     */
    class asset_index : public index
@@ -35,9 +35,11 @@ namespace bts { namespace chain {
 
          const asset_object* get( const string& symbol )const;
 
+         void inspect_all_objects(std::function<void (const object*)> inspector);
+
       private:
          vector<unique_ptr<asset_object> >    assets;
          unordered_map<string,asset_object*>  symbol_to_id;
    };
 
-} } 
+} }

@@ -10,8 +10,8 @@ namespace bts { namespace chain {
          typedef T object_type;
 
          virtual object_id_type get_next_available_id()const override
-         { 
-            return object_id_type( T::space_id, T::type_id, size()); 
+         {
+            return object_id_type( T::space_id, T::type_id, size());
          }
 
          virtual packed_object  get_meta_object()const override
@@ -25,7 +25,7 @@ namespace bts { namespace chain {
             _objects.resize( meta.next_object_instance );
          }
 
-         virtual const object*  create( const std::function<void(object*)>& constructor, 
+         virtual const object*  create( const std::function<void(object*)>& constructor,
                                         object_id_type /*requested_id*/ ) override
          {
              auto next_id = get_next_available_id();
@@ -67,7 +67,7 @@ namespace bts { namespace chain {
                _objects[instance].reset();
          }
 
-         virtual const object* get( object_id_type id )const override 
+         virtual const object* get( object_id_type id )const override
          {
             assert( id.space() == T::space_id );
             assert( id.type() == T::type_id );
@@ -75,6 +75,14 @@ namespace bts { namespace chain {
             const auto instance = id.instance();
             if( instance >= _objects.size() ) return nullptr;
             return _objects[instance].get();
+         }
+
+         void inspect_all_objects(std::function<void (const object*)> inspector)
+         {
+            try {
+               for( const auto& ptr : _objects )
+                  inspector(ptr.get());
+            } FC_CAPTURE_AND_RETHROW()
          }
 
          class const_iterator

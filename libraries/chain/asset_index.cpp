@@ -4,16 +4,16 @@
 
 namespace  bts { namespace  chain {
 
-object_id_type asset_index::get_next_available_id()const 
-{ 
-   return asset_id_type(size()); 
+object_id_type asset_index::get_next_available_id()const
+{
+   return asset_id_type(size());
 }
 
 /**
  * Builds a new object and assigns it the next available ID and then
  * initializes it with constructor and lastly inserts it into the index.
  */
-const object*  asset_index::create( const std::function<void(object*)>& constructor, 
+const object*  asset_index::create( const std::function<void(object*)>& constructor,
                                     object_id_type /*requested_id*/ )
 {
     unique_ptr<asset_object> obj( new asset_object() );
@@ -38,7 +38,7 @@ void  asset_index::modify( const object* obj, const std::function<void(object*)>
    assert( a->symbol == original_symbol );
 }
 
-void asset_index::add( unique_ptr<object> o ) 
+void asset_index::add( unique_ptr<object> o )
 {
    const auto id = o->id;
    assert( id.space()    == asset_object::space_id );
@@ -56,7 +56,7 @@ void asset_index::add( unique_ptr<object> o )
       FC_ASSERT( itr == symbol_to_id.end(), "symbol: ${symbol} is not unique", ("symbol",new_asset->symbol) );
    }
 
-   if( id.instance() >= assets.size() ) 
+   if( id.instance() >= assets.size() )
       assets.resize( id.instance() + 1 );
 
    symbol_to_id[new_asset->symbol] = new_asset.get();
@@ -65,7 +65,7 @@ void asset_index::add( unique_ptr<object> o )
 
 void asset_index::remove( object_id_type id )
 {
-   if( id.instance() >= assets.size() ) 
+   if( id.instance() >= assets.size() )
       return;
 
    assert( id.space() == asset_object::space_id );
@@ -78,7 +78,7 @@ void asset_index::remove( object_id_type id )
       a.reset();
 }
 
-const object* asset_index::get( object_id_type id )const 
+const object* asset_index::get( object_id_type id )const
 {
    if( id.instance() >= assets.size()       ||
        id.type() != asset_object::type_id   ||
@@ -110,6 +110,14 @@ void           asset_index::set_meta_object( const packed_object& obj )
          symbol_to_id.erase( assets[i]->symbol );
    }
    assets.resize( meta.next_object_instance );
+}
+
+void bts::chain::asset_index::inspect_all_objects(std::function<void (const object*)> inspector)
+{
+   try {
+      for( const auto& ptr : assets )
+         inspector(ptr.get());
+   } FC_CAPTURE_AND_RETHROW()
 }
 
 } } // bts::chain

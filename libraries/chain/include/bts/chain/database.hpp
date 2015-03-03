@@ -67,7 +67,7 @@ namespace bts { namespace chain {
          database();
          ~database();
 
-         void open( const fc::path& data_dir );
+         void open(const fc::path& data_dir, const genesis_allocation& initial_allocation = genesis_allocation());
          void flush();
          void close();
 
@@ -138,10 +138,10 @@ namespace bts { namespace chain {
 
          const account_index&          get_account_index()const;
          const asset_index&            get_asset_index()const;
-                                       
+
          account_index&                get_account_index();
          asset_index&                  get_asset_index();
-                                       
+
          const asset_object*           get_base_asset()const;
          const global_property_object* get_global_properties()const;
          const fee_schedule_type&      current_fee_schedule()const;
@@ -183,7 +183,7 @@ namespace bts { namespace chain {
           *  block id because after the undo window is past the block ID
           *  is no longer relevant and its number is irreversible.
           *
-          *  Durring the "fork window" we can cache blocks in memory
+          *  During the "fork window" we can cache blocks in memory
           *  until the fork is resolved.  This should make maintaining
           *  the fork tree relatively simple.
           */
