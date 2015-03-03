@@ -66,6 +66,7 @@ namespace bts { namespace chain {
       key_create_fee_type,
       account_create_fee_type, ///< the cost to register the cheapest non-free account
       delegate_create_fee_type, ///< fixed fee for registering as a delegate, used to discourage frivioulous delegates
+      delegate_update_fee_type, ///< fixed fee for registering as a delegate, used to discourage frivioulous delegates
       transfer_fee_type,
       asset_create_fee_type, ///< the cost to register the cheapest asset
       asset_update_fee_type, ///< the cost to modify a registered asset

@@ -148,9 +148,9 @@ void account_create_operation::validate()const
 
 void transfer_operation::validate()const
 {
+   FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( from != to );
    FC_ASSERT( amount.amount > 0 );
-   FC_ASSERT( fee.amount >= 0 );
 }
 
 void  asset_create_operation::validate()const
@@ -172,6 +172,17 @@ void  asset_create_operation::validate()const
       FC_ASSERT( !(permissions & ~(override_authority) ) );
       FC_ASSERT( !(permissions & ~(halt_transfer) ) );
    }
+}
+
+share_type delegate_update_operation::calculate_fee( const fee_schedule_type& k )const 
+{ 
+   return k.at( delegate_update_fee_type ) ; 
+}
+void delegate_update_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( pay_rate <= 100 || pay_rate == 255 );
+   FC_ASSERT( fee_schedule || signing_key || pay_rate <= 100 );
 }
 
 } } // namespace bts::chain

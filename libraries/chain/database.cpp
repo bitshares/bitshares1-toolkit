@@ -26,7 +26,9 @@ database::database()
    _operation_evaluators.resize(255);
    register_evaluator<key_create_evaluator>();
    register_evaluator<account_create_evaluator>();
+   register_evaluator<account_update_evaluator>();
    register_evaluator<delegate_create_evaluator>();
+   register_evaluator<delegate_update_evaluator>();
    register_evaluator<asset_create_evaluator>();
    register_evaluator<transfer_evaluator>();
 

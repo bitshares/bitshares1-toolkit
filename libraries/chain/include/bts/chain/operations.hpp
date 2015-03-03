@@ -105,11 +105,14 @@ namespace bts { namespace chain {
 
    struct delegate_update_operation
    {
-      account_id_type fee_paying_account;
-      asset           fee;
+      delegate_id_type                                delegate_id;
+      asset                                           fee; ///< paid by delegate_id->delegate_account
+      optional<fc::array<share_type,FEE_TYPE_COUNT>>  fee_schedule;
+      optional<relative_key_id_type>                  signing_key;
+      uint8_t                                         pay_rate; ///< 255 for unchanged
 
-      void       validate()const {}
-      share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct custom_id_create_operation
@@ -250,7 +253,7 @@ FC_REFLECT( bts::chain::delegate_create_operation,
             (fee_schedule)
           )
 FC_REFLECT( bts::chain::delegate_update_operation,
-            (fee_paying_account)(fee)
+            (delegate_id)(fee)(fee_schedule)(signing_key)(pay_rate)
           )
 FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(proposed_ops) )
 
