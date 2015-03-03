@@ -41,8 +41,12 @@ namespace bts { namespace chain {
       asset                               fee;
       optional<authority>                 owner;
       optional<authority>                 active;
-      optional<authority>                 voting_key;
-      optional<authority>                 memo_key;
+      optional<key_id_type>               voting_key;
+      optional<key_id_type>               memo_key;
+
+      /**
+       * Delegate IDs must be in sorted order
+       */
       optional<vector<delegate_id_type>>  vote;
 
       void       validate()const;

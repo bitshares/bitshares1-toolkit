@@ -96,6 +96,12 @@ void account_update_operation::validate()const
 {
    FC_ASSERT( fee.amount > 0 );
    FC_ASSERT( owner || active || voting_key || memo_key || vote );
+
+   if( vote && vote->size() > 1 )
+   {
+      for( int i = 1; i < vote->size(); ++i )
+         FC_ASSERT( vote->at(i-1) < vote->at(i) );
+   }
 }
 
 

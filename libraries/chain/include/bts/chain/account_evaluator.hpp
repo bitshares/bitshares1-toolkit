@@ -16,6 +16,11 @@ namespace bts { namespace chain {
       public:
          virtual object_id_type evaluate( const operation& o ) override;
          virtual object_id_type apply( const operation& o ) override;
+
+
+         const account_object*    acnt;
+         vector<delegate_id_type> remove_votes;
+         vector<delegate_id_type> add_votes;
    };
 
 } } // bts::chain

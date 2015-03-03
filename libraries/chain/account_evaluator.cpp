@@ -1,6 +1,7 @@
 #include <bts/chain/account_evaluator.hpp>
 #include <bts/chain/account_index.hpp>
 #include <bts/chain/key_object.hpp>
+#include <algorithm>
 
 namespace bts { namespace chain {
 
@@ -71,16 +72,40 @@ object_id_type account_update_evaluator::evaluate( const operation& op )
    auto bts_fee_paid = pay_fee( o.account, o.fee );
    FC_ASSERT( bts_fee_paid == o.calculate_fee( d.current_fee_schedule() ) );
 
-   const account_object* acnt = o.account(d);
+   acnt = o.account(d);
    FC_ASSERT( acnt ); 
    if( o.owner ) FC_ASSERT( verify_authority( acnt, authority::owner ) );
    else if( o.active || o.voting_key || o.memo_key ) FC_ASSERT( verify_authority( acnt, authority::active ) );
    else if( o.vote ) FC_ASSERT( verify_signature( acnt->voting_key(d) ) );
 
+   if( o.vote )
+   {
+      std::set_difference( acnt->delegate_votes.begin(), acnt->delegate_votes.end(),
+                           o.vote->begin(), o.vote->end(),
+                           std::inserter( remove_votes, remove_votes.begin() ) );
+      std::set_difference( o.vote->begin(), o.vote->end(),
+                           acnt->delegate_votes.begin(), acnt->delegate_votes.end(),
+                           std::inserter( add_votes, add_votes.begin() ) );
+   }
+
    return object_id_type();
 }
-object_id_type account_update_evaluator::apply( const operation& o ) 
+object_id_type account_update_evaluator::apply( const operation& op ) 
 {
+   const auto& o = op.get<account_update_operation>();
+   auto core_bal = acnt->balances(db())->get_balance( asset_id_type() ).amount;
+   if( core_bal.value  )
+   {
+      adjust_votes( remove_votes, -core_bal );
+      adjust_votes( add_votes, core_bal );
+   }
+   db().modify( acnt, [&]( account_object* a  ){
+          if( o.owner ) a->owner = *o.owner;
+          if( o.active ) a->active = *o.active;
+          if( o.voting_key ) a->voting_key = *o.voting_key;
+          if( o.memo_key ) a->memo_key = *o.memo_key;
+          if( o.vote ) a->delegate_votes = *o.vote;
+      });
    return object_id_type();
 }
 
