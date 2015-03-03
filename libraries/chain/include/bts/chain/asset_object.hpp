@@ -31,8 +31,8 @@ namespace bts { namespace chain {
 
          share_type              max_supply         = 0; // unlimited.
          uint16_t                market_fee_percent = 0; // 10,000 = 100%
-         uint32_t                issuer_permissions; 
-         uint32_t                flags; 
+         uint16_t                issuer_permissions; 
+         uint16_t                flags; 
 
          /** max producers = 101 */
          vector< account_id_type >  feed_producers; 

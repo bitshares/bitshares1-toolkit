@@ -145,6 +145,21 @@ void account_create_operation::validate()const
       FC_ASSERT( owner.auths.size() == 1 );
    }
 }
+void account_publish_feeds_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   optional<price> prev;
+   for( auto item : feeds )
+   {
+      FC_ASSERT( item.base.amount >= share_type(0) ); // prevent divide by 0
+      FC_ASSERT( item.quote.amount >= share_type(0) ); // prevent divide by 0
+      if( prev ) 
+      {
+         FC_ASSERT( !(prev->base.asset_id == item.base.asset_id && prev->quote.asset_id == item.quote.asset_id) );
+      }
+      else prev = item;
+   }
+}
 
 void transfer_operation::validate()const
 {
@@ -173,6 +188,36 @@ void  asset_create_operation::validate()const
       FC_ASSERT( !(permissions & ~(halt_transfer) ) );
    }
 }
+
+void asset_update_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( permissions <= market_issued );
+   FC_ASSERT( flags <= market_issued );
+   if( core_exchange_rate )
+   {
+      FC_ASSERT( core_exchange_rate->base.amount >= share_type(0) );
+      FC_ASSERT( core_exchange_rate->base.asset_id == asset_id_type() );
+      FC_ASSERT( core_exchange_rate->quote.amount >= share_type(0) );
+      FC_ASSERT( core_exchange_rate->quote.asset_id == asset_to_update );
+   }
+}
+
+share_type asset_update_operation::calculate_fee( const fee_schedule_type& k )const
+{ 
+   return k.at( asset_update_fee_type ); 
+}
+
+void asset_issue_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+}
+
+share_type asset_issue_operation::calculate_fee( const fee_schedule_type& k )const
+{ 
+   return k.at( asset_issue_fee_type ); 
+}
+
 
 share_type delegate_update_operation::calculate_fee( const fee_schedule_type& k )const 
 { 

@@ -70,6 +70,7 @@ namespace bts { namespace chain {
       transfer_fee_type,
       asset_create_fee_type, ///< the cost to register the cheapest asset
       asset_update_fee_type, ///< the cost to modify a registered asset
+      asset_issue_fee_type, ///< the cost to modify a registered asset
       market_fee_type, ///< a percentage charged on market orders
       transaction_fee_type, ///< a base price for every transaction
       data_fee_type, ///< a price per 1024 bytes of user data
@@ -152,6 +153,7 @@ namespace bts { namespace chain {
       impl_global_property_object_type,
       impl_index_meta_object_type,
       impl_asset_dynamic_data_type,
+      impl_account_feeds_object_type,
       impl_account_balance_object_type,
       impl_account_debt_object_type,
       impl_delegate_vote_object_type,
@@ -273,10 +275,12 @@ namespace bts { namespace chain {
    class account_balance_object;
    class account_debt_object;
    class transaction_object;
+   class account_feeds_object;
 
    typedef object_id< implementation_ids, impl_global_property_object_type,  global_property_object>    global_property_id_type;
    typedef object_id< implementation_ids, impl_asset_dynamic_data_type,      asset_dynamic_data_object> dynamic_asset_data_id_type;
    typedef object_id< implementation_ids, impl_account_balance_object_type,  account_balance_object>    account_balance_id_type;
+   typedef object_id< implementation_ids, impl_account_feeds_object_type,    account_feeds_object>      account_feeds_id_type;
    typedef object_id< implementation_ids, impl_account_debt_object_type,     account_debt_object>       account_debt_id_type;
    typedef object_id< implementation_ids, impl_delegate_vote_object_type,    delegate_vote_object>      delegate_vote_id_type;
    typedef object_id< implementation_ids, impl_transaction_object_type,      transaction_object>        transaction_obj_id_type;
@@ -414,6 +418,7 @@ FC_REFLECT_ENUM( bts::chain::impl_object_type,
                  (impl_global_property_object_type)
                  (impl_index_meta_object_type)
                  (impl_asset_dynamic_data_type)
+                 (impl_account_feeds_object_type)
                  (impl_account_balance_object_type)
                  (impl_account_debt_object_type)
                  (impl_delegate_vote_object_type)
