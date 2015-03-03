@@ -123,6 +123,7 @@ namespace bts { namespace chain {
       if( rel_id.space() == relative_protocol_ids )
       {
          FC_ASSERT( rel_id.instance() < trx_state->operation_results.size() );
+         FC_ASSERT( db().get_object( trx_state->operation_results[rel_id.instance()] ) );
          return trx_state->operation_results[rel_id.instance()];
       }
       return rel_id;

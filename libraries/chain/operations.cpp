@@ -164,7 +164,6 @@ void  asset_create_operation::validate()const
    FC_ASSERT( core_exchange_rate.quote.asset_id == asset_id_type() );
    FC_ASSERT( core_exchange_rate.base.asset_id == asset_id_type() );
    FC_ASSERT( core_exchange_rate.base.amount > 0 );
-   FC_ASSERT( feed_producers.size() <= BTS_MAX_FEED_PRODUCERS );
 
    FC_ASSERT( !(flags & ~permissions ) );
    if( permissions & market_issued )
@@ -172,11 +171,6 @@ void  asset_create_operation::validate()const
       FC_ASSERT( !(permissions & ~(white_list) ) );
       FC_ASSERT( !(permissions & ~(override_authority) ) );
       FC_ASSERT( !(permissions & ~(halt_transfer) ) );
-   }
-   if( feed_producers.size() )
-   {
-      FC_ASSERT( permissions & market_issued );
-      FC_ASSERT( flags & market_issued );
    }
 }
 

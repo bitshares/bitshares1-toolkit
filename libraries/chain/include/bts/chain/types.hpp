@@ -200,6 +200,46 @@ namespace bts { namespace chain {
       unsigned_int instance;
    };
 
+   template<uint8_t TypeID, typename T>
+   struct object_id<0,TypeID,T>
+   {
+      typedef T type;
+      static const uint8_t space_id = protocol_ids;
+      static const uint8_t type_id = TypeID;
+
+      object_id(){}
+      object_id( uint64_t i ):instance(i)
+      {
+         FC_ASSERT( (i >> 48) == 0 );
+      }
+      object_id( object_id_type id ):instance(id.instance())
+      {
+         assert( (id.type() == TypeID)
+                 || id.space() == relative_protocol_ids );
+      }
+
+      bool     is_relative()const { return instance.value < 0; }
+      uint64_t relative_id()const { return llabs( instance.value ); }
+
+      operator object_id_type()const 
+      { 
+         if( is_relative() ) return object_id_type( 0, 0, llabs(instance.value) );
+         else return object_id_type( protocol_ids, TypeID, instance.value ); 
+      }
+      operator uint64_t()const { return object_id_type( *this ).number; }
+
+      template<typename DB>
+      const T* operator()(const DB& db)const { FC_ASSERT( !is_relative() ); return db.get(*this); }
+
+      friend bool  operator == ( const object_id& a, const object_id& b )
+      {
+         return a.instance == b.instance;
+      }
+
+      signed_int instance;
+   };
+
+
    //typedef fc::unsigned_int            object_id_type;
    //typedef uint64_t                    object_id_type;
    class account_object;
@@ -219,6 +259,9 @@ namespace bts { namespace chain {
    typedef object_id< protocol_ids, short_order_object_type,  short_order_object>   short_order_id_type;
    typedef object_id< protocol_ids, call_order_object_type,   call_order_object>    call_order_id_type;
    typedef object_id< protocol_ids, custom_object_type,       custom_object>        custom_id_type;
+
+   typedef object_id< relative_protocol_ids, key_object_type, key_object>           relative_key_id_type;
+   typedef object_id< relative_protocol_ids, account_object_type, account_object>   relative_account_id_type;
 
    // implementation types
    class global_property_object;

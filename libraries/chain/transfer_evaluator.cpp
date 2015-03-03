@@ -14,8 +14,9 @@ object_id_type transfer_evaluator::evaluate( const operation& o )
 
    const account_object* from_account = fee_paying_account;
    const account_object* to_account   = op.to(d);
+   FC_ASSERT( to_account );
    const asset_object*   asset_type   = op.amount.asset_id(d);
-   asset( asset_type == fee_asset );
+   FC_ASSERT( asset_type );
 
    if( asset_type->flags & white_list )
    {
@@ -34,6 +35,9 @@ object_id_type transfer_evaluator::evaluate( const operation& o )
 
 object_id_type transfer_evaluator::apply( const operation& o )
 {
+
+
+
    apply_delta_balances();
    apply_delta_fee_pools();
 

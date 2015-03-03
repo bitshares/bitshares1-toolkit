@@ -55,11 +55,11 @@ namespace bts { namespace chain {
 
    struct transfer_operation
    {
-      account_id_type from;
-      account_id_type to;
-      asset           amount;
-      share_type      fee; /// same asset_id as amount.asset_id
-      vector<char>    memo;
+      account_id_type          from;
+      account_id_type          to;
+      asset                    amount;
+      share_type               fee; /// same asset_id as amount.asset_id
+      vector<char>             memo;
 
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -75,7 +75,6 @@ namespace bts { namespace chain {
       uint16_t                permissions = 0;
       uint16_t                flags = 0;
       price                   core_exchange_rate; // used for the fee pool
-      vector<account_id_type> feed_producers; // for bitassets, specifies who produces the feeds (empty for delegates)
       asset_id_type           short_backing_asset; // for bitassets, specifies what may be used as collateral.
 
       void       validate()const;
@@ -216,7 +215,6 @@ FC_REFLECT( bts::chain::asset_create_operation,
             (permissions)
             (flags)
             (core_exchange_rate)
-            (feed_producers)
             (short_backing_asset) 
           )
 FC_REFLECT( bts::chain::asset_update_operation,

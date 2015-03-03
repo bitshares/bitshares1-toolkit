@@ -20,9 +20,6 @@ object_id_type asset_create_evaluator::evaluate( const operation& o )
    fees_paid[core_asset].to_issuer -= bts_fee_required.value/2;
    assert( fees_paid[core_asset].to_issuer >= 0 );
 
-   for( auto fp : op.feed_producers )
-      FC_ASSERT( fp(d) != nullptr );
-
    return object_id_type();
 }
 
@@ -47,7 +44,6 @@ object_id_type asset_create_evaluator::apply( const operation& o )
          a->flags = op.flags;
          a->issuer_permissions = op.permissions;
          a->short_backing_asset = op.short_backing_asset;
-         a->feed_producers = op.feed_producers;
          a->issuer = op.issuer;
          a->core_exchange_rate = op.core_exchange_rate;
          a->core_exchange_rate.base.asset_id = 0;
