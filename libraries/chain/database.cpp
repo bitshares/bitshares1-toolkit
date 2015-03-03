@@ -253,10 +253,10 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          trx.operations.emplace_back(transfer_operation({genesis_account->id,
                                                          account_id,
                                                          amount,
-                                                         0,
+                                                         asset(),
                                                          vector<char>()
                                                         }));
-
+         trx.validate();
          apply_transaction(trx);
       }
 
