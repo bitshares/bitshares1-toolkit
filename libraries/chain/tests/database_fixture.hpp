@@ -25,11 +25,11 @@ struct database_fixture {
       create_account.fee_paying_account = db.get_account_index().get("init0")->id;
       create_account.fee = asset();
 
-//      create_account.name = "nathan";
-//      create_account.owner.add_authority(genesis_key, 123);
-//      create_account.active.add_authority(genesis_key, 321);
-//      create_account.memo_key = genesis_key;
-//      create_account.voting_key = genesis_key;
+      create_account.name = "nathan";
+      create_account.owner.add_authority(genesis_key, 123);
+      create_account.active.add_authority(genesis_key, 321);
+      create_account.memo_key = genesis_key;
+      create_account.voting_key = genesis_key;
 
       return create_account;
    }

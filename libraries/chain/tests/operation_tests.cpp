@@ -52,4 +52,10 @@ BOOST_AUTO_TEST_CASE( create_account )
    BOOST_CHECK(debts->call_orders.empty());
 }
 
+BOOST_AUTO_TEST_CASE( transfer )
+{
+   trx.operations.push_back(make_account());
+   trx.operations.push_back(transfer_operation({}));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

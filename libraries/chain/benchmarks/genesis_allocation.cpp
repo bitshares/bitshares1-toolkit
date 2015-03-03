@@ -18,15 +18,22 @@ BOOST_AUTO_TEST_CASE( operation_sanity_check )
 }
 
 BOOST_AUTO_TEST_CASE( genesis_allocation_30k )
-{ try {
-   genesis_allocation allocation;
-   public_key_type the_key = fc::ecc::private_key::generate().get_public_key();
-   for( int i = 0; i < 2000000; ++i )
-      allocation.emplace_back(the_key, BTS_INITIAL_SUPPLY / 2000000);
+{
+   try {
+      genesis_allocation allocation;
+      public_key_type the_key = fc::ecc::private_key::generate().get_public_key();
+      const int account_count = 30000;
+#ifdef NDEBUG
+      ilog("Running in release mode.");
+      account_count = 2000000;
+#endif
 
-   database db;
-   db.init_genesis(allocation);
-   std::cin.get();
-} catch(fc::exception& e) {
+      for( int i = 0; i < account_count; ++i )
+         allocation.emplace_back(the_key, BTS_INITIAL_SUPPLY / account_count);
+
+      database db;
+      db.init_genesis(allocation);
+   } catch(fc::exception& e) {
       edump((e.to_detail_string()));
-} }
+   }
+}
