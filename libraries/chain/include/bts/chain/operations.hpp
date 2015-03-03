@@ -3,7 +3,7 @@
 #include <bts/chain/asset.hpp>
 #include <bts/chain/authority.hpp>
 
-namespace bts { namespace chain { 
+namespace bts { namespace chain {
 
    bool is_valid_symbol( const string& symbol );
    bool is_valid_name( const string& s );
@@ -54,7 +54,7 @@ namespace bts { namespace chain {
       account_id_type from;
       account_id_type to;
       asset           amount;
-      share_type      fee; /// same asset_id as amount.asset_id
+      asset           fee; /// same asset_id as amount.asset_id
       vector<char>    memo;
 
       void       validate()const;
@@ -82,17 +82,21 @@ namespace bts { namespace chain {
    {
       account_id_type fee_paying_account;
       asset           fee;
+
+      void validate()const {}
+      share_type calculate_fee( const fee_schedule_type& k )const{ return k.at( asset_update_fee_type ); }
    };
 
    struct delegate_create_operation
    {
       account_id_type                       delegate_account; // same as fee_paying account
       asset                                 fee;
-      uint8_t                               pay_rate;  // 0 to 100% 
+      uint8_t                               pay_rate;  // 0 to 100%
       secret_hash_type                      first_secret_hash;
       key_id_type                           signing_key;
       fc::array<share_type,FEE_TYPE_COUNT>  fee_schedule;
 
+      void validate()const {}
       share_type calculate_fee( const fee_schedule_type& k )const{ return k.at( delegate_create_fee_type ); }
    };
 
@@ -101,17 +105,8 @@ namespace bts { namespace chain {
       account_id_type fee_paying_account;
       asset           fee;
 
-      void       validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-   };
-
-   struct account_set_vote_operation
-   {
-      account_id_type fee_paying_account;
-      asset           fee;
-
-      void       validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
+      void       validate()const {}
+      share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
    };
 
    struct custom_id_create_operation
@@ -153,6 +148,9 @@ namespace bts { namespace chain {
        account_id_type    fee_paying_account;
        asset              fee;
        vector<op_wrapper> proposed_ops;
+
+      void       validate()const {}
+      share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
    };
 
 
@@ -165,7 +163,6 @@ namespace bts { namespace chain {
             delegate_update_operation,
             asset_create_operation,
             asset_update_operation,
-            account_set_vote_operation,
             proposal_create_operation
          > operation;
 
@@ -176,15 +173,42 @@ namespace bts { namespace chain {
    {
       typedef void result_type;
       template<typename T>
-      void operator()( const T& v )const { v.validate(); } 
+      void operator()( const T& v )const { v.validate(); }
+   };
+
+   /**
+    * @brief Used to calculate fees in a polymorphic manner
+    */
+   struct operation_calculate_fee
+   {
+      const fee_schedule_type& fees;
+      operation_calculate_fee( const fee_schedule_type& f ):fees(f){}
+      typedef share_type result_type;
+      template<typename T>
+      share_type operator()( const T& v )const { return v.calculate_fee(fees); }
+   };
+   /**
+    * @brief Used to set fees in a polymorphic manner
+    */
+   struct operation_set_fee
+   {
+      const fee_schedule_type& fees;
+      operation_set_fee( const fee_schedule_type& f ):fees(f){}
+      typedef asset result_type;
+      template<typename T>
+      asset operator()( T& v )const { return v.fee = asset(v.calculate_fee(fees)); }
    };
 
    struct op_wrapper
    {
       public:
       operation op;
+
+      void       validate()const { op.visit( operation_validator() ); }
+      asset      set_fee( const fee_schedule_type& k ) { return op.visit( operation_set_fee( k ) ); }
+      share_type calculate_fee( const fee_schedule_type& k )const { return op.visit( operation_calculate_fee( k ) ); }
    };
-      
+
 } } // bts::chain
 FC_REFLECT( bts::chain::op_wrapper, (op) )
 
@@ -193,12 +217,12 @@ FC_REFLECT( bts::chain::key_create_operation,
             (key_data)
           )
 FC_REFLECT( bts::chain::account_create_operation,
-            (fee_paying_account)(fee) 
+            (fee_paying_account)(fee)
             (name)
-            (owner)(active)(voting_key)(memo_key) 
+            (owner)(active)(voting_key)(memo_key)
           )
 FC_REFLECT( bts::chain::account_update_operation,
-            (account)(fee)(owner)(active)(voting_key)(memo_key)(vote) 
+            (account)(fee)(owner)(active)(voting_key)(memo_key)(vote)
           )
 FC_REFLECT( bts::chain::transfer_operation,
             (from)(to)(amount)(fee)(memo) )
@@ -213,21 +237,18 @@ FC_REFLECT( bts::chain::asset_create_operation,
             (flags)
             (core_exchange_rate)
             (feed_producers)
-            (short_backing_asset) 
+            (short_backing_asset)
           )
 FC_REFLECT( bts::chain::asset_update_operation,
-            (fee_paying_account)(fee) 
+            (fee_paying_account)(fee)
           )
 FC_REFLECT( bts::chain::delegate_create_operation,
             (delegate_account)(fee)(pay_rate)
             (first_secret_hash)(signing_key)
-            (fee_schedule) 
+            (fee_schedule)
           )
 FC_REFLECT( bts::chain::delegate_update_operation,
-            (fee_paying_account)(fee) 
-          )
-FC_REFLECT( bts::chain::account_set_vote_operation,
-            (fee_paying_account)(fee) 
+            (fee_paying_account)(fee)
           )
 FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(proposed_ops) )
 
