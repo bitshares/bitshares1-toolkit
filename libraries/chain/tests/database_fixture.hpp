@@ -22,8 +22,7 @@ struct database_fixture {
 
    account_create_operation make_account() {
       account_create_operation create_account;
-      create_account.fee_paying_account = db.get_account_index().get("init0")->id;
-      create_account.fee = asset();
+      create_account.fee_paying_account = account_id_type();
 
       create_account.name = "nathan";
       create_account.owner.add_authority(genesis_key, 123);
@@ -31,6 +30,7 @@ struct database_fixture {
       create_account.memo_key = genesis_key;
       create_account.voting_key = genesis_key;
 
+      create_account.fee = create_account.calculate_fee(db.current_fee_schedule());
       return create_account;
    }
 };
