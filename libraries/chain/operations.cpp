@@ -12,7 +12,7 @@ bool is_valid_symbol( const string& symbol )
       if( c == '.' ) ++dot_count;
       else if( c < 'A' || c > 'Z' ) return false;
    }
-   if( symbol[0] == '.' || symbol[symbol.size()-1] == '.' ) 
+   if( symbol[0] == '.' || symbol[symbol.size()-1] == '.' )
       return false;
    return dot_count <= 1;
 }
@@ -21,7 +21,7 @@ bool is_valid_symbol( const string& symbol )
  *  Valid names are all lower case, start with [a-z] and may
  *  have "." or "-" in the name along with a single '/'.  The
  *  next character after a "/", "." or "-" cannot be [0-9] or
- *  another '.', '-'.  
+ *  another '.', '-'.
  *
  */
 bool is_valid_name( const string& s )
@@ -150,7 +150,7 @@ void transfer_operation::validate()const
 {
    FC_ASSERT( from != to );
    FC_ASSERT( amount.amount > 0 );
-   FC_ASSERT( fee >= 0 );
+   FC_ASSERT( fee.amount >= 0 );
 }
 
 void  asset_create_operation::validate()const
