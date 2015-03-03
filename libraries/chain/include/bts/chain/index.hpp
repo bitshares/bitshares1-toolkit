@@ -55,7 +55,6 @@ namespace bts { namespace chain {
          virtual const object*  create( const std::function<void(object*)>& constructor,
                                         object_id_type requested_id = object_id_type() ) = 0;
 
-
          virtual packed_object pack( const object* p )const  = 0;
          virtual void unpack( object* p, const packed_object& obj )const  = 0;
          virtual variant to_variant( const object* p )const  = 0;
@@ -83,6 +82,8 @@ namespace bts { namespace chain {
          void modify( const Object* obj, const Lambda& l ) {
             modify( static_cast<const object*>(obj), std::function<void(object*)>( [&]( object* o ){ l( static_cast<Object*>(o) ); } ) );
          }
+
+         virtual void               inspect_all_objects(std::function<void(const object*)> inspector) = 0;
 
          virtual void               remove( object_id_type id ) = 0;
 

@@ -3,9 +3,9 @@
 #include <bts/chain/account_object.hpp>
 
 namespace bts { namespace chain {
-    
+
    /**
-    *  @class account_index 
+    *  @class account_index
     *  @brief enable account lookup by NAME or INSTANCE and enforce uniqueness
     */
    class account_index : public index
@@ -34,6 +34,8 @@ namespace bts { namespace chain {
 
          const account_object* get( const string& name )const;
 
+         virtual void inspect_all_objects(std::function<void (const object*)> inspector);
+
          typedef vector<unique_ptr<account_object>>::const_iterator const_iterator;
          const_iterator begin()const { return accounts.begin(); }
          const_iterator end()const   { return accounts.end();   }
@@ -43,4 +45,4 @@ namespace bts { namespace chain {
          unordered_map<string,account_object*>  name_to_id;
    };
 
-} } 
+} }

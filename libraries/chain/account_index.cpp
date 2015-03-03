@@ -113,4 +113,12 @@ void           account_index::set_meta_object( const packed_object& obj )
    accounts.resize( meta.next_object_instance );
 }
 
+void bts::chain::account_index::inspect_all_objects(std::function<void (const object*)> inspector)
+{
+   try {
+      for( const auto& ptr : accounts )
+         inspector(ptr.get());
+   } FC_CAPTURE_AND_RETHROW()
+}
+
 } } // bts::chain
