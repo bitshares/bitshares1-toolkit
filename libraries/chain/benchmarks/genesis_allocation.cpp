@@ -11,10 +11,15 @@ using namespace bts::chain;
 
 BOOST_AUTO_TEST_CASE( operation_sanity_check )
 {
-   operation op = account_create_operation();
-   op.get<account_create_operation>().active.add_authority(account_id_type(), 123);
-   operation tmp = std::move(op);
-   wdump((tmp.which()));
+   try {
+      operation op = account_create_operation();
+      op.get<account_create_operation>().active.add_authority(account_id_type(), 123);
+      operation tmp = std::move(op);
+      wdump((tmp.which()));
+   } catch (fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
 }
 
 BOOST_AUTO_TEST_CASE( genesis_allocation_30k )
@@ -35,5 +40,6 @@ BOOST_AUTO_TEST_CASE( genesis_allocation_30k )
       db.init_genesis(allocation);
    } catch(fc::exception& e) {
       edump((e.to_detail_string()));
+      throw;
    }
 }
