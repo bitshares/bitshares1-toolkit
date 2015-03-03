@@ -143,6 +143,19 @@ namespace bts { namespace chain {
    };
 
 
+   /** op_wrapper is used to get around the circular
+    * definition of operation and proposals that contain
+    * them.
+    */
+   struct op_wrapper;
+   struct proposal_create_operation
+   {
+       account_id_type    fee_paying_account;
+       asset              fee;
+       vector<op_wrapper> proposed_ops;
+   };
+
+
    typedef fc::static_variant<
             transfer_operation,
             key_create_operation,
@@ -152,7 +165,8 @@ namespace bts { namespace chain {
             delegate_update_operation,
             asset_create_operation,
             asset_update_operation,
-            account_set_vote_operation
+            account_set_vote_operation,
+            proposal_create_operation
          > operation;
 
    /**
@@ -165,8 +179,14 @@ namespace bts { namespace chain {
       void operator()( const T& v )const { v.validate(); } 
    };
 
+   struct op_wrapper
+   {
+      public:
+      operation op;
+   };
       
 } } // bts::chain
+FC_REFLECT( bts::chain::op_wrapper, (op) )
 
 FC_REFLECT( bts::chain::key_create_operation,
             (fee_paying_account)(fee)
@@ -209,4 +229,5 @@ FC_REFLECT( bts::chain::delegate_update_operation,
 FC_REFLECT( bts::chain::account_set_vote_operation,
             (fee_paying_account)(fee) 
           )
+FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(proposed_ops) )
 
