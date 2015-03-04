@@ -363,7 +363,18 @@ void database::undo()
 
 void database::apply_block( const signed_block& next_block, bool validate_signatures, bool save_undo )
 { try {
+   FC_ASSERT( _pending_block.block_num = next_block.block_num );
+   FC_ASSERT( _pending_block.previous == next_block.previous );
+   FC_ASSERT( _pending_block.timestamp <= next_block.timestamp );
+   FC_ASSERT( _pending_block.timestamp.sec_since_epoch() % get_global_properties()->block_interval == 0 );
+   const delegate_object* del = next_block.delegate_id(*this);
+   FC_ASSERT( del != nullptr );
+   FC_ASSERT( secret_hash_type::hash(next_block.previous_secret) == del->next_secret );
 
+   auto expected_delegate_num = (next_block.timestamp.sec_since_epoch() / get_global_properties()->block_interval)%get_global_properties()->active_delegates.size();
+   FC_ASSERT( next_block.delegate_id == get_global_properties()->active_delegates[expected_delegate_num] );
+
+   _pending_block.transactions.clear();
    for( const auto& trx : next_block.transactions )
    {
       /* We do not need to push the undo state for each transaction
@@ -374,6 +385,35 @@ void database::apply_block( const signed_block& next_block, bool validate_signat
        */
       apply_transaction( trx, validate_signatures );
    }
+   _pending_block.block_num++;
+   _pending_block.previous = next_block.id();
+
+   if( next_block.block_num % get_global_properties()->active_delegates.size() )
+   {
+      // TODO: shuffle and recalculate active delegates
+   }
+
+   auto current_block_interval = get_global_properties()->block_interval;
+   if( next_block.block_num % get_global_properties()->maintenance_interval == 0 )
+   {
+      // TODO: update global properties and fees
+
+      // if block interval CHANGED durring this block *THEN* we cannot simply
+      // add the interval if we want to maintain the invariant that all timestamps are a multiple 
+      // of the interval.  
+      _pending_block.timestamp = next_block.timestamp + fc::seconds(current_block_interval);
+      uint32_t r = _pending_block.timestamp.sec_since_epoch()%current_block_interval;
+      if( !r )
+      {
+         _pending_block.timestamp += current_block_interval - r;
+         assert( (_pending_block.timestamp.sec_since_epoch() % current_block_interval)  == 0 );
+      }
+   }
+   else
+   {
+      _pending_block.timestamp = next_block.timestamp + current_block_interval;
+   }
+
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num)(validate_signatures)(save_undo) ) }
 
 
