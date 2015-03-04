@@ -122,10 +122,14 @@ namespace bts { namespace chain {
       uint8_t                               pay_rate;  // 0 to 100%
       secret_hash_type                      first_secret_hash;
       key_id_type                           signing_key;
+      uint8_t                               block_interval_sec = BTS_DEFAULT_BLOCK_INTERVAL; 
+      uint32_t                              max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE; 
+      uint32_t                              max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE; 
+      uint32_t                              max_sec_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION; 
       fc::array<share_type,FEE_TYPE_COUNT>  fee_schedule;
 
-      void validate()const {}
-      share_type calculate_fee( const fee_schedule_type& k )const{ return k.at( delegate_create_fee_type ); }
+      void validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct delegate_update_operation
@@ -135,6 +139,10 @@ namespace bts { namespace chain {
       optional<fc::array<share_type,FEE_TYPE_COUNT>>  fee_schedule;
       optional<relative_key_id_type>                  signing_key;
       uint8_t                                         pay_rate; ///< 255 for unchanged
+      uint8_t                                         block_interval_sec = BTS_DEFAULT_BLOCK_INTERVAL; 
+      uint32_t                                        max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE; 
+      uint32_t                                        max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE; 
+      uint32_t                                        max_sec_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION; 
 
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
