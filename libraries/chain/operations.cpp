@@ -192,6 +192,7 @@ void  asset_create_operation::validate()const
    FC_ASSERT( core_exchange_rate.quote.asset_id == asset_id_type() );
    FC_ASSERT( core_exchange_rate.base.asset_id == asset_id_type() );
    FC_ASSERT( core_exchange_rate.base.amount > 0 );
+   FC_ASSERT( core_exchange_rate.quote.amount > 0 );
 
    FC_ASSERT( !(flags & ~permissions ) );
    if( permissions & market_issued )
