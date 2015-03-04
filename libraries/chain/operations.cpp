@@ -2,6 +2,10 @@
 
 namespace bts { namespace chain {
 
+/**
+ *  Valid symbols have between 3 and 17 upper case characters
+ *  with at most a single "." that is not the first or last character.
+ */
 bool is_valid_symbol( const string& symbol )
 {
    if( symbol.size() > 17 ) return false;

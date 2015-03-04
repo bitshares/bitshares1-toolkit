@@ -554,6 +554,8 @@ void database::update_global_dynamic_data( const signed_block& b )
  */
 void database::push_block( const signed_block& new_block, uint32_t skip )
 { try {
+   auto old_save_undo = _save_undo;
+   if( skip & skip_undo_block ) _save_undo = false;
    pop_pending_block();
    { // logically connect pop/push of pending block
       if( !(skip&skip_undo_block) )push_undo_state();
@@ -564,6 +566,7 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
         _block_id_to_num.store( new_block.id(), new_block.block_num );
       }
       catch ( const fc::exception& e ) { except = e; }
+      _save_undo = old_save_undo;
       if( except )
       {
          if( !(skip&skip_undo_block) ) undo();
