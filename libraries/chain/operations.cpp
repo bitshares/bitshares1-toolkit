@@ -145,6 +145,14 @@ void account_create_operation::validate()const
       FC_ASSERT( owner.auths.size() == 1 );
    }
 }
+
+
+share_type account_publish_feeds_operation::calculate_fee( const fee_schedule_type& schedule )const
+{
+   auto bts_fee_required = schedule.at( publish_feed_fee_type );
+   return bts_fee_required;
+}
+
 void account_publish_feeds_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
