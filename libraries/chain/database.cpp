@@ -612,6 +612,7 @@ void database::pop_pending_block()
 
 processed_transaction database::apply_transaction( const signed_transaction& trx, uint32_t skip )
 { try {
+   trx.validate();
    transaction_evaluation_state eval_state(this, skip&skip_transaction_signatures );
    if( !(skip & skip_transaction_signatures) )
    {
