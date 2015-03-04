@@ -28,12 +28,16 @@ object_id_type delegate_create_evaluator::apply( const operation& o )
    });
 
    auto new_del_object = db().create<delegate_object>( [&]( delegate_object* obj ){
-         obj->delegate_account = op.delegate_account;
-         obj->pay_rate         = op.pay_rate;
-         obj->signing_key      = op.signing_key;
-         obj->next_secret      = op.first_secret_hash;
-         obj->fee_schedule     = op.fee_schedule;
-         obj->vote             = vote_obj->id;
+         obj->delegate_account         = op.delegate_account;
+         obj->pay_rate                 = op.pay_rate;
+         obj->signing_key              = op.signing_key;
+         obj->next_secret              = op.first_secret_hash;
+         obj->fee_schedule             = op.fee_schedule;
+         obj->block_interval_sec       = op.block_interval_sec;
+         obj->max_block_size           = op.max_block_size;
+         obj->max_transaction_size     = op.max_transaction_size;
+         obj->max_sec_until_expiration = op.max_sec_until_expiration;
+         obj->vote                     = vote_obj->id;
 
    });
    return object_id_type();
@@ -67,6 +71,11 @@ object_id_type delegate_update_evaluator::apply( const operation& o )
          if( op.pay_rate <= 100 ) obj->pay_rate     = op.pay_rate;
          if( op.signing_key     ) obj->signing_key  = get_relative_id( *op.signing_key );
          if( op.fee_schedule    ) obj->fee_schedule = *op.fee_schedule;
+
+         obj->block_interval_sec       = op.block_interval_sec;
+         obj->max_block_size           = op.max_block_size;
+         obj->max_transaction_size     = op.max_transaction_size;
+         obj->max_sec_until_expiration = op.max_sec_until_expiration;
    });
    return object_id_type();
 }

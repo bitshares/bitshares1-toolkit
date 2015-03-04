@@ -53,11 +53,8 @@ namespace bts { namespace chain {
       unsigned_int       relative_expiration = 0;
       vector<operation>  operations;
 
-      void validate() const
-      {
-         for( const auto& op : operations )
-            op.visit(operation_validator());
-      }
+      digest_type digest()const;
+      void validate() const;
    };
 
    struct signed_transaction : public transaction

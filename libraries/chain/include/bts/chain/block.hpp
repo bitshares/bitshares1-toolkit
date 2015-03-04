@@ -6,7 +6,7 @@ namespace bts { namespace chain {
 
    struct block 
    {
-      digest_type                digest()const;
+      digest_type                   digest()const;
 
       block_id_type                 previous;
       fc::time_point_sec            timestamp;

@@ -146,6 +146,29 @@ void account_create_operation::validate()const
    }
 }
 
+
+share_type account_publish_feeds_operation::calculate_fee( const fee_schedule_type& schedule )const
+{
+   auto bts_fee_required = schedule.at( publish_feed_fee_type );
+   return bts_fee_required;
+}
+
+void account_publish_feeds_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   optional<price> prev;
+   for( auto item : feeds )
+   {
+      FC_ASSERT( item.base.amount >= share_type(0) ); // prevent divide by 0
+      FC_ASSERT( item.quote.amount >= share_type(0) ); // prevent divide by 0
+      if( prev ) 
+      {
+         FC_ASSERT( !(prev->base.asset_id == item.base.asset_id && prev->quote.asset_id == item.quote.asset_id) );
+      }
+      else prev = item;
+   }
+}
+
 void transfer_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
@@ -174,15 +197,68 @@ void  asset_create_operation::validate()const
    }
 }
 
+void asset_update_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( permissions <= market_issued );
+   FC_ASSERT( flags <= market_issued );
+   if( core_exchange_rate )
+   {
+      FC_ASSERT( core_exchange_rate->base.amount >= share_type(0) );
+      FC_ASSERT( core_exchange_rate->base.asset_id == asset_id_type() );
+      FC_ASSERT( core_exchange_rate->quote.amount >= share_type(0) );
+      FC_ASSERT( core_exchange_rate->quote.asset_id == asset_to_update );
+   }
+}
+
+share_type asset_update_operation::calculate_fee( const fee_schedule_type& k )const
+{ 
+   return k.at( asset_update_fee_type ); 
+}
+
+void asset_issue_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( asset_to_issue.amount.value <= BTS_MAX_SHARE_SUPPLY );
+   FC_ASSERT( asset_to_issue.amount.value > 0 );
+   FC_ASSERT( asset_to_issue.asset_id != 0 );
+}
+
+share_type asset_issue_operation::calculate_fee( const fee_schedule_type& k )const
+{ 
+   return k.at( asset_issue_fee_type ); 
+}
+
+
+share_type delegate_create_operation::calculate_fee( const fee_schedule_type& k )const 
+{ 
+   return k.at( delegate_create_fee_type ) ; 
+}
 share_type delegate_update_operation::calculate_fee( const fee_schedule_type& k )const 
 { 
    return k.at( delegate_update_fee_type ) ; 
+}
+
+
+void delegate_create_operation::validate()const 
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( pay_rate <= 100 );
+   for( auto fee : fee_schedule ) FC_ASSERT( fee.value > 0 );
+   FC_ASSERT( max_block_size >= BTS_MIN_BLOCK_SIZE_LIMIT );
+   FC_ASSERT( max_transaction_size >= BTS_MIN_TRANSACTION_SIZE_LIMIT );
+   FC_ASSERT( block_interval_sec > 0 && block_interval_sec <= BTS_MAX_BLOCK_INTERVAL );
 }
 void delegate_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( pay_rate <= 100 || pay_rate == 255 );
    FC_ASSERT( fee_schedule || signing_key || pay_rate <= 100 );
+   if( fee_schedule ) for( auto fee : *fee_schedule ) FC_ASSERT( fee.value > 0 );
+
+   FC_ASSERT( max_block_size >= BTS_MIN_BLOCK_SIZE_LIMIT );
+   FC_ASSERT( max_transaction_size >= BTS_MIN_TRANSACTION_SIZE_LIMIT );
+   FC_ASSERT( block_interval_sec > 0 && block_interval_sec <= BTS_MAX_BLOCK_INTERVAL );
 }
 
 } } // namespace bts::chain

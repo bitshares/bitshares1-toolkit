@@ -53,12 +53,22 @@ namespace bts { namespace chain {
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
+   struct account_publish_feeds_operation
+   {
+      account_id_type   account;
+      asset             fee; ///< paid for by account
+      flat_set<price>   feeds; ///< must be sorted with no duplicates
+
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
    struct transfer_operation
    {
       account_id_type from;
       account_id_type to;
       asset           amount;
-      asset           fee; /// same asset_id as amount.asset_id
+      asset           fee; ///< same asset_id as amount.asset_id
       vector<char>    memo;
 
       void       validate()const;
@@ -71,6 +81,7 @@ namespace bts { namespace chain {
       asset                   fee;
       string                  symbol;
       share_type              max_supply;
+      uint8_t                 precision = 0; ///< number of digits to the right of decimal
       uint16_t                market_fee_percent = 0;
       uint16_t                permissions = 0;
       uint16_t                flags = 0;
@@ -83,11 +94,25 @@ namespace bts { namespace chain {
 
    struct asset_update_operation
    {
-      account_id_type fee_paying_account;
-      asset           fee;
+      asset_id_type   asset_to_update;
+      asset           fee; ///< paid by asset_to_update->issuer
 
-      void validate()const {}
-      share_type calculate_fee( const fee_schedule_type& k )const{ return k.at( asset_update_fee_type ); }
+      uint16_t         flags = 0;
+      uint16_t         permissions = 0;
+      optional<price>  core_exchange_rate;
+
+      void validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   struct asset_issue_operation
+   {
+      asset            asset_to_issue;
+      asset            fee; ///< paid by asset_to_issue->asset_id->issuer
+      account_id_type  issue_to_account;
+
+      void validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct delegate_create_operation
@@ -97,10 +122,14 @@ namespace bts { namespace chain {
       uint8_t                               pay_rate;  // 0 to 100%
       secret_hash_type                      first_secret_hash;
       key_id_type                           signing_key;
+      uint8_t                               block_interval_sec = BTS_DEFAULT_BLOCK_INTERVAL; 
+      uint32_t                              max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE; 
+      uint32_t                              max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE; 
+      uint32_t                              max_sec_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION; 
       fc::array<share_type,FEE_TYPE_COUNT>  fee_schedule;
 
-      void validate()const {}
-      share_type calculate_fee( const fee_schedule_type& k )const{ return k.at( delegate_create_fee_type ); }
+      void validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct delegate_update_operation
@@ -110,6 +139,10 @@ namespace bts { namespace chain {
       optional<fc::array<share_type,FEE_TYPE_COUNT>>  fee_schedule;
       optional<relative_key_id_type>                  signing_key;
       uint8_t                                         pay_rate; ///< 255 for unchanged
+      uint8_t                                         block_interval_sec = BTS_DEFAULT_BLOCK_INTERVAL; 
+      uint32_t                                        max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE; 
+      uint32_t                                        max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE; 
+      uint32_t                                        max_sec_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION; 
 
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -165,10 +198,12 @@ namespace bts { namespace chain {
             key_create_operation,
             account_create_operation,
             account_update_operation,
+            account_publish_feeds_operation,
             delegate_create_operation,
             delegate_update_operation,
             asset_create_operation,
             asset_update_operation,
+            asset_issue_operation,
             proposal_create_operation
          > operation;
 
@@ -222,14 +257,20 @@ FC_REFLECT( bts::chain::key_create_operation,
             (fee_paying_account)(fee)
             (key_data)
           )
+
 FC_REFLECT( bts::chain::account_create_operation,
             (fee_paying_account)(fee)
             (name)
             (owner)(active)(voting_key)(memo_key)
           )
+
 FC_REFLECT( bts::chain::account_update_operation,
             (account)(fee)(owner)(active)(voting_key)(memo_key)(vote)
           )
+
+FC_REFLECT( bts::chain::account_publish_feeds_operation,
+            (account)(fee)(feeds) )
+
 FC_REFLECT( bts::chain::transfer_operation,
             (from)(to)(amount)(fee)(memo) )
 
@@ -238,22 +279,30 @@ FC_REFLECT( bts::chain::asset_create_operation,
             (fee)
             (symbol)
             (max_supply)
+            (precision)
             (market_fee_percent)
             (permissions)
             (flags)
             (core_exchange_rate)
             (short_backing_asset) 
           )
+
 FC_REFLECT( bts::chain::asset_update_operation,
-            (fee_paying_account)(fee)
+            (asset_to_update)(fee)(flags)(permissions)(core_exchange_rate)
           )
+
+FC_REFLECT( bts::chain::asset_issue_operation,
+            (asset_to_issue)(fee)(issue_to_account) )
+
 FC_REFLECT( bts::chain::delegate_create_operation,
             (delegate_account)(fee)(pay_rate)
             (first_secret_hash)(signing_key)
             (fee_schedule)
           )
+
 FC_REFLECT( bts::chain::delegate_update_operation,
             (delegate_id)(fee)(fee_schedule)(signing_key)(pay_rate)
           )
+
 FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(proposed_ops) )
 

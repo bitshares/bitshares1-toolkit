@@ -5,6 +5,26 @@
 
 namespace bts { namespace chain {
    /**
+    * @class account_feeds_object
+    * @brief tracks price feeds published by a particular account
+    *
+    */
+   class account_feeds_object : public object
+   {
+      public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_account_feeds_object_type;
+
+         optional<price> get_feed( asset_id_type quote, asset_id_type base )const;
+         void            set_feed( const price& p );
+
+         /**
+          * Maps feeds to the last time they were updated.
+          */
+         flat_map<price,time_point_sec> feeds;
+   };
+
+   /**
     *  @class account_balance_object
     *  @ingroup implementation
     *
@@ -65,9 +85,10 @@ namespace bts { namespace chain {
 
          vector<delegate_id_type> delegate_votes;
 
-         account_balance_id_type  balances;
-         account_debt_id_type     debts;
-         flat_set<asset_id_type>  authorized_assets;
+         optional<account_feeds_id_type> feeds;
+         account_balance_id_type         balances;
+         account_debt_id_type            debts;
+         flat_set<asset_id_type>         authorized_assets;
    };
 
    /**
@@ -87,7 +108,7 @@ namespace bts { namespace chain {
 }} 
 FC_REFLECT_DERIVED( bts::chain::account_object, 
                     (bts::chain::annotated_object), 
-                    (name)(owner)(active)(memo_key)(voting_key)(delegate_votes)(balances)(debts)(authorized_assets) )
+                    (name)(owner)(active)(memo_key)(voting_key)(delegate_votes)(feeds)(balances)(debts)(authorized_assets) )
 
 FC_REFLECT_DERIVED( bts::chain::meta_account_object, 
                     (bts::chain::object), 

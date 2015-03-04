@@ -14,4 +14,15 @@ namespace bts { namespace chain {
          share_type bts_fee_required;
    };
 
+   class asset_issue_evaluator : public evaluator<asset_issue_operation>
+   {
+      public:
+         virtual object_id_type evaluate( const operation& o ) override;
+         virtual object_id_type apply( const operation& o ) override;
+
+         share_type bts_fee_required;
+         const asset_dynamic_data_object* asset_dyn_data = nullptr;
+         const account_object*            to_account = nullptr;
+   };
+
 } } // bts::chain

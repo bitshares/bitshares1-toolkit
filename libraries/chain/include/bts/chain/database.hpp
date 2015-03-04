@@ -68,6 +68,7 @@ namespace bts { namespace chain {
          ~database();
 
          void open(const fc::path& data_dir, const genesis_allocation& initial_allocation = genesis_allocation());
+         void reindex();
          void flush();
          void close();
 
@@ -75,7 +76,7 @@ namespace bts { namespace chain {
          void pop_undo_state();
          void undo();
 
-         void push_block( const block& b );
+         void push_block( const signed_block& b );
          bool push_transaction( const signed_transaction& trx );
 
          asset current_delegate_registration_fee()const;
@@ -162,7 +163,10 @@ namespace bts { namespace chain {
 
 
          void save_undo( const object* obj );
-         processed_transaction apply_transaction( const signed_transaction& trx );
+
+         void                  apply_block( const signed_block& next_block, bool validate_signatures, bool save_undo );
+         processed_transaction apply_transaction( const signed_transaction& trx, bool validate_signatures = true );
+
          void pop_pending_block();
          void push_pending_block();
 
@@ -189,7 +193,6 @@ namespace bts { namespace chain {
           */
          bts::db::level_map<uint32_t, signed_block>                _block_num_to_block;
          bts::db::level_pod_map<block_id_type,uint32_t>            _block_id_to_num;
-         bts::db::level_map<block_id_type,undo_state>              _undo_db;
          shared_ptr<db::level_map<object_id_type, packed_object>>  _object_id_to_object;
    };
 

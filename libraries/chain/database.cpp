@@ -1,3 +1,4 @@
+#include <bts/chain/types.hpp>
 #include <bts/chain/database.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/crypto/digest.hpp>
@@ -30,6 +31,7 @@ database::database()
    register_evaluator<delegate_create_evaluator>();
    register_evaluator<delegate_update_evaluator>();
    register_evaluator<asset_create_evaluator>();
+   register_evaluator<asset_issue_evaluator>();
    register_evaluator<transfer_evaluator>();
 
    _object_id_to_object = std::make_shared<db::level_map<object_id_type,packed_object>>();
@@ -61,7 +63,6 @@ void database::close()
 
    _block_num_to_block.close();
    _block_id_to_num.close();
-   _undo_db.close();
    _object_id_to_object->close();
 }
 
@@ -126,7 +127,6 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
 
    _block_num_to_block.open( data_dir / "database" / "block_num_to_block" );
    _block_id_to_num.open( data_dir / "database" / "block_id_to_num" );
-   _undo_db.open( data_dir / "database" / "undo_db" );
    _object_id_to_object->open( data_dir / "database" / "objects" );
 
    for( auto& space : _index )
@@ -298,6 +298,16 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
    ilog("End genesis initialization.");
 }
 
+void database::reindex()
+{
+   auto itr = _block_num_to_block.begin();
+   while( itr.valid() )
+   {
+      apply_block( itr.value(), false, false );
+      ++itr;
+   }
+}
+
 
 asset database::current_delegate_registration_fee()const
 {
@@ -367,23 +377,76 @@ void database::undo()
 }
 
 
-void database::push_block( const block& new_block )
+void database::apply_block( const signed_block& next_block, bool validate_signatures, bool save_undo )
+{ try {
+   FC_ASSERT( _pending_block.block_num = next_block.block_num );
+   FC_ASSERT( _pending_block.previous == next_block.previous );
+   FC_ASSERT( _pending_block.timestamp <= next_block.timestamp );
+   FC_ASSERT( _pending_block.timestamp.sec_since_epoch() % get_global_properties()->block_interval == 0 );
+   const delegate_object* del = next_block.delegate_id(*this);
+   FC_ASSERT( del != nullptr );
+   FC_ASSERT( secret_hash_type::hash(next_block.previous_secret) == del->next_secret );
+
+   auto expected_delegate_num = (next_block.timestamp.sec_since_epoch() / get_global_properties()->block_interval)%get_global_properties()->active_delegates.size();
+   FC_ASSERT( next_block.delegate_id == get_global_properties()->active_delegates[expected_delegate_num] );
+
+   _pending_block.transactions.clear();
+   for( const auto& trx : next_block.transactions )
+   {
+      /* We do not need to push the undo state for each transaction
+       * because they either all apply and are valid or the
+       * entire block fails to apply.  We only need an "undo" state
+       * for transactions when validating broadcast transactions or
+       * when building a block.
+       */
+      apply_transaction( trx, validate_signatures );
+   }
+   _pending_block.block_num++;
+   _pending_block.previous = next_block.id();
+
+   if( next_block.block_num % get_global_properties()->active_delegates.size() )
+   {
+      // TODO: shuffle and recalculate active delegates
+   }
+
+   auto current_block_interval = get_global_properties()->block_interval;
+   if( next_block.block_num % get_global_properties()->maintenance_interval == 0 )
+   {
+      // TODO: update global properties and fees
+
+      // if block interval CHANGED durring this block *THEN* we cannot simply
+      // add the interval if we want to maintain the invariant that all timestamps are a multiple 
+      // of the interval.  
+      _pending_block.timestamp = next_block.timestamp + fc::seconds(current_block_interval);
+      uint32_t r = _pending_block.timestamp.sec_since_epoch()%current_block_interval;
+      if( !r )
+      {
+         _pending_block.timestamp += current_block_interval - r;
+         assert( (_pending_block.timestamp.sec_since_epoch() % current_block_interval)  == 0 );
+      }
+   }
+   else
+   {
+      _pending_block.timestamp = next_block.timestamp + current_block_interval;
+   }
+
+} FC_CAPTURE_AND_RETHROW( (next_block.block_num)(validate_signatures)(save_undo) ) }
+
+
+/**
+ *  Push block "may fail" in which case every partial change is unwound.  After
+ *  push block is successful the block is appended to the chain database on disk.
+ */
+void database::push_block( const signed_block& new_block )
 { try {
    pop_pending_block();
    { // logically connect pop/push of pending block
       push_undo_state();
       optional<fc::exception> except;
       try {
-         for( const auto& trx : new_block.transactions )
-         {
-            /* We do not need to push the undo state for each transaction
-             * because they either all apply and are valid or the
-             * entire block fails to apply.  We only need an "undo" state
-             * for transactions when validating broadcast transactions or
-             * when building a block.
-             */
-            apply_transaction( trx );
-         }
+        apply_block( new_block, false, false );
+        _block_num_to_block.store( new_block.block_num, new_block );
+        _block_id_to_num.store( new_block.id(), new_block.block_num );
       }
       catch ( const fc::exception& e ) { except = e; }
       if( except )
@@ -403,7 +466,7 @@ bool database::push_transaction( const signed_transaction& trx )
    push_undo_state(); // trx undo
    optional<fc::exception> except;
    try {
-      apply_transaction( trx );
+      apply_transaction( trx, true );
       _pending_block.transactions.push_back(trx);
       pop_undo_state(); // everything was OK.
       return true;
@@ -430,12 +493,15 @@ void database::pop_pending_block()
    undo();
 }
 
-processed_transaction database::apply_transaction( const signed_transaction& trx )
+processed_transaction database::apply_transaction( const signed_transaction& trx, bool validate_signatures )
 { try {
-   transaction_evaluation_state eval_state(this, true /* skip signature check */);
-   for( auto sig : trx.signatures )
+   transaction_evaluation_state eval_state(this, !validate_signatures );
+   if( validate_signatures )
    {
-      // TODO: eval_state.signed_by.insert( address )
+      for( auto sig : trx.signatures )
+      {
+         eval_state.signed_by.insert( fc::ecc::public_key( sig, trx.digest() ) ); 
+      }
    }
    eval_state.operation_results.reserve( trx.operations.size() );
 
