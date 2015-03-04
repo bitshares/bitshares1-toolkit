@@ -72,6 +72,7 @@ namespace bts { namespace chain {
       asset_create_fee_type, ///< the cost to register the cheapest asset
       asset_update_fee_type, ///< the cost to modify a registered asset
       asset_issue_fee_type, ///< the cost to modify a registered asset
+      asset_fund_fee_pool_fee_type, ///< the cost to add funds to an asset's fee pool
       market_fee_type, ///< a percentage charged on market orders
       transaction_fee_type, ///< a base price for every transaction
       data_fee_type, ///< a price per 1024 bytes of user data
@@ -227,10 +228,10 @@ namespace bts { namespace chain {
       bool     is_relative()const { return instance.value < 0; }
       uint64_t relative_id()const { return llabs( instance.value ); }
 
-      operator object_id_type()const 
-      { 
+      operator object_id_type()const
+      {
          if( is_relative() ) return object_id_type( 0, 0, llabs(instance.value) );
-         else return object_id_type( protocol_ids, TypeID, instance.value ); 
+         else return object_id_type( protocol_ids, TypeID, instance.value );
       }
       operator uint64_t()const { return object_id_type( *this ).number; }
 
