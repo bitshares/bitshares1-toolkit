@@ -23,7 +23,7 @@ BOOST_AUTO_TEST_CASE( operation_sanity_check )
    }
 }
 
-BOOST_AUTO_TEST_CASE( genesis_allocation_30k )
+BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
 {
    try {
       genesis_allocation allocation;
@@ -49,6 +49,8 @@ BOOST_AUTO_TEST_CASE( genesis_allocation_30k )
 
          accounts = db.get_account_index().size();
          BOOST_CHECK(accounts >= account_count);
+         for( int i = 11; i < account_count + 11; ++i)
+            BOOST_CHECK(account_id_type(i)(db)->balances(db)->get_balance(asset_id_type()).amount == BTS_INITIAL_SUPPLY / account_count);
 
          fc::time_point start_time = fc::time_point::now();
          db.close();
@@ -62,6 +64,8 @@ BOOST_AUTO_TEST_CASE( genesis_allocation_30k )
          ilog("Opened database in ${t} milliseconds.", ("t", (fc::time_point::now() - start_time).count() / 1000));
 
          BOOST_CHECK(db.get_account_index().size() == accounts);
+         for( int i = 11; i < account_count + 11; ++i)
+            BOOST_CHECK(account_id_type(i)(db)->balances(db)->get_balance(asset_id_type()).amount == BTS_INITIAL_SUPPLY / account_count);
 
          start_time = fc::time_point::now();
          db.close();

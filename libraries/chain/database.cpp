@@ -253,23 +253,39 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          object_id_type key_id(relative_protocol_ids, 0, 0);
          authority account_authority;
          account_authority.add_authority(key_id_type(key_id), 1);
-         trx.operations.emplace_back(account_create_operation({genesis_account->id,
-                                                               asset(),
-                                                               string(),
-                                                               account_authority,
-                                                               account_authority,
-                                                               key_id,
-                                                               key_id
+         trx.operations.emplace_back(account_create_operation({
+                                                                 genesis_account->id,
+                                                                 asset(),
+                                                                 string(),
+                                                                 account_authority,
+                                                                 account_authority,
+                                                                 key_id,
+                                                                 key_id
                                                               }));
-         object_id_type account_id(relative_protocol_ids, 0, 1);
-         trx.operations.emplace_back(transfer_operation({genesis_account->id,
-                                                         account_id,
-                                                         amount,
-                                                         asset(),
-                                                         vector<char>()
+         trx.validate();
+         auto ptrx = apply_transaction(trx);
+         trx = signed_transaction();
+         account_id_type account_id(ptrx.operation_results.back());
+         trx.operations.emplace_back(transfer_operation({
+                                                           genesis_account->id,
+                                                           account_id,
+                                                           amount,
+                                                           asset(),
+                                                           vector<char>()
                                                         }));
          trx.validate();
          apply_transaction(trx);
+      }
+
+      if( genesis_balance->get_balance(asset_id_type()).amount > 0 )
+      {
+         asset leftovers = genesis_balance->get_balance(asset_id_type());
+         modify(genesis_balance, [](account_balance_object* b) {
+            b->balances.clear();
+         });
+         modify(core_asset->dynamic_asset_data_id(*this), [&leftovers](asset_dynamic_data_object* d) {
+            d->accumulated_fees += leftovers.amount;
+         });
       }
 
       fc::microseconds duration = fc::time_point::now() - start_time;
