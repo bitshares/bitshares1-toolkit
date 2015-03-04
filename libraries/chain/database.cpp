@@ -30,6 +30,7 @@ database::database()
    register_evaluator<delegate_create_evaluator>();
    register_evaluator<delegate_update_evaluator>();
    register_evaluator<asset_create_evaluator>();
+   register_evaluator<asset_issue_evaluator>();
    register_evaluator<transfer_evaluator>();
 
    _object_id_to_object = std::make_shared<db::level_map<object_id_type,packed_object>>();

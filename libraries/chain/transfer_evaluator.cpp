@@ -35,9 +35,6 @@ object_id_type transfer_evaluator::evaluate( const operation& o )
 
 object_id_type transfer_evaluator::apply( const operation& o )
 {
-
-
-
    apply_delta_balances();
    apply_delta_fee_pools();
 

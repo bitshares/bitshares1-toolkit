@@ -219,6 +219,9 @@ share_type asset_update_operation::calculate_fee( const fee_schedule_type& k )co
 void asset_issue_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( asset_to_issue.amount.value <= BTS_MAX_SHARE_SUPPLY );
+   FC_ASSERT( asset_to_issue.amount.value > 0 );
+   FC_ASSERT( asset_to_issue.asset_id != 0 );
 }
 
 share_type asset_issue_operation::calculate_fee( const fee_schedule_type& k )const

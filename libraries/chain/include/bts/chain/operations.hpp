@@ -81,6 +81,7 @@ namespace bts { namespace chain {
       asset                   fee;
       string                  symbol;
       share_type              max_supply;
+      uint8_t                 precision = 0; ///< number of digits to the right of decimal
       uint16_t                market_fee_percent = 0;
       uint16_t                permissions = 0;
       uint16_t                flags = 0;
@@ -270,6 +271,7 @@ FC_REFLECT( bts::chain::asset_create_operation,
             (fee)
             (symbol)
             (max_supply)
+            (precision)
             (market_fee_percent)
             (permissions)
             (flags)
