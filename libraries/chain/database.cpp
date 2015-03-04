@@ -261,7 +261,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
                                                                  key_id
                                                               }));
          trx.validate();
-         auto ptrx = apply_transaction(trx);
+         auto ptrx = apply_transaction(trx, ~0);
          trx = signed_transaction();
          account_id_type account_id(ptrx.operation_results.back());
          trx.operations.emplace_back(transfer_operation({
@@ -272,7 +272,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
                                                            vector<char>()
                                                         }));
          trx.validate();
-         apply_transaction(trx);
+         apply_transaction(trx, ~0);
       }
 
       if( genesis_balance->get_balance(asset_id_type()).amount > 0 )
