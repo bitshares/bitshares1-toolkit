@@ -47,6 +47,7 @@ database::database()
    add_index<primary_index<simple_index<delegate_object>> >();
 
    add_index<primary_index<simple_index<global_property_object>> >();
+   add_index<primary_index<simple_index<dynamic_global_property_object>> >();
    add_index<primary_index<simple_index<account_balance_object>> >();
    add_index<primary_index<simple_index<account_debt_object>> >();
    add_index<primary_index<simple_index<asset_dynamic_data_object>> >();
@@ -374,6 +375,8 @@ void database::apply_block( const signed_block& next_block, bool validate_signat
    auto expected_delegate_num = (next_block.timestamp.sec_since_epoch() / get_global_properties()->block_interval)%get_global_properties()->active_delegates.size();
    FC_ASSERT( next_block.delegate_id == get_global_properties()->active_delegates[expected_delegate_num] );
 
+   update_global_dynamic_data( next_block );
+
    _pending_block.transactions.clear();
    for( const auto& trx : next_block.transactions )
    {
@@ -388,15 +391,15 @@ void database::apply_block( const signed_block& next_block, bool validate_signat
    _pending_block.block_num++;
    _pending_block.previous = next_block.id();
 
-   if( next_block.block_num % get_global_properties()->active_delegates.size() )
+   if( 0 == (next_block.block_num % get_global_properties()->active_delegates.size()) )
    {
-      // TODO: shuffle and recalculate active delegates
+      update_active_delegates();
    }
 
    auto current_block_interval = get_global_properties()->block_interval;
    if( next_block.block_num % get_global_properties()->maintenance_interval == 0 )
    {
-      // TODO: update global properties and fees
+      update_global_properties();
 
       // if block interval CHANGED durring this block *THEN* we cannot simply
       // add the interval if we want to maintain the invariant that all timestamps are a multiple 
@@ -416,6 +419,19 @@ void database::apply_block( const signed_block& next_block, bool validate_signat
 
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num)(validate_signatures)(save_undo) ) }
 
+void database::update_active_delegates()
+{
+}
+
+void database::update_global_properties()
+{
+      // TODO: update global properties and fees
+}
+
+void database::update_global_dynamic_data( const signed_block& b )
+{
+
+}
 
 /**
  *  Push block "may fail" in which case every partial change is unwound.  After

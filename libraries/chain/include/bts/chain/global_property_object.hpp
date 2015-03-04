@@ -29,7 +29,32 @@ namespace bts { namespace chain {
          uint32_t                              maximum_undo_history          = BTS_DEFAULT_MAX_UNDO_HISTORY;
          uint32_t                              maximum_time_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
    };
+
+   /**
+    *  @class global_property_object
+    *  @brief Maintains global state information (delegate list, current fees)
+    *
+    *  This is an implementation detail.  The values provided here are the
+    *  median values of the delegate objects and they are updated on a 
+    *  limited basis.  Active delegates are updated once per round and the
+    *  other properties are updated once per day.
+    */
+   class dynamic_global_property_object : public object
+   {
+      public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_dynamic_global_property_object_type;
+
+         secret_hash_type random;
+         uint32_t         head_block_number;
+         time_point_sec   time;
+         delegate_id_type      current_delegate;
+   };
 }} 
+
+
+FC_REFLECT_DERIVED( bts::chain::dynamic_global_property_object, (bts::chain::object), 
+                    (random)(head_block_number)(time)(current_delegate) )
 
 FC_REFLECT_DERIVED( bts::chain::global_property_object, (bts::chain::object), 
                     (active_delegates)

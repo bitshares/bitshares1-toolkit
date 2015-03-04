@@ -161,6 +161,9 @@ namespace bts { namespace chain {
 
          vector< unique_ptr<op_evaluator> >     _operation_evaluators;
 
+         void update_global_dynamic_data( const signed_block& b );
+         void update_active_delegates();
+         void update_global_properties();
 
          void save_undo( const object* obj );
 
