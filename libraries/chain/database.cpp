@@ -149,14 +149,12 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
 void database::init_genesis(const genesis_allocation& initial_allocation)
 {
    _save_undo = false;
-   ilog("Begin genesis initialization.");
 
    fc::ecc::private_key genesis_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
    const key_object* genesis_key =
       create<key_object>( [&genesis_private_key](key_object* k) {
          k->key_data = public_key_type(genesis_private_key.get_public_key());
       });
-   ilog("Genesis key created");
    const account_balance_object* genesis_balance =
       create<account_balance_object>( [&](account_balance_object* b){
          b->add_balance(asset(BTS_INITIAL_SUPPLY));
@@ -170,7 +168,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          n->memo_key = genesis_key->id;
          n->balances = genesis_balance->id;
       });
-   ilog("Genesis account created");
 
    vector<delegate_id_type> init_delegates;
 
@@ -197,7 +194,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          d->vote = vote->id;
       });
       init_delegates.push_back(init_delegate->id);
-      ilog("Delegate init${i} created", ("i", i));
    }
 
    const global_property_object* properties =
@@ -205,7 +201,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          p->active_delegates = init_delegates;
       });
    (void)properties;
-   ilog("Genesis properties created");
 
    const asset_dynamic_data_object* dyn_asset =
       create<asset_dynamic_data_object>( [&]( asset_dynamic_data_object* a ) {
@@ -228,11 +223,9 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
    assert( asset_id_type(core_asset->id) == asset().asset_id );
    assert( genesis_balance->get_balance(core_asset->id) == asset(dyn_asset->current_supply) );
    (void)core_asset;
-   ilog("Core asset initialized");
 
    if( !initial_allocation.empty() )
    {
-      ilog("Applying genesis allocation");
       share_type total_allocation = 0;
       for( const auto& handout : initial_allocation )
          total_allocation += handout.second;
@@ -296,7 +289,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
 
    push_undo_state();
    _save_undo = true;
-   ilog("End genesis initialization.");
 }
 
 void database::reindex()
