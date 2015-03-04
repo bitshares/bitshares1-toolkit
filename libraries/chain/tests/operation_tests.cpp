@@ -173,6 +173,10 @@ BOOST_AUTO_TEST_CASE( create_asset )
       ilog("Test negative core_exchange_rate");
       BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
       trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
+      trx.operations.back().get<asset_create_operation>().core_exchange_rate = price({asset(100),asset(-1)});
+      ilog("Test negative core_exchange_rate (case 2)");
+      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
+      trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
       trx.operations.back().get<asset_create_operation>().core_exchange_rate = price({asset(1),asset(1)});
       trx.operations.back().get<asset_create_operation>().short_backing_asset = db.get_asset_index().get_next_available_id();
       ilog("Test self-backing asset");
