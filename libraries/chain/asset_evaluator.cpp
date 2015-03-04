@@ -11,7 +11,6 @@ object_id_type asset_create_evaluator::evaluate( const operation& o )
    database& d = db();
 
    FC_ASSERT( !d.get_asset_index().get( op.symbol ) );
-   FC_ASSERT( op.max_supply > 0 );
 
    auto bts_fee_paid = pay_fee( op.issuer, op.fee );
    bts_fee_required = op.calculate_fee( d.current_fee_schedule() );
