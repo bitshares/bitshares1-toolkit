@@ -1,4 +1,5 @@
 #include <bts/chain/types.hpp>
+#include <bts/chain/time.hpp>
 #include <bts/chain/database.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/crypto/digest.hpp>
@@ -371,6 +372,8 @@ void database::undo()
 
 void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
+   auto now = bts::chain::now();
+   FC_ASSERT( _pending_block.timestamp <= (now  + fc::seconds(1)) );
    FC_ASSERT( _pending_block.block_num = next_block.block_num );
    FC_ASSERT( _pending_block.previous == next_block.previous );
    FC_ASSERT( _pending_block.timestamp <= next_block.timestamp );
@@ -385,9 +388,6 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
    FC_ASSERT( next_block.delegate_id == get_global_properties()->active_delegates[expected_delegate_num] );
 
-   update_global_dynamic_data( next_block );
-
-   _pending_block.transactions.clear();
    for( const auto& trx : next_block.transactions )
    {
       /* We do not need to push the undo state for each transaction
@@ -398,8 +398,8 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
        */
       apply_transaction( trx, skip );
    }
-   _pending_block.block_num++;
-   _pending_block.previous = next_block.id();
+   update_global_dynamic_data( next_block );
+
 
    if( 0 == (next_block.block_num % get_global_properties()->active_delegates.size()) )
    {
@@ -427,7 +427,43 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       _pending_block.timestamp = next_block.timestamp + current_block_interval;
    }
 
+   _pending_block.block_num++;
+   _pending_block.previous = next_block.id();
+   auto old_pending_trx = std::move(_pending_block.transactions);
+   _pending_block.transactions.clear();
+   for( auto old_trx : old_pending_trx )
+      push_transaction( old_trx );
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num)(skip) )  }
+
+time_point   database::get_next_generation_time( delegate_id_type del_id )const
+{
+   auto gp = get_global_properties();
+   auto now = bts::chain::now();
+   const auto& active_del = gp->active_delegates;
+   const auto& interval   = gp->block_interval;
+   auto delegate_slot = (now.sec_since_epoch() /interval) + 1;
+   for( uint32_t i = 0; i < active_del.size(); ++i )
+   {
+      if( active_del[ delegate_slot % active_del.size()] == del_id )
+         return time_point_sec() + fc::seconds( delegate_slot * interval );
+      ++delegate_slot;
+   }
+   FC_ASSERT( !"Not an Active Delegate" );
+}
+
+signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
+                             delegate_id_type del_id )
+{
+   auto del_obj = del_id(*this);
+   FC_ASSERT( del_obj );
+   FC_ASSERT( del_obj->signing_key(*this)->key() == delegate_key.get_public_key() );
+   _pending_block.timestamp = get_next_generation_time( del_id );
+   _pending_block.delegate_id = del_id;
+   _pending_block.sign( delegate_key );
+   signed_block tmp = std::move(_pending_block);
+   push_block( signed_block(_pending_block) );
+   return tmp;
+}
 
 void database::update_active_delegates()
 {
@@ -557,6 +593,7 @@ bool database::push_transaction( const signed_transaction& trx, uint32_t skip )
    }
    return false;
 }
+
 void database::push_pending_block()
 {
    block old_pending = std::move( _pending_block );
@@ -567,6 +604,7 @@ void database::push_pending_block()
       push_transaction( trx );
    }
 }
+
 void database::pop_pending_block()
 {
    undo();

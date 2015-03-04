@@ -89,6 +89,10 @@ namespace bts { namespace chain {
          void push_block( const signed_block& b, uint32_t skip = skip_nothing );
          bool push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
 
+         time_point   get_next_generation_time( delegate_id_type del_id )const;
+         signed_block generate_block( const fc::ecc::private_key& delegate_key,
+                                      delegate_id_type del_id );
+
          asset current_delegate_registration_fee()const;
 
          template<typename T, typename F>
@@ -193,7 +197,7 @@ namespace bts { namespace chain {
          vector< shared_ptr<fork_block> >       _head_blocks;
 
          vector< vector< unique_ptr<index> > >  _index;
-         block                                  _pending_block;
+         signed_block                           _pending_block;
 
          /**
           *  Note: we can probably store blocks by block num rather than

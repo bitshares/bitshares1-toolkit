@@ -34,9 +34,7 @@ namespace bts { namespace chain {
          uint16_t                issuer_permissions; 
          uint16_t                flags; 
 
-         /** max producers = 101 */
-         vector< account_id_type >  feed_producers; 
-         asset_id_type              short_backing_asset; 
+         asset_id_type           short_backing_asset; 
 
          price core_exchange_rate;    // base asset vs this asset
 
@@ -61,7 +59,6 @@ FC_REFLECT_DERIVED( bts::chain::asset_object,
                     (market_fee_percent)
                     (issuer_permissions)
                     (flags)
-                    (feed_producers)
                     (short_backing_asset)
                     (core_exchange_rate)
                     (dynamic_asset_data_id)
