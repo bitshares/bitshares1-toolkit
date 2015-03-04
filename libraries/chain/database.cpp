@@ -291,7 +291,11 @@ void database::reindex()
    auto itr = _block_num_to_block.begin();
    while( itr.valid() )
    {
-      apply_block( itr.value(), false, false );
+      apply_block( itr.value(), skip_delegate_signature | 
+                                skip_transaction_signatures | 
+                                skip_undo_block | 
+                                skip_undo_transaction |
+                                skip_transaction_dupe_check );
       ++itr;
    }
 }
@@ -365,7 +369,7 @@ void database::undo()
 }
 
 
-void database::apply_block( const signed_block& next_block, bool validate_signatures, bool save_undo )
+void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
    FC_ASSERT( _pending_block.block_num = next_block.block_num );
    FC_ASSERT( _pending_block.previous == next_block.previous );
@@ -376,6 +380,9 @@ void database::apply_block( const signed_block& next_block, bool validate_signat
    FC_ASSERT( secret_hash_type::hash(next_block.previous_secret) == del->next_secret );
 
    auto expected_delegate_num = (next_block.timestamp.sec_since_epoch() / get_global_properties()->block_interval)%get_global_properties()->active_delegates.size();
+
+   if( !(skip&skip_delegate_signature) ) FC_ASSERT( next_block.validate_signee( del->signing_key(*this)->key() ) );
+
    FC_ASSERT( next_block.delegate_id == get_global_properties()->active_delegates[expected_delegate_num] );
 
    update_global_dynamic_data( next_block );
@@ -389,7 +396,7 @@ void database::apply_block( const signed_block& next_block, bool validate_signat
        * for transactions when validating broadcast transactions or
        * when building a block.
        */
-      apply_transaction( trx, validate_signatures );
+      apply_transaction( trx, skip );
    }
    _pending_block.block_num++;
    _pending_block.previous = next_block.id();
@@ -420,7 +427,7 @@ void database::apply_block( const signed_block& next_block, bool validate_signat
       _pending_block.timestamp = next_block.timestamp + current_block_interval;
    }
 
-} FC_CAPTURE_AND_RETHROW( (next_block.block_num)(validate_signatures)(save_undo) ) }
+} FC_CAPTURE_AND_RETHROW( (next_block.block_num)(skip) )  }
 
 void database::update_active_delegates()
 {
@@ -509,21 +516,21 @@ void database::update_global_dynamic_data( const signed_block& b )
  *  Push block "may fail" in which case every partial change is unwound.  After
  *  push block is successful the block is appended to the chain database on disk.
  */
-void database::push_block( const signed_block& new_block )
+void database::push_block( const signed_block& new_block, uint32_t skip )
 { try {
    pop_pending_block();
    { // logically connect pop/push of pending block
-      push_undo_state();
+      if( !(skip&skip_undo_block) )push_undo_state();
       optional<fc::exception> except;
       try {
-        apply_block( new_block, false, false );
+        apply_block( new_block, skip );
         _block_num_to_block.store( new_block.block_num, new_block );
         _block_id_to_num.store( new_block.id(), new_block.block_num );
       }
       catch ( const fc::exception& e ) { except = e; }
       if( except )
       {
-         undo();
+         if( !(skip&skip_undo_block) ) undo();
          throw *except;
       }
    }
@@ -533,20 +540,20 @@ void database::push_block( const signed_block& new_block )
 /**
  *  Attempts to push the transaction into the pending queue
  */
-bool database::push_transaction( const signed_transaction& trx )
+bool database::push_transaction( const signed_transaction& trx, uint32_t skip )
 {
-   push_undo_state(); // trx undo
+   if( !(skip&skip_undo_transaction) ) push_undo_state(); // trx undo
    optional<fc::exception> except;
    try {
-      apply_transaction( trx, true );
+      apply_transaction( trx, skip );
       _pending_block.transactions.push_back(trx);
-      pop_undo_state(); // everything was OK.
+      if( !(skip&skip_undo_transaction) ) pop_undo_state(); // everything was OK.
       return true;
    } catch ( const fc::exception& e ) { except = e; }
    if( except )
    {
       wlog( "${e}", ("e",except->to_detail_string() ) );
-      undo();
+      if( !(skip&skip_undo_transaction) ) undo();
    }
    return false;
 }
@@ -565,10 +572,10 @@ void database::pop_pending_block()
    undo();
 }
 
-processed_transaction database::apply_transaction( const signed_transaction& trx, bool validate_signatures )
+processed_transaction database::apply_transaction( const signed_transaction& trx, uint32_t skip )
 { try {
-   transaction_evaluation_state eval_state(this, !validate_signatures );
-   if( validate_signatures )
+   transaction_evaluation_state eval_state(this, skip&skip_transaction_signatures );
+   if( !(skip & skip_transaction_signatures) )
    {
       for( auto sig : trx.signatures )
       {

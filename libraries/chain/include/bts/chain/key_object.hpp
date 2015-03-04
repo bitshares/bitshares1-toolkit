@@ -11,6 +11,7 @@ namespace bts { namespace chain {
 
          key_id_type get_id()const  { return key_id_type( id.instance() ); }
          address key_address()const;
+         const public_key_type& key()const { return key_data.get<public_key_type>(); }
 
          static_variant<address,public_key_type> key_data;
    };

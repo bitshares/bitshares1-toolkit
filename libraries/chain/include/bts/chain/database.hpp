@@ -67,6 +67,16 @@ namespace bts { namespace chain {
          database();
          ~database();
 
+         enum validation_steps
+         {
+            skip_nothing                = 0x00,
+            skip_delegate_signature     = 0x01, ///< used while reindexing
+            skip_transaction_signatures = 0x02, ///< used by non delegate nodes
+            skip_undo_block             = 0x04, ///< used while reindexing
+            skip_undo_transaction       = 0x08, ///< used while applying block
+            skip_transaction_dupe_check = 0x10  ///< used while reindexing
+         };
+
          void open(const fc::path& data_dir, const genesis_allocation& initial_allocation = genesis_allocation());
          void reindex();
          void flush();
@@ -76,8 +86,8 @@ namespace bts { namespace chain {
          void pop_undo_state();
          void undo();
 
-         void push_block( const signed_block& b );
-         bool push_transaction( const signed_transaction& trx );
+         void push_block( const signed_block& b, uint32_t skip = skip_nothing );
+         bool push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
 
          asset current_delegate_registration_fee()const;
 
@@ -167,8 +177,8 @@ namespace bts { namespace chain {
 
          void save_undo( const object* obj );
 
-         void                  apply_block( const signed_block& next_block, bool validate_signatures, bool save_undo );
-         processed_transaction apply_transaction( const signed_transaction& trx, bool validate_signatures = true );
+         void                  apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
+         processed_transaction apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
 
          void pop_pending_block();
          void push_pending_block();
