@@ -215,10 +215,4 @@ namespace bts { namespace chain {
 
 } }
 
-
-
 FC_REFLECT( bts::chain::undo_state, (old_values)(new_ids)(removed_ids)(old_index_meta_objects) )
-
-
-
-
