@@ -15,7 +15,7 @@ BOOST_AUTO_TEST_SUITE( invariant_checks )
 BOOST_AUTO_TEST_CASE( share_supply )
 {
    try {
-      database db;
+      database db(false);
 
       fc::ecc::private_key the_key = fc::ecc::private_key::generate();
       int count = 1;

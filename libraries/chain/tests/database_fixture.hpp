@@ -13,6 +13,7 @@ struct database_fixture {
    fc::ecc::private_key private_key = fc::ecc::private_key::generate();
 
    database_fixture()
+      : db(false)
    {
       db.init_genesis();
       BOOST_REQUIRE(genesis_key(db));
