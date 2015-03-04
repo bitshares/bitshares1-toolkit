@@ -92,6 +92,17 @@ namespace bts { namespace chain {
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
+   struct asset_fund_fee_pool_operation
+   {
+      account_id_type from_account;
+      asset_id_type   asset_id;
+      share_type      amount; ///< core asset
+      share_type      fee; ///< core asset
+
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
    struct asset_update_operation
    {
       asset_id_type   asset_to_update;
@@ -305,4 +316,5 @@ FC_REFLECT( bts::chain::delegate_update_operation,
           )
 
 FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(proposed_ops) )
+FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (from_account)(asset_id)(amount)(fee) );
 

@@ -1,4 +1,5 @@
 #include <bts/chain/types.hpp>
+#include <bts/chain/time.hpp>
 #include <bts/chain/database.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/crypto/digest.hpp>
@@ -47,6 +48,7 @@ database::database()
    add_index<primary_index<simple_index<delegate_object>> >();
 
    add_index<primary_index<simple_index<global_property_object>> >();
+   add_index<primary_index<simple_index<dynamic_global_property_object>> >();
    add_index<primary_index<simple_index<account_balance_object>> >();
    add_index<primary_index<simple_index<account_debt_object>> >();
    add_index<primary_index<simple_index<asset_dynamic_data_object>> >();
@@ -201,6 +203,9 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
       });
    (void)properties;
 
+   create<dynamic_global_property_object>( [&](dynamic_global_property_object* p) {
+      });
+
    const asset_dynamic_data_object* dyn_asset =
       create<asset_dynamic_data_object>( [&]( asset_dynamic_data_object* a ) {
          a->current_supply = BTS_INITIAL_SUPPLY;
@@ -295,7 +300,11 @@ void database::reindex()
    auto itr = _block_num_to_block.begin();
    while( itr.valid() )
    {
-      apply_block( itr.value(), false, false );
+      apply_block( itr.value(), skip_delegate_signature |
+                                skip_transaction_signatures |
+                                skip_undo_block |
+                                skip_undo_transaction |
+                                skip_transaction_dupe_check );
       ++itr;
    }
 }
@@ -369,8 +378,10 @@ void database::undo()
 }
 
 
-void database::apply_block( const signed_block& next_block, bool validate_signatures, bool save_undo )
+void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
+   auto now = bts::chain::now();
+   FC_ASSERT( _pending_block.timestamp <= (now  + fc::seconds(1)) );
    FC_ASSERT( _pending_block.block_num = next_block.block_num );
    FC_ASSERT( _pending_block.previous == next_block.previous );
    FC_ASSERT( _pending_block.timestamp <= next_block.timestamp );
@@ -380,9 +391,11 @@ void database::apply_block( const signed_block& next_block, bool validate_signat
    FC_ASSERT( secret_hash_type::hash(next_block.previous_secret) == del->next_secret );
 
    auto expected_delegate_num = (next_block.timestamp.sec_since_epoch() / get_global_properties()->block_interval)%get_global_properties()->active_delegates.size();
+
+   if( !(skip&skip_delegate_signature) ) FC_ASSERT( next_block.validate_signee( del->signing_key(*this)->key() ) );
+
    FC_ASSERT( next_block.delegate_id == get_global_properties()->active_delegates[expected_delegate_num] );
 
-   _pending_block.transactions.clear();
    for( const auto& trx : next_block.transactions )
    {
       /* We do not need to push the undo state for each transaction
@@ -391,24 +404,24 @@ void database::apply_block( const signed_block& next_block, bool validate_signat
        * for transactions when validating broadcast transactions or
        * when building a block.
        */
-      apply_transaction( trx, validate_signatures );
+      apply_transaction( trx, skip );
    }
-   _pending_block.block_num++;
-   _pending_block.previous = next_block.id();
+   update_global_dynamic_data( next_block );
 
-   if( next_block.block_num % get_global_properties()->active_delegates.size() )
+
+   if( 0 == (next_block.block_num % get_global_properties()->active_delegates.size()) )
    {
-      // TODO: shuffle and recalculate active delegates
+      update_active_delegates();
    }
 
    auto current_block_interval = get_global_properties()->block_interval;
    if( next_block.block_num % get_global_properties()->maintenance_interval == 0 )
    {
-      // TODO: update global properties and fees
+      update_global_properties();
 
       // if block interval CHANGED durring this block *THEN* we cannot simply
-      // add the interval if we want to maintain the invariant that all timestamps are a multiple 
-      // of the interval.  
+      // add the interval if we want to maintain the invariant that all timestamps are a multiple
+      // of the interval.
       _pending_block.timestamp = next_block.timestamp + fc::seconds(current_block_interval);
       uint32_t r = _pending_block.timestamp.sec_since_epoch()%current_block_interval;
       if( !r )
@@ -422,28 +435,146 @@ void database::apply_block( const signed_block& next_block, bool validate_signat
       _pending_block.timestamp = next_block.timestamp + current_block_interval;
    }
 
-} FC_CAPTURE_AND_RETHROW( (next_block.block_num)(validate_signatures)(save_undo) ) }
+   _pending_block.block_num++;
+   _pending_block.previous = next_block.id();
+   auto old_pending_trx = std::move(_pending_block.transactions);
+   _pending_block.transactions.clear();
+   for( auto old_trx : old_pending_trx )
+      push_transaction( old_trx );
+} FC_CAPTURE_AND_RETHROW( (next_block.block_num)(skip) )  }
 
+time_point   database::get_next_generation_time( delegate_id_type del_id )const
+{
+   auto gp = get_global_properties();
+   auto now = bts::chain::now();
+   const auto& active_del = gp->active_delegates;
+   const auto& interval   = gp->block_interval;
+   auto delegate_slot = (now.sec_since_epoch() /interval) + 1;
+   for( uint32_t i = 0; i < active_del.size(); ++i )
+   {
+      if( active_del[ delegate_slot % active_del.size()] == del_id )
+         return time_point_sec() + fc::seconds( delegate_slot * interval );
+      ++delegate_slot;
+   }
+   FC_ASSERT( !"Not an Active Delegate" );
+}
+
+signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
+                             delegate_id_type del_id )
+{
+   auto del_obj = del_id(*this);
+   FC_ASSERT( del_obj );
+   FC_ASSERT( del_obj->signing_key(*this)->key() == delegate_key.get_public_key() );
+   _pending_block.timestamp = get_next_generation_time( del_id );
+   _pending_block.delegate_id = del_id;
+   _pending_block.sign( delegate_key );
+   signed_block tmp = std::move(_pending_block);
+   push_block( signed_block(_pending_block) );
+   return tmp;
+}
+
+void database::update_active_delegates()
+{
+    vector<delegate_id_type> ids( get_index<delegate_object>().size() );
+    for( uint32_t i = 0; i < ids.size(); ++i ) ids[i] = delegate_id_type(i);
+    std::sort( ids.begin(), ids.end(), [&]( delegate_id_type a,delegate_id_type b )->bool {
+       return a(*this)->vote(*this)->total_votes >
+              b(*this)->vote(*this)->total_votes;
+    });
+
+    uint64_t base_threshold = ids[9](*this)->vote(*this)->total_votes.value;
+    uint64_t threshold =  (base_threshold / 100) * 75;
+    uint32_t i = 10;
+
+    for( ; i < ids.size(); ++i )
+    {
+       if( ids[i](*this)->vote(*this)->total_votes < threshold ) break;
+       threshold = (base_threshold / (100) ) * (75 + i/(ids.size()/4));
+    }
+    ids.resize( i );
+
+    // shuffle ids
+    auto randvalue = get(dynamic_global_property_id_type(0))->random;
+    for( uint32_t i = 0; i < ids.size(); ++i )
+    {
+       const auto rands_per_hash = sizeof(secret_hash_type) / sizeof(randvalue._hash[0]);
+       std::swap( ids[i], ids[ i + (randvalue._hash[i%rands_per_hash] % (ids.size()-i))] );
+       if( i % rands_per_hash == (rands_per_hash-1) )
+          randvalue = secret_hash_type::hash( randvalue );
+    }
+
+    modify( get_global_properties(), [&]( global_property_object* gp ){
+       gp->active_delegates = std::move(ids);
+    });
+}
+
+void database::update_global_properties()
+{
+   global_property_object tmp;
+   vector<delegate_id_type> ids = get_global_properties()->active_delegates;
+   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
+                     [&]( delegate_id_type a, delegate_id_type b )->bool {
+                          return a(*this)->block_interval_sec < b(*this)->block_interval_sec;
+                     });
+   tmp.block_interval = ids[ids.size()/2](*this)->block_interval_sec;
+   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
+                     [&]( delegate_id_type a, delegate_id_type b )->bool {
+                          return a(*this)->max_block_size < b(*this)->max_block_size;
+                     });
+   tmp.maximum_block_size = ids[ids.size()/2](*this)->max_block_size;
+   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
+                     [&]( delegate_id_type a, delegate_id_type b )->bool {
+                          return a(*this)->max_transaction_size < b(*this)->max_transaction_size;
+                     });
+   tmp.maximum_transaction_size = ids[ids.size()/2](*this)->max_transaction_size;
+   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
+                     [&]( delegate_id_type a, delegate_id_type b )->bool {
+                          return a(*this)->max_sec_until_expiration < b(*this)->max_sec_until_expiration;
+                     });
+   tmp.maximum_time_until_expiration = ids[ids.size()/2](*this)->max_sec_until_expiration;
+
+   for( uint32_t f = 0; f < tmp.current_fees.size(); ++f )
+   {
+      std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
+                        [&]( delegate_id_type a, delegate_id_type b )->bool {
+                             return a(*this)->fee_schedule.at(f) < b(*this)->fee_schedule.at(f);
+                        });
+      tmp.current_fees.at(f)  = ids[ids.size()/2](*this)->fee_schedule.at(f);
+   }
+}
+
+void database::update_global_dynamic_data( const signed_block& b )
+{
+   modify( dynamic_global_property_id_type(0)(*this), [&]( dynamic_global_property_object* dgp ){
+      secret_hash_type::encoder enc;
+      fc::raw::pack( enc, dgp->random );
+      fc::raw::pack( enc, b.previous_secret );
+      dgp->random = enc.result();
+      dgp->head_block_number = b.block_num;
+      dgp->time = b.timestamp;
+      dgp->current_delegate = b.delegate_id;
+   });
+}
 
 /**
  *  Push block "may fail" in which case every partial change is unwound.  After
  *  push block is successful the block is appended to the chain database on disk.
  */
-void database::push_block( const signed_block& new_block )
+void database::push_block( const signed_block& new_block, uint32_t skip )
 { try {
    pop_pending_block();
    { // logically connect pop/push of pending block
-      push_undo_state();
+      if( !(skip&skip_undo_block) )push_undo_state();
       optional<fc::exception> except;
       try {
-        apply_block( new_block, false, false );
+        apply_block( new_block, skip );
         _block_num_to_block.store( new_block.block_num, new_block );
         _block_id_to_num.store( new_block.id(), new_block.block_num );
       }
       catch ( const fc::exception& e ) { except = e; }
       if( except )
       {
-         undo();
+         if( !(skip&skip_undo_block) ) undo();
          throw *except;
       }
    }
@@ -453,23 +584,24 @@ void database::push_block( const signed_block& new_block )
 /**
  *  Attempts to push the transaction into the pending queue
  */
-bool database::push_transaction( const signed_transaction& trx )
+bool database::push_transaction( const signed_transaction& trx, uint32_t skip )
 {
-   push_undo_state(); // trx undo
+   if( !(skip&skip_undo_transaction) ) push_undo_state(); // trx undo
    optional<fc::exception> except;
    try {
-      apply_transaction( trx, true );
+      apply_transaction( trx, skip );
       _pending_block.transactions.push_back(trx);
-      pop_undo_state(); // everything was OK.
+      if( !(skip&skip_undo_transaction) ) pop_undo_state(); // everything was OK.
       return true;
    } catch ( const fc::exception& e ) { except = e; }
    if( except )
    {
       wlog( "${e}", ("e",except->to_detail_string() ) );
-      undo();
+      if( !(skip&skip_undo_transaction) ) undo();
    }
    return false;
 }
+
 void database::push_pending_block()
 {
    block old_pending = std::move( _pending_block );
@@ -480,19 +612,21 @@ void database::push_pending_block()
       push_transaction( trx );
    }
 }
+
 void database::pop_pending_block()
 {
    undo();
 }
 
-processed_transaction database::apply_transaction( const signed_transaction& trx, bool validate_signatures )
+processed_transaction database::apply_transaction( const signed_transaction& trx, uint32_t skip )
 { try {
-   transaction_evaluation_state eval_state(this, !validate_signatures );
-   if( validate_signatures )
+   trx.validate();
+   transaction_evaluation_state eval_state(this, skip&skip_transaction_signatures );
+   if( !(skip & skip_transaction_signatures) )
    {
       for( auto sig : trx.signatures )
       {
-         eval_state.signed_by.insert( fc::ecc::public_key( sig, trx.digest() ) ); 
+         eval_state.signed_by.insert( fc::ecc::public_key( sig, trx.digest() ) );
       }
    }
    eval_state.operation_results.reserve( trx.operations.size() );
