@@ -14,6 +14,7 @@ add_library( bts_chain
              account_index.cpp
              asset_index.cpp
              block.cpp 
+             transaction.cpp
              types.cpp
              database.cpp
              address.cpp

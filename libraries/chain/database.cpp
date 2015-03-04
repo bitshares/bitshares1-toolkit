@@ -351,24 +351,29 @@ void database::undo()
    _save_undo = true;
 }
 
+void database::apply_block( const signed_block& next_block, bool validate_signatures, bool save_undo )
+{ try {
+      for( const auto& trx : next_block.transactions )
+      {
+         /* We do not need to push the undo state for each transaction
+          * because they either all apply and are valid or the
+          * entire block fails to apply.  We only need an "undo" state
+          * for transactions when validating broadcast transactions or
+          * when building a block.
+          */
+         apply_transaction( trx, validate_signatures );
+      }
+} FC_CAPTURE_AND_RETHROW( (next_block.block_num)(validate_signatures)(save_undo) ) }
 
-void database::push_block( const block& new_block )
+
+void database::push_block( const signed_block& new_block )
 { try {
    pop_pending_block();
    { // logically connect pop/push of pending block
       push_undo_state();
       optional<fc::exception> except;
       try {
-         for( const auto& trx : new_block.transactions )
-         {
-            /* We do not need to push the undo state for each transaction
-             * because they either all apply and are valid or the
-             * entire block fails to apply.  We only need an "undo" state
-             * for transactions when validating broadcast transactions or
-             * when building a block.
-             */
-            apply_transaction( trx );
-         }
+        apply_block( new_block, false, false );
       }
       catch ( const fc::exception& e ) { except = e; }
       if( except )
@@ -388,7 +393,7 @@ bool database::push_transaction( const signed_transaction& trx )
    push_undo_state(); // trx undo
    optional<fc::exception> except;
    try {
-      apply_transaction( trx );
+      apply_transaction( trx, true );
       _pending_block.transactions.push_back(trx);
       pop_undo_state(); // everything was OK.
       return true;
@@ -415,12 +420,15 @@ void database::pop_pending_block()
    undo();
 }
 
-processed_transaction database::apply_transaction( const signed_transaction& trx )
+processed_transaction database::apply_transaction( const signed_transaction& trx, bool validate_signatures )
 { try {
-   transaction_evaluation_state eval_state(this, true /* skip signature check */);
-   for( auto sig : trx.signatures )
+   transaction_evaluation_state eval_state(this, !validate_signatures );
+   if( validate_signatures )
    {
-      // TODO: eval_state.signed_by.insert( address )
+      for( auto sig : trx.signatures )
+      {
+         eval_state.signed_by.insert( fc::ecc::public_key( sig, trx.digest() ) ); 
+      }
    }
    eval_state.operation_results.reserve( trx.operations.size() );
 

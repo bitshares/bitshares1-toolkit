@@ -75,7 +75,7 @@ namespace bts { namespace chain {
          void pop_undo_state();
          void undo();
 
-         void push_block( const block& b );
+         void push_block( const signed_block& b );
          bool push_transaction( const signed_transaction& trx );
 
          asset current_delegate_registration_fee()const;
@@ -162,7 +162,10 @@ namespace bts { namespace chain {
 
 
          void save_undo( const object* obj );
-         processed_transaction apply_transaction( const signed_transaction& trx );
+
+         void                  apply_block( const signed_block& next_block, bool validate_signatures, bool save_undo );
+         processed_transaction apply_transaction( const signed_transaction& trx, bool validate_signatures = true );
+
          void pop_pending_block();
          void push_pending_block();
 
