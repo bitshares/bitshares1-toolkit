@@ -22,8 +22,7 @@
 
 namespace bts { namespace chain {
 
-database::database(bool validate_signatures)
-   : _validate_signatures(validate_signatures)
+database::database()
 {
    _operation_evaluators.resize(255);
    register_evaluator<key_create_evaluator>();
@@ -294,10 +293,9 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
 void database::reindex()
 {
    auto itr = _block_num_to_block.begin();
-   signature_inhibitor inhibitor(this);
    while( itr.valid() )
    {
-      apply_block( itr.value(), false );
+      apply_block( itr.value(), false, false );
       ++itr;
    }
 }
@@ -371,7 +369,7 @@ void database::undo()
 }
 
 
-void database::apply_block( const signed_block& next_block, bool save_undo )
+void database::apply_block( const signed_block& next_block, bool validate_signatures, bool save_undo )
 { try {
    FC_ASSERT( _pending_block.block_num = next_block.block_num );
    FC_ASSERT( _pending_block.previous == next_block.previous );
@@ -393,7 +391,7 @@ void database::apply_block( const signed_block& next_block, bool save_undo )
        * for transactions when validating broadcast transactions or
        * when building a block.
        */
-      apply_transaction( trx );
+      apply_transaction( trx, validate_signatures );
    }
    _pending_block.block_num++;
    _pending_block.previous = next_block.id();
@@ -409,8 +407,8 @@ void database::apply_block( const signed_block& next_block, bool save_undo )
       // TODO: update global properties and fees
 
       // if block interval CHANGED durring this block *THEN* we cannot simply
-      // add the interval if we want to maintain the invariant that all timestamps are a multiple
-      // of the interval.
+      // add the interval if we want to maintain the invariant that all timestamps are a multiple 
+      // of the interval.  
       _pending_block.timestamp = next_block.timestamp + fc::seconds(current_block_interval);
       uint32_t r = _pending_block.timestamp.sec_since_epoch()%current_block_interval;
       if( !r )
@@ -424,7 +422,7 @@ void database::apply_block( const signed_block& next_block, bool save_undo )
       _pending_block.timestamp = next_block.timestamp + current_block_interval;
    }
 
-} FC_CAPTURE_AND_RETHROW( (next_block.block_num)(save_undo) ) }
+} FC_CAPTURE_AND_RETHROW( (next_block.block_num)(validate_signatures)(save_undo) ) }
 
 
 /**
@@ -438,8 +436,7 @@ void database::push_block( const signed_block& new_block )
       push_undo_state();
       optional<fc::exception> except;
       try {
-        signature_inhibitor inhibitor(this);
-        apply_block( new_block, false );
+        apply_block( new_block, false, false );
         _block_num_to_block.store( new_block.block_num, new_block );
         _block_id_to_num.store( new_block.id(), new_block.block_num );
       }
@@ -461,8 +458,7 @@ bool database::push_transaction( const signed_transaction& trx )
    push_undo_state(); // trx undo
    optional<fc::exception> except;
    try {
-      signature_inhibitor inhibitor(this);
-      apply_transaction( trx );
+      apply_transaction( trx, true );
       _pending_block.transactions.push_back(trx);
       pop_undo_state(); // everything was OK.
       return true;
@@ -489,14 +485,14 @@ void database::pop_pending_block()
    undo();
 }
 
-processed_transaction database::apply_transaction( const signed_transaction& trx )
+processed_transaction database::apply_transaction( const signed_transaction& trx, bool validate_signatures )
 { try {
-   transaction_evaluation_state eval_state(this, !_validate_signatures );
-   if( _validate_signatures )
+   transaction_evaluation_state eval_state(this, !validate_signatures );
+   if( validate_signatures )
    {
       for( auto sig : trx.signatures )
       {
-         eval_state.signed_by.insert( fc::ecc::public_key( sig, trx.digest() ) );
+         eval_state.signed_by.insert( fc::ecc::public_key( sig, trx.digest() ) ); 
       }
    }
    eval_state.operation_results.reserve( trx.operations.size() );

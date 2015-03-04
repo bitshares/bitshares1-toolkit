@@ -64,7 +64,7 @@ namespace bts { namespace chain {
    class database
    {
       public:
-         database(bool validate_signatures = true);
+         database();
          ~database();
 
          void open(const fc::path& data_dir, const genesis_allocation& initial_allocation = genesis_allocation());
@@ -163,8 +163,8 @@ namespace bts { namespace chain {
 
          void save_undo( const object* obj );
 
-         void                  apply_block(const signed_block& next_block, bool save_undo );
-         processed_transaction apply_transaction(const signed_transaction& trx);
+         void                  apply_block( const signed_block& next_block, bool validate_signatures, bool save_undo );
+         processed_transaction apply_transaction( const signed_transaction& trx, bool validate_signatures = true );
 
          void pop_pending_block();
          void push_pending_block();
@@ -173,30 +173,6 @@ namespace bts { namespace chain {
          vector<uint32_t>                                 _recent_block_prefixes;
          deque<undo_state>                                _undo_state;
          bool                                             _save_undo = true;
-         bool                                             _validate_signatures;
-
-         /**
-          * @brief The signature_inhibitor struct disables signature validation on a database within a scope.
-          *
-          * Tasks which need to disable signature verification for a period of time may create a signature_inhibitor.
-          * The inhibitor will back up the state of signature validation at its construction, and disable signature
-          * validation while it is in scope. When it goes out of scope, it will restore the previous state of signature
-          * validation.
-          */
-         struct signature_inhibitor {
-            bool backup = false;
-            database* db;
-
-            signature_inhibitor(database* db)
-               :db(db)
-            {
-               std::swap(backup, db->_validate_signatures);
-            }
-            ~signature_inhibitor()
-            {
-               std::swap(backup, db->_validate_signatures);
-            }
-         };
 
          // track recent forks...
          shared_ptr<fork_block>                 _oldest_fork_point;
@@ -221,10 +197,4 @@ namespace bts { namespace chain {
 
 } }
 
-
-
 FC_REFLECT( bts::chain::undo_state, (old_values)(new_ids)(removed_ids)(old_index_meta_objects) )
-
-
-
-

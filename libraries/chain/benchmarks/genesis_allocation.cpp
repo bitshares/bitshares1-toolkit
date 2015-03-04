@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
       int accounts = 0;
 
       {
-         database db(false);
+         database db;
          db.open(data_dir.path(), allocation);
 
          accounts = db.get_account_index().size();
@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
          ilog("Closed database in ${t} milliseconds.", ("t", (fc::time_point::now() - start_time).count() / 1000));
       }
       {
-         database db(false);
+         database db;
 
          fc::time_point start_time = fc::time_point::now();
          db.open(data_dir.path());
