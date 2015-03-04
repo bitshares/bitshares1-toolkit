@@ -68,6 +68,7 @@ namespace bts { namespace chain {
          ~database();
 
          void open(const fc::path& data_dir, const genesis_allocation& initial_allocation = genesis_allocation());
+         void reindex();
          void flush();
          void close();
 
@@ -192,7 +193,6 @@ namespace bts { namespace chain {
           */
          bts::db::level_map<uint32_t, signed_block>                _block_num_to_block;
          bts::db::level_pod_map<block_id_type,uint32_t>            _block_id_to_num;
-         bts::db::level_map<block_id_type,undo_state>              _undo_db;
          shared_ptr<db::level_map<object_id_type, packed_object>>  _object_id_to_object;
    };
 

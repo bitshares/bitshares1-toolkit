@@ -1,3 +1,4 @@
+#include <bts/chain/types.hpp>
 #include <bts/chain/database.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/crypto/digest.hpp>
@@ -62,7 +63,6 @@ void database::close()
 
    _block_num_to_block.close();
    _block_id_to_num.close();
-   _undo_db.close();
    _object_id_to_object->close();
 }
 
@@ -127,7 +127,6 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
 
    _block_num_to_block.open( data_dir / "database" / "block_num_to_block" );
    _block_id_to_num.open( data_dir / "database" / "block_id_to_num" );
-   _undo_db.open( data_dir / "database" / "undo_db" );
    _object_id_to_object->open( data_dir / "database" / "objects" );
 
    for( auto& space : _index )
@@ -283,6 +282,16 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
    ilog("End genesis initialization.");
 }
 
+void database::reindex()
+{
+   auto itr = _block_num_to_block.begin();
+   while( itr.valid() )
+   {
+      apply_block( itr.value(), false, false );
+      ++itr;
+   }
+}
+
 
 asset database::current_delegate_registration_fee()const
 {
@@ -351,21 +360,27 @@ void database::undo()
    _save_undo = true;
 }
 
+
 void database::apply_block( const signed_block& next_block, bool validate_signatures, bool save_undo )
 { try {
-      for( const auto& trx : next_block.transactions )
-      {
-         /* We do not need to push the undo state for each transaction
-          * because they either all apply and are valid or the
-          * entire block fails to apply.  We only need an "undo" state
-          * for transactions when validating broadcast transactions or
-          * when building a block.
-          */
-         apply_transaction( trx, validate_signatures );
-      }
+
+   for( const auto& trx : next_block.transactions )
+   {
+      /* We do not need to push the undo state for each transaction
+       * because they either all apply and are valid or the
+       * entire block fails to apply.  We only need an "undo" state
+       * for transactions when validating broadcast transactions or
+       * when building a block.
+       */
+      apply_transaction( trx, validate_signatures );
+   }
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num)(validate_signatures)(save_undo) ) }
 
 
+/**
+ *  Push block "may fail" in which case every partial change is unwound.  After
+ *  push block is successful the block is appended to the chain database on disk.
+ */
 void database::push_block( const signed_block& new_block )
 { try {
    pop_pending_block();
@@ -374,6 +389,8 @@ void database::push_block( const signed_block& new_block )
       optional<fc::exception> except;
       try {
         apply_block( new_block, false, false );
+        _block_num_to_block.store( new_block.block_num, new_block );
+        _block_id_to_num.store( new_block.id(), new_block.block_num );
       }
       catch ( const fc::exception& e ) { except = e; }
       if( except )
