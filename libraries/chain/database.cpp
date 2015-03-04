@@ -494,7 +494,15 @@ void database::update_global_properties()
 
 void database::update_global_dynamic_data( const signed_block& b )
 {
-
+   modify( dynamic_global_property_id_type(0)(*this), [&]( dynamic_global_property_object* dgp ){
+      secret_hash_type::encoder enc;
+      fc::raw::pack( enc, dgp->random );
+      fc::raw::pack( enc, b.previous_secret );
+      dgp->random = enc.result();
+      dgp->head_block_number = b.block_num;
+      dgp->time = b.timestamp;
+      dgp->current_delegate = b.delegate_id;
+   });
 }
 
 /**
