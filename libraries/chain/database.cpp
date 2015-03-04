@@ -459,7 +459,37 @@ void database::update_active_delegates()
 
 void database::update_global_properties()
 {
-      // TODO: update global properties and fees
+   global_property_object tmp;
+   vector<delegate_id_type> ids = get_global_properties()->active_delegates;
+   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(), 
+                     [&]( delegate_id_type a, delegate_id_type b )->bool {
+                          return a(*this)->block_interval_sec < b(*this)->block_interval_sec;
+                     });
+   tmp.block_interval = ids[ids.size()/2](*this)->block_interval_sec;
+   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(), 
+                     [&]( delegate_id_type a, delegate_id_type b )->bool {
+                          return a(*this)->max_block_size < b(*this)->max_block_size;
+                     });
+   tmp.maximum_block_size = ids[ids.size()/2](*this)->max_block_size;
+   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(), 
+                     [&]( delegate_id_type a, delegate_id_type b )->bool {
+                          return a(*this)->max_transaction_size < b(*this)->max_transaction_size;
+                     });
+   tmp.maximum_transaction_size = ids[ids.size()/2](*this)->max_transaction_size;
+   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(), 
+                     [&]( delegate_id_type a, delegate_id_type b )->bool {
+                          return a(*this)->max_sec_until_expiration < b(*this)->max_sec_until_expiration;
+                     });
+   tmp.maximum_time_until_expiration = ids[ids.size()/2](*this)->max_sec_until_expiration;
+
+   for( uint32_t f = 0; f < tmp.current_fees.size(); ++f )
+   {
+      std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(), 
+                        [&]( delegate_id_type a, delegate_id_type b )->bool {
+                             return a(*this)->fee_schedule.at(f) < b(*this)->fee_schedule.at(f);
+                        });
+      tmp.current_fees.at(f)  = ids[ids.size()/2](*this)->fee_schedule.at(f);
+   }
 }
 
 void database::update_global_dynamic_data( const signed_block& b )
