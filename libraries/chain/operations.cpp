@@ -161,7 +161,7 @@ void account_publish_feeds_operation::validate()const
    {
       FC_ASSERT( item.base.amount >= share_type(0) ); // prevent divide by 0
       FC_ASSERT( item.quote.amount >= share_type(0) ); // prevent divide by 0
-      if( prev ) 
+      if( prev )
       {
          FC_ASSERT( !(prev->base.asset_id == item.base.asset_id && prev->quote.asset_id == item.quote.asset_id) );
       }
@@ -181,6 +181,7 @@ void  asset_create_operation::validate()const
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( is_valid_symbol( symbol ) );
    FC_ASSERT( max_supply <= BTS_MAX_SHARE_SUPPLY );
+   FC_ASSERT( max_supply > 0 );
    FC_ASSERT( market_fee_percent <= BTS_MAX_MARKET_FEE_PERCENT );
    FC_ASSERT( permissions <= market_issued );
    FC_ASSERT( flags <= market_issued );
@@ -212,8 +213,8 @@ void asset_update_operation::validate()const
 }
 
 share_type asset_update_operation::calculate_fee( const fee_schedule_type& k )const
-{ 
-   return k.at( asset_update_fee_type ); 
+{
+   return k.at( asset_update_fee_type );
 }
 
 void asset_issue_operation::validate()const
@@ -225,22 +226,22 @@ void asset_issue_operation::validate()const
 }
 
 share_type asset_issue_operation::calculate_fee( const fee_schedule_type& k )const
-{ 
-   return k.at( asset_issue_fee_type ); 
+{
+   return k.at( asset_issue_fee_type );
 }
 
 
-share_type delegate_create_operation::calculate_fee( const fee_schedule_type& k )const 
-{ 
-   return k.at( delegate_create_fee_type ) ; 
+share_type delegate_create_operation::calculate_fee( const fee_schedule_type& k )const
+{
+   return k.at( delegate_create_fee_type ) ;
 }
-share_type delegate_update_operation::calculate_fee( const fee_schedule_type& k )const 
-{ 
-   return k.at( delegate_update_fee_type ) ; 
+share_type delegate_update_operation::calculate_fee( const fee_schedule_type& k )const
+{
+   return k.at( delegate_update_fee_type ) ;
 }
 
 
-void delegate_create_operation::validate()const 
+void delegate_create_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( pay_rate <= 100 );
