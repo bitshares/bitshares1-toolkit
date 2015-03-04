@@ -599,8 +599,9 @@ bool database::push_transaction( const signed_transaction& trx, uint32_t skip )
    } catch ( const fc::exception& e ) { except = e; }
    if( except )
    {
-      wlog( "${e}", ("e",except->to_detail_string() ) );
+      // wlog( "${e}", ("e",except->to_detail_string() ) );
       if( !(skip&skip_undo_transaction) ) undo();
+      throw *except;
    }
    return false;
 }
