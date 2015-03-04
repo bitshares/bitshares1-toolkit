@@ -205,6 +205,9 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          p->active_delegates = init_delegates;
       });
    (void)properties;
+
+   create<dynamic_global_property_object>( [&](dynamic_global_property_object* p) {
+      });
    ilog("Genesis properties created");
 
    const asset_dynamic_data_object* dyn_asset =
@@ -421,6 +424,37 @@ void database::apply_block( const signed_block& next_block, bool validate_signat
 
 void database::update_active_delegates()
 {
+    vector<delegate_id_type> ids( get_index<delegate_object>().size() );
+    for( uint32_t i = 0; i < ids.size(); ++i ) ids[i] = delegate_id_type(i);
+    std::sort( ids.begin(), ids.end(), [&]( delegate_id_type a,delegate_id_type b )->bool {
+       return a(*this)->vote(*this)->total_votes >
+              b(*this)->vote(*this)->total_votes; 
+    });
+
+    uint64_t base_threshold = ids[9](*this)->vote(*this)->total_votes.value;
+    uint64_t threshold =  (base_threshold / 100) * 75;
+    uint32_t i = 10;
+
+    for( ; i < ids.size(); ++i )
+    {
+       if( ids[i](*this)->vote(*this)->total_votes < threshold ) break;
+       threshold = (base_threshold / (100) ) * (75 + i/(ids.size()/4));
+    }
+    ids.resize( i );
+
+    // shuffle ids 
+    auto randvalue = get(dynamic_global_property_id_type(0))->random;
+    for( uint32_t i = 0; i < ids.size(); ++i )
+    {
+       const auto rands_per_hash = sizeof(secret_hash_type) / sizeof(randvalue._hash[0]);
+       std::swap( ids[i], ids[ i + (randvalue._hash[i%rands_per_hash] % (ids.size()-i))] );
+       if( i % rands_per_hash == (rands_per_hash-1) ) 
+          randvalue = secret_hash_type::hash( randvalue );
+    }
+
+    modify( get_global_properties(), [&]( global_property_object* gp ){
+       gp->active_delegates = std::move(ids);
+    });
 }
 
 void database::update_global_properties()

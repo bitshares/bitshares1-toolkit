@@ -280,8 +280,8 @@ namespace bts { namespace chain {
    class transaction_object;
    class account_feeds_object;
 
-   typedef object_id< implementation_ids, impl_global_property_object_type,  global_property_object>            global_property_id_type;
-   typedef object_id< implementation_ids, impl_dynamic_global_property_object_type,  global_property_object>    dynamic_global_property_id_type;
+   typedef object_id< implementation_ids, impl_global_property_object_type,  global_property_object>                    global_property_id_type;
+   typedef object_id< implementation_ids, impl_dynamic_global_property_object_type,  dynamic_global_property_object>    dynamic_global_property_id_type;
    typedef object_id< implementation_ids, impl_asset_dynamic_data_type,      asset_dynamic_data_object>         dynamic_asset_data_id_type;
    typedef object_id< implementation_ids, impl_account_balance_object_type,  account_balance_object>            account_balance_id_type;
    typedef object_id< implementation_ids, impl_account_feeds_object_type,    account_feeds_object>              account_feeds_id_type;

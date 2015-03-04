@@ -45,10 +45,10 @@ namespace bts { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_dynamic_global_property_object_type;
 
-         secret_hash_type random;
-         uint32_t         head_block_number;
-         time_point_sec   time;
-         delegate_id_type      current_delegate;
+         secret_hash_type  random;
+         uint32_t          head_block_number = 0;
+         time_point_sec    time;
+         delegate_id_type  current_delegate;
    };
 }} 
 
