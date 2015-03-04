@@ -150,14 +150,12 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
 void database::init_genesis(const genesis_allocation& initial_allocation)
 {
    _save_undo = false;
-   ilog("Begin genesis initialization.");
 
    fc::ecc::private_key genesis_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
    const key_object* genesis_key =
       create<key_object>( [&genesis_private_key](key_object* k) {
          k->key_data = public_key_type(genesis_private_key.get_public_key());
       });
-   ilog("Genesis key created");
    const account_balance_object* genesis_balance =
       create<account_balance_object>( [&](account_balance_object* b){
          b->add_balance(asset(BTS_INITIAL_SUPPLY));
@@ -171,7 +169,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          n->memo_key = genesis_key->id;
          n->balances = genesis_balance->id;
       });
-   ilog("Genesis account created");
 
    vector<delegate_id_type> init_delegates;
 
@@ -198,7 +195,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          d->vote = vote->id;
       });
       init_delegates.push_back(init_delegate->id);
-      ilog("Delegate init${i} created", ("i", i));
    }
 
    const global_property_object* properties =
@@ -209,7 +205,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
 
    create<dynamic_global_property_object>( [&](dynamic_global_property_object* p) {
       });
-   ilog("Genesis properties created");
 
    const asset_dynamic_data_object* dyn_asset =
       create<asset_dynamic_data_object>( [&]( asset_dynamic_data_object* a ) {
@@ -232,11 +227,9 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
    assert( asset_id_type(core_asset->id) == asset().asset_id );
    assert( genesis_balance->get_balance(core_asset->id) == asset(dyn_asset->current_supply) );
    (void)core_asset;
-   ilog("Core asset initialized");
 
    if( !initial_allocation.empty() )
    {
-      ilog("Applying genesis allocation");
       share_type total_allocation = 0;
       for( const auto& handout : initial_allocation )
          total_allocation += handout.second;
@@ -258,23 +251,39 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          object_id_type key_id(relative_protocol_ids, 0, 0);
          authority account_authority;
          account_authority.add_authority(key_id_type(key_id), 1);
-         trx.operations.emplace_back(account_create_operation({genesis_account->id,
-                                                               asset(),
-                                                               string(),
-                                                               account_authority,
-                                                               account_authority,
-                                                               key_id,
-                                                               key_id
+         trx.operations.emplace_back(account_create_operation({
+                                                                 genesis_account->id,
+                                                                 asset(),
+                                                                 string(),
+                                                                 account_authority,
+                                                                 account_authority,
+                                                                 key_id,
+                                                                 key_id
                                                               }));
-         object_id_type account_id(relative_protocol_ids, 0, 1);
-         trx.operations.emplace_back(transfer_operation({genesis_account->id,
-                                                         account_id,
-                                                         amount,
-                                                         asset(),
-                                                         vector<char>()
+         trx.validate();
+         auto ptrx = apply_transaction(trx, ~0);
+         trx = signed_transaction();
+         account_id_type account_id(ptrx.operation_results.back());
+         trx.operations.emplace_back(transfer_operation({
+                                                           genesis_account->id,
+                                                           account_id,
+                                                           amount,
+                                                           asset(),
+                                                           vector<char>()
                                                         }));
          trx.validate();
-         apply_transaction(trx);
+         apply_transaction(trx, ~0);
+      }
+
+      if( genesis_balance->get_balance(asset_id_type()).amount > 0 )
+      {
+         asset leftovers = genesis_balance->get_balance(asset_id_type());
+         modify(genesis_balance, [](account_balance_object* b) {
+            b->balances.clear();
+         });
+         modify(core_asset->dynamic_asset_data_id(*this), [&leftovers](asset_dynamic_data_object* d) {
+            d->accumulated_fees += leftovers.amount;
+         });
       }
 
       fc::microseconds duration = fc::time_point::now() - start_time;
@@ -284,7 +293,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
 
    push_undo_state();
    _save_undo = true;
-   ilog("End genesis initialization.");
 }
 
 void database::reindex()
@@ -292,9 +300,9 @@ void database::reindex()
    auto itr = _block_num_to_block.begin();
    while( itr.valid() )
    {
-      apply_block( itr.value(), skip_delegate_signature | 
-                                skip_transaction_signatures | 
-                                skip_undo_block | 
+      apply_block( itr.value(), skip_delegate_signature |
+                                skip_transaction_signatures |
+                                skip_undo_block |
                                 skip_undo_transaction |
                                 skip_transaction_dupe_check );
       ++itr;
@@ -412,8 +420,8 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       update_global_properties();
 
       // if block interval CHANGED durring this block *THEN* we cannot simply
-      // add the interval if we want to maintain the invariant that all timestamps are a multiple 
-      // of the interval.  
+      // add the interval if we want to maintain the invariant that all timestamps are a multiple
+      // of the interval.
       _pending_block.timestamp = next_block.timestamp + fc::seconds(current_block_interval);
       uint32_t r = _pending_block.timestamp.sec_since_epoch()%current_block_interval;
       if( !r )
@@ -471,7 +479,7 @@ void database::update_active_delegates()
     for( uint32_t i = 0; i < ids.size(); ++i ) ids[i] = delegate_id_type(i);
     std::sort( ids.begin(), ids.end(), [&]( delegate_id_type a,delegate_id_type b )->bool {
        return a(*this)->vote(*this)->total_votes >
-              b(*this)->vote(*this)->total_votes; 
+              b(*this)->vote(*this)->total_votes;
     });
 
     uint64_t base_threshold = ids[9](*this)->vote(*this)->total_votes.value;
@@ -485,13 +493,13 @@ void database::update_active_delegates()
     }
     ids.resize( i );
 
-    // shuffle ids 
+    // shuffle ids
     auto randvalue = get(dynamic_global_property_id_type(0))->random;
     for( uint32_t i = 0; i < ids.size(); ++i )
     {
        const auto rands_per_hash = sizeof(secret_hash_type) / sizeof(randvalue._hash[0]);
        std::swap( ids[i], ids[ i + (randvalue._hash[i%rands_per_hash] % (ids.size()-i))] );
-       if( i % rands_per_hash == (rands_per_hash-1) ) 
+       if( i % rands_per_hash == (rands_per_hash-1) )
           randvalue = secret_hash_type::hash( randvalue );
     }
 
@@ -504,22 +512,22 @@ void database::update_global_properties()
 {
    global_property_object tmp;
    vector<delegate_id_type> ids = get_global_properties()->active_delegates;
-   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(), 
+   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
                      [&]( delegate_id_type a, delegate_id_type b )->bool {
                           return a(*this)->block_interval_sec < b(*this)->block_interval_sec;
                      });
    tmp.block_interval = ids[ids.size()/2](*this)->block_interval_sec;
-   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(), 
+   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
                      [&]( delegate_id_type a, delegate_id_type b )->bool {
                           return a(*this)->max_block_size < b(*this)->max_block_size;
                      });
    tmp.maximum_block_size = ids[ids.size()/2](*this)->max_block_size;
-   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(), 
+   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
                      [&]( delegate_id_type a, delegate_id_type b )->bool {
                           return a(*this)->max_transaction_size < b(*this)->max_transaction_size;
                      });
    tmp.maximum_transaction_size = ids[ids.size()/2](*this)->max_transaction_size;
-   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(), 
+   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
                      [&]( delegate_id_type a, delegate_id_type b )->bool {
                           return a(*this)->max_sec_until_expiration < b(*this)->max_sec_until_expiration;
                      });
@@ -527,7 +535,7 @@ void database::update_global_properties()
 
    for( uint32_t f = 0; f < tmp.current_fees.size(); ++f )
    {
-      std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(), 
+      std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
                         [&]( delegate_id_type a, delegate_id_type b )->bool {
                              return a(*this)->fee_schedule.at(f) < b(*this)->fee_schedule.at(f);
                         });
@@ -621,7 +629,7 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    {
       for( auto sig : trx.signatures )
       {
-         eval_state.signed_by.insert( fc::ecc::public_key( sig, trx.digest() ) ); 
+         eval_state.signed_by.insert( fc::ecc::public_key( sig, trx.digest() ) );
       }
    }
    eval_state.operation_results.reserve( trx.operations.size() );
