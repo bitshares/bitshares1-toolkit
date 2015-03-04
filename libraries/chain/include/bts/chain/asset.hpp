@@ -3,7 +3,7 @@
 
 namespace bts { namespace chain {
 
-   struct asset 
+   struct asset
    {
       asset( share_type a = 0, asset_id_type id = asset_id_type() )
       :amount(a),asset_id(id){}
@@ -34,7 +34,7 @@ namespace bts { namespace chain {
       }
    };
 
-   struct price 
+   struct price
    {
       asset base;
       asset quote;

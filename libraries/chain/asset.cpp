@@ -1,5 +1,4 @@
 #include <bts/chain/asset.hpp>
-//#include <boost/rational.hpp>
 #include <fc/uint128.hpp>
 
 namespace bts { namespace chain {
@@ -9,8 +8,8 @@ namespace bts { namespace chain {
          if( a.base.asset_id > b.base.asset_id ) return false;
          if( a.quote.asset_id < b.quote.asset_id ) return true;
          if( a.quote.asset_id > b.quote.asset_id ) return false;
-         auto amult = fc::uint128(a.quote.amount.value) * b.base.amount.value; 
-         auto bmult = fc::uint128(b.quote.amount.value) * a.base.amount.value; 
+         auto amult = fc::uint128(a.quote.amount.value) * b.base.amount.value;
+         auto bmult = fc::uint128(b.quote.amount.value) * a.base.amount.value;
          return amult < bmult;
       }
       asset operator * ( const asset& a, const price& b )

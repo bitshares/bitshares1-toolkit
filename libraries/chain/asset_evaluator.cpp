@@ -11,6 +11,7 @@ object_id_type asset_create_evaluator::evaluate( const operation& o )
    database& d = db();
 
    FC_ASSERT( !d.get_asset_index().get( op.symbol ) );
+   FC_ASSERT( op.max_supply > 0 );
 
    auto bts_fee_paid = pay_fee( op.issuer, op.fee );
    bts_fee_required = op.calculate_fee( d.current_fee_schedule() );
@@ -41,6 +42,7 @@ object_id_type asset_create_evaluator::apply( const operation& o )
      db().create<asset_object>( [&]( asset_object* a ) {
          a->symbol = op.symbol;
          a->max_supply = op.max_supply;
+         a->market_fee_percent = op.market_fee_percent;
          a->flags = op.flags;
          a->issuer_permissions = op.permissions;
          a->short_backing_asset = op.short_backing_asset;
@@ -59,7 +61,7 @@ object_id_type asset_issue_evaluator::evaluate( const operation& op )
 { try {
    const auto& o = op.get<asset_issue_operation>();
    database& d   = db();
-   
+
    const asset_object* a = o.asset_to_issue.asset_id(d);
    FC_ASSERT( a != nullptr );
    FC_ASSERT( !(a->issuer_permissions & market_issued) );
@@ -78,7 +80,7 @@ object_id_type asset_issue_evaluator::evaluate( const operation& op )
 
    asset_dyn_data = a->dynamic_asset_data_id(d);
    FC_ASSERT( (asset_dyn_data->current_supply + o.asset_to_issue.amount) <= a->max_supply );
-   
+
    adjust_balance( to_account, a, o.asset_to_issue.amount );
 
    return object_id_type();

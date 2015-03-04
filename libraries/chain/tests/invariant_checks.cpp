@@ -29,6 +29,7 @@ BOOST_AUTO_TEST_CASE( share_supply )
       const asset_dynamic_data_object* core_asset_data = db.get_base_asset()->dynamic_asset_data_id(db);
       BOOST_CHECK(core_asset_data->current_supply == BTS_INITIAL_SUPPLY);
       BOOST_CHECK(core_asset_data->fee_pool == 0);
+      idump((core_asset_data->accumulated_fees));
 
       simple_index<account_balance_object>& balance_index = dynamic_cast<simple_index<account_balance_object>&>(db.get_index<account_balance_object>());
       share_type total_balances = core_asset_data->accumulated_fees;

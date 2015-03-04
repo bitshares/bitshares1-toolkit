@@ -161,7 +161,6 @@ namespace bts { namespace chain {
 
          vector< unique_ptr<op_evaluator> >     _operation_evaluators;
 
-
          void save_undo( const object* obj );
 
          void                  apply_block(const signed_block& next_block, bool save_undo );
@@ -179,7 +178,7 @@ namespace bts { namespace chain {
          /**
           * @brief The signature_inhibitor struct disables signature validation on a database within a scope.
           *
-          * Operations which need to disable signature verification for a period of time may create a signature_inhibitor.
+          * Tasks which need to disable signature verification for a period of time may create a signature_inhibitor.
           * The inhibitor will back up the state of signature validation at its construction, and disable signature
           * validation while it is in scope. When it goes out of scope, it will restore the previous state of signature
           * validation.
