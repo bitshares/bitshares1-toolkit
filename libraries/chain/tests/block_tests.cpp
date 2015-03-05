@@ -29,7 +29,6 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
             auto ad = db.get_global_properties()->active_delegates;
             advance_simulated_time_to( db.get_next_generation_time(  ad[i%ad.size()] ) );
             auto b =  db.generate_block( delegate_priv_key, ad[i%ad.size()] );
-            wdump((b));
          }
          db.close();
       }
@@ -43,8 +42,8 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
             auto ad = db.get_global_properties()->active_delegates;
             advance_simulated_time_to( db.get_next_generation_time(  ad[i%ad.size()] ) );
             auto b = db.generate_block( delegate_priv_key, ad[i%ad.size()] );
-            edump((b));
          }
+         BOOST_CHECK( db.head_block_num() == 200 );
       }
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
