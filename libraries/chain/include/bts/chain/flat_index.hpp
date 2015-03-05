@@ -16,13 +16,12 @@ namespace bts { namespace chain {
 
          virtual packed_object  get_meta_object()const override
          {
-            return packed_object( index_meta_object( get_next_available_id() ) );
+            return packed_object( index_meta_object( get_next_available_id().instance() ) );
          }
          virtual void           set_meta_object( const packed_object& obj ) override
          { try {
             index_meta_object meta;
             obj.unpack(meta);
-            wdump( (meta.next_object_instance) );
             _objects.resize( meta.next_object_instance );
          } FC_CAPTURE_AND_RETHROW( (obj) ) }
 

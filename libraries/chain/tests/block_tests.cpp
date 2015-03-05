@@ -70,6 +70,20 @@ BOOST_AUTO_TEST_CASE( undo_block )
             advance_simulated_time_to( db.get_next_generation_time(  ad[i%ad.size()] ) );
             auto b =  db.generate_block( delegate_priv_key, ad[i%ad.size()] );
          }
+         BOOST_CHECK( db.head_block_num() == 5 );
+         db.pop_block();
+         BOOST_CHECK( db.head_block_num() == 4 );
+         db.pop_block();
+         BOOST_CHECK( db.head_block_num() == 3 );
+         db.pop_block();
+         BOOST_CHECK( db.head_block_num() == 2 );
+         for( uint32_t i = 0; i < 5; ++i )
+         {
+            auto ad = db.get_global_properties()->active_delegates;
+            advance_simulated_time_to( db.get_next_generation_time(  ad[i%ad.size()] ) );
+            auto b =  db.generate_block( delegate_priv_key, ad[i%ad.size()] );
+         }
+         BOOST_CHECK( db.head_block_num() == 7 );
       }
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));

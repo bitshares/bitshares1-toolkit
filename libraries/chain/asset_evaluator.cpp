@@ -20,6 +20,8 @@ object_id_type asset_create_evaluator::evaluate( const operation& o )
    fees_paid[core_asset].to_issuer -= bts_fee_required.value/2;
    assert( fees_paid[core_asset].to_issuer >= 0 );
 
+   FC_ASSERT( op.short_backing_asset(d) != nullptr );
+
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
