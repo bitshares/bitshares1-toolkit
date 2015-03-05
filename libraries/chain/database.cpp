@@ -532,7 +532,7 @@ time_point database::get_next_generation_time( delegate_id_type del_id )const
 }
 
 signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
-                                       delegate_id_type del_id )
+                                       delegate_id_type del_id, uint32_t  skip )
 {
    auto del_obj = del_id(*this);
    FC_ASSERT( del_obj );
@@ -550,9 +550,9 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
    _pending_block.next_secret_hash = secret_hash_type::hash(next_enc.result());
 
    _pending_block.delegate_id = del_id;
-   _pending_block.sign( delegate_key );
+   if( !(skip & skip_delegate_signature) ) _pending_block.sign( delegate_key );
    signed_block tmp = std::move(_pending_block);
-   push_block( tmp );
+   push_block( tmp, skip );
    return tmp;
 }
 
