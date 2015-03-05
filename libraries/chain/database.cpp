@@ -196,8 +196,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          fc::raw::pack( enc, genesis_private_key );
          fc::raw::pack( enc, d->last_secret );
          d->next_secret = secret_hash_type::hash(enc.result());
-         wdump( (d->next_secret) );
-         wdump( (d->last_secret) );
          d->vote = vote->id;
       });
       init_delegates.push_back(init_delegate->id);
@@ -478,19 +476,17 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
    FC_ASSERT( del_obj );
    FC_ASSERT( del_obj->signing_key(*this)->key() == delegate_key.get_public_key() );
    _pending_block.timestamp = get_next_generation_time( del_id );
-   secret_hash_type::encoder next_enc;
-   fc::raw::pack( next_enc, delegate_key );
-   fc::raw::pack( next_enc, del_obj->last_secret );
-   _pending_block.next_secret_hash = secret_hash_type::hash(next_enc.result());
+
 
    secret_hash_type::encoder last_enc;
    fc::raw::pack( last_enc, delegate_key );
    fc::raw::pack( last_enc, del_obj->last_secret );
-   wdump( (del_obj->last_secret) );
    _pending_block.previous_secret = last_enc.result();
 
-   wdump( (_pending_block.previous_secret) );
-   wdump( (_pending_block.next_secret_hash) );
+   secret_hash_type::encoder next_enc;
+   fc::raw::pack( next_enc, delegate_key );
+   fc::raw::pack( next_enc, _pending_block.previous_secret );
+   _pending_block.next_secret_hash = secret_hash_type::hash(next_enc.result());
 
    _pending_block.delegate_id = del_id;
    _pending_block.sign( delegate_key );
