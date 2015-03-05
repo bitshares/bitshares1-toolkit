@@ -192,6 +192,10 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
       const delegate_object* init_delegate = create<delegate_object>( [&](delegate_object* d) {
          d->delegate_account = delegate_account->id;
          d->signing_key = genesis_key->id;
+         secret_hash_type::encoder enc;
+         fc::raw::pack( enc, genesis_private_key );
+         fc::raw::pack( enc, d->last_secret );
+         d->next_secret = secret_hash_type::hash(enc.result());
          d->vote = vote->id;
       });
       init_delegates.push_back(init_delegate->id);
@@ -293,6 +297,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
 
    push_undo_state();
    _save_undo = true;
+   _pending_block.block_num = 1;
 }
 
 void database::reindex()
@@ -381,7 +386,7 @@ void database::undo()
 void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
    auto now = bts::chain::now();
-   FC_ASSERT( _pending_block.timestamp <= (now  + fc::seconds(1)) );
+   FC_ASSERT( _pending_block.timestamp <= (now  + fc::seconds(1)), "", ("now",now)("pending",_pending_block.timestamp) );
    FC_ASSERT( _pending_block.block_num = next_block.block_num );
    FC_ASSERT( _pending_block.previous == next_block.previous );
    FC_ASSERT( _pending_block.timestamp <= next_block.timestamp );
@@ -407,6 +412,11 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       apply_transaction( trx, skip );
    }
    update_global_dynamic_data( next_block );
+
+   modify( del, [&]( delegate_object* obj ){
+           obj->last_secret = next_block.previous_secret;
+           obj->next_secret = next_block.next_secret_hash;
+           });
 
 
    if( 0 == (next_block.block_num % get_global_properties()->active_delegates.size()) )
@@ -449,7 +459,7 @@ time_point   database::get_next_generation_time( delegate_id_type del_id )const
    auto now = bts::chain::now();
    const auto& active_del = gp->active_delegates;
    const auto& interval   = gp->block_interval;
-   auto delegate_slot = (now.sec_since_epoch() /interval) + 1;
+   auto delegate_slot = ((now.sec_since_epoch()+1) /interval);
    for( uint32_t i = 0; i < active_del.size(); ++i )
    {
       if( active_del[ delegate_slot % active_del.size()] == del_id )
@@ -460,12 +470,24 @@ time_point   database::get_next_generation_time( delegate_id_type del_id )const
 }
 
 signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
-                             delegate_id_type del_id )
+                                       delegate_id_type del_id )
 {
    auto del_obj = del_id(*this);
    FC_ASSERT( del_obj );
    FC_ASSERT( del_obj->signing_key(*this)->key() == delegate_key.get_public_key() );
    _pending_block.timestamp = get_next_generation_time( del_id );
+
+
+   secret_hash_type::encoder last_enc;
+   fc::raw::pack( last_enc, delegate_key );
+   fc::raw::pack( last_enc, del_obj->last_secret );
+   _pending_block.previous_secret = last_enc.result();
+
+   secret_hash_type::encoder next_enc;
+   fc::raw::pack( next_enc, delegate_key );
+   fc::raw::pack( next_enc, _pending_block.previous_secret );
+   _pending_block.next_secret_hash = secret_hash_type::hash(next_enc.result());
+
    _pending_block.delegate_id = del_id;
    _pending_block.sign( delegate_key );
    signed_block tmp = std::move(_pending_block);

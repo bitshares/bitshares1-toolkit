@@ -17,6 +17,7 @@ namespace bts { namespace chain {
    void                         shutdown_ntp_time();
 
    void                         start_simulated_time( const fc::time_point sim_time );
+   void                         advance_simulated_time_to( const fc::time_point sim_time );
    void                         advance_time( int32_t delta_seconds );
 
 } } // bts::chain

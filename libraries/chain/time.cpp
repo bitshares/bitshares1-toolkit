@@ -87,6 +87,11 @@ void start_simulated_time( const fc::time_point sim_time )
    simulated_time = sim_time.sec_since_epoch();
    adjusted_time_sec = 0;
 }
+void advance_simulated_time_to( const fc::time_point sim_time )
+{
+   simulated_time = sim_time.sec_since_epoch();
+   adjusted_time_sec = 0;
+}
 
 void advance_time( int32_t delta_seconds )
 {

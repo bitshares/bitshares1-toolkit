@@ -13,6 +13,7 @@ namespace bts { namespace chain {
          account_id_type                delegate_account;
          key_id_type                    signing_key;
          secret_hash_type               next_secret;
+         secret_hash_type               last_secret;
          fee_schedule_type              fee_schedule;
          uint8_t                        pay_rate = 0;
          uint8_t                        block_interval_sec        = BTS_DEFAULT_BLOCK_INTERVAL;
@@ -48,6 +49,7 @@ FC_REFLECT_DERIVED( bts::chain::delegate_object, (bts::chain::object),
                     (delegate_account)
                     (signing_key)
                     (next_secret)
+                    (last_secret)
                     (fee_schedule)
                     (pay_rate)
                     (block_interval_sec)
