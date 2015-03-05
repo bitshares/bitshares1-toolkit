@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
          start_simulated_time( bts::chain::now() );
 
 #ifdef NDEBUG
-         int blocks_to_produce = 100000;
+         int blocks_to_produce = 10000;
 #else
          int blocks_to_produce = 1000;
 #endif
