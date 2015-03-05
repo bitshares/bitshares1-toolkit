@@ -50,23 +50,7 @@ database::database()
 
    _object_id_to_object = std::make_shared<db::level_map<object_id_type,packed_object>>();
 
-   _index.resize(255);
-   _index[protocol_ids].resize( 10 );
-   _index[implementation_ids].resize( 10 );
-   _index[meta_info_ids].resize( 10 );
-
-   add_index<primary_index<asset_index> >();
-   add_index<primary_index<account_index> >();
-   add_index<primary_index<simple_index<key_object>> >();
-   add_index<primary_index<simple_index<delegate_object>> >();
-
-   add_index<primary_index<simple_index<global_property_object>> >();
-   add_index<primary_index<simple_index<dynamic_global_property_object>> >();
-   add_index<primary_index<simple_index<account_balance_object>> >();
-   add_index<primary_index<simple_index<account_debt_object>> >();
-   add_index<primary_index<simple_index<asset_dynamic_data_object>> >();
-   add_index<primary_index<flat_index<delegate_vote_object>> >();
-   add_index<primary_index<flat_index<block_summary_object>> >();
+   initialize_indexes();
 
    push_undo_state();
 }
@@ -77,9 +61,12 @@ void database::close()
 {
    flush();
 
-   _block_num_to_block.close();
-   _block_id_to_num.close();
-   _object_id_to_object->close();
+   if( _block_num_to_block.is_open() )
+      _block_num_to_block.close();
+   if( _block_id_to_num.is_open() )
+      _block_id_to_num.close();
+   if( _object_id_to_object->is_open() )
+      _object_id_to_object->close();
 }
 
 const object* database::get_object( object_id_type id )const
@@ -129,12 +116,25 @@ const asset_object*database::get_base_asset() const
 
 void database::flush()
 {
+   if( !_object_id_to_object->is_open() )
+      return;
+
    for( auto& space : _index )
       for( const unique_ptr<index>& type_index : space )
          if( type_index )
             type_index->inspect_all_objects([&] (const object* object) {
                _object_id_to_object->store(object->id, type_index->pack(object));
             });
+}
+
+void database::wipe(bool include_blocks)
+{
+   close();
+
+   fc::remove_all(_data_dir / "database" / "block_id_to_num");
+   fc::remove_all(_data_dir / "database" / "objects");
+   if( include_blocks )
+      fc::remove_all(_data_dir / "database" / "block_num_to_block" );
 }
 
 void database::open( const fc::path& data_dir, const genesis_allocation& initial_allocation )
@@ -162,7 +162,32 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
 
    _pending_block.block_num = head_block_num() + 1;
    _pending_block.previous  = head_block_id();
+   _pending_block.timestamp = head_block_time();
+
+   _data_dir = data_dir;
 } FC_CAPTURE_AND_RETHROW( (data_dir) ) }
+
+void database::initialize_indexes()
+{
+   _index.clear();
+   _index.resize(255);
+   _index[protocol_ids].resize( 10 );
+   _index[implementation_ids].resize( 10 );
+   _index[meta_info_ids].resize( 10 );
+
+   add_index<primary_index<asset_index> >();
+   add_index<primary_index<account_index> >();
+   add_index<primary_index<simple_index<key_object>> >();
+   add_index<primary_index<simple_index<delegate_object>> >();
+
+   add_index<primary_index<simple_index<global_property_object>> >();
+   add_index<primary_index<simple_index<dynamic_global_property_object>> >();
+   add_index<primary_index<simple_index<account_balance_object>> >();
+   add_index<primary_index<simple_index<account_debt_object>> >();
+   add_index<primary_index<simple_index<asset_dynamic_data_object>> >();
+   add_index<primary_index<flat_index<delegate_vote_object>> >();
+   add_index<primary_index<flat_index<block_summary_object>> >();
+}
 
 void database::init_genesis(const genesis_allocation& initial_allocation)
 {
@@ -324,8 +349,12 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
  *  This method should be called after the genesis state has
  *  been initialized.
  */
-void database::reindex()
+void database::reindex(fc::path data_dir, genesis_allocation initial_allocation)
 {
+   wipe(false);
+   initialize_indexes();
+   open(data_dir, initial_allocation);
+
    auto itr = _block_num_to_block.begin();
    while( itr.valid() )
    {
@@ -418,7 +447,8 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    FC_ASSERT( _pending_block.timestamp.sec_since_epoch() % get_global_properties()->block_interval == 0 );
    const delegate_object* del = next_block.delegate_id(*this);
    FC_ASSERT( del != nullptr );
-   FC_ASSERT( secret_hash_type::hash(next_block.previous_secret) == del->next_secret );
+   FC_ASSERT( secret_hash_type::hash(next_block.previous_secret) == del->next_secret, "",
+              ("previous_secret", next_block.previous_secret)("next_secret", del->next_secret));
 
    auto expected_delegate_num = (next_block.timestamp.sec_since_epoch() / get_global_properties()->block_interval)%get_global_properties()->active_delegates.size();
 
@@ -454,7 +484,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    {
       update_global_properties();
 
-      // if block interval CHANGED durring this block *THEN* we cannot simply
+      // if block interval CHANGED during this block *THEN* we cannot simply
       // add the interval if we want to maintain the invariant that all timestamps are a multiple
       // of the interval.
       _pending_block.timestamp = next_block.timestamp + fc::seconds(current_block_interval);
@@ -484,7 +514,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       push_transaction( old_trx );
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num)(skip) )  }
 
-time_point   database::get_next_generation_time( delegate_id_type del_id )const
+time_point database::get_next_generation_time( delegate_id_type del_id )const
 {
    auto gp = get_global_properties();
    auto now = bts::chain::now();
@@ -508,7 +538,6 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
    FC_ASSERT( del_obj->signing_key(*this)->key() == delegate_key.get_public_key() );
    _pending_block.timestamp = get_next_generation_time( del_id );
 
-
    secret_hash_type::encoder last_enc;
    fc::raw::pack( last_enc, delegate_key );
    fc::raw::pack( last_enc, del_obj->last_secret );
@@ -522,7 +551,7 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
    _pending_block.delegate_id = del_id;
    _pending_block.sign( delegate_key );
    signed_block tmp = std::move(_pending_block);
-   push_block( signed_block(_pending_block) );
+   push_block( tmp );
    return tmp;
 }
 

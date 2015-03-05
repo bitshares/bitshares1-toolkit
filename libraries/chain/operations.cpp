@@ -267,4 +267,16 @@ void delegate_update_operation::validate()const
    FC_ASSERT( block_interval_sec > 0 && block_interval_sec <= BTS_MAX_BLOCK_INTERVAL );
 }
 
+void asset_fund_fee_pool_operation::validate() const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( fee.asset_id == asset_id_type() );
+   FC_ASSERT( amount > 0 );
+}
+
+share_type asset_fund_fee_pool_operation::calculate_fee(const fee_schedule_type& k) const
+{
+   return k.at( asset_fund_fee_pool_fee_type );
+}
+
 } } // namespace bts::chain

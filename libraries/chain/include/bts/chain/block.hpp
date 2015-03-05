@@ -2,9 +2,9 @@
 #include <bts/chain/types.hpp>
 #include <bts/chain/transaction.hpp>
 
-namespace bts { namespace chain { 
+namespace bts { namespace chain {
 
-   struct block 
+   struct block
    {
       digest_type                   digest()const;
 
@@ -29,6 +29,7 @@ namespace bts { namespace chain {
 
 } } // bts::chain
 
-FC_REFLECT( bts::chain::block, (previous)(timestamp)(block_num)(delegate_id)(transactions) )
+FC_REFLECT( bts::chain::block, (previous)(timestamp)(block_num)(delegate_id)
+            (next_secret_hash)(previous_secret)(transactions) )
 FC_REFLECT_DERIVED( bts::chain::signed_block, (bts::chain::block), (delegate_signature) )
 

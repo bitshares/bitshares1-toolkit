@@ -60,6 +60,7 @@ BOOST_AUTO_TEST_CASE( transfer )
 
       trx.operations.push_back(make_account());
       trx.validate();
+      BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
       db.push_transaction(trx, ~0);
 
       trx = signed_transaction();
