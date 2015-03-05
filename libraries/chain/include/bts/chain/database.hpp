@@ -78,8 +78,15 @@ namespace bts { namespace chain {
          };
 
          void open(const fc::path& data_dir, const genesis_allocation& initial_allocation = genesis_allocation());
-         void reindex();
+         void reindex(fc::path data_dir, genesis_allocation initial_allocation = genesis_allocation());
          void flush();
+         /**
+          * @brief wipe Delete database from disk, and potentially the raw chain as well.
+          * @param include_blocks If true, delete the raw chain as well as the database.
+          *
+          * Will close the database before wiping. Database will be closed when this function returns.
+          */
+         void wipe(bool include_blocks);
          void close();
 
          void push_undo_state();
@@ -165,6 +172,8 @@ namespace bts { namespace chain {
          uint32_t       head_block_num()const;
          block_id_type  head_block_id()const;
 
+         /// Reset the object graph in-memory
+         void initialize_indexes();
          void init_genesis(const genesis_allocation& initial_allocation = genesis_allocation());
 
          template<typename EvaluatorType>
@@ -174,10 +183,12 @@ namespace bts { namespace chain {
                operation::tag<typename EvaluatorType::operation_class_type>::value].reset( new op_evaluator_impl<EvaluatorType>() );
          }
 
-      private:
+   private:
          friend class base_primary_index;
 
          vector< unique_ptr<op_evaluator> >     _operation_evaluators;
+
+         fc::path                               _data_dir;
 
          void update_global_dynamic_data( const signed_block& b );
          void update_active_delegates();
