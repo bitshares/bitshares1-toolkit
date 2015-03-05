@@ -504,10 +504,11 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
    _pending_block.previous = next_block.id();
 
+   wdump( (_pending_block.previous) );
    auto sum = create<block_summary_object>( [&](block_summary_object* p) {
-              p->block_id = _pending_block.previous;
+ //             p->block_id = _pending_block.previous;
    });
-   FC_ASSERT( sum->id.instance() == next_block.block_num() );
+//   FC_ASSERT( sum->id.instance() == next_block.block_num() );
 
    auto old_pending_trx = std::move(_pending_block.transactions);
    _pending_block.transactions.clear();

@@ -8,7 +8,7 @@ namespace bts { namespace chain {
    {
       digest_type                   digest()const;
       block_id_type                 previous;
-      uint32_t                      block_num()const { return previous._hash[0] + 1; }
+      uint32_t                      block_num()const { return htonl(previous._hash[0]) + 1; }
       fc::time_point_sec            timestamp;
       delegate_id_type              delegate_id;
       secret_hash_type              next_secret_hash;

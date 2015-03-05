@@ -100,20 +100,26 @@ namespace bts { namespace chain {
          template<typename T, typename F>
          const T* create( F&& constructor, object_id_type requested_id = object_id_type() )
          {
-            undo_state& undo = _undo_state.back();
+            const object* result = nullptr;
             auto& idx = get_index<T>();
-            if( !undo.has_old_index_meta_object<T>() )
+            if( _save_undo )
             {
-               undo.set_old_index_meta_object<T>( idx.get_meta_object() );
+               assert( _undo_state.size() );
+               undo_state& undo = _undo_state.back();
+               if( !undo.has_old_index_meta_object<T>() )
+               {
+                  undo.set_old_index_meta_object<T>( idx.get_meta_object() );
+               }
             }
 
-            const object* result = idx.create( [&](object* o)
+            result = idx.create( [&](object* o)
             {
                assert( dynamic_cast<T*>(o) );
                constructor( static_cast<T*>(o) );
             }, requested_id );
 
-            undo.new_ids.push_back(result->id);
+            if( _save_undo ) _undo_state.back().new_ids.push_back(result->id);
+
             return static_cast<const T*>(result);
          }
          template<typename T, typename Lambda>

@@ -11,7 +11,8 @@ namespace bts { namespace chain {
    block_id_type              signed_block::id()const
    {
       auto tmp = fc::sha224::hash( *this );
-      tmp._hash[0] = block_num(); // store the block num in the ID, 160 bits is plenty for the hash 
+      tmp._hash[0] = htonl(block_num()); // store the block num in the ID, 160 bits is plenty for the hash 
+      static_assert( sizeof(tmp._hash[0]) == 4, "should be 4 bytes" );
       return tmp;
    }
 
