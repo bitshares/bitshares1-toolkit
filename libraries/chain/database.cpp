@@ -9,6 +9,7 @@
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/delegate_object.hpp>
+#include <bts/chain/block_summary_object.hpp>
 #include <bts/chain/simple_index.hpp>
 #include <bts/chain/flat_index.hpp>
 #include <bts/chain/account_index.hpp>
@@ -53,6 +54,7 @@ database::database()
    add_index<primary_index<simple_index<account_debt_object>> >();
    add_index<primary_index<simple_index<asset_dynamic_data_object>> >();
    add_index<primary_index<flat_index<delegate_vote_object>> >();
+   add_index<primary_index<flat_index<block_summary_object>> >();
 
    push_undo_state();
 }
@@ -203,6 +205,9 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
       });
       init_delegates.push_back(init_delegate->id);
    }
+   create<block_summary_object>( [&](block_summary_object* p) {
+           /** default block 0 */
+   });
 
    const global_property_object* properties =
       create<global_property_object>( [&](global_property_object* p) {
@@ -303,6 +308,10 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
    _pending_block.block_num = 1;
 }
 
+/**
+ *  This method should be called after the genesis state has
+ *  been initialized.
+ */
 void database::reindex()
 {
    auto itr = _block_num_to_block.begin();
@@ -450,6 +459,12 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
    _pending_block.block_num++;
    _pending_block.previous = next_block.id();
+
+   auto sum = create<block_summary_object>( [&](block_summary_object* p) {
+              p->block_id = _pending_block.previous;
+   });
+   FC_ASSERT( sum->id.instance() == next_block.block_num );
+
    auto old_pending_trx = std::move(_pending_block.transactions);
    _pending_block.transactions.clear();
    for( auto old_trx : old_pending_trx )
