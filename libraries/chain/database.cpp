@@ -145,6 +145,9 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
    if( !get_global_properties() )
       init_genesis(initial_allocation);
    assert(get_global_properties());
+
+   _pending_block.block_num = head_block_num() + 1;
+   _pending_block.previous  = head_block_id();
 } FC_CAPTURE_AND_RETHROW( (data_dir) ) }
 
 void database::init_genesis(const genesis_allocation& initial_allocation)
@@ -573,6 +576,7 @@ void database::update_global_dynamic_data( const signed_block& b )
       fc::raw::pack( enc, b.previous_secret );
       dgp->random = enc.result();
       dgp->head_block_number = b.block_num;
+      dgp->head_block_id = b.id();
       dgp->time = b.timestamp;
       dgp->current_delegate = b.delegate_id;
    });
@@ -674,5 +678,17 @@ const global_property_object* database::get_global_properties()const
 const fee_schedule_type&  database::current_fee_schedule()const
 {
    return get_global_properties()->current_fees;
+}
+time_point_sec database::head_block_time()const
+{
+   return get( dynamic_global_property_id_type() )->time;
+}
+uint32_t       database::head_block_num()const
+{
+   return get( dynamic_global_property_id_type() )->head_block_number;
+}
+block_id_type       database::head_block_id()const
+{
+   return get( dynamic_global_property_id_type() )->head_block_id;
 }
 } } // namespace bts::chain

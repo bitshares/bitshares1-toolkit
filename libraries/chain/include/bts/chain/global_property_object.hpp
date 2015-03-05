@@ -47,6 +47,7 @@ namespace bts { namespace chain {
 
          secret_hash_type  random;
          uint32_t          head_block_number = 0;
+         block_id_type     head_block_id;
          time_point_sec    time;
          delegate_id_type  current_delegate;
    };

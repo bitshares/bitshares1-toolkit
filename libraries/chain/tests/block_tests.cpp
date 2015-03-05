@@ -17,16 +17,34 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
 {
    try {
       fc::temp_directory data_dir;
-      db.open(data_dir.path(), genesis_allocation() );
-
-      start_simulated_time( bts::chain::now() );
-
-      auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
-      for( uint32_t i = 0; i < 100; ++i )
       {
-         auto ad = db.get_global_properties()->active_delegates;
-         advance_simulated_time_to( db.get_next_generation_time(  ad[i%ad.size()] ) );
-         db.generate_block( delegate_priv_key, ad[i%ad.size()] );
+         database db;
+         db.open(data_dir.path(), genesis_allocation() );
+
+         start_simulated_time( bts::chain::now() );
+
+         auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
+         for( uint32_t i = 0; i < 100; ++i )
+         {
+            auto ad = db.get_global_properties()->active_delegates;
+            advance_simulated_time_to( db.get_next_generation_time(  ad[i%ad.size()] ) );
+            auto b =  db.generate_block( delegate_priv_key, ad[i%ad.size()] );
+            wdump((b));
+         }
+         db.close();
+      }
+      {
+         database db;
+         db.open(data_dir.path() );
+         BOOST_CHECK( db.head_block_num() == 100 );
+         auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
+         for( uint32_t i = 0; i < 100; ++i )
+         {
+            auto ad = db.get_global_properties()->active_delegates;
+            advance_simulated_time_to( db.get_next_generation_time(  ad[i%ad.size()] ) );
+            auto b = db.generate_block( delegate_priv_key, ad[i%ad.size()] );
+            edump((b));
+         }
       }
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));

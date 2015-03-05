@@ -1,6 +1,7 @@
 #pragma once
 #include <bts/chain/object.hpp>
 #include <bts/chain/address.hpp>
+#include <fc/static_variant.hpp>
 
 namespace bts { namespace chain {
    class key_object : public object

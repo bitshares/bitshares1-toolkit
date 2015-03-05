@@ -161,6 +161,10 @@ namespace bts { namespace chain {
          const global_property_object* get_global_properties()const;
          const fee_schedule_type&      current_fee_schedule()const;
 
+         time_point_sec head_block_time()const;
+         uint32_t       head_block_num()const;
+         block_id_type  head_block_id()const;
+
          void init_genesis(const genesis_allocation& initial_allocation = genesis_allocation());
 
          template<typename EvaluatorType>
