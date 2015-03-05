@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
          start_simulated_time( bts::chain::now() );
 
 #ifdef NDEBUG
-         int blocks_to_produce = 10000;
+         int blocks_to_produce = 1000000;
 #else
          int blocks_to_produce = 1000;
 #endif
@@ -101,6 +101,7 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
 
          start_time = fc::time_point::now();
          advance_simulated_time_to( now() + fc::seconds(BTS_MAX_BLOCK_INTERVAL) );
+         wlog( "about to start reindex..." );
          db.reindex(data_dir.path(), allocation);
          ilog("Replayed database in ${t} milliseconds.", ("t", (fc::time_point::now() - start_time).count() / 1000));
 

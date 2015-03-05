@@ -349,6 +349,7 @@ void database::reindex(fc::path data_dir, genesis_allocation initial_allocation)
    initialize_indexes();
    open(data_dir, initial_allocation);
 
+   auto start = fc::time_point::now();
    auto itr = _block_id_to_block.begin();
    while( itr.valid() )
    {
@@ -359,6 +360,8 @@ void database::reindex(fc::path data_dir, genesis_allocation initial_allocation)
                                 skip_transaction_dupe_check );
       ++itr;
    }
+   auto end = fc::time_point::now();
+   wdump( ((end-start).count()/1000000.0) );
 }
 
 
@@ -435,7 +438,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    auto now = bts::chain::now();
    FC_ASSERT( _pending_block.timestamp <= (now  + fc::seconds(1)), "", ("now",now)("pending",_pending_block.timestamp) );
    FC_ASSERT( _pending_block.previous == next_block.previous );
-   FC_ASSERT( _pending_block.timestamp <= next_block.timestamp );
+   FC_ASSERT( _pending_block.timestamp <= next_block.timestamp, "", ("_pending_block.timestamp",_pending_block.timestamp)("next",next_block.timestamp)("blocknum",next_block.block_num()) );
    FC_ASSERT( _pending_block.timestamp.sec_since_epoch() % get_global_properties()->block_interval == 0 );
    const delegate_object* del = next_block.delegate_id(*this);
    FC_ASSERT( del != nullptr );
@@ -482,19 +485,22 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    }
 
    auto current_block_interval = get_global_properties()->block_interval;
-   if( next_block.block_num() % get_global_properties()->maintenance_interval == 0 )
+   if( next_block.block_num() % (get_global_properties()->maintenance_interval / current_block_interval) == 0 )
    {
       update_global_properties();
+
+      auto new_block_interval = get_global_properties()->block_interval;
+     // wdump( (current_block_interval)(new_block_interval) );
 
       // if block interval CHANGED during this block *THEN* we cannot simply
       // add the interval if we want to maintain the invariant that all timestamps are a multiple
       // of the interval.
-      _pending_block.timestamp = next_block.timestamp + fc::seconds(current_block_interval);
-      uint32_t r = _pending_block.timestamp.sec_since_epoch()%current_block_interval;
+      _pending_block.timestamp = next_block.timestamp + fc::seconds(new_block_interval);
+      uint32_t r = _pending_block.timestamp.sec_since_epoch()%new_block_interval;
       if( !r )
       {
-         _pending_block.timestamp += current_block_interval - r;
-         assert( (_pending_block.timestamp.sec_since_epoch() % current_block_interval)  == 0 );
+         _pending_block.timestamp -=  r;
+         assert( (_pending_block.timestamp.sec_since_epoch() % new_block_interval)  == 0 );
       }
    }
    else
@@ -536,7 +542,10 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
 {
    auto del_obj = del_id(*this);
    FC_ASSERT( del_obj );
-   FC_ASSERT( del_obj->signing_key(*this)->key() == delegate_key.get_public_key() );
+
+   if( !(skip & skip_delegate_signature) ) 
+      FC_ASSERT( del_obj->signing_key(*this)->key() == delegate_key.get_public_key() );
+
    _pending_block.timestamp = get_next_generation_time( del_id );
 
    secret_hash_type::encoder last_enc;
