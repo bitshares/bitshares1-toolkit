@@ -393,7 +393,6 @@ void database::undo()
          const object* obj = index.get( item.first );
          if( obj )
          {
-            wdump( (obj->id) );
             index.modify( obj, [&](object* o){
                           index.unpack( o, item.second );
                          });
