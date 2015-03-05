@@ -21,7 +21,10 @@ namespace bts { namespace chain {
       public:
        static const uint8_t space_id = implementation_ids;
        static const uint8_t type_id  = impl_index_meta_object_type;
-       index_meta_object( uint64_t instance = 0 ):next_object_instance(instance){}
+       index_meta_object( uint64_t instance = 0 ):next_object_instance(instance)
+       {
+          id = object_id_type( space_id, type_id, 0 );
+       }
        uint64_t next_object_instance = 0;
    };
 

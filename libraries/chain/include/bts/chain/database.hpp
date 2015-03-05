@@ -42,13 +42,13 @@ namespace bts { namespace chain {
        template<typename T>
        bool has_old_index_meta_object()const
        {
-          return old_index_meta_objects.find( object_id_type(T::space_id,T::type_id,BTS_MAX_INSTANCE_ID) ) != old_index_meta_objects.end();
+          return old_index_meta_objects.find( object_id_type(T::space_id,T::type_id,0) ) != old_index_meta_objects.end();
        }
 
        template<typename T>
        void set_old_index_meta_object(packed_object o)
        {
-          old_index_meta_objects[ object_id_type(T::space_id,T::type_id,BTS_MAX_INSTANCE_ID) ] = std::move(o);
+          old_index_meta_objects[ object_id_type(T::space_id,T::type_id,0) ] = std::move(o);
        }
 
    };
@@ -86,6 +86,7 @@ namespace bts { namespace chain {
          void pop_undo_state();
          void undo();
 
+         void pop_block();
          void push_block( const signed_block& b, uint32_t skip = skip_nothing );
          bool push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
 
@@ -101,7 +102,9 @@ namespace bts { namespace chain {
             undo_state& undo = _undo_state.back();
             auto& idx = get_index<T>();
             if( !undo.has_old_index_meta_object<T>() )
+            {
                undo.set_old_index_meta_object<T>( idx.get_meta_object() );
+            }
 
             const object* result = idx.create( [&](object* o)
             {

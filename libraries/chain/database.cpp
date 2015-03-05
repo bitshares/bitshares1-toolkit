@@ -23,6 +23,18 @@
 #include <bts/chain/transfer_evaluator.hpp>
 
 namespace bts { namespace chain {
+template<typename T>
+struct restore_on_scope_exit
+{
+   restore_on_scope_exit( T& v)
+   :original_copy(v),value(v){}
+   ~restore_on_scope_exit(){ value = original_copy; }
+   T   original_copy;
+   T&  value;
+};
+
+template<typename T>
+restore_on_scope_exit<T> make_restore_on_exit( T& v ) { return restore_on_scope_exit<T>(v); }
 
 database::database()
 {
@@ -154,6 +166,7 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
 
 void database::init_genesis(const genesis_allocation& initial_allocation)
 {
+   auto restore = make_restore_on_exit(_save_undo);
    _save_undo = false;
 
    fc::ecc::private_key genesis_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
@@ -304,7 +317,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
    }
 
    push_undo_state();
-   _save_undo = true;
    _pending_block.block_num = 1;
 }
 
@@ -366,8 +378,9 @@ void database::push_undo_state()
 }
 
 void database::undo()
-{
-   _save_undo = false;
+{ try {
+   FC_ASSERT( _undo_state.size() );
+   auto restore = make_restore_on_exit(_save_undo);
    for( auto item : _undo_state.back().old_values )
    {
       auto& index = get_index( item.first.space(), item.first.type() );
@@ -380,6 +393,7 @@ void database::undo()
          const object* obj = index.get( item.first );
          if( obj )
          {
+            wdump( (obj->id) );
             index.modify( obj, [&](object* o){
                           index.unpack( o, item.second );
                          });
@@ -391,8 +405,7 @@ void database::undo()
       get_index( old_index_meta.first.space(), old_index_meta.first.type() ).set_meta_object( old_index_meta.second );
    }
    _undo_state.pop_back();
-   _save_undo = true;
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 
 void database::apply_block( const signed_block& next_block, uint32_t skip )
@@ -597,13 +610,25 @@ void database::update_global_dynamic_data( const signed_block& b )
    });
 }
 
+void database::pop_block()
+{ try {
+   pop_pending_block();
+   auto head = head_block_num();
+   undo();
+   auto new_head = head_block_num();
+   FC_ASSERT( new_head == head -1 );
+   _pending_block.block_num = head;
+   _pending_block.previous  = head_block_id();
+   push_pending_block();
+} FC_CAPTURE_AND_RETHROW() }
+
 /**
  *  Push block "may fail" in which case every partial change is unwound.  After
  *  push block is successful the block is appended to the chain database on disk.
  */
 void database::push_block( const signed_block& new_block, uint32_t skip )
 { try {
-   auto old_save_undo = _save_undo;
+   auto restore = make_restore_on_exit(_save_undo);
    if( skip & skip_undo_block ) _save_undo = false;
    pop_pending_block();
    { // logically connect pop/push of pending block
@@ -615,7 +640,6 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
         _block_id_to_num.store( new_block.id(), new_block.block_num );
       }
       catch ( const fc::exception& e ) { except = e; }
-      _save_undo = old_save_undo;
       if( except )
       {
          if( !(skip&skip_undo_block) ) undo();

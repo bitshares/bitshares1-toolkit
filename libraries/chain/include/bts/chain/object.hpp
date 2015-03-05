@@ -32,10 +32,12 @@ namespace bts { namespace chain {
       template<typename T>
       void unpack( T& o )const
       { 
-         FC_ASSERT( o.space_id == id().space() ); 
-         FC_ASSERT( o.type_id  == id().type()  ); 
+         auto space_id = T::space_id;
+         try {
          fc::raw::unpack( data, o ); 
-      }
+         FC_ASSERT( T::space_id == id().space() ); 
+         FC_ASSERT( T::type_id  == id().type()  ); 
+      } FC_CAPTURE_AND_RETHROW( (space_id)(id())(fc::get_typename<T>::name()) ) }
    };
 
    /**

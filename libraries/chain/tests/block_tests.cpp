@@ -44,6 +44,12 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
             auto b = db.generate_block( delegate_priv_key, ad[i%ad.size()] );
          }
          BOOST_CHECK( db.head_block_num() == 200 );
+         db.pop_block();
+         BOOST_CHECK( db.head_block_num() == 199 );
+         auto ad = db.get_global_properties()->active_delegates;
+         advance_simulated_time_to( db.get_next_generation_time(  ad[101%ad.size()] ) );
+         auto b = db.generate_block( delegate_priv_key, ad[101%ad.size()] );
+         BOOST_CHECK( db.head_block_num() == 200 );
       }
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));

@@ -19,11 +19,12 @@ namespace bts { namespace chain {
             return packed_object( index_meta_object( get_next_available_id() ) );
          }
          virtual void           set_meta_object( const packed_object& obj ) override
-         {
+         { try {
             index_meta_object meta;
             obj.unpack(meta);
+            wdump( (meta.next_object_instance) );
             _objects.resize( meta.next_object_instance );
-         }
+         } FC_CAPTURE_AND_RETHROW( (obj) ) }
 
          virtual const object*  create( const std::function<void(object*)>& constructor,
                                         object_id_type /*requested_id*/ ) override

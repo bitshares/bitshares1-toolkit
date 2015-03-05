@@ -16,7 +16,7 @@ namespace bts { namespace chain {
 
          virtual packed_object  get_meta_object()const override
          {
-            return packed_object( index_meta_object( get_next_available_id() ) );
+            return packed_object( index_meta_object( get_next_available_id().instance() ) );
          }
          virtual void           set_meta_object( const packed_object& obj ) override
          {
