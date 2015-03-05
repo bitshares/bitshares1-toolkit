@@ -99,5 +99,38 @@ object_id_type asset_issue_evaluator::apply( const operation& op )
    return object_id_type();
 }
 
+object_id_type asset_fund_fee_pool_evaluator::evaluate(const operation& op)
+{ try {
+   const asset_fund_fee_pool_operation& o = op.get<asset_fund_fee_pool_operation>();
+   database& d = db();
+
+   const asset_object* a = o.asset_id(d);
+   FC_ASSERT( a != nullptr );
+
+   auto bts_fee_paid = pay_fee( a->issuer, o.fee );
+   bts_fee_required = o.calculate_fee( d.current_fee_schedule() );
+   FC_ASSERT( bts_fee_paid >= bts_fee_required );
+
+   asset_dyn_data = a->dynamic_asset_data_id(d);
+   FC_ASSERT( asset_dyn_data != nullptr );
+
+   adjust_balance(o.from_account(d), asset_id_type()(d), -o.amount);
+
+   return object_id_type();
+} FC_CAPTURE_AND_RETHROW( (op) ) }
+
+object_id_type asset_fund_fee_pool_evaluator::apply(const operation& op)
+{
+   const auto& o = op.get<asset_fund_fee_pool_operation>();
+   apply_delta_balances();
+   apply_delta_fee_pools();
+
+   db().modify( asset_dyn_data, [&]( asset_dynamic_data_object* data ) {
+      data->fee_pool += o.amount;
+   });
+
+   return object_id_type();
+}
+
 
 } } // bts::chain
