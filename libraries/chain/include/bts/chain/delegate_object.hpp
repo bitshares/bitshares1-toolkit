@@ -10,16 +10,20 @@ namespace bts { namespace chain {
          static const uint8_t space_id = protocol_ids;
          static const uint8_t type_id  = delegate_object_type;
 
+         // updates infrequntly
          account_id_type                delegate_account;
          key_id_type                    signing_key;
-         secret_hash_type               next_secret;
-         secret_hash_type               last_secret;
          fee_schedule_type              fee_schedule;
          uint8_t                        pay_rate = 0;
          uint8_t                        block_interval_sec        = BTS_DEFAULT_BLOCK_INTERVAL;
          uint32_t                       max_block_size            = BTS_DEFAULT_MAX_BLOCK_SIZE;
          uint32_t                       max_transaction_size      = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
          uint32_t                       max_sec_until_expiration  = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
+         // updated once per round
+         secret_hash_type               next_secret;
+         secret_hash_type               last_secret;
+         share_type                     accumulated_income;
+         // updated every transfer
          delegate_vote_id_type          vote;
    };
 

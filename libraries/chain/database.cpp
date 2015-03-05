@@ -467,9 +467,19 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    }
    update_global_dynamic_data( next_block );
 
+   const auto core_asset = get( asset_id_type() );
+   const auto asset_data = core_asset->dynamic_asset_data_id(*this);
+
+   // Slowly pay out income averaged over 1M blocks
+   uint64_t pay = asset_data->accumulated_fees.value / (1024*1024); // close enough to 1M but more effecient
+   pay *= del->pay_rate;
+   pay /= 100;
+   modify( asset_data, [&]( asset_dynamic_data_object* o ){ o->accumulated_fees -= pay; } );
+
    modify( del, [&]( delegate_object* obj ){
            obj->last_secret = next_block.previous_secret;
            obj->next_secret = next_block.next_secret_hash;
+           obj->accumulated_income += pay;
            });
 
 
@@ -553,6 +563,7 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
    push_block( tmp );
    return tmp;
 }
+
 
 void database::update_active_delegates()
 {
