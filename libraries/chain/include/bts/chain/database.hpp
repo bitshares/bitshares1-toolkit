@@ -8,6 +8,7 @@
 #include <bts/chain/global_property_object.hpp>
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/evaluator.hpp>
+#include <bts/chain/fork_database.hpp>
 #include <map>
 #include <boost/rational.hpp>
 
@@ -53,13 +54,6 @@ namespace bts { namespace chain {
 
    };
 
-   struct fork_block : public enable_shared_from_this<fork_block>
-   {
-      shared_ptr<fork_block>           prev_block;
-      vector< shared_ptr<fork_block> > next_blocks;
-      signed_block                     block_data;
-      optional<undo_state>             changes;
-   };
 
    class database
    {
@@ -210,13 +204,11 @@ namespace bts { namespace chain {
          deque<undo_state>                                _undo_state;
          bool                                             _save_undo = true;
 
-         // track recent forks...
-         shared_ptr<fork_block>                 _oldest_fork_point;
-         vector< shared_ptr<fork_block> >       _head_blocks;
 
          vector< vector< unique_ptr<index> > >  _index;
          signed_block                           _pending_block;
 
+         fork_database                          _fork_db;
          /**
           *  Note: we can probably store blocks by block num rather than
           *  block id because after the undo window is past the block ID
@@ -226,8 +218,7 @@ namespace bts { namespace chain {
           *  until the fork is resolved.  This should make maintaining
           *  the fork tree relatively simple.
           */
-         bts::db::level_map<uint32_t, signed_block>                _block_num_to_block;
-         bts::db::level_pod_map<block_id_type,uint32_t>            _block_id_to_num;
+         bts::db::level_map<block_id_type, signed_block>           _block_id_to_block;
          shared_ptr<db::level_map<object_id_type, packed_object>>  _object_id_to_object;
    };
 

@@ -61,10 +61,8 @@ void database::close()
 {
    flush();
 
-   if( _block_num_to_block.is_open() )
-      _block_num_to_block.close();
-   if( _block_id_to_num.is_open() )
-      _block_id_to_num.close();
+   if( _block_id_to_block.is_open() )
+      _block_id_to_block.close();
    if( _object_id_to_object->is_open() )
       _object_id_to_object->close();
 }
@@ -131,18 +129,16 @@ void database::wipe(bool include_blocks)
 {
    close();
 
-   fc::remove_all(_data_dir / "database" / "block_id_to_num");
    fc::remove_all(_data_dir / "database" / "objects");
    if( include_blocks )
-      fc::remove_all(_data_dir / "database" / "block_num_to_block" );
+      fc::remove_all(_data_dir / "database" / "block_id_to_block" );
 }
 
 void database::open( const fc::path& data_dir, const genesis_allocation& initial_allocation )
 { try {
    ilog("Open database in ${d}", ("d", data_dir));
 
-   _block_num_to_block.open( data_dir / "database" / "block_num_to_block" );
-   _block_id_to_num.open( data_dir / "database" / "block_id_to_num" );
+   _block_id_to_block.open( data_dir / "database" / "block_num_to_block" );
    _object_id_to_object->open( data_dir / "database" / "objects" );
 
    for( auto& space : _index )
@@ -160,7 +156,6 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
       init_genesis(initial_allocation);
    assert(get_global_properties());
 
-   _pending_block.block_num = head_block_num() + 1;
    _pending_block.previous  = head_block_id();
    _pending_block.timestamp = head_block_time();
 
@@ -342,7 +337,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
    }
 
    push_undo_state();
-   _pending_block.block_num = 1;
 }
 
 /**
@@ -355,7 +349,7 @@ void database::reindex(fc::path data_dir, genesis_allocation initial_allocation)
    initialize_indexes();
    open(data_dir, initial_allocation);
 
-   auto itr = _block_num_to_block.begin();
+   auto itr = _block_id_to_block.begin();
    while( itr.valid() )
    {
       apply_block( itr.value(), skip_delegate_signature |
@@ -440,7 +434,6 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
    auto now = bts::chain::now();
    FC_ASSERT( _pending_block.timestamp <= (now  + fc::seconds(1)), "", ("now",now)("pending",_pending_block.timestamp) );
-   FC_ASSERT( _pending_block.block_num = next_block.block_num );
    FC_ASSERT( _pending_block.previous == next_block.previous );
    FC_ASSERT( _pending_block.timestamp <= next_block.timestamp );
    FC_ASSERT( _pending_block.timestamp.sec_since_epoch() % get_global_properties()->block_interval == 0 );
@@ -483,13 +476,13 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
            });
 
 
-   if( 0 == (next_block.block_num % get_global_properties()->active_delegates.size()) )
+   if( 0 == (next_block.block_num() % get_global_properties()->active_delegates.size()) )
    {
       update_active_delegates();
    }
 
    auto current_block_interval = get_global_properties()->block_interval;
-   if( next_block.block_num % get_global_properties()->maintenance_interval == 0 )
+   if( next_block.block_num() % get_global_properties()->maintenance_interval == 0 )
    {
       update_global_properties();
 
@@ -509,19 +502,18 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       _pending_block.timestamp = next_block.timestamp + current_block_interval;
    }
 
-   _pending_block.block_num++;
    _pending_block.previous = next_block.id();
 
    auto sum = create<block_summary_object>( [&](block_summary_object* p) {
               p->block_id = _pending_block.previous;
    });
-   FC_ASSERT( sum->id.instance() == next_block.block_num );
+   FC_ASSERT( sum->id.instance() == next_block.block_num() );
 
    auto old_pending_trx = std::move(_pending_block.transactions);
    _pending_block.transactions.clear();
    for( auto old_trx : old_pending_trx )
       push_transaction( old_trx );
-} FC_CAPTURE_AND_RETHROW( (next_block.block_num)(skip) )  }
+} FC_CAPTURE_AND_RETHROW( (next_block.block_num())(skip) )  }
 
 time_point database::get_next_generation_time( delegate_id_type del_id )const
 {
@@ -642,7 +634,7 @@ void database::update_global_dynamic_data( const signed_block& b )
       fc::raw::pack( enc, dgp->random );
       fc::raw::pack( enc, b.previous_secret );
       dgp->random = enc.result();
-      dgp->head_block_number = b.block_num;
+      dgp->head_block_number = b.block_num();
       dgp->head_block_id = b.id();
       dgp->time = b.timestamp;
       dgp->current_delegate = b.delegate_id;
@@ -652,11 +644,7 @@ void database::update_global_dynamic_data( const signed_block& b )
 void database::pop_block()
 { try {
    pop_pending_block();
-   auto head = head_block_num();
    undo();
-   auto new_head = head_block_num();
-   FC_ASSERT( new_head == head -1 );
-   _pending_block.block_num = head;
    _pending_block.previous  = head_block_id();
    push_pending_block();
 } FC_CAPTURE_AND_RETHROW() }
@@ -667,6 +655,26 @@ void database::pop_block()
  */
 void database::push_block( const signed_block& new_block, uint32_t skip )
 { try {
+   /*
+   auto head = _fork_db.push_block( new_block );
+   if( head->data.previous != _pending_block.previous )
+   {
+      if( head->data.block_num() >= _pending_block.block_num() )
+      {
+         vector< shared_ptr<fork_item> > branch;
+         branch.push_back( head );
+         // now we have to switch forks.... which means undoing blocks until
+         // our head block equals one from the fork. 
+
+         // then we can push all of the blocks from the fork using a single
+         // undo level.   
+
+         // if the fork fails to apply, then we remove all of the fork blocks
+         // from the fork db.
+      }
+   }
+   */
+
    auto restore = make_restore_on_exit(_save_undo);
    if( skip & skip_undo_block ) _save_undo = false;
    pop_pending_block();
@@ -675,8 +683,7 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
       optional<fc::exception> except;
       try {
         apply_block( new_block, skip );
-        _block_num_to_block.store( new_block.block_num, new_block );
-        _block_id_to_num.store( new_block.id(), new_block.block_num );
+        _block_id_to_block.store( new_block.id(), new_block );
       }
       catch ( const fc::exception& e ) { except = e; }
       if( except )

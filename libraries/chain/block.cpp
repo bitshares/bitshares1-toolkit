@@ -10,7 +10,9 @@ namespace bts { namespace chain {
 
    block_id_type              signed_block::id()const
    {
-      return fc::sha224::hash( *this );
+      auto tmp = fc::sha224::hash( *this );
+      tmp._hash[0] = block_num(); // store the block num in the ID, 160 bits is plenty for the hash 
+      return tmp;
    }
 
    fc::ecc::public_key        signed_block::signee()const

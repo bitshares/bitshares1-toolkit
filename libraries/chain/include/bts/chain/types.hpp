@@ -23,6 +23,7 @@ namespace bts { namespace chain {
    using                               std::string;
    using                               std::deque;
    using                               std::shared_ptr;
+   using                               std::weak_ptr;
    using                               std::unique_ptr;
    using                               std::set;
    using                               std::pair;

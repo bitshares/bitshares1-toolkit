@@ -7,10 +7,9 @@ namespace bts { namespace chain {
    struct block
    {
       digest_type                   digest()const;
-
       block_id_type                 previous;
+      uint32_t                      block_num()const { return previous._hash[0] + 1; }
       fc::time_point_sec            timestamp;
-      uint32_t                      block_num = 0;
       delegate_id_type              delegate_id;
       secret_hash_type              next_secret_hash;
       secret_hash_type              previous_secret;
@@ -29,7 +28,7 @@ namespace bts { namespace chain {
 
 } } // bts::chain
 
-FC_REFLECT( bts::chain::block, (previous)(timestamp)(block_num)(delegate_id)
+FC_REFLECT( bts::chain::block, (previous)(timestamp)(delegate_id)
             (next_secret_hash)(previous_secret)(transactions) )
 FC_REFLECT_DERIVED( bts::chain::signed_block, (bts::chain::block), (delegate_signature) )
 

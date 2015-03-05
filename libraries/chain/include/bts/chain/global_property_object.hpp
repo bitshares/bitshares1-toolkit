@@ -55,7 +55,7 @@ namespace bts { namespace chain {
 
 
 FC_REFLECT_DERIVED( bts::chain::dynamic_global_property_object, (bts::chain::object), 
-                    (random)(head_block_number)(time)(current_delegate) )
+                    (random)(head_block_number)(head_block_id)(time)(current_delegate) )
 
 FC_REFLECT_DERIVED( bts::chain::global_property_object, (bts::chain::object), 
                     (active_delegates)
