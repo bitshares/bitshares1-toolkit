@@ -336,7 +336,7 @@ namespace fc
        vo = fc::to_string(var.space()) + "." + fc::to_string(var.type()) + "." + fc::to_string(var.instance());
     }
     inline void from_variant( const fc::variant& var,  bts::chain::object_id_type& vo )
-    {
+    { try {
        vo.number = 0;
        const auto& s = var.get_string();
        auto first_dot = s.find('.');
@@ -347,10 +347,10 @@ namespace fc
        FC_ASSERT( vo.number <= BTS_MAX_INSTANCE_ID );
        auto space_id = fc::to_uint64( s.substr( 0, first_dot ) );
        FC_ASSERT( space_id <= 0xff );
-       auto type_id =  fc::to_uint64( s.substr( first_dot+1, second_dot ) );
+       auto type_id =  fc::to_uint64( s.substr( first_dot+1, second_dot-first_dot-1 ) );
        FC_ASSERT( type_id <= 0xff );
        vo.number |= (space_id << 56) | (type_id << 48);
-    }
+    } FC_CAPTURE_AND_RETHROW( (var) ) }
     template<uint8_t SpaceID, uint8_t TypeID, typename T>
     void to_variant( const bts::chain::object_id<SpaceID,TypeID,T>& var,  fc::variant& vo )
     {
@@ -358,16 +358,16 @@ namespace fc
     }
     template<uint8_t SpaceID, uint8_t TypeID, typename T>
     void from_variant( const fc::variant& var,  bts::chain::object_id<SpaceID,TypeID,T>& vo )
-    {
+    { try {
        const auto& s = var.get_string();
        auto first_dot = s.find('.');
        auto second_dot = s.find('.',first_dot+1);
        FC_ASSERT( first_dot != second_dot );
        FC_ASSERT( first_dot != 0 && first_dot != std::string::npos );
        FC_ASSERT( fc::to_uint64( s.substr( 0, first_dot ) ) == SpaceID &&
-                  fc::to_uint64( s.substr( first_dot+1, second_dot ) ) == TypeID );
+                  fc::to_uint64( s.substr( first_dot+1, second_dot-first_dot-1 ) ) == TypeID );
        vo.instance = fc::to_uint64(s.substr( second_dot+1 ));
-    }
+    } FC_CAPTURE_AND_RETHROW( (var) ) }
 }
 FC_REFLECT( bts::chain::public_key_type, (key_data) )
 FC_REFLECT( bts::chain::public_key_type::binary_key, (data)(check) );

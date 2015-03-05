@@ -2,6 +2,7 @@
 #include <bts/chain/types.hpp>
 #include <bts/chain/asset.hpp>
 #include <bts/chain/authority.hpp>
+#include <fc/static_variant.hpp>
 
 namespace bts { namespace chain {
 
