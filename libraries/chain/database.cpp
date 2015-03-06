@@ -65,6 +65,7 @@ void database::close()
       _block_id_to_block.close();
    if( _object_id_to_object->is_open() )
       _object_id_to_object->close();
+   _fork_db.reset();
 }
 
 const object* database::get_object( object_id_type id )const
@@ -128,7 +129,6 @@ void database::flush()
 void database::wipe(bool include_blocks)
 {
    close();
-
    fc::remove_all(_data_dir / "database" / "objects");
    if( include_blocks )
       fc::remove_all(_data_dir / "database" / "block_id_to_block" );
@@ -158,6 +158,10 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
 
    _pending_block.previous  = head_block_id();
    _pending_block.timestamp = head_block_time();
+
+   auto last_block_itr = _block_id_to_block.last();
+   if( last_block_itr.valid() )
+      _fork_db.start_block( last_block_itr.value() );
 
    _data_dir = data_dir;
 } FC_CAPTURE_AND_RETHROW( (data_dir) ) }
@@ -655,6 +659,7 @@ void database::pop_block()
    pop_pending_block();
    undo();
    _pending_block.previous  = head_block_id();
+   _fork_db.pop_block();
    push_pending_block();
 } FC_CAPTURE_AND_RETHROW() }
 
@@ -664,25 +669,26 @@ void database::pop_block()
  */
 void database::push_block( const signed_block& new_block, uint32_t skip )
 { try {
-   /*
-   auto head = _fork_db.push_block( new_block );
-   if( head->data.previous != _pending_block.previous )
+   if( !(skip&skip_fork_db) )
    {
-      if( head->data.block_num() >= _pending_block.block_num() )
+      auto head = _fork_db.push_block( new_block );
+      if( head->data.previous != _pending_block.previous )
       {
-         vector< shared_ptr<fork_item> > branch;
-         branch.push_back( head );
-         // now we have to switch forks.... which means undoing blocks until
-         // our head block equals one from the fork. 
+         if( head->data.block_num() >= _pending_block.block_num() )
+         {
+            vector< shared_ptr<fork_item> > branch;
+            branch.push_back( head );
+            // now we have to switch forks.... which means undoing blocks until
+            // our head block equals one from the fork. 
 
-         // then we can push all of the blocks from the fork using a single
-         // undo level.   
+            // then we can push all of the blocks from the fork using a single
+            // undo level.   
 
-         // if the fork fails to apply, then we remove all of the fork blocks
-         // from the fork db.
+            // if the fork fails to apply, then we remove all of the fork blocks
+            // from the fork db.
+         }
       }
    }
-   */
 
    auto restore = make_restore_on_exit(_save_undo);
    if( skip & skip_undo_block ) _save_undo = false;

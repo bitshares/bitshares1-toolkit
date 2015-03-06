@@ -68,7 +68,8 @@ namespace bts { namespace chain {
             skip_transaction_signatures = 0x02, ///< used by non delegate nodes
             skip_undo_block             = 0x04, ///< used while reindexing
             skip_undo_transaction       = 0x08, ///< used while applying block
-            skip_transaction_dupe_check = 0x10  ///< used while reindexing
+            skip_transaction_dupe_check = 0x10, ///< used while reindexing
+            skip_fork_db                = 0x20  ///< used while reindexing
          };
 
          void open(const fc::path& data_dir, const genesis_allocation& initial_allocation = genesis_allocation());
