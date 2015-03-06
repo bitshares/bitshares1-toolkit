@@ -101,6 +101,12 @@ namespace bts { namespace chain {
          const_iterator begin()const { return const_iterator(_objects.begin()); }
          const_iterator end()const   { return const_iterator(_objects.end());   }
 
+         virtual void               replace( unique_ptr<object> o ) 
+         {
+            assert( dynamic_cast<T*>(o.get()) != nullptr );
+            assert( _objects.size() > o->id.instance() );
+            _objects[o->id.instance()] = std::move(o);
+         }
       private:
          vector< unique_ptr<object> > _objects;
    };

@@ -392,9 +392,11 @@ void database::save_undo( const object* obj )
 void database::pop_undo_state()
 {
    _undo_state.pop_back();
+   idump( (_undo_state.size()) );
 }
 void database::push_undo_state()
 {
+   idump( (_undo_state.size()) );
    _undo_state.push_back( undo_state() );
    if( _undo_state.size() > 2 )
    {
@@ -412,6 +414,7 @@ void database::push_undo_state()
 void database::undo()
 { try {
    FC_ASSERT( _undo_state.size() );
+   wlog( "undo ${p}", ("p",_undo_state.size()-1) );
    auto restore = make_restore_on_exit(_save_undo);
    for( auto item : _undo_state.back().old_values )
    {
@@ -436,6 +439,7 @@ void database::undo()
       get_index( old_index_meta.first.space(), old_index_meta.first.type() ).set_meta_object( old_index_meta.second );
    }
    _undo_state.pop_back();
+   idump( (_undo_state.size()) );
 } FC_CAPTURE_AND_RETHROW() }
 
 
@@ -443,7 +447,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
    auto now = bts::chain::now();
    FC_ASSERT( _pending_block.timestamp <= (now  + fc::seconds(1)), "", ("now",now)("pending",_pending_block.timestamp) );
-   FC_ASSERT( _pending_block.previous == next_block.previous );
+   FC_ASSERT( _pending_block.previous == next_block.previous, "", ("pending.prev",_pending_block.previous)("next.prev",next_block.previous) );
    FC_ASSERT( _pending_block.timestamp <= next_block.timestamp, "", ("_pending_block.timestamp",_pending_block.timestamp)("next",next_block.timestamp)("blocknum",next_block.block_num()) );
    FC_ASSERT( _pending_block.timestamp.sec_since_epoch() % get_global_properties()->block_interval == 0 );
    const delegate_object* del = next_block.delegate_id(*this);
@@ -518,8 +522,9 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
    auto sum = create<block_summary_object>( [&](block_summary_object* p) {
               p->block_id = _pending_block.previous;
+              wdump( (p->block_id) );
    });
-   FC_ASSERT( sum->id.instance() == next_block.block_num() );
+   FC_ASSERT( sum->id.instance() == next_block.block_num(), "", ("sim->id",sum->id)("next.block_num",next_block.block_num()) );
 
    auto old_pending_trx = std::move(_pending_block.transactions);
    _pending_block.transactions.clear();
@@ -658,12 +663,16 @@ void database::update_global_dynamic_data( const signed_block& b )
 
 void database::pop_block()
 { try {
+   idump( ("start pop")(head_block_num())(head_block_id()) );
    pop_pending_block();
    undo();
    _block_id_to_block.remove( _pending_block.previous );
    _pending_block.previous  = head_block_id();
+   _pending_block.timestamp = head_block_time();
+   wlog( "pop block: ${b}", ("b",_pending_block.block_num()) );
    _fork_db.pop_block();
    push_pending_block();
+   edump( ("end pop")(head_block_num())(head_block_id()) );
 } FC_CAPTURE_AND_RETHROW() }
 
 /**
@@ -672,14 +681,20 @@ void database::pop_block()
  */
 void database::push_block( const signed_block& new_block, uint32_t skip )
 { try {
+   wdump( (new_block.id())(new_block.previous) );
    if( !(skip&skip_fork_db) )
    {
       auto head = _fork_db.push_block( new_block );
       if( head->data.previous != _pending_block.previous )
       {
+         wlog( "head on new fork: block ${b} prev ${p}  ", ("b",new_block.id())("p",new_block.previous) );
          if( head->data.block_num() >= _pending_block.block_num() )
          {
             auto branches = _fork_db.fetch_branch_from( head->data.id(), _pending_block.previous );
+            for( auto item : branches.first )
+               wdump( ("new")(item->id)(item->data.previous) );
+            for( auto item : branches.second )
+               wdump( ("old")(item->id)(item->data.previous) );
 
             // pop all blocks on the current chain
             while( head_block_id() != branches.second.back()->data.previous )
@@ -689,15 +704,17 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
             // push all blocks to the new chain
             for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr )
             {
-                push_undo_state();
                 optional<fc::exception> except;
                 try {
+                  wdump( ("push")((*ritr)->id) );
+                  push_undo_state();
                   apply_block( (*ritr)->data, skip );
                   _block_id_to_block.store( new_block.id(), (*ritr)->data );
                 }
                 catch ( const fc::exception& e ) { except = e; }
                 if( except )
                 {
+                   edump( ("oops!")((*ritr)->id) );
                    undo();
                    // remove the rest of branches.first from the fork_db, those blocks are invalid
                    while( ritr != branches.first.rend() )
@@ -721,16 +738,8 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
                    throw *except;
                 }
             }
-
-            // now we have to switch forks.... which means undoing blocks until
-            // our head block equals one from the fork.
-
-            // then we can push all of the blocks from the fork using a single
-            // undo level.
-
-            // if the fork fails to apply, then we remove all of the fork blocks
-            // from the fork db.
          }
+         ilog("done");
          return;
       }
    }
