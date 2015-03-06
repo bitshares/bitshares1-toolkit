@@ -676,8 +676,49 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
       {
          if( head->data.block_num() >= _pending_block.block_num() )
          {
-            vector< shared_ptr<fork_item> > branch;
-            branch.push_back( head );
+            auto branches = _fork_db.fetch_branch_from( head->data.id(), _pending_block.previous );
+
+            // pop all blocks on the current chain
+            while( head_block_id() != branches.second.back()->data.previous )
+               pop_block();
+
+
+            // push all blocks to the new chain
+            for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr )
+            {
+                push_undo_state();
+                optional<fc::exception> except;
+                try {
+                  apply_block( (*ritr)->data, skip );
+                  _block_id_to_block.store( new_block.id(), (*ritr)->data );
+                }
+                catch ( const fc::exception& e ) { except = e; }
+                if( except )
+                {
+                   undo();
+                   // remove the rest of branches.first from the fork_db, those blocks are invalid
+                   while( ritr != branches.first.rend() )
+                   {
+                      _fork_db.remove( (*ritr)->data.id() );
+                      ++ritr;
+                   }
+                   _fork_db.set_head( branches.second.front() );
+
+                   // pop all blocks from the bad fork
+                   while( head_block_id() != branches.second.back()->data.previous )
+                      pop_block();
+
+                   // restore all blocks from the good fork
+                   for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr )
+                   {
+                      push_undo_state();
+                      apply_block( (*ritr)->data, skip );
+                      _block_id_to_block.store( new_block.id(), (*ritr)->data );
+                   }
+                   throw *except;
+                }
+            }
+
             // now we have to switch forks.... which means undoing blocks until
             // our head block equals one from the fork. 
 

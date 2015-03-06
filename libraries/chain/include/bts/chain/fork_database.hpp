@@ -26,9 +26,22 @@ namespace bts { namespace chain {
          fork_database();
          void reset();
 
-         void                   start_block( signed_block b );
-         shared_ptr<fork_item>  push_block( signed_block b );
-         void                   pop_block();
+         void                             start_block( signed_block b );
+         void                             remove( block_id_type b );
+         void                             set_head( shared_ptr<fork_item> h );
+         shared_ptr<fork_item>            push_block( signed_block b );
+         shared_ptr<fork_item>            head()const { return _head; }
+         void                             pop_block();
+
+         typedef shared_ptr<fork_item> item_ptr;
+         typedef vector<item_ptr>      branch_type;
+
+         /**
+          *  Given two head blocks, return two branches of the fork graph that
+          *  end with a common ancestor (same prior block)
+          */
+         pair< branch_type, branch_type >  fetch_branch_from( block_id_type first, 
+                                                              block_id_type second )const;
       private:
          unordered_map< block_id_type, shared_ptr<fork_item> > _by_id;
          vector< vector<shared_ptr<fork_item>> >               _by_num;
