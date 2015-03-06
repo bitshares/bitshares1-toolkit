@@ -8,21 +8,21 @@ namespace bts { namespace chain {
    class undo_database
    {
       public:
-         undo_database( database& db ):_db(db){};
+         undo_database( database& db ):_db(db){}
 
-         class session 
+         class session
          {
             public:
                ~session()    { if( _apply_undo ) _db.undo(); }
                void commit() { _apply_undo = false;   }
-               void undo()   { _db.undo(); commit();  }
-               void merge()  { _db.merge(); commit(); }
+               void undo()   { if( _apply_undo ) _db.undo(); commit();  }
+               void merge()  { if( _apply_undo ) _db.merge(); commit(); }
 
             private:
                friend undo_database;
-               session(undo_database& db);
+               session(undo_database& db): _db(db) {}
                undo_database& _db;
-               bool _apply_undo = true;
+               bool _apply_undo = !_db._disabled;
          };
 
          void    disable();
@@ -52,7 +52,7 @@ namespace bts { namespace chain {
          }
 
       private:
-         void undo(); 
+         void undo();
          void merge();
 
          struct undo_state
