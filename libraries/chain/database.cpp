@@ -729,6 +729,7 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
             // if the fork fails to apply, then we remove all of the fork blocks
             // from the fork db.
          }
+         return;
       }
    }
 
@@ -836,13 +837,24 @@ block_id_type       database::head_block_id()const
 
 optional<signed_block> database::fetch_block_by_id( const block_id_type& id )const
 {
-   assert( !"not implemented" );
-   return optional<signed_block>();
+   auto b = _fork_db.fetch_block( id );
+   if( !b )
+      return optional<signed_block>();
+   return b->data;
 }
 
 optional<signed_block> database::fetch_block_by_number( uint32_t num )const
 {
-   assert( !"not implemented" );
+   auto results = _fork_db.fetch_block_by_number(num);
+   if( results.size() == 1 )
+      return results[0]->data;
+   else
+   {
+      block_id_type lb; lb._hash[0] = htonl(num);
+      auto itr = _block_id_to_block.lower_bound( lb );
+      if( itr.valid() && itr.key()._hash[0] == lb._hash[0] )
+         return itr.value();
+   }
    return optional<signed_block>();
 }
 

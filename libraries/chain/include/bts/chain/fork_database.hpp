@@ -26,6 +26,7 @@ namespace bts { namespace chain {
       block_id_type         id;
       signed_block          data;
    };
+   typedef shared_ptr<fork_item> item_ptr;
 
    /**
     *  As long as blocks are pushed in order the fork
@@ -40,19 +41,20 @@ namespace bts { namespace chain {
    class fork_database
    {
       public:
+         typedef vector<item_ptr>      branch_type;
+
          fork_database();
          void reset();
 
          void                             start_block( signed_block b );
          void                             remove( block_id_type b );
          void                             set_head( shared_ptr<fork_item> h );
-         shared_ptr<fork_item>            fetch_block( block_id_type id );
+         shared_ptr<fork_item>            fetch_block( const block_id_type& id )const;
+         vector<item_ptr>                 fetch_block_by_number( uint32_t n )const;
          shared_ptr<fork_item>            push_block( signed_block b );
          shared_ptr<fork_item>            head()const { return _head; }
          void                             pop_block();
 
-         typedef shared_ptr<fork_item> item_ptr;
-         typedef vector<item_ptr>      branch_type;
 
          /**
           *  Given two head blocks, return two branches of the fork graph that

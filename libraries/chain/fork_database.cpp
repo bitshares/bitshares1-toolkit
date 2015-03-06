@@ -45,6 +45,25 @@ shared_ptr<fork_item>  fork_database::push_block( signed_block b )
    }
    return _head;
 }
+item_ptr fork_database::fetch_block( const block_id_type& id )const
+{
+   auto itr = _index.get<block_id>().find(id);
+   if( itr != _index.get<block_id>().end() )
+      return *itr;
+   return item_ptr();
+}
+vector<item_ptr> fork_database::fetch_block_by_number( uint32_t num )const
+{
+   vector<item_ptr> result;
+   auto itr = _index.get<block_num>().find(num);
+   while( itr != _index.get<block_num>().end() )
+   {
+      if( (*itr)->num == num )
+         result.push_back( *itr );
+      else break;
+   }
+   return result;
+}
 
 pair<fork_database::branch_type,fork_database::branch_type>  
   fork_database::fetch_branch_from( block_id_type first, block_id_type second )const
