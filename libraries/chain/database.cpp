@@ -658,6 +658,7 @@ void database::pop_block()
 { try {
    pop_pending_block();
    undo();
+   _block_id_to_block.remove( _pending_block.previous );
    _pending_block.previous  = head_block_id();
    _fork_db.pop_block();
    push_pending_block();
@@ -832,4 +833,17 @@ block_id_type       database::head_block_id()const
 {
    return get( dynamic_global_property_id_type() )->head_block_id;
 }
+
+optional<signed_block> database::fetch_block_by_id( const block_id_type& id )const
+{
+   assert( !"not implemented" );
+   return optional<signed_block>();
+}
+
+optional<signed_block> database::fetch_block_by_number( uint32_t num )const
+{
+   assert( !"not implemented" );
+   return optional<signed_block>();
+}
+
 } } // namespace bts::chain

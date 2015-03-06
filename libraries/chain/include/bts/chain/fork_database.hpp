@@ -29,6 +29,7 @@ namespace bts { namespace chain {
          void                             start_block( signed_block b );
          void                             remove( block_id_type b );
          void                             set_head( shared_ptr<fork_item> h );
+         shared_ptr<fork_item>            fetch_block( block_id_type id );
          shared_ptr<fork_item>            push_block( signed_block b );
          shared_ptr<fork_item>            head()const { return _head; }
          void                             pop_block();
