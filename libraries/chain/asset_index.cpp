@@ -37,6 +37,11 @@ void  asset_index::modify( const object* obj, const std::function<void(object*)>
    modify_callback( objptr );
    assert( a->symbol == original_symbol );
 }
+void asset_index::replace( unique_ptr<object> o )
+{
+   assert( dynamic_cast<asset_object*>(o.get()) != nullptr );
+   assets[o->id.instance()].reset( static_cast<asset_object*>(o.release()) );
+}
 
 void asset_index::add( unique_ptr<object> o )
 {
@@ -52,14 +57,14 @@ void asset_index::add( unique_ptr<object> o )
 
    if( !new_asset->symbol.empty() )
    {
-      auto itr = symbol_to_id.find(new_asset->symbol);
-      FC_ASSERT( itr == symbol_to_id.end(), "symbol: ${symbol} is not unique", ("symbol",new_asset->symbol) );
+      auto itr = symbol_to_instance.find(new_asset->symbol);
+      FC_ASSERT( itr == symbol_to_instance.end(), "symbol: ${symbol} is not unique", ("symbol",new_asset->symbol) );
    }
 
    if( id.instance() >= assets.size() )
       assets.resize( id.instance() + 1 );
 
-   symbol_to_id[new_asset->symbol] = new_asset.get();
+   symbol_to_instance[new_asset->symbol] = new_asset->id.instance();
    assets[id.instance()] = std::move(new_asset);
 }
 
@@ -71,7 +76,7 @@ void asset_index::remove( object_id_type id )
    assert( id.space() == asset_object::space_id );
    assert( id.type() == asset_object::type_id );
    auto&  a = assets[id.instance()];
-   if( a ) symbol_to_id.erase(a->symbol);
+   if( a ) symbol_to_instance.erase(a->symbol);
    if( id.instance() == assets.size() - 1 )
       assets.pop_back();
    else
@@ -91,9 +96,9 @@ const object* asset_index::get( object_id_type id )const
 
 const asset_object* asset_index::get( const string& symbol )const
 {
-   auto itr = symbol_to_id.find(symbol);
-   if( itr == symbol_to_id.end() ) return nullptr;
-   return itr->second;
+   auto itr = symbol_to_instance.find(symbol);
+   if( itr == symbol_to_instance.end() ) return nullptr;
+   return assets[itr->second].get();
 }
 
 packed_object  asset_index::get_meta_object()const
@@ -107,7 +112,7 @@ void           asset_index::set_meta_object( const packed_object& obj )
    for( uint64_t i = meta.next_object_instance; i < assets.size(); ++i )
    {
       if( !assets[i]->symbol.empty() )
-         symbol_to_id.erase( assets[i]->symbol );
+         symbol_to_instance.erase( assets[i]->symbol );
    }
    assets.resize( meta.next_object_instance );
 }

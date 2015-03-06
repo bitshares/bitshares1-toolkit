@@ -408,6 +408,15 @@ struct reflector<bts::chain::object_id<SpaceID,TypeID,T> >
 };
 } // namespace fc
 
+namespace std {
+     template <> struct hash<bts::chain::object_id_type>
+     {
+          size_t operator()(const bts::chain::object_id_type& x) const
+          {
+              return std::hash<uint64_t>()(x.number);
+          }
+     };
+}
 
 
 FC_REFLECT_ENUM( bts::chain::id_space_type, (relative_protocol_ids)(protocol_ids)(implementation_ids)(meta_info_ids) )

@@ -22,6 +22,7 @@ namespace bts { namespace chain {
          { try {
             index_meta_object meta;
             obj.unpack(meta);
+            wdump( (meta.next_object_instance) );
             _objects.resize( meta.next_object_instance );
          } FC_CAPTURE_AND_RETHROW( (obj) ) }
 
@@ -29,6 +30,7 @@ namespace bts { namespace chain {
                                         object_id_type /*requested_id*/ ) override
          {
              auto next_id = get_next_available_id();
+             wdump( (next_id) );
              auto instance = next_id.instance();
              if( instance >= _objects.size() ) _objects.resize( instance + 1 );
              auto result = &_objects[instance];
@@ -45,13 +47,20 @@ namespace bts { namespace chain {
             assert( obj->id.instance() < _objects.size() );
             modify_callback( &_objects[obj->id.instance()]);
          }
+         virtual void  replace( unique_ptr<object> obj ) 
+         {
+            assert( obj != nullptr );
+            assert( obj->id.instance() < _objects.size() );
+            assert( dynamic_cast<T*>(obj.get()) != nullptr );
+            _objects[obj->id.instance()] = static_cast<T&>(*obj);
+         }
 
          virtual void add( unique_ptr<object> o )override
          {
              assert( o );
              assert( o->id.space() == T::space_id );
              assert( o->id.type() == T::type_id );
-             _objects.push_back( std::move(*static_cast<T*>(o.get())) );
+             _objects.emplace_back( std::move(*static_cast<T*>(o.get())) );
          }
 
          virtual void remove( object_id_type id ) override

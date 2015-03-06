@@ -110,8 +110,10 @@ BOOST_AUTO_TEST_CASE( fork_blocks )
       {
          auto ad = db1.get_global_properties()->active_delegates;
          advance_simulated_time_to( db1.get_next_generation_time(  ad[i%ad.size()] ) );
+         ilog( "db1.gen" );
          auto b =  db1.generate_block( delegate_priv_key, ad[i%ad.size()] );
          try {
+            ilog( "db2.push" );
             db2.push_block(b);
          } FC_CAPTURE_AND_RETHROW( ("db2") );
       }
@@ -119,13 +121,16 @@ BOOST_AUTO_TEST_CASE( fork_blocks )
       {
          auto ad1 = db1.get_global_properties()->active_delegates;
          advance_simulated_time_to( db1.get_next_generation_time(  ad1[i%ad1.size()] ) );
+         ilog( "db1.gen" );
          auto b =  db1.generate_block( delegate_priv_key, ad1[i%ad1.size()] );
       }
       for( uint32_t i = 23; i < 29; ++i )
       {
          auto ad2 = db2.get_global_properties()->active_delegates;
          advance_simulated_time_to( db2.get_next_generation_time(  ad2[i%ad2.size()] ) );
+         ilog( "db2.gen" );
          auto b =  db2.generate_block( delegate_priv_key, ad2[i%ad2.size()] );
+         ilog( "db1.push" );
          db1.push_block(b);
       }
    } catch (fc::exception& e) {

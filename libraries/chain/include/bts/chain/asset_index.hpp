@@ -29,6 +29,7 @@ namespace bts { namespace chain {
          virtual int64_t size()const;
 
          virtual void modify( const object* obj, const std::function<void(object*)>& m )override;
+         virtual void replace( unique_ptr<object> o ) override;
          virtual void add( unique_ptr<object> o )override;
          virtual void remove( object_id_type id )override;
          virtual const object* get( object_id_type id )const override;
@@ -38,8 +39,8 @@ namespace bts { namespace chain {
          void inspect_all_objects(std::function<void (const object*)> inspector);
 
       private:
-         vector<unique_ptr<asset_object> >    assets;
-         unordered_map<string,asset_object*>  symbol_to_id;
+         vector<unique_ptr<asset_object> >  assets;
+         unordered_map<string,uint64_t>     symbol_to_instance;
    };
 
 } }

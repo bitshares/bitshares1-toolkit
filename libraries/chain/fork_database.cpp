@@ -95,6 +95,11 @@ pair<fork_database::branch_type,fork_database::branch_type>
       first_branch = first_branch->prev.lock(); FC_ASSERT( first_branch );
       second_branch = second_branch->prev.lock(); FC_ASSERT( second_branch );
    }
+   if( first_branch && second_branch )
+   {
+      result.first.push_back( first_branch );
+      result.second.push_back( second_branch );
+   }
    return result;
 }
 void fork_database::set_head( shared_ptr<fork_item> h )

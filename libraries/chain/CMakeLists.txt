@@ -3,6 +3,7 @@ file(GLOB HEADERS "include/bts/chain/*.hpp")
 ## SORT .cpp by most likely to change / break compile
 add_library( bts_chain 
              fork_database.cpp
+             undo_database.cpp
              database.cpp
              evaluator.cpp
              operations.cpp

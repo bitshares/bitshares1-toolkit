@@ -77,6 +77,7 @@ namespace bts { namespace chain {
          virtual int64_t            size()const = 0;
          virtual void               add( unique_ptr<object> o ) = 0;
          virtual void               modify( const object* obj, const std::function<void(object*)>& ) = 0;
+         virtual void               replace( unique_ptr<object> o ) = 0;
 
          /**
           *   Lambda should have the signature:  void(Object*)
@@ -159,6 +160,11 @@ namespace bts { namespace chain {
             save_undo( obj );
             DerivedIndex::modify( obj, m );
             on_modify( obj->id, obj );
+         }
+
+         virtual void replace( unique_ptr<object> obj ) override
+         {
+            DerivedIndex::replace( std::move(obj) );
          }
 
          virtual void add_observer( const shared_ptr<index_observer>& o ) override
