@@ -11,7 +11,7 @@ namespace bts { namespace chain {
    using boost::multi_index_container;
    using namespace boost::multi_index;
 
-   struct fork_item 
+   struct fork_item
    {
       fork_item( signed_block d )
       :num(d.block_num()),id(d.id()),data( std::move(d) ){}
@@ -60,14 +60,14 @@ namespace bts { namespace chain {
           *  Given two head blocks, return two branches of the fork graph that
           *  end with a common ancestor (same prior block)
           */
-         pair< branch_type, branch_type >  fetch_branch_from( block_id_type first, 
+         pair< branch_type, branch_type >  fetch_branch_from( block_id_type first,
                                                               block_id_type second )const;
 
          struct block_id{};
          struct block_num{};
-         typedef multi_index_container< 
+         typedef multi_index_container<
             item_ptr,
-            indexed_by<  
+            indexed_by<
                hashed_unique< tag<block_id>, member< fork_item, block_id_type, &fork_item::id> >,
                ordered_non_unique< tag<block_num>, member<fork_item,uint32_t,&fork_item::num> >
             >
@@ -77,4 +77,4 @@ namespace bts { namespace chain {
          fork_multi_index_type _index;
          shared_ptr<fork_item>                                 _head;
    };
-} } // bts::chain 
+} } // bts::chain

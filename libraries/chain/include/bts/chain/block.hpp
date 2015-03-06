@@ -31,4 +31,3 @@ namespace bts { namespace chain {
 FC_REFLECT( bts::chain::block, (previous)(timestamp)(delegate_id)
             (next_secret_hash)(previous_secret)(transactions) )
 FC_REFLECT_DERIVED( bts::chain::signed_block, (bts::chain::block), (delegate_signature) )
-

@@ -1,9 +1,6 @@
 #include <bts/chain/types.hpp>
 #include <bts/chain/time.hpp>
 #include <bts/chain/database.hpp>
-#include <fc/io/raw.hpp>
-#include <fc/crypto/digest.hpp>
-#include <fc/container/flat.hpp>
 
 #include <bts/chain/key_object.hpp>
 #include <bts/chain/account_object.hpp>
@@ -21,6 +18,11 @@
 #include <bts/chain/delegate_evaluator.hpp>
 #include <bts/chain/asset_evaluator.hpp>
 #include <bts/chain/transfer_evaluator.hpp>
+
+#include <fc/io/raw.hpp>
+#include <fc/crypto/digest.hpp>
+#include <fc/container/flat.hpp>
+#include <fc/uint128.hpp>
 
 namespace bts { namespace chain {
 template<typename T>
@@ -547,7 +549,7 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
    auto del_obj = del_id(*this);
    FC_ASSERT( del_obj );
 
-   if( !(skip & skip_delegate_signature) ) 
+   if( !(skip & skip_delegate_signature) )
       FC_ASSERT( del_obj->signing_key(*this)->key() == delegate_key.get_public_key() );
 
    _pending_block.timestamp = get_next_generation_time( del_id );
@@ -721,10 +723,10 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
             }
 
             // now we have to switch forks.... which means undoing blocks until
-            // our head block equals one from the fork. 
+            // our head block equals one from the fork.
 
             // then we can push all of the blocks from the fork using a single
-            // undo level.   
+            // undo level.
 
             // if the fork fails to apply, then we remove all of the fork blocks
             // from the fork db.

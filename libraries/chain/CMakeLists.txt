@@ -22,6 +22,7 @@ add_library( bts_chain
              transaction.cpp
              time.cpp
              asset.cpp
+             transaction_object.cpp
            )
 
 target_link_libraries( bts_chain fc bts_db leveldb )
