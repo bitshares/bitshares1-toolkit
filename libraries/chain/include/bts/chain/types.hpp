@@ -106,6 +106,8 @@ namespace bts { namespace chain {
       object_id_type& operator++(int) { ++number; return *this; }
       object_id_type& operator++()    { ++number; return *this; }
 
+      friend size_t hash_value( object_id_type v ) { return std::hash<uint64_t>()(v.number); }
+
       uint64_t                   number;
    };
 
@@ -199,7 +201,7 @@ namespace bts { namespace chain {
       operator uint64_t()const { return object_id_type( *this ).number; }
 
       template<typename DB>
-      const T* operator()(const DB& db)const { return db.get(*this); }
+      const T& operator()(const DB& db)const { return db.get(*this); }
 
       friend bool  operator == ( const object_id& a, const object_id& b )
       {

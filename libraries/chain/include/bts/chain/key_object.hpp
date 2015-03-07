@@ -4,7 +4,7 @@
 #include <fc/static_variant.hpp>
 
 namespace bts { namespace chain {
-   class key_object : public object
+   class key_object : public abstract_object<key_object>
    {
       public:
          static const uint8_t space_id = protocol_ids;

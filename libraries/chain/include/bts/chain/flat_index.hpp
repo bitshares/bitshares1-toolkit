@@ -3,79 +3,55 @@
 
 namespace bts { namespace chain {
 
+   /**
+    *  @class flat_index
+    *  @brief A flat index uses a vector<T> to store data
+    *
+    *  This index is preferred in situations where the data will never be
+    *  removed from main memory and when lots of small objects that
+    *  are accessed in order are required.  
+    */
    template<typename T>
    class flat_index : public index
    {
       public:
          typedef T object_type;
 
-         virtual object_id_type get_next_available_id()const override
+         virtual const object&  create( const std::function<void(object&)>& constructor ) override
          {
-            return object_id_type( T::space_id, T::type_id, size());
-         }
-
-         virtual packed_object  get_meta_object()const override
-         {
-            return packed_object( index_meta_object( get_next_available_id().instance() ) );
-         }
-         virtual void           set_meta_object( const packed_object& obj ) override
-         { try {
-            index_meta_object meta;
-            obj.unpack(meta);
-            wdump( (meta.next_object_instance) );
-            _objects.resize( meta.next_object_instance );
-         } FC_CAPTURE_AND_RETHROW( (obj) ) }
-
-         virtual const object*  create( const std::function<void(object*)>& constructor,
-                                        object_id_type /*requested_id*/ ) override
-         {
-             auto next_id = get_next_available_id();
-             wdump( (next_id) );
-             auto instance = next_id.instance();
+             auto id = get_next_id();
+             auto instance = id.instance();
              if( instance >= _objects.size() ) _objects.resize( instance + 1 );
-             auto result = &_objects[instance];
-             result->id = next_id;
-             constructor( result );
-             return result;
+             _objects[instance].id = id;
+             constructor( _objects[instance] );
+             use_next_id();
+             return _objects[instance];
          }
 
-         virtual int64_t size()const { return _objects.size(); }
-
-         virtual void modify( const object* obj, const std::function<void(object*)>& modify_callback ) override
+         virtual void modify( const object& obj, const std::function<void(object&)>& modify_callback ) override
          {
-            assert( obj != nullptr );
-            assert( obj->id.instance() < _objects.size() );
-            modify_callback( &_objects[obj->id.instance()]);
+            assert( obj.id.instance() < _objects.size() );
+            modify_callback( _objects[obj.id.instance()] );
          }
-         virtual void  replace( unique_ptr<object> obj ) 
+
+         virtual const object& insert( object&& obj ) 
          {
-            assert( obj != nullptr );
-            assert( obj->id.instance() < _objects.size() );
-            assert( dynamic_cast<T*>(obj.get()) != nullptr );
-            _objects[obj->id.instance()] = static_cast<T&>(*obj);
+            auto instance = obj.id.instance();
+            assert( nullptr != dynamic_cast<T*>(&obj) );
+            if( _objects.size() < instance ) _objects.resize( instance+1 );
+            FC_ASSERT( _objects[instance].id.space() != 0 );
+            _objects[instance] = std::move( static_cast<T&>(obj) );
+            return _objects[instance];
          }
 
-         virtual void add( unique_ptr<object> o )override
+         virtual void remove( const object& obj ) override
          {
-             assert( o );
-             assert( o->id.space() == T::space_id );
-             assert( o->id.type() == T::type_id );
-             _objects.emplace_back( std::move(*static_cast<T*>(o.get())) );
+            assert( nullptr != dynamic_cast<const T*>(&obj) );
+            const auto instance = obj.id.instance();
+            _objects[instance] = T();
          }
 
-         virtual void remove( object_id_type id ) override
-         {
-            assert( id.space() == T::space_id );
-            assert( id.type() == T::type_id );
-            const auto instance = id.instance();
-
-            if( instance == _objects.size() - 1 )
-               _objects.pop_back();
-            //else if( instance < _objects.size() )
-            //   _objects[instance].reset();
-         }
-
-         virtual const object* get( object_id_type id )const override
+         virtual const object* find( object_id_type id )const override
          {
             assert( id.space() == T::space_id );
             assert( id.type() == T::type_id );
@@ -85,11 +61,13 @@ namespace bts { namespace chain {
             return &_objects[instance];
          }
 
-         virtual void inspect_all_objects(std::function<void (const object*)> inspector)
+         void inspect_all_objects(std::function<void (const object&)> inspector)
          {
             try {
-               for( const auto& object : _objects )
-                  inspector(&object);
+               for( const auto& ptr : _objects )
+               {
+                  inspector(ptr);
+               }
             } FC_CAPTURE_AND_RETHROW()
          }
 
@@ -100,7 +78,7 @@ namespace bts { namespace chain {
                const_iterator( const typename vector<T>::const_iterator& a ):_itr(a){}
                friend bool operator==( const const_iterator& a, const const_iterator& b ) { return a._itr == b._itr; }
                friend bool operator!=( const const_iterator& a, const const_iterator& b ) { return a._itr != b._itr; }
-               const T& operator*()const { return *_itr; }
+               const T* operator*()const { return static_cast<const T*>(_itr->get()); }
                const_iterator& operator++(int){ ++_itr; return *this; }
                const_iterator& operator++()   { ++_itr; return *this; }
             private:

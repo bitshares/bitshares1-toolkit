@@ -2,6 +2,7 @@
 #include <bts/chain/database.hpp>
 #include <bts/chain/authority.hpp>
 #include <bts/chain/asset.hpp>
+#include <bts/chain/generic_index.hpp>
 
 namespace bts { namespace chain {
    /**
@@ -9,7 +10,7 @@ namespace bts { namespace chain {
     * @brief tracks price feeds published by a particular account
     *
     */
-   class account_feeds_object : public object
+   class account_feeds_object : public abstract_object<account_feeds_object>
    {
       public:
          static const uint8_t space_id = implementation_ids;
@@ -39,7 +40,7 @@ namespace bts { namespace chain {
     *  object for each asset type or at the very least group assets into
     *  smaller numbers.  
     */
-   class account_balance_object : public object
+   class account_balance_object : public abstract_object<account_balance_object>
    {
       public:
          static const uint8_t space_id = implementation_ids;
@@ -57,7 +58,7 @@ namespace bts { namespace chain {
          vector<pair<asset_id_type,share_type> > balances;
    };
 
-   class account_debt_object : public object
+   class account_debt_object : public abstract_object<account_debt_object>
    {
       public:
          static const uint8_t space_id = implementation_ids;
@@ -66,7 +67,7 @@ namespace bts { namespace chain {
          flat_map<asset_id_type, object_id_type> call_orders;
    };
 
-   class account_object : public annotated_object
+   class account_object : public annotated_object<account_object>
    {
       public:
          static const uint8_t space_id = protocol_ids;
@@ -95,7 +96,7 @@ namespace bts { namespace chain {
     *  This object is attacked as the meta annotation on the account object, this
     *  information is not relevant to validation.
     */
-   class meta_account_object : public object
+   class meta_account_object : public abstract_object<meta_account_object>
    {
       public:
          static const uint8_t space_id = implementation_ids;
@@ -105,9 +106,20 @@ namespace bts { namespace chain {
          delegate_id_type    delegate_id; // optional
    };
 
+   struct by_name{};
+   typedef multi_index_container<
+      account_object,
+      indexed_by<
+         hashed_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
+         hashed_non_unique< tag<by_name>, member<account_object, string, &account_object::name> >
+      >
+   > account_object_multi_index_type;
+
+   typedef generic_index<account_object, account_object_multi_index_type> account_index;
+
 }} 
 FC_REFLECT_DERIVED( bts::chain::account_object, 
-                    (bts::chain::annotated_object), 
+                    (bts::chain::annotated_object<bts::chain::account_object>), 
                     (name)(owner)(active)(memo_key)(voting_key)(delegate_votes)(feeds)(balances)(debts)(authorized_assets) )
 
 FC_REFLECT_DERIVED( bts::chain::meta_account_object, 

@@ -9,11 +9,27 @@ undo_database::session undo_database::start_undo_session()
    _stack.emplace_back( undo_state() );
    return session(*this);
 }
-void undo_database::create( const object* obj )
+void undo_database::on_create( const object& obj )
 {
    if( _disabled ) return;
    auto& state = _stack.back();
-   state.new_ids.insert(obj->id);
+   state.new_ids.insert(obj.id);
+}
+void undo_database::on_modify( const object& obj )
+{
+   if( _disabled ) return;
+   auto& state = _stack.back();
+   auto itr =  state.old_values.find(obj.id);
+   if( itr != state.old_values.end() ) return;
+   state.old_values[obj.id] = obj.clone();
+}
+void undo_database::on_remove( const object& obj )
+{
+   if( _disabled ) return;
+   auto& state = _stack.back();
+   auto itr =  state.removed.find(obj.id);
+   if( itr != state.removed.end() ) return;
+   state.removed[obj.id] = obj.clone();
 }
 
 void undo_database::undo()
@@ -23,21 +39,14 @@ void undo_database::undo()
 
    auto& state = _stack.back();
    for( auto& item : state.old_values )
-   {
-      index& idx = _db.get_index( item.second->id.space(), item.second->id.type() );
-      idx.replace( std::move( item.second ) );
-   }
-   auto ritr = state.new_ids.rbegin();
-   while( ritr != state.new_ids.rend() )
-   {
-      index& idx = _db.get_index( ritr->space(), ritr->type() );
-      idx.remove( *ritr );
-   }
+      _db.modify( _db.get_object( item.second->id ), [&]( object& obj ){ obj.move_from( *item.second ); } );
+   
+   for( auto ritr = state.new_ids.rbegin(); ritr != state.new_ids.rend(); ++ritr  )
+      _db.remove( _db.get_object(*ritr) );
+
    for( auto& item : state.removed )
-   {
-      index& idx = _db.get_index( item.second->id.space(), item.second->id.type() );
-      idx.replace( std::move( item.second ) );
-   }
+      _db.insert( std::move(*item.second) );
+
    enable();
 }
 

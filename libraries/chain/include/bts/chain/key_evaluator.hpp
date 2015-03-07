@@ -22,10 +22,9 @@ namespace bts { namespace chain {
             apply_delta_fee_pools();
 
             const auto& op = o.get<key_create_operation>();
-            new_key_object = db().create<key_object>( [&]( key_object* obj ){
-                obj->key_data = op.key_data;
+            new_key_object = &db().create<key_object>( [&]( key_object& obj ){
+                obj.key_data = op.key_data;
             });
-            FC_ASSERT( new_key_object );
 
             return new_key_object->id;
          }

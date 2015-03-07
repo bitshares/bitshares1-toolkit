@@ -2,7 +2,7 @@
 #include <bts/chain/object.hpp>
 
 namespace bts { namespace chain {
-   class block_summary_object : public object
+   class block_summary_object : public abstract_object<block_summary_object>
    {
       public:
          static const uint8_t space_id = implementation_ids;

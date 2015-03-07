@@ -1,5 +1,4 @@
 #include <bts/chain/account_evaluator.hpp>
-#include <bts/chain/account_index.hpp>
 #include <bts/chain/key_object.hpp>
 #include <algorithm>
 
@@ -13,10 +12,11 @@ object_id_type account_create_evaluator::evaluate( const operation& o )
    auto bts_fee_required = op.calculate_fee( db().current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
 
+   auto& acnt_indx = static_cast<account_index&>(db().get_index<account_object>());
    if( op.name.size() )
    {
-      auto current_account = db().get_account_index().get( op.name );
-      FC_ASSERT( !current_account );
+      auto current_account_itr = acnt_indx.indicies.get<by_name>().find( op.name );
+      FC_ASSERT( current_account_itr == acnt_indx.indicies.get<by_name>().end() );
    }
 
    // verify child account authority
@@ -25,10 +25,10 @@ object_id_type account_create_evaluator::evaluate( const operation& o )
    {
       // TODO: lookup account by op.owner.auths[0] and verify the name
       // this should be a constant time lookup rather than log(N) 
-      auto parent_account = db().get_account_index().get( op.name.substr(0,pos) );
-      FC_ASSERT( parent_account );
-      verify_authority( parent_account, authority::owner );
-      FC_ASSERT( op.owner.auths.find( parent_account->id ) != op.owner.auths.end() );
+      auto parent_account_itr = acnt_indx.indicies.get<by_name>().find( op.name.substr(0,pos) );
+      FC_ASSERT( parent_account_itr != acnt_indx.indicies.get<by_name>().end() );
+      verify_authority( &*parent_account_itr, authority::owner );
+      FC_ASSERT( op.owner.auths.find( parent_account_itr->id ) != op.owner.auths.end() );
    }
 
    return object_id_type();
@@ -43,24 +43,24 @@ object_id_type account_create_evaluator::apply( const operation& o )
    auto owner  = resolve_relative_ids( op.owner );
    auto active = resolve_relative_ids( op.active );
 
-   auto bal_obj = db().create<account_balance_object>( [&]( account_balance_object* obj ){
+   const auto& bal_obj = db().create<account_balance_object>( [&]( account_balance_object& obj ){
             /* no balances right now */
    });
-   auto dbt_obj = db().create<account_debt_object>( [&]( account_debt_object* obj ){
+   const auto& dbt_obj = db().create<account_debt_object>( [&]( account_debt_object& obj ){
             /* no debts now */
    });
 
-   auto new_acnt_object = db().create<account_object>( [&]( account_object* obj ){
-         obj->name       = op.name;
-         obj->owner      = owner;
-         obj->active     = active;
-         obj->memo_key   = get_relative_id(op.memo_key);
-         obj->voting_key = get_relative_id(op.voting_key);
-         obj->balances   = bal_obj->id;
-         obj->debts      = dbt_obj->id;
+   const auto& new_acnt_object = db().create<account_object>( [&]( account_object& obj ){
+         obj.name       = op.name;
+         obj.owner      = owner;
+         obj.active     = active;
+         obj.memo_key   = get_relative_id(op.memo_key);
+         obj.voting_key = get_relative_id(op.voting_key);
+         obj.balances   = bal_obj.id;
+         obj.debts      = dbt_obj.id;
    });
 
-   return new_acnt_object->id;
+   return new_acnt_object.id;
 }
 
 
@@ -72,11 +72,10 @@ object_id_type account_update_evaluator::evaluate( const operation& op )
    auto bts_fee_paid = pay_fee( o.account, o.fee );
    FC_ASSERT( bts_fee_paid == o.calculate_fee( d.current_fee_schedule() ) );
 
-   acnt = o.account(d);
-   FC_ASSERT( acnt ); 
+   acnt = &o.account(d);
    if( o.owner ) FC_ASSERT( verify_authority( acnt, authority::owner ) );
    else if( o.active || o.voting_key || o.memo_key ) FC_ASSERT( verify_authority( acnt, authority::active ) );
-   else if( o.vote ) FC_ASSERT( verify_signature( acnt->voting_key(d) ) );
+   else if( o.vote ) FC_ASSERT( verify_signature( &acnt->voting_key(d) ) );
 
    if( o.vote )
    {
@@ -93,18 +92,18 @@ object_id_type account_update_evaluator::evaluate( const operation& op )
 object_id_type account_update_evaluator::apply( const operation& op ) 
 {
    const auto& o = op.get<account_update_operation>();
-   auto core_bal = acnt->balances(db())->get_balance( asset_id_type() ).amount;
+   auto core_bal = acnt->balances(db()).get_balance( asset_id_type() ).amount;
    if( core_bal.value  )
    {
       adjust_votes( remove_votes, -core_bal );
       adjust_votes( add_votes, core_bal );
    }
-   db().modify( acnt, [&]( account_object* a  ){
-          if( o.owner ) a->owner = *o.owner;
-          if( o.active ) a->active = *o.active;
-          if( o.voting_key ) a->voting_key = *o.voting_key;
-          if( o.memo_key ) a->memo_key = *o.memo_key;
-          if( o.vote ) a->delegate_votes = *o.vote;
+   db().modify( *acnt, [&]( account_object& a  ){
+          if( o.owner ) a.owner = *o.owner;
+          if( o.active ) a.active = *o.active;
+          if( o.voting_key ) a.voting_key = *o.voting_key;
+          if( o.memo_key ) a.memo_key = *o.memo_key;
+          if( o.vote ) a.delegate_votes = *o.vote;
       });
    return object_id_type();
 }

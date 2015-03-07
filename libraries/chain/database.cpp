@@ -9,8 +9,6 @@
 #include <bts/chain/block_summary_object.hpp>
 #include <bts/chain/simple_index.hpp>
 #include <bts/chain/flat_index.hpp>
-#include <bts/chain/account_index.hpp>
-#include <bts/chain/asset_index.hpp>
 
 #include <bts/chain/transaction_evaluation_state.hpp>
 #include <bts/chain/key_evaluator.hpp>
@@ -39,6 +37,7 @@ template<typename T>
 restore_on_scope_exit<T> make_restore_on_exit( T& v ) { return restore_on_scope_exit<T>(v); }
 
 database::database()
+:_undo_db(*this)
 {
    _operation_evaluators.resize(255);
    register_evaluator<key_create_evaluator>();
@@ -50,11 +49,9 @@ database::database()
    register_evaluator<asset_issue_evaluator>();
    register_evaluator<transfer_evaluator>();
 
-   _object_id_to_object = std::make_shared<db::level_map<object_id_type,packed_object>>();
+   _object_id_to_object = std::make_shared<db::level_map<object_id_type,vector<char>>>();
 
    initialize_indexes();
-
-   push_undo_state();
 }
 
 database::~database(){}
@@ -70,7 +67,11 @@ void database::close()
    _fork_db.reset();
 }
 
-const object* database::get_object( object_id_type id )const
+const object* database::find_object( object_id_type id )const
+{
+   return get_index(id.space(),id.type()).find( id );
+}
+const object& database::get_object( object_id_type id )const
 {
    return get_index(id.space(),id.type()).get( id );
 }
@@ -92,27 +93,9 @@ index& database::get_index(uint8_t space_id, uint8_t type_id)
    return *tmp;
 }
 
-const account_index& database::get_account_index()const
+const asset_object& database::get_core_asset() const
 {
-   return dynamic_cast<const account_index&>( get_index<account_object>() );
-}
-account_index& database::get_account_index()
-{
-   return dynamic_cast<account_index&>( get_index<account_object>() );
-}
-
-const asset_index&   database::get_asset_index()const
-{
-   return dynamic_cast<const asset_index&>( get_index<asset_object>() );
-}
-asset_index&   database::get_asset_index()
-{
-   return dynamic_cast<asset_index&>( get_index<asset_object>() );
-}
-
-const asset_object*database::get_base_asset() const
-{
-   return get_asset_index().get(BTS_SYMBOL);
+   return get(asset_id_type());
 }
 
 void database::flush()
@@ -123,8 +106,8 @@ void database::flush()
    for( auto& space : _index )
       for( const unique_ptr<index>& type_index : space )
          if( type_index )
-            type_index->inspect_all_objects([&] (const object* object) {
-               _object_id_to_object->store(object->id, type_index->pack(object));
+            type_index->inspect_all_objects([&] (const object& obj) {
+               _object_id_to_object->store(obj.id, obj.pack());
             });
 }
 
@@ -154,9 +137,8 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
       }
    }
 
-   if( !get_global_properties() )
+   if( !find(global_property_id_type()) )
       init_genesis(initial_allocation);
-   assert(get_global_properties());
 
    _pending_block.previous  = head_block_id();
    _pending_block.timestamp = head_block_time();
@@ -192,91 +174,90 @@ void database::initialize_indexes()
 
 void database::init_genesis(const genesis_allocation& initial_allocation)
 {
-   auto restore = make_restore_on_exit(_save_undo);
-   _save_undo = false;
+   _undo_db.disable();
 
    fc::ecc::private_key genesis_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
-   const key_object* genesis_key =
-      create<key_object>( [&genesis_private_key](key_object* k) {
-         k->key_data = public_key_type(genesis_private_key.get_public_key());
+   const key_object& genesis_key =
+      create<key_object>( [&genesis_private_key](key_object& k) {
+         k.key_data = public_key_type(genesis_private_key.get_public_key());
       });
-   const account_balance_object* genesis_balance =
-      create<account_balance_object>( [&](account_balance_object* b){
-         b->add_balance(asset(BTS_INITIAL_SUPPLY));
+   const account_balance_object& genesis_balance =
+      create<account_balance_object>( [&](account_balance_object& b){
+         b.add_balance(asset(BTS_INITIAL_SUPPLY));
       });
-   const account_object* genesis_account =
-      create<account_object>( [&](account_object* n) {
-         n->owner.add_authority(genesis_key->get_id(), 1);
-         n->owner.weight_threshold = 1;
-         n->active = n->owner;
-         n->voting_key = genesis_key->id;
-         n->memo_key = genesis_key->id;
-         n->balances = genesis_balance->id;
+   const account_object& genesis_account =
+      create<account_object>( [&](account_object& n) {
+         n.owner.add_authority(genesis_key.get_id(), 1);
+         n.owner.weight_threshold = 1;
+         n.active = n.owner;
+         n.voting_key = genesis_key.id;
+         n.memo_key = genesis_key.id;
+         n.balances = genesis_balance.id;
       });
 
    vector<delegate_id_type> init_delegates;
 
    for( int i = 0; i < BTS_MIN_DELEGATE_COUNT; ++i )
    {
-      const account_balance_object* balance_obj =
-         create<account_balance_object>( [&](account_balance_object* b){
+      const account_balance_object& balance_obj =
+         create<account_balance_object>( [&](account_balance_object& b){
             (void)b;
          });
-      const account_object* delegate_account =
-         create<account_object>( [&](account_object* a) {
-            a->active = a->owner = genesis_account->owner;
-            a->name = string("init") + fc::to_string(i);
-            a->balances = balance_obj->id;
+      const account_object& delegate_account =
+         create<account_object>( [&](account_object& a) {
+            a.active = a.owner = genesis_account.owner;
+            a.name = string("init") + fc::to_string(i);
+            a.balances = balance_obj.id;
          });
-      const delegate_vote_object* vote =
-         create<delegate_vote_object>( [&](delegate_vote_object* v) {
+      const delegate_vote_object& vote =
+         create<delegate_vote_object>( [&](delegate_vote_object& v) {
             // Nothing to do here...
             (void)v;
          });
-      const delegate_object* init_delegate = create<delegate_object>( [&](delegate_object* d) {
-         d->delegate_account = delegate_account->id;
-         d->signing_key = genesis_key->id;
+      const delegate_object& init_delegate = create<delegate_object>( [&](delegate_object& d) {
+         d.delegate_account = delegate_account.id;
+         d.signing_key = genesis_key.id;
          secret_hash_type::encoder enc;
          fc::raw::pack( enc, genesis_private_key );
-         fc::raw::pack( enc, d->last_secret );
-         d->next_secret = secret_hash_type::hash(enc.result());
-         d->vote = vote->id;
+         fc::raw::pack( enc, d.last_secret );
+         d.next_secret = secret_hash_type::hash(enc.result());
+         d.vote = vote.id;
       });
-      init_delegates.push_back(init_delegate->id);
+      init_delegates.push_back(init_delegate.id);
    }
-   create<block_summary_object>( [&](block_summary_object* p) {
+   create<block_summary_object>( [&](block_summary_object& p) {
            /** default block 0 */
    });
 
-   const global_property_object* properties =
-      create<global_property_object>( [&](global_property_object* p) {
-         p->active_delegates = init_delegates;
+   const global_property_object& properties =
+      create<global_property_object>( [&](global_property_object& p) {
+         p.active_delegates = init_delegates;
       });
    (void)properties;
 
-   create<dynamic_global_property_object>( [&](dynamic_global_property_object* p) {
+   create<dynamic_global_property_object>( [&](dynamic_global_property_object& p) {
       });
 
-   const asset_dynamic_data_object* dyn_asset =
-      create<asset_dynamic_data_object>( [&]( asset_dynamic_data_object* a ) {
-         a->current_supply = BTS_INITIAL_SUPPLY;
+   const asset_dynamic_data_object& dyn_asset =
+      create<asset_dynamic_data_object>( [&]( asset_dynamic_data_object& a ) {
+         a.current_supply = BTS_INITIAL_SUPPLY;
       });
 
-   const asset_object* core_asset =
-     create<asset_object>( [&]( asset_object* a ) {
-         a->symbol = BTS_SYMBOL;
-         a->max_supply = BTS_INITIAL_SUPPLY;
-         a->flags = 0;
-         a->issuer_permissions = 0;
-         a->issuer = genesis_account->id;
-         a->core_exchange_rate.base.amount = 1;
-         a->core_exchange_rate.base.asset_id = 0;
-         a->core_exchange_rate.quote.amount = 1;
-         a->core_exchange_rate.quote.asset_id = 0;
-         a->dynamic_asset_data_id = dyn_asset->id;
+   const asset_object& core_asset =
+     create<asset_object>( [&]( asset_object& a ) {
+         a.symbol = BTS_SYMBOL;
+         a.max_supply = BTS_INITIAL_SUPPLY;
+         a.flags = 0;
+         a.issuer_permissions = 0;
+         a.issuer = genesis_account.id;
+         a.core_exchange_rate.base.amount = 1;
+         a.core_exchange_rate.base.asset_id = 0;
+         a.core_exchange_rate.quote.amount = 1;
+         a.core_exchange_rate.quote.asset_id = 0;
+         a.dynamic_asset_data_id = dyn_asset.id;
       });
-   assert( asset_id_type(core_asset->id) == asset().asset_id );
-   assert( genesis_balance->get_balance(core_asset->id) == asset(dyn_asset->current_supply) );
+   assert( asset_id_type(core_asset.id) == asset().asset_id );
+   assert( genesis_balance.get_balance(core_asset.id) == asset(dyn_asset.current_supply) );
    (void)core_asset;
 
    if( !initial_allocation.empty() )
@@ -298,12 +279,12 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          }
 
          signed_transaction trx;
-         trx.operations.emplace_back(key_create_operation({genesis_account->id, asset(), handout.first}));
+         trx.operations.emplace_back(key_create_operation({genesis_account.id, asset(), handout.first}));
          object_id_type key_id(relative_protocol_ids, 0, 0);
          authority account_authority;
          account_authority.add_authority(key_id_type(key_id), 1);
          trx.operations.emplace_back(account_create_operation({
-                                                                 genesis_account->id,
+                                                                 genesis_account.id,
                                                                  asset(),
                                                                  string(),
                                                                  account_authority,
@@ -316,7 +297,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          trx = signed_transaction();
          account_id_type account_id(ptrx.operation_results.back());
          trx.operations.emplace_back(transfer_operation({
-                                                           genesis_account->id,
+                                                           genesis_account.id,
                                                            account_id,
                                                            amount,
                                                            asset(),
@@ -326,14 +307,14 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          apply_transaction(trx, ~0);
       }
 
-      if( genesis_balance->get_balance(asset_id_type()).amount > 0 )
+      if( genesis_balance.get_balance(asset_id_type()).amount > 0 )
       {
-         asset leftovers = genesis_balance->get_balance(asset_id_type());
-         modify(genesis_balance, [](account_balance_object* b) {
-            b->balances.clear();
+         asset leftovers = genesis_balance.get_balance(asset_id_type());
+         modify(genesis_balance, [](account_balance_object& b) {
+            b.balances.clear();
          });
-         modify(core_asset->dynamic_asset_data_id(*this), [&leftovers](asset_dynamic_data_object* d) {
-            d->accumulated_fees += leftovers.amount;
+         modify(core_asset.dynamic_asset_data_id(*this), [&leftovers](asset_dynamic_data_object& d) {
+            d.accumulated_fees += leftovers.amount;
          });
       }
 
@@ -341,8 +322,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
       ilog("Finished allocating to ${n} accounts in ${t} milliseconds.",
            ("n", initial_allocation.size())("t", duration.count() / 1000));
    }
-
-   push_undo_state();
+   _undo_db.enable();
 }
 
 /**
@@ -376,72 +356,6 @@ asset database::current_delegate_registration_fee()const
    return asset();
 }
 
-void database::save_undo( const object* obj )
-{
-   if( !_save_undo ) return;
-   FC_ASSERT( obj );
-   auto id = obj->id;
-   auto current_undo = _undo_state.back().old_values.find(id);
-   if( current_undo == _undo_state.back().old_values.end() )
-   {
-      _undo_state.back().old_values[id] = get_index(obj->id.space(),obj->id.type()).pack( obj );
-   }
-}
-
-
-void database::pop_undo_state()
-{
-   _undo_state.pop_back();
-   idump( (_undo_state.size()) );
-}
-void database::push_undo_state()
-{
-   idump( (_undo_state.size()) );
-   _undo_state.push_back( undo_state() );
-   if( _undo_state.size() > 2 )
-   {
-      const auto& prev = _undo_state[_undo_state.size()-2];
-      auto& cur = _undo_state.back();
-      for( auto new_id : prev.new_ids )
-      {
-         const object* obj = get_object( new_id );
-         assert( obj != nullptr );
-         cur.old_values[obj->id] = get_index(obj->id.space(),obj->id.type()).pack(obj);
-      }
-   }
-}
-
-void database::undo()
-{ try {
-   FC_ASSERT( _undo_state.size() );
-   wlog( "undo ${p}", ("p",_undo_state.size()-1) );
-   auto restore = make_restore_on_exit(_save_undo);
-   for( auto item : _undo_state.back().old_values )
-   {
-      auto& index = get_index( item.first.space(), item.first.type() );
-      if( item.second.is_null() )
-      {
-         index.remove( item.first );
-      }
-      else
-      {
-         const object* obj = index.get( item.first );
-         if( obj )
-         {
-            index.modify( obj, [&](object* o){
-                          index.unpack( o, item.second );
-                         });
-         }
-      }
-   }
-   for( const auto& old_index_meta : _undo_state.back().old_index_meta_objects )
-   {
-      get_index( old_index_meta.first.space(), old_index_meta.first.type() ).set_meta_object( old_index_meta.second );
-   }
-   _undo_state.pop_back();
-   idump( (_undo_state.size()) );
-} FC_CAPTURE_AND_RETHROW() }
-
 
 void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
@@ -449,17 +363,18 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    FC_ASSERT( _pending_block.timestamp <= (now  + fc::seconds(1)), "", ("now",now)("pending",_pending_block.timestamp) );
    FC_ASSERT( _pending_block.previous == next_block.previous, "", ("pending.prev",_pending_block.previous)("next.prev",next_block.previous) );
    FC_ASSERT( _pending_block.timestamp <= next_block.timestamp, "", ("_pending_block.timestamp",_pending_block.timestamp)("next",next_block.timestamp)("blocknum",next_block.block_num()) );
-   FC_ASSERT( _pending_block.timestamp.sec_since_epoch() % get_global_properties()->block_interval == 0 );
-   const delegate_object* del = next_block.delegate_id(*this);
-   FC_ASSERT( del != nullptr );
-   FC_ASSERT( secret_hash_type::hash(next_block.previous_secret) == del->next_secret, "",
-              ("previous_secret", next_block.previous_secret)("next_secret", del->next_secret));
+   FC_ASSERT( _pending_block.timestamp.sec_since_epoch() % get_global_properties().block_interval == 0 );
+   const delegate_object& del = next_block.delegate_id(*this);
+   FC_ASSERT( secret_hash_type::hash(next_block.previous_secret) == del.next_secret, "",
+              ("previous_secret", next_block.previous_secret)("next_secret", del.next_secret));
 
-   auto expected_delegate_num = (next_block.timestamp.sec_since_epoch() / get_global_properties()->block_interval)%get_global_properties()->active_delegates.size();
+   const auto& global_props = get_global_properties();
 
-   if( !(skip&skip_delegate_signature) ) FC_ASSERT( next_block.validate_signee( del->signing_key(*this)->key() ) );
+   auto expected_delegate_num = (next_block.timestamp.sec_since_epoch() / global_props.block_interval)%global_props.active_delegates.size();
 
-   FC_ASSERT( next_block.delegate_id == get_global_properties()->active_delegates[expected_delegate_num] );
+   if( !(skip&skip_delegate_signature) ) FC_ASSERT( next_block.validate_signee( del.signing_key(*this).key() ) );
+
+   FC_ASSERT( next_block.delegate_id == global_props.active_delegates[expected_delegate_num] );
 
    for( const auto& trx : next_block.transactions )
    {
@@ -473,33 +388,33 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    }
    update_global_dynamic_data( next_block );
 
-   const auto core_asset = get( asset_id_type() );
-   const auto asset_data = core_asset->dynamic_asset_data_id(*this);
+   const auto& core_asset = get( asset_id_type() );
+   const auto& asset_data = core_asset.dynamic_asset_data_id(*this);
 
    // Slowly pay out income averaged over 1M blocks
-   uint64_t pay = asset_data->accumulated_fees.value / (1024*1024); // close enough to 1M but more effecient
-   pay *= del->pay_rate;
+   uint64_t pay = asset_data.accumulated_fees.value / (1024*1024); // close enough to 1M but more effecient
+   pay *= del.pay_rate;
    pay /= 100;
-   modify( asset_data, [&]( asset_dynamic_data_object* o ){ o->accumulated_fees -= pay; } );
+   modify( asset_data, [&]( asset_dynamic_data_object& o ){ o.accumulated_fees -= pay; } );
 
-   modify( del, [&]( delegate_object* obj ){
-           obj->last_secret = next_block.previous_secret;
-           obj->next_secret = next_block.next_secret_hash;
-           obj->accumulated_income += pay;
+   modify( del, [&]( delegate_object& obj ){
+           obj.last_secret = next_block.previous_secret;
+           obj.next_secret = next_block.next_secret_hash;
+           obj.accumulated_income += pay;
            });
 
 
-   if( 0 == (next_block.block_num() % get_global_properties()->active_delegates.size()) )
+   if( 0 == (next_block.block_num() % global_props.active_delegates.size()) )
    {
       update_active_delegates();
    }
 
-   auto current_block_interval = get_global_properties()->block_interval;
-   if( next_block.block_num() % (get_global_properties()->maintenance_interval / current_block_interval) == 0 )
+   auto current_block_interval = global_props.block_interval;
+   if( next_block.block_num() % (global_props.maintenance_interval / current_block_interval) == 0 )
    {
       update_global_properties();
 
-      auto new_block_interval = get_global_properties()->block_interval;
+      auto new_block_interval = global_props.block_interval;
      // wdump( (current_block_interval)(new_block_interval) );
 
       // if block interval CHANGED during this block *THEN* we cannot simply
@@ -520,11 +435,10 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
    _pending_block.previous = next_block.id();
 
-   auto sum = create<block_summary_object>( [&](block_summary_object* p) {
-              p->block_id = _pending_block.previous;
-              wdump( (p->block_id) );
+   const auto& sum = create<block_summary_object>( [&](block_summary_object& p) {
+              p.block_id = _pending_block.previous;
    });
-   FC_ASSERT( sum->id.instance() == next_block.block_num(), "", ("sim->id",sum->id)("next.block_num",next_block.block_num()) );
+   FC_ASSERT( sum.id.instance() == next_block.block_num(), "", ("sim->id",sum.id)("next.block_num",next_block.block_num()) );
 
    auto old_pending_trx = std::move(_pending_block.transactions);
    _pending_block.transactions.clear();
@@ -534,10 +448,10 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
 time_point database::get_next_generation_time( delegate_id_type del_id )const
 {
-   auto gp = get_global_properties();
+   const auto& gp = get_global_properties();
    auto now = bts::chain::now();
-   const auto& active_del = gp->active_delegates;
-   const auto& interval   = gp->block_interval;
+   const auto& active_del = gp.active_delegates;
+   const auto& interval   = gp.block_interval;
    auto delegate_slot = ((now.sec_since_epoch()+1) /interval);
    for( uint32_t i = 0; i < active_del.size(); ++i )
    {
@@ -551,17 +465,16 @@ time_point database::get_next_generation_time( delegate_id_type del_id )const
 signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
                                        delegate_id_type del_id, uint32_t  skip )
 {
-   auto del_obj = del_id(*this);
-   FC_ASSERT( del_obj );
+   const auto& del_obj = del_id(*this);
 
    if( !(skip & skip_delegate_signature) )
-      FC_ASSERT( del_obj->signing_key(*this)->key() == delegate_key.get_public_key() );
+      FC_ASSERT( del_obj.signing_key(*this).key() == delegate_key.get_public_key() );
 
    _pending_block.timestamp = get_next_generation_time( del_id );
 
    secret_hash_type::encoder last_enc;
    fc::raw::pack( last_enc, delegate_key );
-   fc::raw::pack( last_enc, del_obj->last_secret );
+   fc::raw::pack( last_enc, del_obj.last_secret );
    _pending_block.previous_secret = last_enc.result();
 
    secret_hash_type::encoder next_enc;
@@ -579,26 +492,26 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
 
 void database::update_active_delegates()
 {
-    vector<delegate_id_type> ids( get_index<delegate_object>().size() );
+    vector<delegate_id_type> ids( dynamic_cast<simple_index<delegate_object>&>(get_index<delegate_object>()).size() );
     for( uint32_t i = 0; i < ids.size(); ++i ) ids[i] = delegate_id_type(i);
     std::sort( ids.begin(), ids.end(), [&]( delegate_id_type a,delegate_id_type b )->bool {
-       return a(*this)->vote(*this)->total_votes >
-              b(*this)->vote(*this)->total_votes;
+       return a(*this).vote(*this).total_votes >
+              b(*this).vote(*this).total_votes;
     });
 
-    uint64_t base_threshold = ids[9](*this)->vote(*this)->total_votes.value;
+    uint64_t base_threshold = ids[9](*this).vote(*this).total_votes.value;
     uint64_t threshold =  (base_threshold / 100) * 75;
     uint32_t i = 10;
 
     for( ; i < ids.size(); ++i )
     {
-       if( ids[i](*this)->vote(*this)->total_votes < threshold ) break;
+       if( ids[i](*this).vote(*this).total_votes < threshold ) break;
        threshold = (base_threshold / (100) ) * (75 + i/(ids.size()/4));
     }
     ids.resize( i );
 
     // shuffle ids
-    auto randvalue = get(dynamic_global_property_id_type(0))->random;
+    auto randvalue = dynamic_global_property_id_type()(*this).random; 
     for( uint32_t i = 0; i < ids.size(); ++i )
     {
        const auto rands_per_hash = sizeof(secret_hash_type) / sizeof(randvalue._hash[0]);
@@ -607,72 +520,68 @@ void database::update_active_delegates()
           randvalue = secret_hash_type::hash( randvalue );
     }
 
-    modify( get_global_properties(), [&]( global_property_object* gp ){
-       gp->active_delegates = std::move(ids);
+    modify( get_global_properties(), [&]( global_property_object& gp ){
+       gp.active_delegates = std::move(ids);
     });
 }
 
 void database::update_global_properties()
 {
    global_property_object tmp;
-   vector<delegate_id_type> ids = get_global_properties()->active_delegates;
+   vector<delegate_id_type> ids = get_global_properties().active_delegates;
    std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
                      [&]( delegate_id_type a, delegate_id_type b )->bool {
-                          return a(*this)->block_interval_sec < b(*this)->block_interval_sec;
+                          return a(*this).block_interval_sec < b(*this).block_interval_sec;
                      });
-   tmp.block_interval = ids[ids.size()/2](*this)->block_interval_sec;
+   tmp.block_interval = ids[ids.size()/2](*this).block_interval_sec;
    std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
                      [&]( delegate_id_type a, delegate_id_type b )->bool {
-                          return a(*this)->max_block_size < b(*this)->max_block_size;
+                          return a(*this).max_block_size < b(*this).max_block_size;
                      });
-   tmp.maximum_block_size = ids[ids.size()/2](*this)->max_block_size;
+   tmp.maximum_block_size = ids[ids.size()/2](*this).max_block_size;
    std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
                      [&]( delegate_id_type a, delegate_id_type b )->bool {
-                          return a(*this)->max_transaction_size < b(*this)->max_transaction_size;
+                          return a(*this).max_transaction_size < b(*this).max_transaction_size;
                      });
-   tmp.maximum_transaction_size = ids[ids.size()/2](*this)->max_transaction_size;
+   tmp.maximum_transaction_size = ids[ids.size()/2](*this).max_transaction_size;
    std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
                      [&]( delegate_id_type a, delegate_id_type b )->bool {
-                          return a(*this)->max_sec_until_expiration < b(*this)->max_sec_until_expiration;
+                          return a(*this).max_sec_until_expiration < b(*this).max_sec_until_expiration;
                      });
-   tmp.maximum_time_until_expiration = ids[ids.size()/2](*this)->max_sec_until_expiration;
+   tmp.maximum_time_until_expiration = ids[ids.size()/2](*this).max_sec_until_expiration;
 
    for( uint32_t f = 0; f < tmp.current_fees.size(); ++f )
    {
       std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
                         [&]( delegate_id_type a, delegate_id_type b )->bool {
-                             return a(*this)->fee_schedule.at(f) < b(*this)->fee_schedule.at(f);
+                             return a(*this).fee_schedule.at(f) < b(*this).fee_schedule.at(f);
                         });
-      tmp.current_fees.at(f)  = ids[ids.size()/2](*this)->fee_schedule.at(f);
+      tmp.current_fees.at(f)  = ids[ids.size()/2](*this).fee_schedule.at(f);
    }
 }
 
 void database::update_global_dynamic_data( const signed_block& b )
 {
-   modify( dynamic_global_property_id_type(0)(*this), [&]( dynamic_global_property_object* dgp ){
+   modify( dynamic_global_property_id_type(0)(*this), [&]( dynamic_global_property_object& dgp ){
       secret_hash_type::encoder enc;
-      fc::raw::pack( enc, dgp->random );
+      fc::raw::pack( enc, dgp.random );
       fc::raw::pack( enc, b.previous_secret );
-      dgp->random = enc.result();
-      dgp->head_block_number = b.block_num();
-      dgp->head_block_id = b.id();
-      dgp->time = b.timestamp;
-      dgp->current_delegate = b.delegate_id;
+      dgp.random = enc.result();
+      dgp.head_block_number = b.block_num();
+      dgp.head_block_id = b.id();
+      dgp.time = b.timestamp;
+      dgp.current_delegate = b.delegate_id;
    });
 }
 
 void database::pop_block()
 { try {
-   idump( ("start pop")(head_block_num())(head_block_id()) );
    pop_pending_block();
-   undo();
    _block_id_to_block.remove( _pending_block.previous );
    _pending_block.previous  = head_block_id();
    _pending_block.timestamp = head_block_time();
-   wlog( "pop block: ${b}", ("b",_pending_block.block_num()) );
    _fork_db.pop_block();
    push_pending_block();
-   edump( ("end pop")(head_block_num())(head_block_id()) );
 } FC_CAPTURE_AND_RETHROW() }
 
 /**
@@ -706,8 +615,6 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
             {
                 optional<fc::exception> except;
                 try {
-                  wdump( ("push")((*ritr)->id) );
-                  push_undo_state();
                   apply_block( (*ritr)->data, skip );
                   _block_id_to_block.store( new_block.id(), (*ritr)->data );
                 }
@@ -715,7 +622,7 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
                 if( except )
                 {
                    edump( ("oops!")((*ritr)->id) );
-                   undo();
+                   // undo();
                    // remove the rest of branches.first from the fork_db, those blocks are invalid
                    while( ritr != branches.first.rend() )
                    {
@@ -731,7 +638,7 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
                    // restore all blocks from the good fork
                    for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr )
                    {
-                      push_undo_state();
+                      //push_undo_state();
                       apply_block( (*ritr)->data, skip );
                       _block_id_to_block.store( new_block.id(), (*ritr)->data );
                    }
@@ -744,8 +651,7 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
       }
    }
 
-   auto restore = make_restore_on_exit(_save_undo);
-   if( skip & skip_undo_block ) _save_undo = false;
+   /*
    pop_pending_block();
    { // logically connect pop/push of pending block
       if( !(skip&skip_undo_block) )push_undo_state();
@@ -762,6 +668,7 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
       }
    }
    push_pending_block();
+   */
 } FC_CAPTURE_AND_RETHROW( (new_block) ) }
 
 /**
@@ -769,18 +676,18 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
  */
 bool database::push_transaction( const signed_transaction& trx, uint32_t skip )
 {
-   if( !(skip&skip_undo_transaction) ) push_undo_state(); // trx undo
+//   if( !(skip&skip_undo_transaction) ) push_undo_state(); // trx undo
    optional<fc::exception> except;
    try {
       apply_transaction( trx, skip );
       _pending_block.transactions.push_back(trx);
-      if( !(skip&skip_undo_transaction) ) pop_undo_state(); // everything was OK.
+//      if( !(skip&skip_undo_transaction) ) pop_undo_state(); // everything was OK.
       return true;
    } catch ( const fc::exception& e ) { except = e; }
    if( except )
    {
       // wlog( "${e}", ("e",except->to_detail_string() ) );
-      if( !(skip&skip_undo_transaction) ) undo();
+//      if( !(skip&skip_undo_transaction) ) undo();
       throw *except;
    }
    return false;
@@ -790,7 +697,7 @@ void database::push_pending_block()
 {
    block old_pending = std::move( _pending_block );
    _pending_block.transactions.clear();
-   push_undo_state();
+ //  push_undo_state();
    for( auto trx : old_pending.transactions )
    {
       push_transaction( trx );
@@ -799,7 +706,7 @@ void database::push_pending_block()
 
 void database::pop_pending_block()
 {
-   undo();
+   //undo();
 }
 
 processed_transaction database::apply_transaction( const signed_transaction& trx, uint32_t skip )
@@ -825,25 +732,25 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
-const global_property_object* database::get_global_properties()const
+const global_property_object& database::get_global_properties()const
 {
-   return get<global_property_object>( object_id_type( global_property_object::space_id, global_property_object::type_id, 0 ) );
+   return get( global_property_id_type() );
 }
 const fee_schedule_type&  database::current_fee_schedule()const
 {
-   return get_global_properties()->current_fees;
+   return get_global_properties().current_fees;
 }
 time_point_sec database::head_block_time()const
 {
-   return get( dynamic_global_property_id_type() )->time;
+   return get( dynamic_global_property_id_type() ).time;
 }
 uint32_t       database::head_block_num()const
 {
-   return get( dynamic_global_property_id_type() )->head_block_number;
+   return get( dynamic_global_property_id_type() ).head_block_number;
 }
 block_id_type       database::head_block_id()const
 {
-   return get( dynamic_global_property_id_type() )->head_block_id;
+   return get( dynamic_global_property_id_type() ).head_block_id;
 }
 
 optional<signed_block> database::fetch_block_by_id( const block_id_type& id )const

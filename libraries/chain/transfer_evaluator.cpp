@@ -12,23 +12,21 @@ object_id_type transfer_evaluator::evaluate( const operation& o )
    auto bts_fee_required = op.calculate_fee( d.current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
 
-   const account_object* from_account = fee_paying_account;
-   const account_object* to_account   = op.to(d);
-   FC_ASSERT( to_account );
-   const asset_object*   asset_type   = op.amount.asset_id(d);
-   FC_ASSERT( asset_type );
+   const account_object& from_account = *fee_paying_account;
+   const account_object& to_account   = op.to(d);
+   const asset_object&   asset_type   = op.amount.asset_id(d);
 
-   if( asset_type->flags & white_list )
+   if( asset_type.flags & white_list )
    {
-      FC_ASSERT( to_account->is_authorized_asset( op.amount.asset_id ) );
-      FC_ASSERT( from_account->is_authorized_asset( op.amount.asset_id ) );
+      FC_ASSERT( to_account.is_authorized_asset( op.amount.asset_id ) );
+      FC_ASSERT( from_account.is_authorized_asset( op.amount.asset_id ) );
    }
 
-   FC_ASSERT( verify_authority( from_account, authority::active ) );
-   FC_ASSERT( get_balance( from_account, asset_type ) >= op.amount );
+   FC_ASSERT( verify_authority( &from_account, authority::active ) );
+   FC_ASSERT( get_balance( &from_account, &asset_type ) >= op.amount );
 
-   adjust_balance( from_account, asset_type, -op.amount.amount );
-   adjust_balance( to_account, asset_type, op.amount.amount );
+   adjust_balance( &from_account, &asset_type, -op.amount.amount );
+   adjust_balance( &to_account, &asset_type, op.amount.amount );
 
    return object_id_type();
 }

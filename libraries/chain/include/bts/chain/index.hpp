@@ -7,27 +7,38 @@
 namespace bts { namespace chain {
    class database;
 
+   /** 
+    * @class index_observer
+    * @brief used to get callbacks when objects change
+    */
    class index_observer
    {
       public:
          virtual ~index_observer(){}
-         virtual void on_modify( object_id_type id, const object* obj ){}
-         virtual void on_add( const object* obj ){}
-         virtual void on_remove( object_id_type id ){}
+         /** called just after the object is added */ 
+         virtual void on_add( const object& obj ){};
+         /** called just before obj is removed */
+         virtual void on_remove( const object& obj ){};
+         /** called just after obj is modified with new value*/
+         virtual void on_modify( const object& obj ){};
    };
 
-   class index_meta_object : public object
-   {
-      public:
-       static const uint8_t space_id = implementation_ids;
-       static const uint8_t type_id  = impl_index_meta_object_type;
-       index_meta_object( uint64_t instance = 0 ):next_object_instance(instance)
-       {
-          id = object_id_type( space_id, type_id, 0 );
-       }
-       uint64_t next_object_instance = 0;
-   };
-
+   /**
+    *  @class index 
+    *  @brief abstract base class for accessing objects indexed in various ways.
+    *
+    *  All indexes assume that there exists an object ID space that will grow
+    *  for ever in a seqential manner.  These IDs are used to identify the
+    *  index, type, and instance of the object.  
+    *
+    *  Items in an index can only be modified via a call to modify and
+    *  all references to objects outside of that callback are const references.
+    *
+    *  Most implementations will probably be some form of boost::multi_index_container 
+    *  which means that they can covnert a reference to an object to an iterator.  When
+    *  at all possible save a pointer/reference to your objects rather than constantly
+    *  looking them up by ID.
+    */
    class index
    {
       public:
@@ -36,89 +47,103 @@ namespace bts { namespace chain {
          virtual uint8_t object_space_id()const = 0;
          virtual uint8_t object_type_id()const = 0;
 
+         virtual object_id_type get_next_id()const = 0;
+         virtual void           use_next_id() = 0;
+         virtual void           set_next_id( object_id_type id ) = 0;
+
+         virtual const object&  load( const std::vector<char>& data ) = 0;
          /**
-          * This method must be deterministic based upon the set of
-          * elements in the index.  Object IDs can be reused so long
-          * as the order that they are added/removed does not change
-          * the ID selection.
-          *
-          * @note - you can assume that when the UNDO state is
-          * applied it will remove items from the highest ID first which
-          * means that in a batch UNDO you can resize when the last
-          * element is removed and reuse that ID
+          *  Polymorphically insert by moving an object into the index.  
+          *  this should throw if the object is already in the database.
           */
-         virtual object_id_type get_next_available_id()const = 0;
-         virtual packed_object  get_meta_object()const = 0;
-         virtual void           set_meta_object( const packed_object& obj ) = 0;
+         virtual const object& insert( object&& obj ) = 0;
 
          /**
           * Builds a new object and assigns it the next available ID and then
           * initializes it with constructor and lastly inserts it into the index.
           */
-         virtual const object*  create( const std::function<void(object*)>& constructor,
-                                        object_id_type requested_id = object_id_type() ) = 0;
-
-         virtual packed_object pack( const object* p )const  = 0;
-         virtual void unpack( object* p, const packed_object& obj )const  = 0;
-         virtual variant to_variant( const object* p )const  = 0;
+         virtual const object&  create( const std::function<void(object&)>& constructor ) = 0;
 
          /**
           *  Opens the index loading objects from a level_db database
           */
-         virtual void open( const shared_ptr<bts::db::level_map<object_id_type, packed_object>>& db ){}
+         virtual void open( const shared_ptr<bts::db::level_map<object_id_type, vector<char> >>& db ){}
+
+         /** @return the object with id or nullptr if not found */
+         virtual const object*      find( object_id_type id )const = 0;
 
          /**
-          * Creates a new object that is free from the index and does not
-          * claim the next_available_id.  This method is meant to be a helper for
-          * dynamic deserialization of objects.
+          * This version will automatically check for nullptr and throw an exception if the
+          * object ID could not be found.
           */
-         virtual unique_ptr<object> create_free_object()const = 0;
-         virtual const object*      get( object_id_type id )const = 0;
-         virtual int64_t            size()const = 0;
-         virtual void               add( unique_ptr<object> o ) = 0;
-         virtual void               modify( const object* obj, const std::function<void(object*)>& ) = 0;
-         virtual void               replace( unique_ptr<object> o ) = 0;
-
-         /**
-          *   Lambda should have the signature:  void(Object*)
-          */
-         template<typename Object, typename Lambda>
-         void modify( const Object* obj, const Lambda& l ) {
-            modify( static_cast<const object*>(obj), std::function<void(object*)>( [&]( object* o ){ l( static_cast<Object*>(o) ); } ) );
+         const object&              get( object_id_type id )const
+         {
+            auto maybe_found = find( id );
+            FC_ASSERT( maybe_found != nullptr, "Unable to find Object", ("id",id) );
+            return *maybe_found;
          }
 
-         virtual void               inspect_all_objects(std::function<void(const object*)> inspector) = 0;
+         virtual void               modify( const object& obj, const std::function<void(object&)>& ) = 0;
+         virtual void               remove( const object& obj ) = 0;
 
-         virtual void               remove( object_id_type id ) = 0;
+         /**
+          *   When forming your lambda to modify obj, it is natural to have Object& be the signature, but
+          *   that is not compatible with the type erasue required by the virtual method.  This method
+          *   provides a helper to wrap the lambda in a form compatible with the virtual modify call.
+          *   @note Lambda should have the signature:  void(Object&)
+          */
+         template<typename Object, typename Lambda>
+         void modify( const Object& obj, const Lambda& l ) {
+            modify( static_cast<const object&>(obj), std::function<void(object&)>( [&]( object& o ){ l( static_cast<Object&>(o) ); } ) );
+         }
 
+         virtual void               inspect_all_objects(std::function<void(const object&)> inspector) = 0;
          virtual void               add_observer( const shared_ptr<index_observer>& ) = 0;
+
    };
 
+   /**
+    *   Defines the common implementation 
+    */
    class base_primary_index
    {
       public:
-         base_primary_index( database* db ):_db(db){}
-         void save_undo( const object* obj );
+         base_primary_index( database& db ):_db(db){}
 
-         void on_add( const object* obj );
-         void on_remove( object_id_type id );
-         void on_modify( object_id_type id, const object* obj );
+         /** called just before obj is modified */
+         void save_undo( const object& obj );
+
+         /** called just after the object is added */ 
+         void on_add( const object& obj );
+
+         /** called just before obj is removed */
+         void on_remove( const object& obj );
+
+         /** called just after obj is modified */
+         void on_modify( const object& obj );
 
       protected:
          vector< shared_ptr<index_observer> > _observers;
 
       private:
-         database* _db;
+         database& _db;
    };
 
+   /**
+    * @class primary_index 
+    * @brief  Wraps a derived index to intercept calls to create, modify, and remove so that
+    *  callbacks may be fired and undo state saved.
+    *
+    *  @see http://en.wikipedia.org/wiki/Curiously_recurring_template_pattern
+    */
    template<typename DerivedIndex>
    class primary_index  : public DerivedIndex, public base_primary_index
    {
       public:
          typedef typename DerivedIndex::object_type ObjectType;
 
-         primary_index( database* db )
-         :base_primary_index(db){}
+         primary_index( database& db )
+         :base_primary_index(db),_next_id(ObjectType::space_id,ObjectType::type_id,0) {}
 
          virtual uint8_t object_space_id()const override
          { return ObjectType::space_id; }
@@ -126,45 +151,38 @@ namespace bts { namespace chain {
          virtual uint8_t object_type_id()const override
          { return ObjectType::type_id; }
 
-         virtual void open( const shared_ptr<bts::db::level_map<object_id_type, packed_object>>& db )
+         virtual object_id_type get_next_id()const               { return _next_id;    }
+         virtual void           use_next_id()                    { ++_next_id.number;  }
+         virtual void           set_next_id( object_id_type id ) { _next_id = id;      }
+
+         virtual const object&  load( const std::vector<char>& data )
+         {
+            return DerivedIndex::insert( fc::raw::unpack<ObjectType>( data ) );
+         }
+
+         virtual void open( const shared_ptr<bts::db::level_map<object_id_type, vector<char> >>& db )
          {
             auto first = object_id_type( DerivedIndex::object_type::space_id, DerivedIndex::object_type::type_id, 0 );
             auto last = object_id_type( DerivedIndex::object_type::space_id, DerivedIndex::object_type::type_id+1, 0 );
             auto itr = db->lower_bound( first );
             while( itr.valid() && itr.key() < last )
             {
-               unique_ptr<ObjectType> next_obj( new ObjectType() );
-               unpack( next_obj.get(), itr.value() );
-               add( std::move( next_obj ) );
+               load( itr.value() );
                ++itr;
             }
          }
 
-         virtual void  add( unique_ptr<object> o ) override
+         virtual void  remove( const object& obj ) override
          {
-            assert(o);
-            object* obj = o.get();
-            DerivedIndex::add(std::move(o));
-            on_add(obj);
+            on_remove(obj);
+            DerivedIndex::remove(obj);
          }
 
-         virtual void  remove( object_id_type id ) override
+         virtual void modify( const object& obj, const std::function<void(object&)>& m )override
          {
-            DerivedIndex::remove(id);
-            on_remove(id);
-         }
-
-         virtual void modify( const object* obj, const std::function<void(object*)>& m )override
-         {
-            assert( obj != nullptr );
             save_undo( obj );
             DerivedIndex::modify( obj, m );
-            on_modify( obj->id, obj );
-         }
-
-         virtual void replace( unique_ptr<object> obj ) override
-         {
-            DerivedIndex::replace( std::move(obj) );
+            on_modify( obj );
          }
 
          virtual void add_observer( const shared_ptr<index_observer>& o ) override
@@ -172,33 +190,10 @@ namespace bts { namespace chain {
             _observers.emplace_back( o );
          }
 
-         /** does not add it to the index */
-         virtual unique_ptr<object> create_free_object()const override
-         {
-            return unique_ptr<ObjectType>( new ObjectType() );
-         }
-
-         virtual packed_object pack( const object* p )const override
-         {
-            const auto& cast = *((const ObjectType*)p);
-            return packed_object(cast);
-         }
-
-         virtual void unpack( object* p, const packed_object& obj )const override
-         {
-            auto& cast = *((ObjectType*)p);
-            obj.unpack(cast);
-         }
-
-         virtual variant to_variant( const object* p )const override
-         {
-            const auto& cast = *((const ObjectType*)p);
-            return fc::variant(cast);
-         }
-
+      private:
+         object_id_type _next_id;
    };
 
 
 } }
-FC_REFLECT_DERIVED( bts::chain::index_meta_object, (bts::chain::object), (next_object_instance) );
 

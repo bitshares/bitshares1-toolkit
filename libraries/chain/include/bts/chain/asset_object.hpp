@@ -1,11 +1,13 @@
 #pragma once
 #include <bts/chain/object.hpp>
 #include <bts/chain/asset.hpp>
+#include <bts/chain/generic_index.hpp>
+
 
 namespace bts { namespace chain { 
    class account_object;
 
-   class asset_dynamic_data_object : public object
+   class asset_dynamic_data_object : public abstract_object<asset_dynamic_data_object>
    {
       public:
          static const uint8_t space_id = implementation_ids;
@@ -16,7 +18,7 @@ namespace bts { namespace chain {
          share_type fee_pool;         // in core asset
    };
 
-   class asset_object : public annotated_object
+   class asset_object : public annotated_object<asset_object>
    {
       public:
          static const uint8_t space_id = protocol_ids;
@@ -47,12 +49,24 @@ namespace bts { namespace chain {
          // meta_info -> uint8_t                 precision_digits  = 0; // 0 to 10
          //   name, description, and precission 
    };
+
+   struct by_symbol{};
+   typedef multi_index_container<
+      asset_object,
+      indexed_by<
+         hashed_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
+         hashed_unique< tag<by_symbol>, member<asset_object, string, &asset_object::symbol> >
+      >
+   > asset_object_multi_index_type;
+
+   typedef generic_index<asset_object, asset_object_multi_index_type> asset_index;
+
 } } // bts::chain
 FC_REFLECT_DERIVED( bts::chain::asset_dynamic_data_object, (bts::chain::object),
                     (accumulated_fees)(fee_pool) )
 
 FC_REFLECT_DERIVED( bts::chain::asset_object, 
-                    (bts::chain::annotated_object), 
+                    (bts::chain::annotated_object<bts::chain::asset_object>), 
                     (symbol)
                     (issuer)
                     (max_supply)

@@ -17,15 +17,11 @@ namespace bts { namespace chain {
    share_type generic_evaluator::pay_fee( account_id_type account_id, asset fee )
    { try {
       FC_ASSERT( fee.amount >= 0 );
-      fee_paying_account = account_id(db());
-      FC_ASSERT( fee_paying_account );
-
+      fee_paying_account = &account_id(db());
       FC_ASSERT( verify_authority( fee_paying_account, authority::active ) );
 
-      fee_asset = fee.asset_id(db());
-      FC_ASSERT( fee_asset );
-      fee_asset_dyn_data = fee_asset->dynamic_asset_data_id(db());
-      assert( fee_asset_dyn_data );
+      fee_asset = &fee.asset_id(db());
+      fee_asset_dyn_data = &fee_asset->dynamic_asset_data_id(db());
       FC_ASSERT( get_balance( fee_paying_account, fee_asset ) >= fee );
 
       asset fee_from_pool = fee;
@@ -63,9 +59,8 @@ namespace bts { namespace chain {
     */
    asset  generic_evaluator::get_balance( const account_object* for_account, const asset_object* for_asset )const
    {
-      auto current_balance_obj = for_account->balances(db());
-      assert(current_balance_obj);
-      auto current_balance = current_balance_obj->get_balance( for_asset->id );
+      const auto& current_balance_obj = for_account->balances(db());
+      auto current_balance = current_balance_obj.get_balance( for_asset->id );
       auto itr = delta_balance.find( for_account );
       if( itr == delta_balance.end() ) return current_balance;
       auto aitr = itr->second.find( for_asset );
@@ -77,18 +72,18 @@ namespace bts { namespace chain {
    {
       for( const auto& acnt : delta_balance )
       {
-         auto balances = acnt.first->balances(db());
+         const auto& balances = acnt.first->balances(db());
          db().modify( 
-             balances, [&]( account_balance_object* bal ){
+             balances, [&]( account_balance_object& bal ){
                 for( const auto& delta : acnt.second )
                 {
                    if( delta.second > 0 )
-                      bal->add_balance( asset(delta.second,delta.first->id) );
+                      bal.add_balance( asset(delta.second,delta.first->id) );
                    else if( delta.second < 0 )
-                      bal->sub_balance( asset(-delta.second,delta.first->id) );
+                      bal.sub_balance( asset(-delta.second,delta.first->id) );
                 }
          });
-         auto itr = acnt.second.find( asset_id_type()(db()) );
+         auto itr = acnt.second.find( &db().get_core_asset() );
          if( itr != acnt.second.end() )
          {
             adjust_votes( acnt.first->delegate_votes, itr->second );
@@ -101,8 +96,8 @@ namespace bts { namespace chain {
       database& d = db();
       for( auto id : delegate_ids )
       {
-         d.modify( id(d)->vote(d), [&]( delegate_vote_object* v ){
-                   v->total_votes += delta;
+         d.modify( id(d).vote(d), [&]( delegate_vote_object& v ){
+                   v.total_votes += delta;
             });
       }
    }
@@ -111,10 +106,10 @@ namespace bts { namespace chain {
    {
       for( const auto& fee : fees_paid )
       {
-         auto dyn_asst_data = fee.first->dynamic_asset_data_id(db());
-         db().modify( dyn_asst_data, [&]( asset_dynamic_data_object* dyn ){
-                          dyn->fee_pool         -= fee.second.from_pool;  
-                          dyn->accumulated_fees += fee.second.to_issuer;
+         const auto& dyn_asst_data = fee.first->dynamic_asset_data_id(db());
+         db().modify( dyn_asst_data, [&]( asset_dynamic_data_object& dyn ){
+                          dyn.fee_pool         -= fee.second.from_pool;  
+                          dyn.accumulated_fees += fee.second.to_issuer;
                      });
       }
    }
@@ -123,7 +118,8 @@ namespace bts { namespace chain {
       if( rel_id.space() == relative_protocol_ids )
       {
          FC_ASSERT( rel_id.instance() < trx_state->operation_results.size() );
-         FC_ASSERT( db().get_object( trx_state->operation_results[rel_id.instance()] ) );
+         // fetch the object just to make sure it exists.
+         db().get_object( trx_state->operation_results[rel_id.instance()] );
          return trx_state->operation_results[rel_id.instance()];
       }
       return rel_id;

@@ -14,7 +14,7 @@ namespace bts { namespace chain {
     *  limited basis.  Active delegates are updated once per round and the
     *  other properties are updated once per day.
     */
-   class global_property_object : public object
+   class global_property_object : public abstract_object<global_property_object>
    {
       public:
          static const uint8_t space_id = implementation_ids;
@@ -39,7 +39,7 @@ namespace bts { namespace chain {
     *  limited basis.  Active delegates are updated once per round and the
     *  other properties are updated once per day.
     */
-   class dynamic_global_property_object : public object
+   class dynamic_global_property_object : public abstract_object<dynamic_global_property_object>
    {
       public:
          static const uint8_t space_id = implementation_ids;

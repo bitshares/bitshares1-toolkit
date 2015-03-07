@@ -11,9 +11,7 @@ add_library( bts_chain
              delegate_evaluator.cpp
              transfer_evaluator.cpp
              asset_evaluator.cpp
-             account_index.cpp
              account_object.cpp
-             asset_index.cpp
              key_object.cpp
              index.cpp
              types.cpp
@@ -23,7 +21,6 @@ add_library( bts_chain
              transaction.cpp
              time.cpp
              asset.cpp
-             transaction_object.cpp
            )
 
 target_link_libraries( bts_chain fc bts_db leveldb )

@@ -4,42 +4,6 @@
 
 namespace bts { namespace chain {
 
-
-
-   struct packed_object
-   {
-      vector<char>                     data;
-      bool is_null()const { return data.size() < 8; }
-      
-      packed_object(){}
-      packed_object( packed_object&& ) = default;
-      packed_object( const packed_object& ) = default;
-      packed_object& operator=(const packed_object&) = default;
-      packed_object& operator=(packed_object&&) = default;
-
-      object_id_type id()const 
-      {
-         if( data.size() == 0 ) return object_id_type();
-         return fc::raw::unpack<object_id_type>(data);
-      }
-
-      template<typename T>
-      packed_object( const T& o )
-      {
-         data = fc::raw::pack( o );
-      }
-
-      template<typename T>
-      void unpack( T& o )const
-      { 
-         auto space_id = T::space_id;
-         try {
-         fc::raw::unpack( data, o ); 
-         FC_ASSERT( T::space_id == id().space() ); 
-         FC_ASSERT( T::type_id  == id().type()  ); 
-      } FC_CAPTURE_AND_RETHROW( (space_id)(id())(fc::get_typename<T>::name()) ) }
-   };
-
    /**
     *  @brief base for all database objects
     *
@@ -86,9 +50,32 @@ namespace bts { namespace chain {
          // serialized
          object_id_type          id;
 
+         /// these methods are implemented for derived classes by inheriting abstract_object<DerivedClass>
+         virtual unique_ptr<object> clone()const = 0;
+         virtual void               move_from( object& obj ) = 0;
+         virtual variant            to_variant()const  = 0;
+         virtual vector<char>       pack()const = 0;
    };
 
-   class annotated_object : public object
+   template<typename DerivedClass>
+   class abstract_object : public object
+   {
+      public:
+         virtual unique_ptr<object> clone()const 
+         { 
+            return unique_ptr<object>(new DerivedClass( *static_cast<const DerivedClass*>(this) )); 
+         }
+
+         virtual void    move_from( object& obj ) 
+         {
+            static_cast<DerivedClass&>(*this) = std::move( static_cast<DerivedClass&>(obj) );
+         }
+         virtual variant to_variant()const { return variant( static_cast<const DerivedClass&>(*this) ); }
+         virtual vector<char> pack()const  { return fc::raw::pack( static_cast<const DerivedClass&>(*this) ); }
+   };
+
+   template<typename DerivedClass>
+   class annotated_object : public abstract_object<DerivedClass> 
    {
       public:
          /**
@@ -100,7 +87,7 @@ namespace bts { namespace chain {
 
 } }
 
-
-FC_REFLECT( bts::chain::packed_object, (data) )
 FC_REFLECT( bts::chain::object, (id) )
-FC_REFLECT_DERIVED( bts::chain::annotated_object, (bts::chain::object), (annotations) )
+FC_REFLECT_DERIVED_TEMPLATE( (typename Derived), bts::chain::annotated_object<Derived>, (bts::chain::object), (annotations) )
+
+

@@ -4,7 +4,7 @@
 namespace bts { namespace chain {
    class account_object;
 
-   class delegate_object : public object
+   class delegate_object : public abstract_object<delegate_object> 
    {
       public:
          static const uint8_t space_id = protocol_ids;
@@ -39,7 +39,7 @@ namespace bts { namespace chain {
     *  has less than 32 bytes of backup state or at most 7 KB.  The penalty is
     *  a double-lookup of the object on every vote...
     */
-   class delegate_vote_object : public object
+   class delegate_vote_object : public abstract_object<delegate_vote_object>
    {
       public:
          static const uint8_t space_id = implementation_ids;

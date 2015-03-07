@@ -29,27 +29,9 @@ namespace bts { namespace chain {
          void    enable();
 
          session start_undo_session();
-         void create( const object* obj );
-
-         template<typename T>
-         void modify( const T* obj )
-         {
-            if( _disabled ) return;
-            auto& state = _stack.back();
-            auto itr =  state.old_values.find(obj->id);
-            if( itr != state.old_values.end() ) return;
-            state.old_values[obj->id].reset( new T(*obj) );
-         }
-
-         template<typename T>
-         void remove( const T* obj )
-         {
-            if( _disabled ) return;
-            auto& state = _stack.back();
-            auto itr =  state.removed.find(obj->id);
-            if( itr != state.removed.end() ) return;
-            state.removed[obj->id].reset( new T(*obj) );
-         }
+         void on_create( const object& obj );
+         void on_modify( const object& obj );
+         void on_remove( const object& obj );
 
       private:
          void undo();
@@ -58,6 +40,7 @@ namespace bts { namespace chain {
          struct undo_state
          {
             unordered_map<object_id_type, unique_ptr<object> > old_values;
+            unordered_map<object_id_type, uint64_t>            old_index_next_ids;
             set<object_id_type>                                new_ids;
             unordered_map<object_id_type, unique_ptr<object> > removed;
          };
