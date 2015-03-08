@@ -1,6 +1,7 @@
 #include <bts/chain/database.hpp>
 #include <bts/chain/operations.hpp>
 #include <bts/chain/key_object.hpp>
+#include <bts/chain/account_object.hpp>
 #include <bts/chain/simple_index.hpp>
 
 #include <fc/crypto/digest.hpp>
@@ -31,8 +32,8 @@ BOOST_AUTO_TEST_CASE( share_supply )
       idump((core_asset_data.accumulated_fees));
 
       simple_index<account_balance_object>& balance_index = dynamic_cast<simple_index<account_balance_object>&>(db.get_index<account_balance_object>());
-      share_type total_balances = core_asset_data->accumulated_fees;
-      for( const account_balance_object* a : balance_index )
+      share_type total_balances = core_asset_data.accumulated_fees;
+      for( const account_balance_object& a : balance_index )
       {
          total_balances += a.get_balance(asset_id_type()).amount;
       }

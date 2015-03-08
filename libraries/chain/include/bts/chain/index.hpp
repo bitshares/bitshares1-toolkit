@@ -171,6 +171,12 @@ namespace bts { namespace chain {
                ++itr;
             }
          }
+         virtual const object&  create(const std::function<void(object&)>& constructor )
+         {
+            const auto& result = DerivedIndex::create( constructor );
+            on_add( result );
+            return result;
+         }
 
          virtual void  remove( const object& obj ) override
          {

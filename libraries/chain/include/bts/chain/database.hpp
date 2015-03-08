@@ -79,6 +79,18 @@ namespace bts { namespace chain {
             } ));
          }
 
+         template<typename IndexType>
+         IndexType&    get_index_type() {  
+            static_assert( std::is_base_of<index,IndexType>::value, "Type must be an index type" );
+            return static_cast<IndexType&>( get_index( IndexType::object_type::space_id, IndexType::object_type::type_id ) ); 
+         }
+
+         template<typename IndexType>
+         const IndexType& get_index_type()const {  
+            static_assert( std::is_base_of<index,IndexType>::value, "Type must be an index type" );
+            return static_cast<const IndexType&>( get_index( IndexType::object_type::space_id, IndexType::object_type::type_id ) ); 
+         }
+
          index&        get_index(uint8_t space_id, uint8_t type_id);
          const index&  get_index(uint8_t space_id, uint8_t type_id)const;
          index&        get_index(object_id_type id)      { return get_index(id.space(),id.type()); }
@@ -104,7 +116,7 @@ namespace bts { namespace chain {
          const T* find( object_id_type id )const
          {
             const object* obj = find_object( id );
-            assert( nullptr != dynamic_cast<const T*>(obj) );
+            assert(  !obj || nullptr != dynamic_cast<const T*>(obj) );
             return static_cast<const T*>(obj);
          }
 
@@ -146,10 +158,15 @@ namespace bts { namespace chain {
                operation::tag<typename EvaluatorType::operation_class_type>::value].reset( new op_evaluator_impl<EvaluatorType>() );
          }
 
+         void pop_block();
+
+         /** public for testing purposes only... should be private in practice. */
+         undo_database                          _undo_db;
    private:
+         optional<undo_database::session>       _pending_block_session;
          friend class base_primary_index;
          void save_undo( const object& obj );
-         void pop_block();
+         void save_undo_add( const object& obj );
 
          vector< unique_ptr<op_evaluator> >     _operation_evaluators;
 
@@ -168,7 +185,6 @@ namespace bts { namespace chain {
          vector< vector< unique_ptr<index> > >  _index;
          signed_block                           _pending_block;
 
-         undo_database                          _undo_db;
          fork_database                          _fork_db;
          /**
           *  Note: we can probably store blocks by block num rather than

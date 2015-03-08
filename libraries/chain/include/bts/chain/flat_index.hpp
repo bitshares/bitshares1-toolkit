@@ -38,8 +38,7 @@ namespace bts { namespace chain {
          {
             auto instance = obj.id.instance();
             assert( nullptr != dynamic_cast<T*>(&obj) );
-            if( _objects.size() < instance ) _objects.resize( instance+1 );
-            FC_ASSERT( _objects[instance].id.space() != 0 );
+            if( _objects.size() <= instance ) _objects.resize( instance+1 );
             _objects[instance] = std::move( static_cast<T&>(obj) );
             return _objects[instance];
          }

@@ -19,6 +19,7 @@ namespace bts { namespace chain {
 
          virtual const object&  create( const std::function<void(object&)>& constructor ) override
          {
+            // wdump( (fc::get_typename<T>::name()) );
              auto id = get_next_id();
              auto instance = id.instance();
              if( instance >= _objects.size() ) _objects.resize( instance + 1 );
@@ -39,8 +40,8 @@ namespace bts { namespace chain {
          {
             auto instance = obj.id.instance();
             assert( nullptr != dynamic_cast<T*>(&obj) );
+            if( _objects.size() <= instance ) _objects.resize( instance+1 );
             assert( !_objects[instance] );
-            if( _objects.size() < instance ) _objects.resize( instance+1 );
             _objects[instance].reset( new T( std::move( static_cast<T&>(obj) ) ) );
             return *_objects[instance];
          }
@@ -80,7 +81,7 @@ namespace bts { namespace chain {
                const_iterator( const vector<unique_ptr<object>>::const_iterator& a ):_itr(a){}
                friend bool operator==( const const_iterator& a, const const_iterator& b ) { return a._itr == b._itr; }
                friend bool operator!=( const const_iterator& a, const const_iterator& b ) { return a._itr != b._itr; }
-               const T* operator*()const { return static_cast<const T*>(_itr->get()); }
+               const T& operator*()const { return static_cast<const T&>(*_itr->get()); }
                const_iterator& operator++(int){ ++_itr; return *this; }
                const_iterator& operator++()   { ++_itr; return *this; }
             private:

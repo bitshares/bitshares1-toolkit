@@ -6,7 +6,10 @@ namespace bts { namespace chain {
    { _db.save_undo( obj ); }
 
    void base_primary_index::on_add( const object& obj )
-   {for( auto ob : _observers ) ob->on_add( obj ); }
+   {
+      _db.save_undo_add( obj );
+      for( auto ob : _observers ) ob->on_add( obj ); 
+   }
 
    void base_primary_index::on_remove( const object& obj )
    {for( auto ob : _observers ) ob->on_remove( obj ); }

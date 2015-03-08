@@ -15,8 +15,7 @@ struct database_fixture {
    database_fixture()
    {
       db.init_genesis();
-      BOOST_REQUIRE(genesis_key(db));
-      db.push_undo_state();
+      genesis_key(db); // attempt to deref
    }
    ~database_fixture(){}
 

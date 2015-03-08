@@ -1,7 +1,5 @@
 #include <bts/chain/database.hpp>
 #include <bts/chain/operations.hpp>
-#include <bts/chain/account_index.hpp>
-#include <bts/chain/asset_index.hpp>
 #include <bts/chain/key_object.hpp>
 
 #include <fc/crypto/digest.hpp>

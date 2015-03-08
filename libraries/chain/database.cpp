@@ -39,6 +39,7 @@ restore_on_scope_exit<T> make_restore_on_exit( T& v ) { return restore_on_scope_
 database::database()
 :_undo_db(*this)
 {
+   _undo_db.enable();
    _operation_evaluators.resize(255);
    register_evaluator<key_create_evaluator>();
    register_evaluator<account_create_evaluator>();
@@ -576,12 +577,12 @@ void database::update_global_dynamic_data( const signed_block& b )
 
 void database::pop_block()
 { try {
-   pop_pending_block();
+   _pending_block_session.reset();
    _block_id_to_block.remove( _pending_block.previous );
+   _undo_db.pop_commit();
    _pending_block.previous  = head_block_id();
    _pending_block.timestamp = head_block_time();
    _fork_db.pop_block();
-   push_pending_block();
 } FC_CAPTURE_AND_RETHROW() }
 
 /**
@@ -590,6 +591,7 @@ void database::pop_block()
  */
 void database::push_block( const signed_block& new_block, uint32_t skip )
 { try {
+
    wdump( (new_block.id())(new_block.previous) );
    if( !(skip&skip_fork_db) )
    {
@@ -651,24 +653,13 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
       }
    }
 
-   /*
-   pop_pending_block();
-   { // logically connect pop/push of pending block
-      if( !(skip&skip_undo_block) )push_undo_state();
-      optional<fc::exception> except;
-      try {
-        apply_block( new_block, skip );
-        _block_id_to_block.store( new_block.id(), new_block );
-      }
-      catch ( const fc::exception& e ) { except = e; }
-      if( except )
-      {
-         if( !(skip&skip_undo_block) ) undo();
-         throw *except;
-      }
+   _pending_block_session.reset();
+   { 
+      auto session = _undo_db.start_undo_session();
+      apply_block( new_block, skip );
+      _block_id_to_block.store( new_block.id(), new_block );
+      session.commit();
    }
-   push_pending_block();
-   */
 } FC_CAPTURE_AND_RETHROW( (new_block) ) }
 
 /**
@@ -676,18 +667,18 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
  */
 bool database::push_transaction( const signed_transaction& trx, uint32_t skip )
 {
-//   if( !(skip&skip_undo_transaction) ) push_undo_state(); // trx undo
+   // if not pending block session, create pending block session
+   if( !_pending_block_session ) _pending_block_session = _undo_db.start_undo_session();
    optional<fc::exception> except;
    try {
+      auto session = _undo_db.start_undo_session();
       apply_transaction( trx, skip );
       _pending_block.transactions.push_back(trx);
-//      if( !(skip&skip_undo_transaction) ) pop_undo_state(); // everything was OK.
+      session.merge(); // merge into the pending block session
       return true;
    } catch ( const fc::exception& e ) { except = e; }
    if( except )
    {
-      // wlog( "${e}", ("e",except->to_detail_string() ) );
-//      if( !(skip&skip_undo_transaction) ) undo();
       throw *except;
    }
    return false;
@@ -774,6 +765,15 @@ optional<signed_block> database::fetch_block_by_number( uint32_t num )const
          return itr.value();
    }
    return optional<signed_block>();
+}
+void database::save_undo( const object& obj )
+{
+   _undo_db.on_modify( obj );
+}
+
+void database::save_undo_add( const object& obj )
+{
+   _undo_db.on_create( obj );
 }
 
 } } // namespace bts::chain
