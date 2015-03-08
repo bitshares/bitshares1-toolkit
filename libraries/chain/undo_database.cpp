@@ -59,7 +59,7 @@ void undo_database::undo()
 
    for( auto& item : state.old_index_next_ids )
    {
-      wdump( (item) );
+ //     wdump( (item) );
       _db.get_index( item.first.space(), item.first.type() ).set_next_id( item.second );
    }
 
@@ -105,16 +105,27 @@ void undo_database::pop_commit()
       auto& state = _stack.back();
 
       for( auto& item : state.old_values )
+      {
+  //       wdump( (item.second->id) );
          _db.modify( _db.get_object( item.second->id ), [&]( object& obj ){ obj.move_from( *item.second ); } );
+      }
       
       for( auto ritr = state.new_ids.rbegin(); ritr != state.new_ids.rend(); ++ritr  )
+      {
+ //        wdump( (*ritr) );
          _db.remove( _db.get_object(*ritr) );
+      }
 
       for( auto& item : state.old_index_next_ids )
+      {
+//         wdump( (item) );
          _db.get_index( item.first.space(), item.first.type() ).set_next_id( item.second );
+      }
 
       for( auto& item : state.removed )
          _db.insert( std::move(*item.second) );
+      
+      _stack.pop_back();
    } 
    catch ( const fc::exception& e )
    {

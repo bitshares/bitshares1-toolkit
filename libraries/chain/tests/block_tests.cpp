@@ -52,7 +52,6 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
 
 BOOST_AUTO_TEST_CASE( undo_block )
 {
-   return;
    try {
       fc::temp_directory data_dir;
       {

@@ -93,7 +93,7 @@ const index& database::get_index(uint8_t space_id, uint8_t type_id)const
 index& database::get_index(uint8_t space_id, uint8_t type_id)
 {
    FC_ASSERT( _index.size() > space_id, "", ("space_id",space_id)("type_id",type_id)("index.size",_index.size()) );
-   FC_ASSERT( _index[space_id].size() > type_id );
+   FC_ASSERT( _index[space_id].size() > type_id , "", ("space_id",space_id)("type_id",type_id)("index[space_id].size",_index[space_id].size()) );
    const auto& idx = _index[space_id][type_id];
    FC_ASSERT( idx, "", ("space",space_id)("type",type_id) );
    return *idx;
@@ -109,12 +109,17 @@ void database::flush()
    if( !_object_id_to_object->is_open() )
       return;
 
+   vector<object_id_type> next_ids;
    for( auto& space : _index )
       for( const unique_ptr<index>& type_index : space )
          if( type_index )
+         {
             type_index->inspect_all_objects([&] (const object& obj) {
                _object_id_to_object->store(obj.id, obj.pack());
             });
+            next_ids.push_back( type_index->get_next_id() );
+         }
+   _object_id_to_object->store( object_id_type(), fc::raw::pack(next_ids) );
 }
 
 void database::wipe(bool include_blocks)
@@ -142,6 +147,15 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
             type_index->open( _object_id_to_object );
          }
       }
+   }
+   try {
+   auto next_ids = fc::raw::unpack<vector<object_id_type>>( _object_id_to_object->fetch( object_id_type() ) );
+   for( auto id : next_ids )
+      get_index( id ).set_next_id( id );
+   } 
+   catch ( const fc::exception& e )
+   {
+      wlog( "unable to fetch next ids, must be new database" );
    }
 
    if( !find(global_property_id_type()) )

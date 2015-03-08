@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE( transfer )
 BOOST_AUTO_TEST_CASE( create_asset )
 {
    try {
-      asset_id_type test_asset_id; // TODO = db.get_asset_index().get_next_available_id();
+      asset_id_type test_asset_id = db.get_index<asset_object>().get_next_id(); 
       asset_create_operation creator;
       creator.issuer = account_id_type();
       creator.fee = asset();
@@ -172,8 +172,7 @@ BOOST_AUTO_TEST_CASE( create_asset )
       BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
       trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
       trx.operations.back().get<asset_create_operation>().core_exchange_rate = price({asset(1),asset(1)});
-      // TODO: replace this line
-      //trx.operations.back().get<asset_create_operation>().short_backing_asset = db.get_asset_index().get_next_available_id();
+      trx.operations.back().get<asset_create_operation>().short_backing_asset = db.get_index<asset_object>().get_next_id();
       ilog("Test self-backing asset");
       BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
       trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
