@@ -43,9 +43,6 @@ namespace bts { namespace chain {
          static const uint8_t space_id = protocol_ids;
          static const uint8_t type_id  = base_object_type;
 
-         /** return object_id_type() if no anotation is found for id_space */
-         object_id_type          get_annotation( id_space_type annotation_id_space )const;
-         void                    set_annotation( object_id_type id );
 
          // serialized
          object_id_type          id;
@@ -57,6 +54,13 @@ namespace bts { namespace chain {
          virtual vector<char>       pack()const = 0;
    };
 
+   /**
+    * @class abstract_object
+    * @brief   Use the Curiously Recurring Template Pattern to automatically add the ability to
+    *  clone, serialize, and move objects polymorphically. 
+    *
+    *  http://en.wikipedia.org/wiki/Curiously_recurring_template_pattern
+    */
    template<typename DerivedClass>
    class abstract_object : public object
    {
@@ -74,10 +78,26 @@ namespace bts { namespace chain {
          virtual vector<char> pack()const  { return fc::raw::pack( static_cast<const DerivedClass&>(*this) ); }
    };
 
+   /**
+    *  @class annotated_object
+    *  @brief An object that is easily extended by providing pointers to other objects, one for each space.
+    */
    template<typename DerivedClass>
    class annotated_object : public abstract_object<DerivedClass> 
    {
       public:
+         /** return object_id_type() if no anotation is found for id_space */
+         object_id_type          get_annotation( id_space_type annotation_id_space )const
+         {
+            auto itr = annotations.find(annotation_id_space);
+            if( itr != annotations.end() ) return itr->second;
+            return object_id_type();
+         }
+         void                    set_annotation( object_id_type id )
+         {
+            annotations[id.space()] = id;
+         }
+
          /**
           *  Annotations should be accessed via get_annotation and set_annotation so
           *  that they can be maintained in sorted order.
