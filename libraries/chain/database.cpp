@@ -611,8 +611,7 @@ void database::pop_block()
  */
 void database::push_block( const signed_block& new_block, uint32_t skip )
 { try {
-
-   wdump( (new_block.id())(new_block.previous) );
+   // wdump( (new_block.id())(new_block.previous) );
    if( !(skip&skip_fork_db) )
    {
       auto head = _fork_db.push_block( new_block );
