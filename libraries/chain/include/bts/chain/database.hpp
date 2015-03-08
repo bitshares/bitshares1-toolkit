@@ -102,7 +102,9 @@ namespace bts { namespace chain {
          const object* find_object( object_id_type id )const;
 
          template<typename T, typename Lambda>
-         void modify( const T& obj, const Lambda& m ) { get_index<T>().modify( obj, m ); }
+         void modify( const T& obj, const Lambda& m ) { 
+            get_index(obj.id).modify(obj,m);
+         }
 
 
          template<typename T>

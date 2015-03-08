@@ -163,6 +163,7 @@ namespace bts { namespace chain {
          virtual void open( const shared_ptr<bts::db::level_map<object_id_type, vector<char> >>& db )
          {
             auto first = object_id_type( DerivedIndex::object_type::space_id, DerivedIndex::object_type::type_id, 0 );
+            wlog( "open index ${s}.${t}", ("s",first.space())("t",first.type() ) );
             auto last = object_id_type( DerivedIndex::object_type::space_id, DerivedIndex::object_type::type_id+1, 0 );
             auto itr = db->lower_bound( first );
             while( itr.valid() && itr.key() < last )

@@ -48,13 +48,20 @@ void undo_database::undo()
 
    auto& state = _stack.back();
    for( auto& item : state.old_values )
+   {
       _db.modify( _db.get_object( item.second->id ), [&]( object& obj ){ obj.move_from( *item.second ); } );
+   }
    
    for( auto ritr = state.new_ids.rbegin(); ritr != state.new_ids.rend(); ++ritr  )
+   {
       _db.remove( _db.get_object(*ritr) );
+   }
 
    for( auto& item : state.old_index_next_ids )
+   {
+      wdump( (item) );
       _db.get_index( item.first.space(), item.first.type() ).set_next_id( item.second );
+   }
 
    for( auto& item : state.removed )
       _db.insert( std::move(*item.second) );

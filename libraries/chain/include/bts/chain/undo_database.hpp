@@ -29,10 +29,8 @@ namespace bts { namespace chain {
                   } 
                   catch ( const fc::exception& e )
                   {
-                     if( std::uncaught_exception() )
-                        throw;
-                     else
-                        elog( "${e}", ("e",e.to_detail_string() ) );
+                     elog( "${e}", ("e",e.to_detail_string() ) );
+                     throw; // maybe crash..
                   }
                }
                void commit() { _apply_undo = false; _db.commit();  }
@@ -52,7 +50,7 @@ namespace bts { namespace chain {
                friend undo_database;
                session(undo_database& db): _db(db) {}
                undo_database& _db;
-               bool _apply_undo = !_db._disabled;
+               bool _apply_undo = true;
          };
 
          void    disable();

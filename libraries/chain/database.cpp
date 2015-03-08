@@ -39,6 +39,8 @@ restore_on_scope_exit<T> make_restore_on_exit( T& v ) { return restore_on_scope_
 database::database()
 :_undo_db(*this)
 {
+   _index.resize(255);
+
    _undo_db.enable();
    _operation_evaluators.resize(255);
    register_evaluator<key_create_evaluator>();
@@ -55,10 +57,14 @@ database::database()
    initialize_indexes();
 }
 
-database::~database(){}
+database::~database(){
+   if( _pending_block_session )
+      _pending_block_session->commit();
+}
 
 void database::close()
 {
+   _pending_block_session.reset();
    flush();
 
    if( _block_id_to_block.is_open() )
@@ -79,19 +85,18 @@ const object& database::get_object( object_id_type id )const
 
 const index& database::get_index(uint8_t space_id, uint8_t type_id)const
 {
-   FC_ASSERT( _index.size() > space_id );
-   FC_ASSERT( _index[space_id].size() > type_id );
+   FC_ASSERT( _index.size() > space_id, "", ("space_id",space_id)("type_id",type_id)("index.size",_index.size()) );
    const auto& tmp = _index[space_id][type_id];
    FC_ASSERT( tmp );
    return *tmp;
 }
 index& database::get_index(uint8_t space_id, uint8_t type_id)
 {
-   FC_ASSERT( _index.size() > space_id );
+   FC_ASSERT( _index.size() > space_id, "", ("space_id",space_id)("type_id",type_id)("index.size",_index.size()) );
    FC_ASSERT( _index[space_id].size() > type_id );
-   const auto& tmp = _index[space_id][type_id];
-   FC_ASSERT( tmp );
-   return *tmp;
+   const auto& idx = _index[space_id][type_id];
+   FC_ASSERT( idx, "", ("space",space_id)("type",type_id) );
+   return *idx;
 }
 
 const asset_object& database::get_core_asset() const
@@ -133,6 +138,7 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
       {
          if( type_index )
          {
+            wlog( "open index...." );
             type_index->open( _object_id_to_object );
          }
       }
