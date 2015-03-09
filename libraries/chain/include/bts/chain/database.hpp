@@ -10,16 +10,16 @@
 #include <bts/chain/evaluator.hpp>
 #include <bts/chain/fork_database.hpp>
 #include <bts/chain/undo_database.hpp>
-#include <map>
-#include <boost/rational.hpp>
 
 #include <fc/log/logger.hpp>
+
+#include <map>
 
 namespace bts { namespace chain {
 
    typedef vector<std::pair<fc::static_variant<address, public_key_type>, share_type >> genesis_allocation;
 
-   /** 
+   /**
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
     */
@@ -80,15 +80,15 @@ namespace bts { namespace chain {
          }
 
          template<typename IndexType>
-         IndexType&    get_index_type() {  
+         IndexType&    get_index_type() {
             static_assert( std::is_base_of<index,IndexType>::value, "Type must be an index type" );
-            return static_cast<IndexType&>( get_index( IndexType::object_type::space_id, IndexType::object_type::type_id ) ); 
+            return static_cast<IndexType&>( get_index( IndexType::object_type::space_id, IndexType::object_type::type_id ) );
          }
 
          template<typename IndexType>
-         const IndexType& get_index_type()const {  
+         const IndexType& get_index_type()const {
             static_assert( std::is_base_of<index,IndexType>::value, "Type must be an index type" );
-            return static_cast<const IndexType&>( get_index( IndexType::object_type::space_id, IndexType::object_type::type_id ) ); 
+            return static_cast<const IndexType&>( get_index( IndexType::object_type::space_id, IndexType::object_type::type_id ) );
          }
 
          index&        get_index(uint8_t space_id, uint8_t type_id);
@@ -102,7 +102,7 @@ namespace bts { namespace chain {
          const object* find_object( object_id_type id )const;
 
          template<typename T, typename Lambda>
-         void modify( const T& obj, const Lambda& m ) { 
+         void modify( const T& obj, const Lambda& m ) {
             get_index(obj.id).modify(obj,m);
          }
 
