@@ -299,6 +299,7 @@ namespace bts { namespace chain {
 
    typedef fc::array<char,BTS_MAX_SYMBOL_NAME_LENGTH>   symbol_type;
    typedef fc::sha224                                   block_id_type;
+   typedef fc::sha224                                   transaction_id_type;
    typedef fc::sha256                                   digest_type;
    typedef fc::ecc::compact_signature                   signature_type;
    typedef safe<int64_t>                                share_type;

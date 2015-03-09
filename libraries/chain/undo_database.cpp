@@ -59,7 +59,6 @@ void undo_database::undo()
 
    for( auto& item : state.old_index_next_ids )
    {
- //     wdump( (item) );
       _db.get_index( item.first.space(), item.first.type() ).set_next_id( item.second );
    }
 

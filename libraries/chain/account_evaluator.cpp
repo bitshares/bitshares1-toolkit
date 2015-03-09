@@ -15,8 +15,8 @@ object_id_type account_create_evaluator::evaluate( const operation& o )
    auto& acnt_indx = static_cast<account_index&>(db().get_index<account_object>());
    if( op.name.size() )
    {
-      auto current_account_itr = acnt_indx.indicies.get<by_name>().find( op.name );
-      FC_ASSERT( current_account_itr == acnt_indx.indicies.get<by_name>().end() );
+      auto current_account_itr = acnt_indx.indices().get<by_name>().find( op.name );
+      FC_ASSERT( current_account_itr == acnt_indx.indices().get<by_name>().end() );
    }
 
    // verify child account authority
@@ -25,8 +25,8 @@ object_id_type account_create_evaluator::evaluate( const operation& o )
    {
       // TODO: lookup account by op.owner.auths[0] and verify the name
       // this should be a constant time lookup rather than log(N) 
-      auto parent_account_itr = acnt_indx.indicies.get<by_name>().find( op.name.substr(0,pos) );
-      FC_ASSERT( parent_account_itr != acnt_indx.indicies.get<by_name>().end() );
+      auto parent_account_itr = acnt_indx.indices().get<by_name>().find( op.name.substr(0,pos) );
+      FC_ASSERT( parent_account_itr != acnt_indx.indices().get<by_name>().end() );
       verify_authority( &*parent_account_itr, authority::owner );
       FC_ASSERT( op.owner.auths.find( parent_account_itr->id ) != op.owner.auths.end() );
    }

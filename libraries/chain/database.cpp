@@ -15,6 +15,7 @@
 #include <bts/chain/account_evaluator.hpp>
 #include <bts/chain/delegate_evaluator.hpp>
 #include <bts/chain/asset_evaluator.hpp>
+#include <bts/chain/transaction_object.hpp>
 #include <bts/chain/transfer_evaluator.hpp>
 
 #include <fc/io/raw.hpp>
@@ -143,7 +144,6 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
       {
          if( type_index )
          {
-            wlog( "open index...." );
             type_index->open( _object_id_to_object );
          }
       }
@@ -179,18 +179,19 @@ void database::initialize_indexes()
    _index[implementation_ids].resize( 10 );
    _index[meta_info_ids].resize( 10 );
 
-   add_index<primary_index<asset_index> >();
-   add_index<primary_index<account_index> >();
-   add_index<primary_index<simple_index<key_object>> >();
-   add_index<primary_index<simple_index<delegate_object>> >();
+   add_index< primary_index< asset_index> >();
+   add_index< primary_index< account_index> >();
+   add_index< primary_index< transaction_index> >();
+   add_index< primary_index< simple_index<key_object>> >();
+   add_index< primary_index< simple_index<delegate_object>> >();
 
-   add_index<primary_index<simple_index<global_property_object>> >();
-   add_index<primary_index<simple_index<dynamic_global_property_object>> >();
-   add_index<primary_index<simple_index<account_balance_object>> >();
-   add_index<primary_index<simple_index<account_debt_object>> >();
-   add_index<primary_index<simple_index<asset_dynamic_data_object>> >();
-   add_index<primary_index<flat_index<delegate_vote_object>> >();
-   add_index<primary_index<flat_index<block_summary_object>> >();
+   add_index< primary_index< simple_index< global_property_object         >> >();
+   add_index< primary_index< simple_index< dynamic_global_property_object >> >();
+   add_index< primary_index< simple_index< account_balance_object         >> >();
+   add_index< primary_index< simple_index< account_debt_object            >> >();
+   add_index< primary_index< simple_index< asset_dynamic_data_object      >> >();
+   add_index< primary_index< flat_index<   delegate_vote_object           >> >();
+   add_index< primary_index< flat_index<   block_summary_object           >> >();
 }
 
 void database::init_genesis(const genesis_allocation& initial_allocation)

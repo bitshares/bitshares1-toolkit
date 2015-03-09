@@ -20,7 +20,7 @@ BOOST_AUTO_TEST_CASE( create_account )
       trx.validate();
       db.push_transaction(trx, ~0);
 
-      const account_object& nathan_account = *db.get_index_type<account_index>().indicies.get<by_name>().find("nathan");
+      const account_object& nathan_account = *db.get_index_type<account_index>().indices().get<by_name>().find("nathan");
       BOOST_CHECK(nathan_account.id.space() == protocol_ids);
       BOOST_CHECK(nathan_account.id.type() == account_object_type);
       BOOST_CHECK(nathan_account.name == "nathan");
@@ -61,7 +61,7 @@ BOOST_AUTO_TEST_CASE( transfer )
       db.push_transaction(trx, ~0);
 
       trx = signed_transaction();
-      const account_object& nathan_account = *db.get_index_type<account_index>().indicies.get<by_name>().find("nathan");
+      const account_object& nathan_account = *db.get_index_type<account_index>().indices().get<by_name>().find("nathan");
       trx.operations.push_back(transfer_operation({genesis_account,
                                                    nathan_account.id,
                                                    asset(10000),

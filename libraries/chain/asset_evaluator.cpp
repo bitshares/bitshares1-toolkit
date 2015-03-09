@@ -10,8 +10,8 @@ object_id_type asset_create_evaluator::evaluate( const operation& o )
    database& d = db();
 
    auto& asset_indx = static_cast<asset_index&>(db().get_index<asset_object>());
-   auto asset_symbol_itr = asset_indx.indicies.get<by_symbol>().find( op.symbol );
-   FC_ASSERT( asset_symbol_itr == asset_indx.indicies.get<by_symbol>().end() );
+   auto asset_symbol_itr = asset_indx.indices().get<by_symbol>().find( op.symbol );
+   FC_ASSERT( asset_symbol_itr == asset_indx.indices().get<by_symbol>().end() );
 
    auto bts_fee_paid = pay_fee( op.issuer, op.fee );
    bts_fee_required = op.calculate_fee( d.current_fee_schedule() );

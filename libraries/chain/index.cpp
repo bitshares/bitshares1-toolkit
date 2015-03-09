@@ -1,3 +1,4 @@
+#include <fc/io/raw.hpp>
 #include <bts/chain/index.hpp>
 #include <bts/chain/database.hpp>
 
