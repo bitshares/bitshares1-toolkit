@@ -11,7 +11,7 @@ namespace bts { namespace chain {
          virtual object_id_type evaluate( const operation& o ) override;
          virtual object_id_type apply( const operation& o ) override;
    };
-   class delegate_update_evaluator : public evaluator<delegate_create_operation>
+   class delegate_update_evaluator : public evaluator<delegate_update_operation>
    {
       public:
          virtual object_id_type evaluate( const operation& o ) override;
