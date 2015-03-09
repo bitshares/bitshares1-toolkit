@@ -254,6 +254,7 @@ void delegate_create_operation::validate()const
    FC_ASSERT( max_block_size >= BTS_MIN_BLOCK_SIZE_LIMIT );
    FC_ASSERT( max_transaction_size >= BTS_MIN_TRANSACTION_SIZE_LIMIT );
    FC_ASSERT( block_interval_sec > 0 && block_interval_sec <= BTS_MAX_BLOCK_INTERVAL );
+   FC_ASSERT( max_sec_until_expiration > block_interval_sec );
 }
 void delegate_update_operation::validate()const
 {
@@ -265,6 +266,7 @@ void delegate_update_operation::validate()const
    FC_ASSERT( max_block_size >= BTS_MIN_BLOCK_SIZE_LIMIT );
    FC_ASSERT( max_transaction_size >= BTS_MIN_TRANSACTION_SIZE_LIMIT );
    FC_ASSERT( block_interval_sec > 0 && block_interval_sec <= BTS_MAX_BLOCK_INTERVAL );
+   FC_ASSERT( max_sec_until_expiration > block_interval_sec );
 }
 
 void asset_fund_fee_pool_operation::validate() const
