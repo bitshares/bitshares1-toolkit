@@ -161,6 +161,7 @@ namespace bts { namespace chain {
          }
 
          void pop_block();
+         void clear_pending();
 
          /** public for testing purposes only... should be private in practice. */
          undo_database                          _undo_db;

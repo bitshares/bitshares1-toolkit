@@ -51,7 +51,7 @@ void undo_database::undo()
    {
       _db.modify( _db.get_object( item.second->id ), [&]( object& obj ){ obj.move_from( *item.second ); } );
    }
-   
+
    for( auto ritr = state.new_ids.rbegin(); ritr != state.new_ids.rend(); ++ritr  )
    {
       _db.remove( _db.get_object(*ritr) );
@@ -77,7 +77,8 @@ void undo_database::merge()
    auto& state = _stack.back();
    auto& prev_state = _stack[_stack.size()-2];
    for( auto& obj : state.old_values )
-      prev_state.old_values[obj.second->id] = std::move(obj.second);
+      if( prev_state.old_values.find(obj.second->id) == prev_state.old_values.end() )
+         prev_state.old_values[obj.second->id] = std::move(obj.second);
    for( auto id : state.new_ids )
       prev_state.new_ids.insert(id);
    for( auto& item : state.old_index_next_ids )
@@ -108,7 +109,7 @@ void undo_database::pop_commit()
   //       wdump( (item.second->id) );
          _db.modify( _db.get_object( item.second->id ), [&]( object& obj ){ obj.move_from( *item.second ); } );
       }
-      
+
       for( auto ritr = state.new_ids.rbegin(); ritr != state.new_ids.rend(); ++ritr  )
       {
  //        wdump( (*ritr) );
@@ -123,9 +124,9 @@ void undo_database::pop_commit()
 
       for( auto& item : state.removed )
          _db.insert( std::move(*item.second) );
-      
+
       _stack.pop_back();
-   } 
+   }
    catch ( const fc::exception& e )
    {
       elog( "error poping commit ${e}", ("e", e.to_detail_string() )  );

@@ -506,7 +506,10 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
 
    _pending_block.delegate_id = del_id;
    if( !(skip & skip_delegate_signature) ) _pending_block.sign( delegate_key );
-   signed_block tmp = std::move(_pending_block);
+   //This line used to std::move(_pending_block) but this is unsafe as _pending_block is later referenced without being
+   //reinitialized. Future optimization could be to move it, then reinitialize it with the values we need to preserve.
+   signed_block tmp = _pending_block;
+   _pending_block.transactions.clear();
    push_block( tmp, skip );
    return tmp;
 }
@@ -604,6 +607,12 @@ void database::pop_block()
    _pending_block.previous  = head_block_id();
    _pending_block.timestamp = head_block_time();
    _fork_db.pop_block();
+   } FC_CAPTURE_AND_RETHROW() }
+
+void database::clear_pending()
+{ try {
+   _pending_block.transactions.clear();
+   _pending_block_session.reset();
 } FC_CAPTURE_AND_RETHROW() }
 
 /**

@@ -2,6 +2,7 @@
 #include <bts/chain/operations.hpp>
 #include <bts/chain/time.hpp>
 #include <bts/chain/key_object.hpp>
+#include <bts/chain/account_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -88,8 +89,6 @@ BOOST_AUTO_TEST_CASE( undo_block )
    }
 }
 
-
-
 BOOST_AUTO_TEST_CASE( fork_blocks )
 {
    try {
@@ -125,6 +124,49 @@ BOOST_AUTO_TEST_CASE( fork_blocks )
          advance_simulated_time_to( db2.get_next_generation_time(  ad2[i%ad2.size()] ) );
          auto b =  db2.generate_block( delegate_priv_key, ad2[i%ad2.size()] );
          db1.push_block(b);
+      }
+   } catch (fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
+BOOST_AUTO_TEST_CASE( undo_pending )
+{
+   try {
+      fc::temp_directory data_dir;
+      {
+         database db;
+         db.open(data_dir.path());
+
+         start_simulated_time( bts::chain::now() );
+         auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
+         bts::chain::index& account_idx = db.get_index(protocol_ids, account_object_type);
+
+         signed_transaction trx;
+         account_id_type nathan_id = account_idx.get_next_id();
+         trx.operations.push_back(account_create_operation({account_id_type(), asset(), "nathan"}));
+         trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+         db.push_transaction(trx);
+
+         auto ad = db.get_global_properties().active_delegates;
+         advance_simulated_time_to( db.get_next_generation_time(  ad[db.head_block_num()%ad.size()] ) );
+         auto b =  db.generate_block( delegate_priv_key, ad[db.head_block_num()%ad.size()] );
+
+         BOOST_CHECK(nathan_id(db).name == "nathan");
+
+         trx = decltype(trx)();
+         trx.operations.push_back(transfer_operation({account_id_type(), nathan_id, asset(5000), asset(1)}));
+         trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+         db.push_transaction(trx);
+         trx = decltype(trx)();
+         trx.operations.push_back(transfer_operation({account_id_type(), nathan_id, asset(5000), asset(1)}));
+         trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+         db.push_transaction(trx);
+
+         BOOST_CHECK(nathan_id(db).balances(db).get_balance(asset_id_type()).amount == 10000);
+         db.clear_pending();
+         BOOST_CHECK(nathan_id(db).balances(db).get_balance(asset_id_type()).amount == 0);
       }
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
