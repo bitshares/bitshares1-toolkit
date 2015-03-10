@@ -3,6 +3,7 @@
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/key_object.hpp>
+#include <bts/chain/delegate_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -190,9 +191,12 @@ BOOST_AUTO_TEST_CASE( create_delegate )
       delegate_create_operation op;
       op.delegate_account = account_id_type();
       op.fee = asset();
-      op.pay_rate = 0;
-      op.first_secret_hash = secret_hash_type();
+      op.pay_rate = 50;
+      op.first_secret_hash = secret_hash_type::hash("my 53cr37 p4s5w0rd");
       op.signing_key = key_id_type();
+      op.block_interval_sec = BTS_DEFAULT_BLOCK_INTERVAL + 1;
+      op.max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE + 1;
+      op.max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE + 1;
       op.max_sec_until_expiration = op.block_interval_sec * 2;
 
       trx.operations.push_back(op);
@@ -213,7 +217,21 @@ BOOST_AUTO_TEST_CASE( create_delegate )
       CHECK_THROW_WITH_VALUE(op, max_sec_until_expiration, 0);
       trx.operations.back() = op;
 
+      delegate_id_type delegate_id = db.get_index(protocol_ids, delegate_object_type).get_next_id();
       BOOST_CHECK(db.push_transaction(trx, ~0));
+      const delegate_object& d = delegate_id(db);
+
+      BOOST_CHECK(d.delegate_account == account_id_type());
+      BOOST_CHECK(d.signing_key == key_id_type());
+      BOOST_CHECK(d.pay_rate == 50);
+      BOOST_CHECK(d.block_interval_sec == BTS_DEFAULT_BLOCK_INTERVAL + 1);
+      BOOST_CHECK(d.max_block_size == BTS_DEFAULT_MAX_BLOCK_SIZE + 1);
+      BOOST_CHECK(d.max_transaction_size == BTS_DEFAULT_MAX_TRANSACTION_SIZE + 1);
+      BOOST_CHECK(d.max_sec_until_expiration == d.block_interval_sec * 2);
+      BOOST_CHECK(d.next_secret == secret_hash_type::hash("my 53cr37 p4s5w0rd"));
+      BOOST_CHECK(d.last_secret == secret_hash_type());
+      BOOST_CHECK(d.accumulated_income == 0);
+      BOOST_CHECK(d.vote(db).total_votes == 0);
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
