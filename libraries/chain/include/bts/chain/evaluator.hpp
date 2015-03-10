@@ -80,6 +80,7 @@ namespace bts { namespace chain {
       public:
          virtual ~op_evaluator(){}
          virtual object_id_type evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply ) = 0;
+
          vector< shared_ptr<post_evaluator> > post_evals;
    };
 

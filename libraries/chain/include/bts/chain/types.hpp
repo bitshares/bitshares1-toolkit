@@ -81,36 +81,6 @@ namespace bts { namespace chain {
       FEE_TYPE_COUNT ///< Sentry value which contains the number of different fee types
    };
 
-
-   struct object_id_type
-   {
-      object_id_type( uint8_t s, uint8_t t, uint64_t i )
-      {
-         assert( i>>48 == 0 );
-         FC_ASSERT( i >> 48 == 0, "instance overflow", ("instance",i) );
-         number = (uint64_t(s)<<56) | (uint64_t(t)<<48) | i;
-      }
-      object_id_type(){ number = 0; }
-
-      uint8_t  space()const       { return number >> 56;              }
-      uint8_t  type()const        { return number >> 48 & 0x00ff;     }
-      uint16_t space_type()const { return number >> 48;              }
-      uint64_t instance()const { return number & BTS_MAX_INSTANCE_ID; }
-      bool     is_null()const { return number == 0; }
-      operator uint64_t()const { return number; }
-
-      friend bool  operator == ( const object_id_type& a, const object_id_type& b )
-      {
-         return a.number == b.number;
-      }
-      object_id_type& operator++(int) { ++number; return *this; }
-      object_id_type& operator++()    { ++number; return *this; }
-
-      friend size_t hash_value( object_id_type v ) { return std::hash<uint64_t>()(v.number); }
-
-      uint64_t                   number;
-   };
-
    /**
     *  Objects are divided into namespaces each with
     *  their own unique sequence numbers for both
@@ -130,6 +100,38 @@ namespace bts { namespace chain {
        * such as names and descriptions of assets or the value of data objects. */
       meta_info_ids = 3
    };
+
+
+   struct object_id_type
+   {
+      object_id_type( uint8_t s, uint8_t t, uint64_t i )
+      {
+         assert( i>>48 == 0 );
+         FC_ASSERT( i >> 48 == 0, "instance overflow", ("instance",i) );
+         number = (uint64_t(s)<<56) | (uint64_t(t)<<48) | i;
+      }
+      object_id_type(){ number = 0; }
+
+      bool     is_relative()const { return space() == relative_protocol_ids; }
+      uint8_t  space()const       { return number >> 56;              }
+      uint8_t  type()const        { return number >> 48 & 0x00ff;     }
+      uint16_t space_type()const { return number >> 48;              }
+      uint64_t instance()const { return number & BTS_MAX_INSTANCE_ID; }
+      bool     is_null()const { return number == 0; }
+      operator uint64_t()const { return number; }
+
+      friend bool  operator == ( const object_id_type& a, const object_id_type& b )
+      {
+         return a.number == b.number;
+      }
+      object_id_type& operator++(int) { ++number; return *this; }
+      object_id_type& operator++()    { ++number; return *this; }
+
+      friend size_t hash_value( object_id_type v ) { return std::hash<uint64_t>()(v.number); }
+
+      uint64_t                   number;
+   };
+
 
 
    /**
@@ -196,6 +198,7 @@ namespace bts { namespace chain {
          assert( (id.space() == SpaceID && id.type() == TypeID)
                  || id.space() == relative_protocol_ids );
       }
+      bool is_relative()const { return SpaceID == relative_protocol_ids; }
 
       operator object_id_type()const { return object_id_type( SpaceID, TypeID, instance.value ); }
       operator uint64_t()const { return object_id_type( *this ).number; }
