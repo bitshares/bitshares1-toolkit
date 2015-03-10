@@ -306,10 +306,11 @@ FC_REFLECT( bts::chain::asset_update_operation,
 
 FC_REFLECT( bts::chain::asset_issue_operation,
             (asset_to_issue)(fee)(issue_to_account) )
-
 FC_REFLECT( bts::chain::delegate_create_operation,
             (delegate_account)(fee)(pay_rate)
             (first_secret_hash)(signing_key)
+            (block_interval_sec)(max_block_size)
+            (max_transaction_size)(max_sec_until_expiration)
             (fee_schedule)
           )
 

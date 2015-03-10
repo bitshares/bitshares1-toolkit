@@ -152,7 +152,7 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
    auto next_ids = fc::raw::unpack<vector<object_id_type>>( _object_id_to_object->fetch( object_id_type() ) );
    for( auto id : next_ids )
       get_index( id ).set_next_id( id );
-   } 
+   }
    catch ( const fc::exception& e )
    {
       wlog( "unable to fetch next ids, must be new database" );
@@ -533,7 +533,7 @@ void database::update_active_delegates()
     ids.resize( i );
 
     // shuffle ids
-    auto randvalue = dynamic_global_property_id_type()(*this).random; 
+    auto randvalue = dynamic_global_property_id_type()(*this).random;
     for( uint32_t i = 0; i < ids.size(); ++i )
     {
        const auto rands_per_hash = sizeof(secret_hash_type) / sizeof(randvalue._hash[0]);
@@ -674,7 +674,7 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
    }
 
    _pending_block_session.reset();
-   { 
+   {
       auto session = _undo_db.start_undo_session();
       apply_block( new_block, skip );
       _block_id_to_block.store( new_block.id(), new_block );

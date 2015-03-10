@@ -3,6 +3,7 @@
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/key_object.hpp>
+#include <bts/chain/delegate_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -11,6 +12,15 @@
 using namespace bts::chain;
 
 BOOST_FIXTURE_TEST_SUITE( operation_unit_tests, database_fixture )
+
+#define CHECK_THROW_WITH_VALUE(op, field, value) \
+{ \
+   auto bak = op.field; \
+   op.field = value; \
+   trx.operations.back() = op; \
+   op.field = bak; \
+   BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception); \
+}
 
 BOOST_AUTO_TEST_CASE( create_account )
 {
@@ -106,7 +116,7 @@ BOOST_AUTO_TEST_CASE( transfer )
 BOOST_AUTO_TEST_CASE( create_asset )
 {
    try {
-      asset_id_type test_asset_id = db.get_index<asset_object>().get_next_id(); 
+      asset_id_type test_asset_id = db.get_index<asset_object>().get_next_id();
       asset_create_operation creator;
       creator.issuer = account_id_type();
       creator.fee = asset();
@@ -130,56 +140,99 @@ BOOST_AUTO_TEST_CASE( create_asset )
       BOOST_CHECK(test_asset.market_fee_percent == 1);
 
       int test_num = 0;
+      auto op = trx.operations.back().get<asset_create_operation>();
       ilog("Test duplicate symbol");
       BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
       trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
-      trx.operations.back().get<asset_create_operation>().issuer = account_id_type(9999999);
       ilog("Test nonexistent issuer");
-      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
+      CHECK_THROW_WITH_VALUE(op, issuer, account_id_type(99999999));
       trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
-      trx.operations.back().get<asset_create_operation>().issuer = account_id_type();
-      trx.operations.back().get<asset_create_operation>().max_supply = -1;
       ilog("Test negative max supply");
-      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
+      CHECK_THROW_WITH_VALUE(op, max_supply, -1);
       trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
-      trx.operations.back().get<asset_create_operation>().max_supply = 0;
       ilog("Test zero max supply");
-      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
-      trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
-      trx.operations.back().get<asset_create_operation>().max_supply = 100000;
-      trx.operations.back().get<asset_create_operation>().symbol = "A";
+      CHECK_THROW_WITH_VALUE(op, max_supply, 0);
       ilog("Test single-letter symbol");
-      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
-      trx.operations.back().get<asset_create_operation>().symbol = "qqq";
+      trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
+      CHECK_THROW_WITH_VALUE(op, symbol, "A");
       ilog("Test lower-case symbol");
-      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
-      trx.operations.back().get<asset_create_operation>().symbol = "11";
+      trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
+      CHECK_THROW_WITH_VALUE(op, symbol, "qqq");
       ilog("Test two-digit symbol");
-      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
-      trx.operations.back().get<asset_create_operation>().symbol = "AB CD";
+      trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
+      CHECK_THROW_WITH_VALUE(op, symbol, "11");
       ilog("Test symbol with space");
-      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
-      trx.operations.back().get<asset_create_operation>().symbol = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
+      CHECK_THROW_WITH_VALUE(op, symbol, "AB CD");
       ilog("Test over-length symbol");
-      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
       trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
-      trx.operations.back().get<asset_create_operation>().core_exchange_rate = price({asset(-100),asset(1)});
+      CHECK_THROW_WITH_VALUE(op, symbol, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+      trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
       ilog("Test negative core_exchange_rate");
-      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
+      CHECK_THROW_WITH_VALUE(op, core_exchange_rate, price({asset(-100), asset(1)}));
       trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
-      trx.operations.back().get<asset_create_operation>().core_exchange_rate = price({asset(100),asset(-1)});
       ilog("Test negative core_exchange_rate (case 2)");
-      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
+      CHECK_THROW_WITH_VALUE(op, core_exchange_rate, price({asset(100),asset(-1)}));
       trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
-      trx.operations.back().get<asset_create_operation>().core_exchange_rate = price({asset(1),asset(1)});
-      trx.operations.back().get<asset_create_operation>().short_backing_asset = db.get_index<asset_object>().get_next_id();
       ilog("Test self-backing asset");
-      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
+      CHECK_THROW_WITH_VALUE(op, short_backing_asset, db.get_index<asset_object>().get_next_id());
       trx.operations.back().get<asset_create_operation>().symbol = string("TEST") + char('A' + test_num++);
-      trx.operations.back().get<asset_create_operation>().short_backing_asset = asset_id_type(1000000);
       ilog("Test nonexistent backing asset");
-      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
+      CHECK_THROW_WITH_VALUE(op, short_backing_asset, asset_id_type(1000000));
    } catch(fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
+BOOST_AUTO_TEST_CASE( create_delegate )
+{
+   try {
+      delegate_create_operation op;
+      op.delegate_account = account_id_type();
+      op.fee = asset();
+      op.pay_rate = 50;
+      op.first_secret_hash = secret_hash_type::hash("my 53cr37 p4s5w0rd");
+      op.signing_key = key_id_type();
+      op.block_interval_sec = BTS_DEFAULT_BLOCK_INTERVAL + 1;
+      op.max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE + 1;
+      op.max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE + 1;
+      op.max_sec_until_expiration = op.block_interval_sec * 2;
+
+      trx.operations.push_back(op);
+      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
+
+      for( int t = 0; t < FEE_TYPE_COUNT; ++t )
+         op.fee_schedule.at(t) = BTS_BLOCKCHAIN_PRECISION;
+      trx.operations.back() = op;
+
+      CHECK_THROW_WITH_VALUE(op, fee_schedule.at(2), -500);
+      CHECK_THROW_WITH_VALUE(op, delegate_account, account_id_type(99999999));
+      CHECK_THROW_WITH_VALUE(op, fee, asset(-600));
+      CHECK_THROW_WITH_VALUE(op, pay_rate, 123);
+      CHECK_THROW_WITH_VALUE(op, signing_key, key_id_type(9999999));
+      CHECK_THROW_WITH_VALUE(op, block_interval_sec, 0);
+      CHECK_THROW_WITH_VALUE(op, max_block_size, 0);
+      CHECK_THROW_WITH_VALUE(op, max_transaction_size, 0);
+      CHECK_THROW_WITH_VALUE(op, max_sec_until_expiration, 0);
+      trx.operations.back() = op;
+
+      delegate_id_type delegate_id = db.get_index(protocol_ids, delegate_object_type).get_next_id();
+      BOOST_CHECK(db.push_transaction(trx, ~0));
+      const delegate_object& d = delegate_id(db);
+
+      BOOST_CHECK(d.delegate_account == account_id_type());
+      BOOST_CHECK(d.signing_key == key_id_type());
+      BOOST_CHECK(d.pay_rate == 50);
+      BOOST_CHECK(d.block_interval_sec == BTS_DEFAULT_BLOCK_INTERVAL + 1);
+      BOOST_CHECK(d.max_block_size == BTS_DEFAULT_MAX_BLOCK_SIZE + 1);
+      BOOST_CHECK(d.max_transaction_size == BTS_DEFAULT_MAX_TRANSACTION_SIZE + 1);
+      BOOST_CHECK(d.max_sec_until_expiration == d.block_interval_sec * 2);
+      BOOST_CHECK(d.next_secret == secret_hash_type::hash("my 53cr37 p4s5w0rd"));
+      BOOST_CHECK(d.last_secret == secret_hash_type());
+      BOOST_CHECK(d.accumulated_income == 0);
+      BOOST_CHECK(d.vote(db).total_votes == 0);
+   } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
    }
