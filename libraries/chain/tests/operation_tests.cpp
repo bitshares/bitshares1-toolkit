@@ -29,6 +29,35 @@ BOOST_AUTO_TEST_CASE( create_account )
 {
    try {
       trx.operations.push_back(make_account());
+      account_create_operation op = trx.operations.back().get<account_create_operation>();
+
+      REQUIRE_THROW_WITH_VALUE(op, fee_paying_account, account_id_type(9999999));
+      REQUIRE_THROW_WITH_VALUE(op, fee, asset(-1));
+      REQUIRE_THROW_WITH_VALUE(op, name, "!");
+      REQUIRE_THROW_WITH_VALUE(op, name, "Sam");
+      REQUIRE_THROW_WITH_VALUE(op, name, "saM");
+      REQUIRE_THROW_WITH_VALUE(op, name, "sAm");
+      REQUIRE_THROW_WITH_VALUE(op, name, "6j");
+      REQUIRE_THROW_WITH_VALUE(op, name, "j-");
+      REQUIRE_THROW_WITH_VALUE(op, name, "-j");
+      REQUIRE_THROW_WITH_VALUE(op, name, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+      REQUIRE_THROW_WITH_VALUE(op, name, "a.");
+      REQUIRE_THROW_WITH_VALUE(op, name, ".a");
+      REQUIRE_THROW_WITH_VALUE(op, voting_key, key_id_type(999999999));
+      REQUIRE_THROW_WITH_VALUE(op, memo_key, key_id_type(999999999));
+
+      auto auth_bak = op.owner;
+      op.owner.add_authority(account_id_type(9999999999), 10);
+      trx.operations.back() = op;
+      op.owner = auth_bak;
+      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
+      op.owner = auth_bak;
+      op.owner.add_authority(key_id_type(9999999999), 10);
+      trx.operations.back() = op;
+      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
+      op.owner = auth_bak;
+
+      trx.operations.back() = op;
       trx.signatures.push_back(fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis"))).sign_compact(fc::digest(trx)));
       trx.validate();
       db.push_transaction(trx, ~0);

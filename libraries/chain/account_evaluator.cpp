@@ -4,13 +4,21 @@
 
 namespace bts { namespace chain {
 
-object_id_type account_create_evaluator::evaluate( const operation& o ) 
+object_id_type account_create_evaluator::evaluate( const operation& o )
 {
    const auto& op = o.get<account_create_operation>();
 
    auto bts_fee_paid = pay_fee( op.fee_paying_account, op.fee );
    auto bts_fee_required = op.calculate_fee( db().current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
+
+   FC_ASSERT( op.voting_key.is_relative() || db().find(op.voting_key) );
+   FC_ASSERT( op.memo_key.is_relative() || db().find(op.memo_key) );
+
+   for( auto id : op.owner.auths )
+      FC_ASSERT( id.first.is_relative() || db().find<object>(id.first) );
+   for( auto id : op.active.auths )
+      FC_ASSERT( id.first.is_relative() || db().find<object>(id.first) );
 
    auto& acnt_indx = static_cast<account_index&>(db().get_index<account_object>());
    if( op.name.size() )
@@ -24,7 +32,7 @@ object_id_type account_create_evaluator::evaluate( const operation& o )
    if( pos != string::npos )
    {
       // TODO: lookup account by op.owner.auths[0] and verify the name
-      // this should be a constant time lookup rather than log(N) 
+      // this should be a constant time lookup rather than log(N)
       auto parent_account_itr = acnt_indx.indices().get<by_name>().find( op.name.substr(0,pos) );
       FC_ASSERT( parent_account_itr != acnt_indx.indices().get<by_name>().end() );
       verify_authority( &*parent_account_itr, authority::owner );
@@ -34,7 +42,7 @@ object_id_type account_create_evaluator::evaluate( const operation& o )
    return object_id_type();
 }
 
-object_id_type account_create_evaluator::apply( const operation& o ) 
+object_id_type account_create_evaluator::apply( const operation& o )
 {
    apply_delta_balances();
    apply_delta_fee_pools();
@@ -72,6 +80,16 @@ object_id_type account_update_evaluator::evaluate( const operation& op )
    auto bts_fee_paid = pay_fee( o.account, o.fee );
    FC_ASSERT( bts_fee_paid == o.calculate_fee( d.current_fee_schedule() ) );
 
+   FC_ASSERT( !o.voting_key || o.voting_key->is_relative() || db().find(*o.voting_key) );
+   FC_ASSERT( !o.memo_key || o.memo_key->is_relative() || db().find(*o.memo_key) );
+
+   if( o.owner )
+      for( auto id : o.owner->auths )
+         FC_ASSERT( id.first.is_relative() || db().find<object>(id.first) );
+   if( o.active )
+      for( auto id : o.active->auths )
+         FC_ASSERT( id.first.is_relative() || db().find<object>(id.first) );
+
    acnt = &o.account(d);
    if( o.owner ) FC_ASSERT( verify_authority( acnt, authority::owner ) );
    else if( o.active || o.voting_key || o.memo_key ) FC_ASSERT( verify_authority( acnt, authority::active ) );
@@ -89,7 +107,7 @@ object_id_type account_update_evaluator::evaluate( const operation& op )
 
    return object_id_type();
 }
-object_id_type account_update_evaluator::apply( const operation& op ) 
+object_id_type account_update_evaluator::apply( const operation& op )
 {
    const auto& o = op.get<account_update_operation>();
    auto core_bal = acnt->balances(db()).get_balance( asset_id_type() ).amount;
