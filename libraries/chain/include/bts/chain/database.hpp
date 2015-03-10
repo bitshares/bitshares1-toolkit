@@ -181,9 +181,6 @@ namespace bts { namespace chain {
          void                  apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
          processed_transaction apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
 
-         void pop_pending_block();
-         void push_pending_block();
-
          vector< vector< unique_ptr<index> > >  _index;
          signed_block                           _pending_block;
 

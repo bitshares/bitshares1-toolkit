@@ -615,24 +615,24 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
    // wdump( (new_block.id())(new_block.previous) );
    if( !(skip&skip_fork_db) )
    {
-      auto head = _fork_db.push_block( new_block );
-      if( head->data.previous != _pending_block.previous )
+      auto new_head = _fork_db.push_block( new_block );
+      //If the head block from the longest chain does not build off of the current head, we need to switch forks.
+      if( new_head->data.previous != head_block_id() )
       {
          wlog( "head on new fork: block ${b} prev ${p}  ", ("b",new_block.id())("p",new_block.previous) );
-         if( head->data.block_num() >= _pending_block.block_num() )
+         if( new_head->data.block_num() >= _pending_block.block_num() )
          {
-            auto branches = _fork_db.fetch_branch_from( head->data.id(), _pending_block.previous );
+            auto branches = _fork_db.fetch_branch_from( new_head->data.id(), _pending_block.previous );
             for( auto item : branches.first )
                wdump( ("new")(item->id)(item->data.previous) );
             for( auto item : branches.second )
                wdump( ("old")(item->id)(item->data.previous) );
 
-            // pop all blocks on the current chain
+            // pop blocks until we hit the forked block
             while( head_block_id() != branches.second.back()->data.previous )
                pop_block();
 
-
-            // push all blocks to the new chain
+            // push all blocks on the new fork
             for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr )
             {
                 optional<fc::exception> except;
@@ -673,13 +673,14 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
       }
    }
 
+   // If there is a pending block session, then the database state is dirty with pending transactions.
+   // Drop the pending session to reset the database to a clean head block state.
    _pending_block_session.reset();
-   {
-      auto session = _undo_db.start_undo_session();
-      apply_block( new_block, skip );
-      _block_id_to_block.store( new_block.id(), new_block );
-      session.commit();
-   }
+
+   auto session = _undo_db.start_undo_session();
+   apply_block( new_block, skip );
+   _block_id_to_block.store( new_block.id(), new_block );
+   session.commit();
 } FC_CAPTURE_AND_RETHROW( (new_block) ) }
 
 /**
@@ -687,37 +688,15 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
  */
 bool database::push_transaction( const signed_transaction& trx, uint32_t skip )
 {
-   // if not pending block session, create pending block session
+   // If this is the first transaction pushed after applying a block, start a new undo session.
+   // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
    if( !_pending_block_session ) _pending_block_session = _undo_db.start_undo_session();
-   optional<fc::exception> except;
-   try {
-      auto session = _undo_db.start_undo_session();
-      apply_transaction( trx, skip );
-      _pending_block.transactions.push_back(trx);
-      session.merge(); // merge into the pending block session
-      return true;
-   } catch ( const fc::exception& e ) { except = e; }
-   if( except )
-   {
-      throw *except;
-   }
-   return false;
-}
-
-void database::push_pending_block()
-{
-   block old_pending = std::move( _pending_block );
-   _pending_block.transactions.clear();
- //  push_undo_state();
-   for( auto trx : old_pending.transactions )
-   {
-      push_transaction( trx );
-   }
-}
-
-void database::pop_pending_block()
-{
-   //undo();
+   auto session = _undo_db.start_undo_session();
+   apply_transaction( trx, skip );
+   _pending_block.transactions.push_back(trx);
+   // The transaction applied successfully. Merge its changes into the pending block session.
+   session.merge();
+   return true;
 }
 
 processed_transaction database::apply_transaction( const signed_transaction& trx, uint32_t skip )
