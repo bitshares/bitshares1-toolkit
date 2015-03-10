@@ -232,6 +232,9 @@ BOOST_AUTO_TEST_CASE( create_delegate )
       BOOST_CHECK(d.last_secret == secret_hash_type());
       BOOST_CHECK(d.accumulated_income == 0);
       BOOST_CHECK(d.vote(db).total_votes == 0);
+
+      for( int i = 0; i < FEE_TYPE_COUNT; ++i )
+         BOOST_CHECK(d.fee_schedule.at(i) == BTS_BLOCKCHAIN_PRECISION);
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
