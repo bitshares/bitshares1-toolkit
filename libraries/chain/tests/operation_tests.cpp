@@ -199,7 +199,10 @@ BOOST_AUTO_TEST_CASE( create_delegate )
       op.max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE + 1;
       op.max_sec_until_expiration = op.block_interval_sec * 2;
 
+      for( int t = 0; t < FEE_TYPE_COUNT; ++t )
+         op.fee_schedule.at(t) = 0;
       trx.operations.push_back(op);
+      //Zero fee schedule should cause failure
       BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
 
       for( int t = 0; t < FEE_TYPE_COUNT; ++t )
@@ -236,6 +239,66 @@ BOOST_AUTO_TEST_CASE( create_delegate )
       for( int i = 0; i < FEE_TYPE_COUNT; ++i )
          BOOST_CHECK(d.fee_schedule.at(i) == BTS_BLOCKCHAIN_PRECISION);
    } catch (fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
+BOOST_AUTO_TEST_CASE( update_delegate )
+{
+   try {
+      //So this isn't sketchy at all...
+      ((create_delegate*)this)->test_method();
+
+      delegate_id_type delegate_id = db.get_index(protocol_ids, delegate_object_type).get_next_id().instance() - 1;
+      const delegate_object& d = delegate_id(db);
+      trx.operations.clear();
+      //Verify the totally un-sketchy move above worked correctly.
+      BOOST_CHECK(d.next_secret == secret_hash_type::hash("my 53cr37 p4s5w0rd"));
+
+      //On to even more un-sketchy things!
+      delegate_update_operation op;
+      trx.operations.push_back(op);
+      op.delegate_id = delegate_id;
+      op.fee = asset();
+      op.pay_rate = 100;
+      op.block_interval_sec = d.block_interval_sec / 2;
+      op.max_block_size = d.max_block_size / 2;
+      op.max_transaction_size = d.max_transaction_size / 2;
+      op.max_sec_until_expiration = d.max_sec_until_expiration / 2;
+
+      op.fee_schedule = decltype(d.fee_schedule)();
+      for( int t = 0; t < FEE_TYPE_COUNT; ++t )
+         op.fee_schedule->at(t) = BTS_BLOCKCHAIN_PRECISION / 2;
+
+      CHECK_THROW_WITH_VALUE(op, delegate_id, delegate_id_type(9999999));
+      CHECK_THROW_WITH_VALUE(op, fee, asset(-5));
+      CHECK_THROW_WITH_VALUE(op, signing_key, object_id_type(protocol_ids, key_object_type, 999999999));
+      CHECK_THROW_WITH_VALUE(op, pay_rate, 127);
+      CHECK_THROW_WITH_VALUE(op, block_interval_sec, 0);
+      CHECK_THROW_WITH_VALUE(op, block_interval_sec, BTS_MAX_BLOCK_INTERVAL + 1);
+      CHECK_THROW_WITH_VALUE(op, max_block_size, 0);
+      CHECK_THROW_WITH_VALUE(op, max_transaction_size, 0);
+      CHECK_THROW_WITH_VALUE(op, max_sec_until_expiration, op.block_interval_sec - 1);
+      CHECK_THROW_WITH_VALUE(op, fee_schedule->at(0), 0);
+
+      trx.operations.back() = op;
+      BOOST_CHECK(db.push_transaction(trx, ~0));
+
+      BOOST_CHECK(d.delegate_account == account_id_type());
+      BOOST_CHECK(d.pay_rate == 100);
+      BOOST_CHECK(d.block_interval_sec == (BTS_DEFAULT_BLOCK_INTERVAL + 1) / 2);
+      BOOST_CHECK(d.max_block_size == (BTS_DEFAULT_MAX_BLOCK_SIZE + 1) / 2);
+      BOOST_CHECK(d.max_transaction_size == (BTS_DEFAULT_MAX_TRANSACTION_SIZE + 1) / 2);
+      BOOST_CHECK(d.max_sec_until_expiration == d.block_interval_sec * 2);
+      BOOST_CHECK(d.next_secret == secret_hash_type::hash("my 53cr37 p4s5w0rd"));
+      BOOST_CHECK(d.last_secret == secret_hash_type());
+      BOOST_CHECK(d.accumulated_income == 0);
+      BOOST_CHECK(d.vote(db).total_votes == 0);
+
+      for( int i = 0; i < FEE_TYPE_COUNT; ++i )
+         BOOST_CHECK(d.fee_schedule.at(i) == BTS_BLOCKCHAIN_PRECISION / 2);
+   } catch(fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
    }
