@@ -11,6 +11,8 @@ namespace bts { namespace chain {
          virtual object_id_type evaluate( const operation& o ) override;
          virtual object_id_type apply( const operation& o ) override;
 
+         asset calculate_market_fee( const asset_object* aobj, const asset& trade_amount );
+
          const limit_order_create_operation* _op            = nullptr;
          const account_object*               _seller        = nullptr;
          const asset_object*                 _sell_asset    = nullptr;

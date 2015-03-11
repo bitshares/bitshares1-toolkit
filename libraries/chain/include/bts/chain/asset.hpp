@@ -47,8 +47,11 @@ namespace bts { namespace chain {
       return price{base,quote};
    }
 
-   bool  operator < ( const price& a, const price& b );
-   asset operator * ( const asset& a, const price& b );
+   bool  operator <  ( const asset& a, const asset& b );
+   bool  operator <= ( const asset& a, const asset& b );
+   bool  operator <  ( const price& a, const price& b );
+   bool  operator <= ( const price& a, const price& b );
+   asset operator *  ( const asset& a, const price& b );
 
 } }
 

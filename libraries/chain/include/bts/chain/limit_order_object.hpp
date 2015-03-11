@@ -17,6 +17,8 @@ namespace bts { namespace chain {
         share_type       for_sale; ///< asset_id == sell_price.base.asset_id
         price            sell_price;
         account_id_type  seller;   
+
+        asset amount_for_sale()const { return asset( for_sale, sell_price.base.asset_id ); }
   };
 
   struct by_id;
