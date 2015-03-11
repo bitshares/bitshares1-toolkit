@@ -32,7 +32,6 @@ object_id_type limit_order_evaluator::evaluate( const operation& o )
 
 object_id_type limit_order_evaluator::apply( const operation& o )
 {
-
    const auto& seller_balance = _seller->balances(db());
    db().modify( seller_balance, [&]( account_balance_object& bal ){
          bal.sub_balance( -_op->amount_to_sell );
@@ -96,8 +95,14 @@ object_id_type limit_order_evaluator::apply( const operation& o )
       obj_receives -= receive_issuer_fees;
       itr_receives -= sell_issuer_fees;
 
+      const account_object& receiver = itr->seller(db());
       adjust_balance( _seller, _receive_asset, obj_receives.amount );
-      adjust_balance( &itr->seller(db()), _sell_asset, itr_receives.amount );
+      adjust_balance( &receiver, _sell_asset, itr_receives.amount );
+
+      if( _sell_asset->id.instance() == 0 ) /* core asset vote update */
+         adjust_votes( _seller->delegate_votes, -obj_pays.amount );
+      if( _receive_asset->id.instance() == 0 ) /* core asset vote update */
+         adjust_votes( receiver.delegate_votes, -itr_pays.amount );
 
       if( itr_pays.amount == itr->for_sale )
       {
