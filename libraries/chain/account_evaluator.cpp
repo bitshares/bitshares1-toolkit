@@ -110,11 +110,15 @@ object_id_type account_update_evaluator::evaluate( const operation& op )
 object_id_type account_update_evaluator::apply( const operation& op )
 {
    const auto& o = op.get<account_update_operation>();
-   auto core_bal = acnt->balances(db()).get_balance( asset_id_type() ).amount;
-   if( core_bal.value  )
+   if( remove_votes.size() || add_votes.size() )
    {
-      adjust_votes( remove_votes, -core_bal );
-      adjust_votes( add_votes, core_bal );
+      auto core_bal = acnt->balances(db()).get_balance( asset_id_type() ).amount;
+      // TODO: find all orders and add their CORE ASSET BALANCE to the ACCOUNT BALANCE
+      if( core_bal.value  )
+      {
+         adjust_votes( remove_votes, -core_bal );
+         adjust_votes( add_votes, core_bal );
+      }
    }
    db().modify( *acnt, [&]( account_object& a  ){
           if( o.owner ) a.owner = *o.owner;
