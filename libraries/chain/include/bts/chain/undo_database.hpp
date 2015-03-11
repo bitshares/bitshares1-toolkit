@@ -23,10 +23,10 @@ namespace bts { namespace chain {
                {
                   mv._apply_undo = false;
                }
-               ~session() { 
+               ~session() {
                   try {
-                     if( _apply_undo ) _db.undo(); 
-                  } 
+                     if( _apply_undo ) _db.undo();
+                  }
                   catch ( const fc::exception& e )
                   {
                      elog( "${e}", ("e",e.to_detail_string() ) );
@@ -57,18 +57,33 @@ namespace bts { namespace chain {
          void    enable();
 
          session start_undo_session();
-         /** this should be called just after obj is created */
+         /**
+          * This should be called just after an object is created
+          */
          void on_create( const object& obj );
-         /** this should be called just before obj is modified */
+         /**
+          * This should be called just before an object is modified
+          *
+          * If it's a new object as of this undo state, its pre-modification value is not stored, because prior to this
+          * undo state, it did not exist. Any modifications in this undo state are irrelevant, as the object will simply
+          * be removed if we undo.
+          */
          void on_modify( const object& obj );
-         /** this should be called just before an obj is removed */
+         /**
+          * This should be called just before an object is removed.
+          *
+          * If it's a new object as of this undo state, its pre-removal value is not stored, because prior to this undo
+          * state, it did not exist. Now that it's been removed, it doesn't exist again, so nothing has happened.
+          * Instead, remove it from the list of newly created objects (which must be deleted if we undo), as we don't
+          * want to re-delete it if this state is undone.
+          */
          void on_remove( const object& obj );
 
          /**
           *  Removes the last committed session,
           *  note... this is dangerous if there are
           *  active sessions... thus active sessions should
-          *  track 
+          *  track
           */
          void pop_commit();
 

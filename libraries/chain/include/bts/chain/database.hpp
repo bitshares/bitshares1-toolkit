@@ -37,7 +37,8 @@ namespace bts { namespace chain {
             skip_undo_block             = 0x04, ///< used while reindexing
             skip_undo_transaction       = 0x08, ///< used while applying block
             skip_transaction_dupe_check = 0x10, ///< used while reindexing
-            skip_fork_db                = 0x20  ///< used while reindexing
+            skip_fork_db                = 0x20, ///< used while reindexing
+            skip_block_size_check       = 0x40, ///< used when applying locally generated transactions
          };
 
          void open(const fc::path& data_dir, const genesis_allocation& initial_allocation = genesis_allocation());
@@ -160,7 +161,7 @@ namespace bts { namespace chain {
                operation::tag<typename EvaluatorType::operation_class_type>::value].reset( new op_evaluator_impl<EvaluatorType>() );
          }
 
-         void pop_block();
+         void pop_undo();
          void clear_pending();
 
          /** public for testing purposes only... should be private in practice. */
@@ -170,6 +171,7 @@ namespace bts { namespace chain {
          friend class base_primary_index;
          void save_undo( const object& obj );
          void save_undo_add( const object& obj );
+         void save_undo_remove( const object& obj );
 
          vector< unique_ptr<op_evaluator> >     _operation_evaluators;
 

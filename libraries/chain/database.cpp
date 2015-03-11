@@ -374,12 +374,10 @@ void database::reindex(fc::path data_dir, genesis_allocation initial_allocation)
    wdump( ((end-start).count()/1000000.0) );
 }
 
-
 asset database::current_delegate_registration_fee()const
 {
    return asset();
 }
-
 
 void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
@@ -428,12 +426,13 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
            });
 
 
-   if( 0 == (next_block.block_num() % global_props.active_delegates.size()) )
+   if( (next_block.block_num() % global_props.active_delegates.size()) == 0 )
    {
       update_active_delegates();
    }
 
    auto current_block_interval = global_props.block_interval;
+   // Are we at the maintenance interval?
    if( next_block.block_num() % (global_props.maintenance_interval / current_block_interval) == 0 )
    {
       update_global_properties();
@@ -462,12 +461,21 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    const auto& sum = create<block_summary_object>( [&](block_summary_object& p) {
               p.block_id = _pending_block.previous;
    });
-   FC_ASSERT( sum.id.instance() == next_block.block_num(), "", ("sim->id",sum.id)("next.block_num",next_block.block_num()) );
+   FC_ASSERT( sum.id.instance() == next_block.block_num(), "", ("summary.id",sum.id)("next.block_num",next_block.block_num()) );
 
    auto old_pending_trx = std::move(_pending_block.transactions);
    _pending_block.transactions.clear();
    for( auto old_trx : old_pending_trx )
       push_transaction( old_trx );
+
+   //Look for expired transactions in the deduplication list, and remove them.
+   //Transactions must have expired by at least two forking windows in order to be removed.
+   auto& transaction_idx = static_cast<transaction_index&>(get_index(implementation_ids, impl_transaction_object_type));
+   const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
+   auto forking_window_time = get_global_properties().maximum_undo_history * get_global_properties().block_interval;
+   while( !dedupe_index.empty()
+          && head_block_time() - dedupe_index.rbegin()->expiration >= fc::seconds(forking_window_time) )
+      transaction_idx.remove(*dedupe_index.rbegin());
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num())(skip) )  }
 
 time_point database::get_next_generation_time( delegate_id_type del_id )const
@@ -508,6 +516,8 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
 
    _pending_block.delegate_id = del_id;
    if( !(skip & skip_delegate_signature) ) _pending_block.sign( delegate_key );
+
+   FC_ASSERT( fc::raw::pack_size(_pending_block) <= get_global_properties().maximum_block_size );
    //This line used to std::move(_pending_block) but this is unsafe as _pending_block is later referenced without being
    //reinitialized. Future optimization could be to move it, then reinitialize it with the values we need to preserve.
    signed_block tmp = _pending_block;
@@ -601,7 +611,7 @@ void database::update_global_dynamic_data( const signed_block& b )
    });
 }
 
-void database::pop_block()
+void database::pop_undo()
 { try {
    _pending_block_session.reset();
    _block_id_to_block.remove( _pending_block.previous );
@@ -609,7 +619,7 @@ void database::pop_block()
    _pending_block.previous  = head_block_id();
    _pending_block.timestamp = head_block_time();
    _fork_db.pop_block();
-   } FC_CAPTURE_AND_RETHROW() }
+} FC_CAPTURE_AND_RETHROW() }
 
 void database::clear_pending()
 { try {
@@ -641,7 +651,7 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
 
             // pop blocks until we hit the forked block
             while( head_block_id() != branches.second.back()->data.previous )
-               pop_block();
+               pop_undo();
 
             // push all blocks on the new fork
             for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr )
@@ -666,7 +676,7 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
 
                    // pop all blocks from the bad fork
                    while( head_block_id() != branches.second.back()->data.previous )
-                      pop_block();
+                      pop_undo();
 
                    // restore all blocks from the good fork
                    for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr )
@@ -686,7 +696,8 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
 
    // If there is a pending block session, then the database state is dirty with pending transactions.
    // Drop the pending session to reset the database to a clean head block state.
-   _pending_block_session.reset();
+   // TODO: Preserve pending transactions, and re-apply any which weren't included in the new block.
+   clear_pending();
 
    auto session = _undo_db.start_undo_session();
    apply_block( new_block, skip );
@@ -696,6 +707,12 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
 
 /**
  *  Attempts to push the transaction into the pending queue
+ *
+ * When called to push a locally generated transaction, set the skip_block_size_check bit on the skip argument. This
+ * will allow the transaction to be pushed even if it causes the pending block size to exceed the maximum block size.
+ * Although the transaction will probably not propagate further now, as the peers are likely to have their pending
+ * queues full as well, it will be kept in the queue to be propagated later when a new block flushes out the pending
+ * queues.
  */
 bool database::push_transaction( const signed_transaction& trx, uint32_t skip )
 {
@@ -705,6 +722,10 @@ bool database::push_transaction( const signed_transaction& trx, uint32_t skip )
    auto session = _undo_db.start_undo_session();
    apply_transaction( trx, skip );
    _pending_block.transactions.push_back(trx);
+
+   FC_ASSERT( (skip & skip_block_size_check) ||
+              fc::raw::pack_size(_pending_block) <= get_global_properties().maximum_block_size );
+
    // The transaction applied successfully. Merge its changes into the pending block session.
    session.merge();
    return true;
@@ -730,6 +751,16 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
       eval_state.operation_results.push_back(r);
    }
    ptrx.operation_results = std::move( eval_state.operation_results );
+
+   //Insert transaction into unique transactions database.
+   if( !(skip & skip_transaction_dupe_check) )
+      get_index(implementation_ids, impl_transaction_object_type).create([this,trx](object& transaction_obj) {
+         transaction_object* transaction = static_cast<transaction_object*>(&transaction_obj);
+#warning set expiration!
+         transaction->expiration = std::max(bts::chain::now(), fc::time_point_sec(head_block_time())) + fc::seconds(20);
+         idump((head_block_time())(transaction->expiration));
+         transaction->transaction_id = transaction_id_type::hash(trx);
+      });
    return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
@@ -784,6 +815,11 @@ void database::save_undo( const object& obj )
 void database::save_undo_add( const object& obj )
 {
    _undo_db.on_create( obj );
+}
+
+void database::save_undo_remove(const object& obj)
+{
+   _undo_db.on_remove( obj );
 }
 
 } } // namespace bts::chain
