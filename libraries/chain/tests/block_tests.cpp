@@ -10,8 +10,6 @@
 
 using namespace bts::chain;
 
-BOOST_FIXTURE_TEST_SUITE( operation_unit_tests, database_fixture )
-
 BOOST_AUTO_TEST_CASE( generate_empty_blocks )
 {
    try {
@@ -69,11 +67,11 @@ BOOST_AUTO_TEST_CASE( undo_block )
             auto b =  db.generate_block( delegate_priv_key, ad[i%ad.size()] );
          }
          BOOST_CHECK( db.head_block_num() == 5 );
-         db.pop_block();
+         db.pop_undo();
          BOOST_CHECK( db.head_block_num() == 4 );
-         db.pop_block();
+         db.pop_undo();
          BOOST_CHECK( db.head_block_num() == 3 );
-         db.pop_block();
+         db.pop_undo();
          BOOST_CHECK( db.head_block_num() == 2 );
          for( uint32_t i = 0; i < 5; ++i )
          {
@@ -174,4 +172,96 @@ BOOST_AUTO_TEST_CASE( undo_pending )
    }
 }
 
-BOOST_AUTO_TEST_SUITE_END()
+BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
+{
+   try {
+      fc::temp_directory dir1,
+                         dir2;
+      database db1,
+               db2;
+      db1.open(dir1.path());
+      db2.open(dir2.path());
+
+      start_simulated_time(bts::chain::now());
+      auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
+      bts::chain::index& account_idx = db1.get_index(protocol_ids, account_object_type);
+
+      signed_transaction trx;
+      account_id_type nathan_id = account_idx.get_next_id();
+      trx.operations.push_back(account_create_operation({account_id_type(), asset(), "nathan"}));
+      trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+      db1.push_transaction(trx);
+
+      auto ad = db1.get_global_properties().active_delegates;
+      advance_simulated_time_to( db1.get_next_generation_time(  ad[db1.head_block_num()%ad.size()] ) );
+      auto b =  db1.generate_block( delegate_priv_key, ad[db1.head_block_num()%ad.size()] );
+
+      BOOST_CHECK(nathan_id(db1).name == "nathan");
+
+      ad = db2.get_global_properties().active_delegates;
+      advance_simulated_time_to( db2.get_next_generation_time(  ad[db2.head_block_num()%ad.size()] ) );
+      b =  db2.generate_block( delegate_priv_key, ad[db2.head_block_num()%ad.size()] );
+      db1.push_block(b);
+      ad = db2.get_global_properties().active_delegates;
+      advance_simulated_time_to( db2.get_next_generation_time(  ad[db2.head_block_num()%ad.size()] ) );
+      b =  db2.generate_block( delegate_priv_key, ad[db2.head_block_num()%ad.size()] );
+      db1.push_block(b);
+
+      BOOST_CHECK_THROW(nathan_id(db1), fc::exception);
+
+      db2.push_transaction(trx);
+
+      ad = db2.get_global_properties().active_delegates;
+      advance_simulated_time_to( db2.get_next_generation_time(  ad[db2.head_block_num()%ad.size()] ) );
+      b =  db2.generate_block( delegate_priv_key, ad[db2.head_block_num()%ad.size()] );
+      db1.push_block(b);
+
+      BOOST_CHECK(nathan_id(db1).name == "nathan");
+      BOOST_CHECK(nathan_id(db2).name == "nathan");
+   } catch (fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
+BOOST_AUTO_TEST_CASE( duplicate_transactions )
+{
+   try {
+      fc::temp_directory dir1,
+                         dir2;
+      database db1,
+               db2;
+      db1.open(dir1.path());
+      db2.open(dir2.path());
+
+      start_simulated_time(bts::chain::now());
+      auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
+      bts::chain::index& account_idx = db1.get_index(protocol_ids, account_object_type);
+
+      signed_transaction trx;
+      account_id_type nathan_id = account_idx.get_next_id();
+      trx.operations.push_back(account_create_operation({account_id_type(), asset(), "nathan"}));
+      trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+      db1.push_transaction(trx);
+
+      trx = decltype(trx)();
+      trx.operations.push_back(transfer_operation({account_id_type(), nathan_id, asset(500)}));
+      trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+      db1.push_transaction(trx);
+
+      BOOST_CHECK_THROW(db1.push_transaction(trx), fc::exception);
+
+      auto ad = db1.get_global_properties().active_delegates;
+      advance_simulated_time_to( db1.get_next_generation_time(  ad[db1.head_block_num()%ad.size()] ) );
+      auto b =  db1.generate_block( delegate_priv_key, ad[db1.head_block_num()%ad.size()] );
+      db2.push_block(b);
+
+      BOOST_CHECK_THROW(db1.push_transaction(trx), fc::exception);
+      BOOST_CHECK_THROW(db2.push_transaction(trx), fc::exception);
+      BOOST_CHECK(nathan_id(db1).balances(db1).get_balance(asset_id_type()).amount == 500);
+      BOOST_CHECK(nathan_id(db2).balances(db1).get_balance(asset_id_type()).amount == 500);
+   } catch (fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}

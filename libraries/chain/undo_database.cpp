@@ -9,7 +9,7 @@ void undo_database::disable() { _disabled = true; }
 undo_database::session undo_database::start_undo_session()
 {
    if( _disabled ) return session(*this);
-   _stack.emplace_back( undo_state() );
+   _stack.emplace_back();
    ++_active_sessions;
    return session(*this);
 }
@@ -66,6 +66,8 @@ void undo_database::undo()
       _db.insert( std::move(*item.second) );
 
    _stack.pop_back();
+   if( _stack.empty() )
+      _stack.emplace_back();
    enable();
    --_active_sessions;
 } FC_CAPTURE_AND_RETHROW() }
