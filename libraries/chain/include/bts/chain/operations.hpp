@@ -240,6 +240,7 @@ namespace bts { namespace chain {
 
    typedef fc::static_variant<
             transfer_operation,
+            limit_order_create_operation,
             key_create_operation,
             account_create_operation,
             account_update_operation,

@@ -22,7 +22,7 @@ object_id_type transfer_evaluator::evaluate( const operation& o )
       FC_ASSERT( from_account.is_authorized_asset( op.amount.asset_id ) );
    }
 
-   FC_ASSERT( verify_authority( &from_account, authority::active ) );
+   // SHOULD BE HANDLED BY pay_fee FC_ASSERT( verify_authority( &from_account, authority::active ) );
    FC_ASSERT( get_balance( &from_account, &asset_type ) >= op.amount );
 
    adjust_balance( &from_account, &asset_type, -op.amount.amount );
