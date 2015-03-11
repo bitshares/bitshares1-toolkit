@@ -23,6 +23,7 @@ namespace bts { namespace chain {
          amount -= o.amount;
          return *this;
       }
+      asset operator -()const { return asset( -amount, asset_id ); }
       friend bool operator == ( const asset& a, const asset& b )
       {
          return tie(a.asset_id,a.amount) == tie(b.asset_id,b.amount);
@@ -32,15 +33,25 @@ namespace bts { namespace chain {
          FC_ASSERT( a.asset_id == b.asset_id );
          return a.amount >= b.amount;
       }
+
    };
+
 
    struct price
    {
       asset base;
       asset quote;
    };
-   bool  operator < ( const price& a, const price& b );
-   asset operator * ( const asset& a, const price& b );
+   inline price operator / ( const asset& base, const asset& quote )
+   {
+      return price{base,quote};
+   }
+
+   bool  operator <  ( const asset& a, const asset& b );
+   bool  operator <= ( const asset& a, const asset& b );
+   bool  operator <  ( const price& a, const price& b );
+   bool  operator <= ( const price& a, const price& b );
+   asset operator *  ( const asset& a, const price& b );
 
 } }
 

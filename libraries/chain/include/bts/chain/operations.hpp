@@ -117,6 +117,39 @@ namespace bts { namespace chain {
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
+   /**
+    *  @class limit_order_create_operation
+    *  @brief instructs the blockchain to attempt to sell one asset for another
+    *
+    *  The blockchain will atempt to sell amount_to_sell.asset_id for as 
+    *  much min_to_receive.asset_id as possible.  The fee will be paid by
+    *  the seller's account.  Market fees will apply as specified by the
+    *  issuer of both the selling asset and the receiving asset as
+    *  a percentage of the amount exchanged.
+    *
+    *  If either the selling asset or the receiving asset is white list
+    *  restricted the order will only be created if the seller is on
+    *  the white list of any asset type involved.
+    *
+    *  Market orders are matched in the order they are included
+    *  in the block chaing.
+    */
+   struct limit_order_create_operation
+   {
+      account_id_type seller;
+      asset           amount_to_sell;
+      asset           fee;
+      asset           min_to_receive;
+
+      /** if this flag is set the entire order must be filled or
+       * the operation is rejected.
+       */
+      bool            fill_or_kill = false;
+
+      void validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
    struct asset_issue_operation
    {
       asset            asset_to_issue;
@@ -207,6 +240,7 @@ namespace bts { namespace chain {
 
    typedef fc::static_variant<
             transfer_operation,
+            limit_order_create_operation,
             key_create_operation,
             account_create_operation,
             account_update_operation,
@@ -283,6 +317,10 @@ FC_REFLECT( bts::chain::account_update_operation,
 
 FC_REFLECT( bts::chain::account_publish_feeds_operation,
             (account)(fee)(feeds) )
+
+FC_REFLECT( bts::chain::limit_order_create_operation,
+            (seller)(amount_to_sell)(fee)(min_to_receive)(fill_or_kill) 
+          )
 
 FC_REFLECT( bts::chain::transfer_operation,
             (from)(to)(amount)(fee)(memo) )
