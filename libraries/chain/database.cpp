@@ -372,12 +372,10 @@ void database::reindex(fc::path data_dir, genesis_allocation initial_allocation)
    wdump( ((end-start).count()/1000000.0) );
 }
 
-
 asset database::current_delegate_registration_fee()const
 {
    return asset();
 }
-
 
 void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
@@ -467,6 +465,15 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    _pending_block.transactions.clear();
    for( auto old_trx : old_pending_trx )
       push_transaction( old_trx );
+
+   //Look for expired transactions in the deduplication list, and remove them.
+   //Transactions must have expired by at least two forking windows in order to be removed.
+   auto& transaction_idx = static_cast<transaction_index&>(get_index(implementation_ids, impl_transaction_object_type));
+   const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
+   auto forking_window_time = get_global_properties().maximum_undo_history * get_global_properties().block_interval;
+   while( !dedupe_index.empty()
+          && head_block_time() - dedupe_index.rbegin()->expiration >= fc::seconds(forking_window_time) )
+      transaction_idx.remove(*dedupe_index.rbegin());
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num())(skip) )  }
 
 time_point database::get_next_generation_time( delegate_id_type del_id )const
@@ -742,6 +749,16 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
       eval_state.operation_results.push_back(r);
    }
    ptrx.operation_results = std::move( eval_state.operation_results );
+
+   //Insert transaction into unique transactions database.
+   if( !(skip & skip_transaction_dupe_check) )
+      get_index(implementation_ids, impl_transaction_object_type).create([this,trx](object& transaction_obj) {
+         transaction_object* transaction = static_cast<transaction_object*>(&transaction_obj);
+#warning set expiration!
+         transaction->expiration = std::max(bts::chain::now(), fc::time_point_sec(head_block_time())) + fc::seconds(20);
+         idump((head_block_time())(transaction->expiration));
+         transaction->transaction_id = transaction_id_type::hash(trx);
+      });
    return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
@@ -796,6 +813,11 @@ void database::save_undo( const object& obj )
 void database::save_undo_add( const object& obj )
 {
    _undo_db.on_create( obj );
+}
+
+void database::save_undo_remove(const object& obj)
+{
+   _undo_db.on_remove( obj );
 }
 
 } } // namespace bts::chain

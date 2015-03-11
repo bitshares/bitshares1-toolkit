@@ -171,6 +171,7 @@ namespace bts { namespace chain {
          friend class base_primary_index;
          void save_undo( const object& obj );
          void save_undo_add( const object& obj );
+         void save_undo_remove( const object& obj );
 
          vector< unique_ptr<op_evaluator> >     _operation_evaluators;
 

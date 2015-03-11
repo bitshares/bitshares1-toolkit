@@ -24,6 +24,9 @@ namespace bts { namespace chain {
    class transaction_object : public abstract_object<transaction_object>
    {
       public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_transaction_object_type;
+
          /**
           * The odds of a collision are sufficiently low
           * that it doesn't make sense to consume extra

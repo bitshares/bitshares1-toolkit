@@ -7,7 +7,7 @@
 namespace bts { namespace chain {
    class database;
 
-   /** 
+   /**
     * @class index_observer
     * @brief used to get callbacks when objects change
     */
@@ -15,7 +15,7 @@ namespace bts { namespace chain {
    {
       public:
          virtual ~index_observer(){}
-         /** called just after the object is added */ 
+         /** called just after the object is added */
          virtual void on_add( const object& obj ){};
          /** called just before obj is removed */
          virtual void on_remove( const object& obj ){};
@@ -24,17 +24,17 @@ namespace bts { namespace chain {
    };
 
    /**
-    *  @class index 
+    *  @class index
     *  @brief abstract base class for accessing objects indexed in various ways.
     *
     *  All indexes assume that there exists an object ID space that will grow
     *  for ever in a seqential manner.  These IDs are used to identify the
-    *  index, type, and instance of the object.  
+    *  index, type, and instance of the object.
     *
     *  Items in an index can only be modified via a call to modify and
     *  all references to objects outside of that callback are const references.
     *
-    *  Most implementations will probably be some form of boost::multi_index_container 
+    *  Most implementations will probably be some form of boost::multi_index_container
     *  which means that they can covnert a reference to an object to an iterator.  When
     *  at all possible save a pointer/reference to your objects rather than constantly
     *  looking them up by ID.
@@ -53,7 +53,7 @@ namespace bts { namespace chain {
 
          virtual const object&  load( const std::vector<char>& data ) = 0;
          /**
-          *  Polymorphically insert by moving an object into the index.  
+          *  Polymorphically insert by moving an object into the index.
           *  this should throw if the object is already in the database.
           */
          virtual const object& insert( object&& obj ) = 0;
@@ -103,7 +103,7 @@ namespace bts { namespace chain {
    };
 
    /**
-    *   Defines the common implementation 
+    *   Defines the common implementation
     */
    class base_primary_index
    {
@@ -113,7 +113,7 @@ namespace bts { namespace chain {
          /** called just before obj is modified */
          void save_undo( const object& obj );
 
-         /** called just after the object is added */ 
+         /** called just after the object is added */
          void on_add( const object& obj );
 
          /** called just before obj is removed */
@@ -130,7 +130,7 @@ namespace bts { namespace chain {
    };
 
    /**
-    * @class primary_index 
+    * @class primary_index
     * @brief  Wraps a derived index to intercept calls to create, modify, and remove so that
     *  callbacks may be fired and undo state saved.
     *
@@ -200,6 +200,4 @@ namespace bts { namespace chain {
          object_id_type _next_id;
    };
 
-
 } }
-
