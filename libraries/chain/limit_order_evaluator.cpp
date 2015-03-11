@@ -134,11 +134,22 @@ object_id_type limit_order_evaluator::apply( const operation& o )
                    });
    }
 
+   const auto& sell_asset_dyn_data = _sell_asset->dynamic_asset_data_id(db());
+   db().modify( sell_asset_dyn_data, [&]( asset_dynamic_data_object& obj ){
+                obj.accumulated_fees += total_sell_issuer_fees.amount;
+                });
+
+   const auto& recv_asset_dyn_data = _receive_asset->dynamic_asset_data_id(db());
+   db().modify( recv_asset_dyn_data, [&]( asset_dynamic_data_object& obj ){
+                obj.accumulated_fees += total_recv_issuer_fees.amount;
+                });
+
+
    apply_delta_balances();
    apply_delta_fee_pools();
 
    return new_order_object.id;
-}
+} // limit_order_evaluator::apply
 
 asset limit_order_evaluator::calculate_market_fee( const asset_object* aobj, const asset& trade_amount )
 {
