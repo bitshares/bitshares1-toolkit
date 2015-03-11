@@ -8,11 +8,11 @@
 
 namespace bts { namespace chain {
 
-  class market_order_object : public abstract_object<market_order_object>
+  class limit_order_object : public abstract_object<limit_order_object>
   {
      public:
         static const uint8_t space_id = protocol_ids;
-        static const uint8_t type_id  = market_order_object_type;
+        static const uint8_t type_id  = limit_order_object_type;
 
         share_type       for_sale; ///< asset_id == sell_price.base.asset_id
         price            sell_price;
@@ -22,20 +22,20 @@ namespace bts { namespace chain {
   struct by_id;
   struct by_price;
   typedef multi_index_container< 
-     market_order_object,
+     limit_order_object,
      indexed_by<  
         hashed_unique< tag<by_id>, 
            member< object, object_id_type, &object::id > >,
         ordered_unique< tag<by_price>, 
-           composite_key< market_order_object, 
-              member< market_order_object, price, &market_order_object::sell_price>,
+           composite_key< limit_order_object, 
+              member< limit_order_object, price, &limit_order_object::sell_price>,
               member< object, object_id_type, &object::id>
            >
         >
      >
-  > market_order_multi_index_type;
+  > limit_order_multi_index_type;
 
-  typedef generic_index<market_order_object, market_order_multi_index_type> market_order_index;
+  typedef generic_index<limit_order_object, limit_order_multi_index_type> limit_order_index;
 
 #if 0
   class short_order_object : public object
@@ -83,7 +83,7 @@ namespace bts { namespace chain {
 
   };
 
-  class market_order_index : public index 
+  class limit_order_index : public index 
   {
      public:
   };
@@ -91,7 +91,7 @@ namespace bts { namespace chain {
 
 } }
 
-FC_REFLECT_DERIVED( bts::chain::market_order_object, 
+FC_REFLECT_DERIVED( bts::chain::limit_order_object, 
                     (bts::chain::object), 
                     (for_sale)(sell_price)(seller) 
                   )
