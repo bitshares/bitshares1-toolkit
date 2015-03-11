@@ -117,6 +117,17 @@ namespace bts { namespace chain {
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
+   struct market_order_create_operation
+   {
+      account_id_type seller;
+      asset           amount_to_sell;
+      asset           fee;
+      asset           min_to_receive;
+
+      void validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
    struct asset_issue_operation
    {
       asset            asset_to_issue;
@@ -283,6 +294,10 @@ FC_REFLECT( bts::chain::account_update_operation,
 
 FC_REFLECT( bts::chain::account_publish_feeds_operation,
             (account)(fee)(feeds) )
+
+FC_REFLECT( bts::chain::market_order_create_operation,
+            (seller)(amount_to_sell)(fee)(min_to_receive) 
+          )
 
 FC_REFLECT( bts::chain::transfer_operation,
             (from)(to)(amount)(fee)(memo) )

@@ -281,4 +281,16 @@ share_type asset_fund_fee_pool_operation::calculate_fee(const fee_schedule_type&
    return k.at( asset_fund_fee_pool_fee_type );
 }
 
+void market_order_create_operation::validate()const
+{
+   FC_ASSERT( amount_to_sell.asset_id != min_to_receive.asset_id );
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( amount_to_sell.amount > 0 );
+   FC_ASSERT( min_to_receive.amount > 0 );
+}
+
+share_type market_order_create_operation::calculate_fee(const fee_schedule_type& k) const
+{
+   return k.at( market_order_fee_type );
+}
 } } // namespace bts::chain
