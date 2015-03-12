@@ -66,7 +66,7 @@ void undo_database::undo()
 
    for( auto& item : state.old_index_next_ids )
    {
-      _db.get_index( item.first.space(), item.first.type() ).set_next_id( item.second );
+      _db.get_mutable_index( item.first.space(), item.first.type() ).set_next_id( item.second );
    }
 
    for( auto& item : state.removed )
@@ -133,7 +133,7 @@ void undo_database::pop_commit()
 
       for( auto& item : state.old_index_next_ids )
       {
-         _db.get_index( item.first.space(), item.first.type() ).set_next_id( item.second );
+         _db.get_mutable_index( item.first.space(), item.first.type() ).set_next_id( item.second );
       }
 
       for( auto& item : state.removed )

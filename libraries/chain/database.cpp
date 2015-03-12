@@ -92,7 +92,7 @@ const index& database::get_index(uint8_t space_id, uint8_t type_id)const
    FC_ASSERT( tmp );
    return *tmp;
 }
-index& database::get_index(uint8_t space_id, uint8_t type_id)
+index& database::get_mutable_index(uint8_t space_id, uint8_t type_id)
 {
    FC_ASSERT( _index.size() > space_id, "", ("space_id",space_id)("type_id",type_id)("index.size",_index.size()) );
    FC_ASSERT( _index[space_id].size() > type_id , "", ("space_id",space_id)("type_id",type_id)("index[space_id].size",_index[space_id].size()) );
@@ -152,7 +152,7 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
    try {
    auto next_ids = fc::raw::unpack<vector<object_id_type>>( _object_id_to_object->fetch( object_id_type() ) );
    for( auto id : next_ids )
-      get_index( id ).set_next_id( id );
+      get_mutable_index( id ).set_next_id( id );
    }
    catch ( const fc::exception& e )
    {
@@ -470,7 +470,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
    //Look for expired transactions in the deduplication list, and remove them.
    //Transactions must have expired by at least two forking windows in order to be removed.
-   auto& transaction_idx = static_cast<transaction_index&>(get_index(implementation_ids, impl_transaction_object_type));
+   auto& transaction_idx = static_cast<transaction_index&>(get_mutable_index(implementation_ids, impl_transaction_object_type));
    const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
    auto forking_window_time = get_global_properties().maximum_undo_history * get_global_properties().block_interval;
    while( !dedupe_index.empty()
@@ -529,7 +529,7 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
 
 void database::update_active_delegates()
 {
-    vector<delegate_id_type> ids( dynamic_cast<simple_index<delegate_object>&>(get_index<delegate_object>()).size() );
+    vector<delegate_id_type> ids( dynamic_cast<simple_index<delegate_object>&>(get_mutable_index<delegate_object>()).size() );
     for( uint32_t i = 0; i < ids.size(); ++i ) ids[i] = delegate_id_type(i);
     std::sort( ids.begin(), ids.end(), [&]( delegate_id_type a,delegate_id_type b )->bool {
        return a(*this).vote(*this).total_votes >
@@ -754,7 +754,7 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
 
    //Insert transaction into unique transactions database.
    if( !(skip & skip_transaction_dupe_check) )
-      get_index(implementation_ids, impl_transaction_object_type).create([this,trx](object& transaction_obj) {
+      get_mutable_index(implementation_ids, impl_transaction_object_type).create([this,trx](object& transaction_obj) {
          transaction_object* transaction = static_cast<transaction_object*>(&transaction_obj);
 #warning set expiration!
          transaction->expiration = std::max(bts::chain::now(), fc::time_point_sec(head_block_time())) + fc::seconds(20);

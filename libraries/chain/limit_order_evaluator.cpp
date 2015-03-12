@@ -43,9 +43,9 @@ object_id_type limit_order_evaluator::apply( const operation& o )
        obj.sell_price = _op->amount_to_sell / _op->min_to_receive;
    });
 
-   auto& order_idx = static_cast<limit_order_index&>(db().get_index<limit_order_object>());
+   const auto& order_idx = db().get_index_type<limit_order_index>();
 
-   auto& price_idx = order_idx.indices().get<by_price>();
+   const auto& price_idx = order_idx.indices().get<by_price>();
    auto max_price  = _op->min_to_receive / _op->amount_to_sell;
    auto itr = price_idx.lower_bound( asset(0,_op->min_to_receive.asset_id) / _op->amount_to_sell );
    auto end = price_idx.end();
@@ -68,8 +68,8 @@ object_id_type limit_order_evaluator::apply( const operation& o )
       asset itr_pays;
       asset obj_receives;
       asset obj_pays;
-      
-      /* to handle rounding issues, we know that one order or the 
+
+      /* to handle rounding issues, we know that one order or the
        * other MUST be filled.
        */
       if( match_size == max_itr_pays )
@@ -134,7 +134,7 @@ object_id_type limit_order_evaluator::apply( const operation& o )
 
    if( post_eval_order.for_sale != new_order_object.for_sale )
    {
-      db().modify( new_order_object, [&]( limit_order_object& obj ){ 
+      db().modify( new_order_object, [&]( limit_order_object& obj ){
                    obj.for_sale = post_eval_order.for_sale;
                    });
    }

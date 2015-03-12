@@ -9,7 +9,7 @@ object_id_type asset_create_evaluator::evaluate( const operation& o )
    const auto& op = o.get<asset_create_operation>();
    database& d = db();
 
-   auto& asset_indx = static_cast<asset_index&>(db().get_index<asset_object>());
+   auto& asset_indx = db().get_index_type<asset_index>();
    auto asset_symbol_itr = asset_indx.indices().get<by_symbol>().find( op.symbol );
    FC_ASSERT( asset_symbol_itr == asset_indx.indices().get<by_symbol>().end() );
 
@@ -17,7 +17,7 @@ object_id_type asset_create_evaluator::evaluate( const operation& o )
    bts_fee_required = op.calculate_fee( d.current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
 
-   const asset_object& core_asset = d.get_core_asset(); 
+   const asset_object& core_asset = d.get_core_asset();
    fees_paid[&core_asset].to_issuer -= bts_fee_required.value/2;
    assert( fees_paid[&core_asset].to_issuer >= 0 );
 
@@ -38,7 +38,7 @@ object_id_type asset_create_evaluator::apply( const operation& o )
          a.fee_pool = bts_fee_required.value / 2;
       });
 
-   auto next_asset_id = db().get_index<asset_object>().get_next_id();
+   auto next_asset_id = db().get_index_type<asset_index>().get_next_id();
 
    const asset_object& new_asset =
      db().create<asset_object>( [&]( asset_object& a ) {

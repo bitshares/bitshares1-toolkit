@@ -42,7 +42,6 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
          allocation.emplace_back(the_key, BTS_INITIAL_SUPPLY / account_count);
 
       fc::temp_directory data_dir(fc::current_path());
-      int accounts = 0;
 
       {
          database db;

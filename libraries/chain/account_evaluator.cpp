@@ -20,7 +20,7 @@ object_id_type account_create_evaluator::evaluate( const operation& o )
    for( auto id : op.active.auths )
       FC_ASSERT( id.first.is_relative() || db().find<object>(id.first) );
 
-   auto& acnt_indx = static_cast<account_index&>(db().get_index<account_object>());
+   auto& acnt_indx = db().get_index_type<account_index>();
    if( op.name.size() )
    {
       auto current_account_itr = acnt_indx.indices().get<by_name>().find( op.name );

@@ -140,16 +140,16 @@ namespace bts { namespace chain {
    class primary_index  : public DerivedIndex, public base_primary_index
    {
       public:
-         typedef typename DerivedIndex::object_type ObjectType;
+         typedef typename DerivedIndex::object_type object_type;
 
          primary_index( database& db )
-         :base_primary_index(db),_next_id(ObjectType::space_id,ObjectType::type_id,0) {}
+         :base_primary_index(db),_next_id(object_type::space_id,object_type::type_id,0) {}
 
          virtual uint8_t object_space_id()const override
-         { return ObjectType::space_id; }
+         { return object_type::space_id; }
 
          virtual uint8_t object_type_id()const override
-         { return ObjectType::type_id; }
+         { return object_type::type_id; }
 
          virtual object_id_type get_next_id()const               { return _next_id;    }
          virtual void           use_next_id()                    { ++_next_id.number;  }
@@ -157,7 +157,7 @@ namespace bts { namespace chain {
 
          virtual const object&  load( const std::vector<char>& data )
          {
-            return DerivedIndex::insert( fc::raw::unpack<ObjectType>( data ) );
+            return DerivedIndex::insert( fc::raw::unpack<object_type>( data ) );
          }
 
          virtual void open( const shared_ptr<bts::db::level_map<object_id_type, vector<char> >>& db )

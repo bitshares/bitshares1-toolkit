@@ -139,7 +139,7 @@ BOOST_AUTO_TEST_CASE( undo_pending )
 
          start_simulated_time( bts::chain::now() );
          auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
-         bts::chain::index& account_idx = db.get_index(protocol_ids, account_object_type);
+         const bts::chain::index& account_idx = db.get_index(protocol_ids, account_object_type);
 
          signed_transaction trx;
          account_id_type nathan_id = account_idx.get_next_id();
@@ -184,7 +184,7 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
 
       start_simulated_time(bts::chain::now());
       auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
-      bts::chain::index& account_idx = db1.get_index(protocol_ids, account_object_type);
+      const bts::chain::index& account_idx = db1.get_index(protocol_ids, account_object_type);
 
       signed_transaction trx;
       account_id_type nathan_id = account_idx.get_next_id();
@@ -236,7 +236,7 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
 
       start_simulated_time(bts::chain::now());
       auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
-      bts::chain::index& account_idx = db1.get_index(protocol_ids, account_object_type);
+      const bts::chain::index& account_idx = db1.get_index(protocol_ids, account_object_type);
 
       signed_transaction trx;
       account_id_type nathan_id = account_idx.get_next_id();

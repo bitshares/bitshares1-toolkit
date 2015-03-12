@@ -72,7 +72,7 @@ namespace bts { namespace chain {
          template<typename T, typename F>
          const T& create( F&& constructor )
          {
-            auto& idx = get_index<T>();
+            auto& idx = get_mutable_index<T>();
             return static_cast<const T&>( idx.create( [&](object& o)
             {
                assert( dynamic_cast<T*>(&o) );
@@ -80,33 +80,34 @@ namespace bts { namespace chain {
             } ));
          }
 
-         template<typename IndexType>
-         IndexType&    get_index_type() {
-            static_assert( std::is_base_of<index,IndexType>::value, "Type must be an index type" );
-            return static_cast<IndexType&>( get_index( IndexType::object_type::space_id, IndexType::object_type::type_id ) );
-         }
-
+         ///These methods are used to retrieve indexes on the database. All public index accessors are const-access only.
+         /// @{
          template<typename IndexType>
          const IndexType& get_index_type()const {
             static_assert( std::is_base_of<index,IndexType>::value, "Type must be an index type" );
             return static_cast<const IndexType&>( get_index( IndexType::object_type::space_id, IndexType::object_type::type_id ) );
          }
-
-         index&        get_index(uint8_t space_id, uint8_t type_id);
+         template<typename T>
+         const index&  get_index()const { return get_index(T::space_id,T::type_id); }
          const index&  get_index(uint8_t space_id, uint8_t type_id)const;
-         index&        get_index(object_id_type id)      { return get_index(id.space(),id.type()); }
          const index&  get_index(object_id_type id)const { return get_index(id.space(),id.type()); }
+         /// @}
 
-         const object& insert( object&& obj ) { return get_index(obj.id).insert( std::move(obj) ); }
-         void          remove( const object& obj ) { get_index(obj.id).remove( obj ); }
          const object& get_object( object_id_type id )const;
          const object* find_object( object_id_type id )const;
 
+         /// These methods are mutators of the database. You must use these methods to make changes to the database,
+         /// in order to maintain proper undo history.
+         ///@{
+
+         const object& insert( object&& obj ) { return get_mutable_index(obj.id).insert( std::move(obj) ); }
+         void          remove( const object& obj ) { get_mutable_index(obj.id).remove( obj ); }
          template<typename T, typename Lambda>
          void modify( const T& obj, const Lambda& m ) {
-            get_index(obj.id).modify(obj,m);
+            get_mutable_index(obj.id).modify(obj,m);
          }
 
+         ///@}
 
          template<typename T>
          const T& get( object_id_type id )const
@@ -139,9 +140,6 @@ namespace bts { namespace chain {
             return static_cast<const IndexType*>(_index[ObjectType::space_id][ObjectType::type_id].get());
          }
 
-         template<typename T>       index& get_index()      { return get_index(T::space_id,T::type_id); }
-         template<typename T> const index& get_index()const { return get_index(T::space_id,T::type_id); }
-
          const asset_object&           get_core_asset()const;
          const global_property_object& get_global_properties()const;
          const fee_schedule_type&      current_fee_schedule()const;
@@ -169,9 +167,20 @@ namespace bts { namespace chain {
    private:
          optional<undo_database::session>       _pending_block_session;
          friend class base_primary_index;
+         friend class undo_database;
          void save_undo( const object& obj );
          void save_undo_add( const object& obj );
          void save_undo_remove( const object& obj );
+
+         template<typename IndexType>
+         IndexType&    get_mutable_index_type() {
+            static_assert( std::is_base_of<index,IndexType>::value, "Type must be an index type" );
+            return static_cast<IndexType&>( get_mutable_index( IndexType::object_type::space_id, IndexType::object_type::type_id ) );
+         }
+         template<typename T>
+         index& get_mutable_index()                   { return get_mutable_index(T::space_id,T::type_id); }
+         index& get_mutable_index(object_id_type id)  { return get_mutable_index(id.space(),id.type());   }
+         index& get_mutable_index(uint8_t space_id, uint8_t type_id);
 
          vector< unique_ptr<op_evaluator> >     _operation_evaluators;
 

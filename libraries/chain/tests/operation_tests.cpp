@@ -4,6 +4,7 @@
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/key_object.hpp>
 #include <bts/chain/delegate_object.hpp>
+#include <bts/chain/simple_index.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -91,7 +92,7 @@ BOOST_AUTO_TEST_CASE( create_account )
    }
 }
 
-BOOST_AUTO_TEST_CASE( transfer )
+BOOST_AUTO_TEST_CASE( transfer_core_asset )
 {
    try {
       account_id_type genesis_account;
@@ -145,52 +146,6 @@ BOOST_AUTO_TEST_CASE( transfer )
    }
 }
 
-BOOST_AUTO_TEST_CASE( create_asset )
-{
-   try {
-      asset_id_type test_asset_id = db.get_index<asset_object>().get_next_id();
-      asset_create_operation creator;
-      creator.issuer = account_id_type();
-      creator.fee = asset();
-      creator.symbol = "TEST";
-      creator.max_supply = 100000;
-      creator.precision = 2;
-      creator.market_fee_percent = 1;
-      creator.permissions = 0;
-      creator.flags = 0;
-      creator.core_exchange_rate = price({asset(2),asset(1)});
-      creator.short_backing_asset = asset_id_type();
-      trx.operations.push_back(std::move(creator));
-      db.push_transaction(trx, ~0);
-
-      const asset_object& test_asset = test_asset_id(db);
-      BOOST_CHECK(test_asset.symbol == "TEST");
-      BOOST_CHECK(asset(1, test_asset_id) * test_asset.core_exchange_rate == asset(2));
-      BOOST_CHECK(!test_asset.enforce_white_list());
-      BOOST_CHECK(test_asset.max_supply == 100000);
-      BOOST_CHECK(test_asset.short_backing_asset == asset_id_type());
-      BOOST_CHECK(test_asset.market_fee_percent == 1);
-
-      auto op = trx.operations.back().get<asset_create_operation>();
-      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
-      REQUIRE_THROW_WITH_VALUE(op, issuer, account_id_type(99999999));
-      REQUIRE_THROW_WITH_VALUE(op, max_supply, -1);
-      REQUIRE_THROW_WITH_VALUE(op, max_supply, 0);
-      REQUIRE_THROW_WITH_VALUE(op, symbol, "A");
-      REQUIRE_THROW_WITH_VALUE(op, symbol, "qqq");
-      REQUIRE_THROW_WITH_VALUE(op, symbol, "11");
-      REQUIRE_THROW_WITH_VALUE(op, symbol, "AB CD");
-      REQUIRE_THROW_WITH_VALUE(op, symbol, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-      REQUIRE_THROW_WITH_VALUE(op, core_exchange_rate, price({asset(-100), asset(1)}));
-      REQUIRE_THROW_WITH_VALUE(op, core_exchange_rate, price({asset(100),asset(-1)}));
-      REQUIRE_THROW_WITH_VALUE(op, short_backing_asset, db.get_index<asset_object>().get_next_id());
-      REQUIRE_THROW_WITH_VALUE(op, short_backing_asset, asset_id_type(1000000));
-   } catch(fc::exception& e) {
-      edump((e.to_detail_string()));
-      throw;
-   }
-}
-
 BOOST_AUTO_TEST_CASE( create_delegate )
 {
    try {
@@ -226,7 +181,7 @@ BOOST_AUTO_TEST_CASE( create_delegate )
       REQUIRE_THROW_WITH_VALUE(op, max_sec_until_expiration, 0);
       trx.operations.back() = op;
 
-      delegate_id_type delegate_id = db.get_index(protocol_ids, delegate_object_type).get_next_id();
+      delegate_id_type delegate_id = db.get_index_type<primary_index<simple_index<delegate_object>>>().get_next_id();
       BOOST_CHECK(db.push_transaction(trx, ~0));
       const delegate_object& d = delegate_id(db);
 
@@ -256,7 +211,7 @@ BOOST_AUTO_TEST_CASE( update_delegate )
       //So this isn't sketchy at all...
       ((create_delegate*)this)->test_method();
 
-      delegate_id_type delegate_id = db.get_index(protocol_ids, delegate_object_type).get_next_id().instance() - 1;
+      delegate_id_type delegate_id = db.get_index_type<primary_index<simple_index<delegate_object>>>().get_next_id().instance() - 1;
       const delegate_object& d = delegate_id(db);
       trx.operations.clear();
       //Verify the totally un-sketchy move above worked correctly.
@@ -304,6 +259,64 @@ BOOST_AUTO_TEST_CASE( update_delegate )
 
       for( int i = 0; i < FEE_TYPE_COUNT; ++i )
          BOOST_CHECK(d.fee_schedule.at(i) == BTS_BLOCKCHAIN_PRECISION / 2);
+   } catch(fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
+BOOST_AUTO_TEST_CASE( create_asset )
+{
+   try {
+      asset_id_type test_asset_id = db.get_index<asset_object>().get_next_id();
+      asset_create_operation creator;
+      creator.issuer = account_id_type();
+      creator.fee = asset();
+      creator.symbol = "TEST";
+      creator.max_supply = 100000;
+      creator.precision = 2;
+      creator.market_fee_percent = 1;
+      creator.permissions = 0;
+      creator.flags = 0;
+      creator.core_exchange_rate = price({asset(2),asset(1)});
+      creator.short_backing_asset = asset_id_type();
+      trx.operations.push_back(std::move(creator));
+      db.push_transaction(trx, ~0);
+
+      const asset_object& test_asset = test_asset_id(db);
+      BOOST_CHECK(test_asset.symbol == "TEST");
+      BOOST_CHECK(asset(1, test_asset_id) * test_asset.core_exchange_rate == asset(2));
+      BOOST_CHECK(!test_asset.enforce_white_list());
+      BOOST_CHECK(test_asset.max_supply == 100000);
+      BOOST_CHECK(test_asset.short_backing_asset == asset_id_type());
+      BOOST_CHECK(test_asset.market_fee_percent == 1);
+
+      auto op = trx.operations.back().get<asset_create_operation>();
+      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
+      REQUIRE_THROW_WITH_VALUE(op, issuer, account_id_type(99999999));
+      REQUIRE_THROW_WITH_VALUE(op, max_supply, -1);
+      REQUIRE_THROW_WITH_VALUE(op, max_supply, 0);
+      REQUIRE_THROW_WITH_VALUE(op, symbol, "A");
+      REQUIRE_THROW_WITH_VALUE(op, symbol, "qqq");
+      REQUIRE_THROW_WITH_VALUE(op, symbol, "11");
+      REQUIRE_THROW_WITH_VALUE(op, symbol, "AB CD");
+      REQUIRE_THROW_WITH_VALUE(op, symbol, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+      REQUIRE_THROW_WITH_VALUE(op, core_exchange_rate, price({asset(-100), asset(1)}));
+      REQUIRE_THROW_WITH_VALUE(op, core_exchange_rate, price({asset(100),asset(-1)}));
+      REQUIRE_THROW_WITH_VALUE(op, short_backing_asset, db.get_index<asset_object>().get_next_id());
+      REQUIRE_THROW_WITH_VALUE(op, short_backing_asset, asset_id_type(1000000));
+   } catch(fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
+BOOST_AUTO_TEST_CASE( issue_asset )
+{
+   try {
+      ((create_asset*)this)->test_method();
+
+      const asset_object& test_asset = *db.get_index_type<asset_index>().indices().get<by_symbol>().find("TEST");
    } catch(fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
