@@ -39,6 +39,14 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
        obj.maitenance_collateral_ratio = op.maitenance_collateral_ratio;
    });
 
+  if( op.collateral.asset_id == asset_id_type() )
+  {
+     auto& bal_obj = fee_paying_account->balances(db());
+     db().modify( bal_obj, [&]( account_balance_object& obj ){
+         obj.total_core_in_orders += op.collateral.amount;
+     });
+  }
+
    apply_delta_balances();
    apply_delta_fee_pools();
 

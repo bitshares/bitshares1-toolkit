@@ -40,6 +40,16 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
        obj.sell_price = op.amount_to_sell / op.min_to_receive;
    });
 
+
+  if( op.amount_to_sell.asset_id == asset_id_type() )
+  {
+     auto& bal_obj = fee_paying_account->balances(db());
+     db().modify( bal_obj, [&]( account_balance_object& obj ){
+         obj.total_core_in_orders += op.amount_to_sell.amount;
+     });
+  }
+
+
    const auto& order_idx = db().get_index_type<limit_order_index>();
 
    const auto& price_idx = order_idx.indices().get<by_price>();
