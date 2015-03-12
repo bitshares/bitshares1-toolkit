@@ -96,7 +96,7 @@ namespace bts { namespace chain {
          {
             unordered_map<object_id_type, unique_ptr<object> > old_values;
             unordered_map<object_id_type, object_id_type>      old_index_next_ids;
-            set<object_id_type>                                new_ids;
+            flat_set<object_id_type>                           new_ids;
             unordered_map<object_id_type, unique_ptr<object> > removed;
          };
 
@@ -106,4 +106,4 @@ namespace bts { namespace chain {
          database&              _db;
    };
 
-} }
+} } // bts::chain

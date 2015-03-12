@@ -39,6 +39,10 @@ namespace bts { namespace chain {
          asset_id_type           short_backing_asset; 
 
          price core_exchange_rate;    // base asset vs this asset
+         /**
+          *  Updated for market issued assets when ever the median feed price changes
+          */
+         price_feed current_feed;
 
          /**
           *  Stores current supply, fee pool, and collected fees 
@@ -63,7 +67,7 @@ namespace bts { namespace chain {
 
 } } // bts::chain
 FC_REFLECT_DERIVED( bts::chain::asset_dynamic_data_object, (bts::chain::object),
-                    (accumulated_fees)(fee_pool) )
+                    (current_supply)(accumulated_fees)(fee_pool) )
 
 FC_REFLECT_DERIVED( bts::chain::asset_object, 
                     (bts::chain::annotated_object<bts::chain::asset_object>), 
@@ -75,5 +79,6 @@ FC_REFLECT_DERIVED( bts::chain::asset_object,
                     (flags)
                     (short_backing_asset)
                     (core_exchange_rate)
+                    (current_feed)
                     (dynamic_asset_data_id)
                   ) 

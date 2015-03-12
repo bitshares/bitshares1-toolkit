@@ -40,15 +40,6 @@ namespace bts { namespace chain {
   typedef generic_index<limit_order_object, limit_order_multi_index_type> limit_order_index;
 
 #if 0
-  class short_order_object : public object
-  {
-     public:
-        account_id_type  seller;   
-        share_type       available_collateral; ///< asset_id == sell_price.base.asset_id
-        uint16_t         interest_rate; ///< in units of 0.001% APR
-        price            limit_price; ///< the feed price at which the order will be canceled
-
-  };
 
   class call_order_object : public object
   { 

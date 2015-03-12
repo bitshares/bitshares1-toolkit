@@ -160,14 +160,16 @@ share_type account_publish_feeds_operation::calculate_fee( const fee_schedule_ty
 void account_publish_feeds_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
-   optional<price> prev;
+   optional<price_feed> prev;
    for( auto item : feeds )
    {
-      FC_ASSERT( item.base.amount >= share_type(0) ); // prevent divide by 0
-      FC_ASSERT( item.quote.amount >= share_type(0) ); // prevent divide by 0
+      FC_ASSERT( item.rate.base.amount >= share_type(0) ); // prevent divide by 0
+      FC_ASSERT( item.rate.quote.amount >= share_type(0) ); // prevent divide by 0
+      FC_ASSERT( item.required_maitenance_collateral < item.required_initial_collateral );
+      FC_ASSERT( item.required_maitenance_collateral >= 1000 );
       if( prev )
       {
-         FC_ASSERT( !(prev->base.asset_id == item.base.asset_id && prev->quote.asset_id == item.quote.asset_id) );
+         FC_ASSERT( !(prev->rate.base.asset_id == item.rate.base.asset_id && prev->rate.quote.asset_id == item.rate.quote.asset_id) );
       }
       else prev = item;
    }

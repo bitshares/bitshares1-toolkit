@@ -54,11 +54,12 @@ namespace bts { namespace chain {
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
+
    struct account_publish_feeds_operation
    {
-      account_id_type   account;
-      asset             fee; ///< paid for by account
-      flat_set<price>   feeds; ///< must be sorted with no duplicates
+      account_id_type        account;
+      asset                  fee; ///< paid for by account
+      flat_set<price_feed>   feeds; ///< must be sorted with no duplicates
 
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
