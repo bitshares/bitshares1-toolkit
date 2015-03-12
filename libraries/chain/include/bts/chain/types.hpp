@@ -70,6 +70,7 @@ namespace bts { namespace chain {
       delegate_update_fee_type, ///< fixed fee for registering as a delegate, used to discourage frivioulous delegates
       transfer_fee_type,
       limit_order_fee_type,
+      short_order_fee_type,
       publish_feed_fee_type,
       asset_create_fee_type, ///< the cost to register the cheapest asset
       asset_update_fee_type, ///< the cost to modify a registered asset
@@ -270,7 +271,7 @@ namespace bts { namespace chain {
    typedef object_id< protocol_ids, account_object_type,      account_object>       account_id_type;
    typedef object_id< protocol_ids, asset_object_type,        asset_object>         asset_id_type;
    typedef object_id< protocol_ids, delegate_object_type,     delegate_object>      delegate_id_type;
-   typedef object_id< protocol_ids, limit_order_object_type, limit_order_object>  limit_order_id_type;
+   typedef object_id< protocol_ids, limit_order_object_type,  limit_order_object>   limit_order_id_type;
    typedef object_id< protocol_ids, short_order_object_type,  short_order_object>   short_order_id_type;
    typedef object_id< protocol_ids, call_order_object_type,   call_order_object>    call_order_id_type;
    typedef object_id< protocol_ids, custom_object_type,       custom_object>        custom_id_type;

@@ -42,6 +42,13 @@ namespace bts { namespace chain {
         price call_price(uint16_t network_maitenance_collateral_ratio)const;
   };
 
+  /**
+   * @class call_order_object
+   * @brief tracks debt and call price information
+   *
+   * There should only be one call_order_object per asset pair per account and
+   * they will all have the same call price.
+   */
   class call_order_object : public abstract_object<call_order_object>
   {
      public:

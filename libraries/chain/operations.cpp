@@ -295,4 +295,44 @@ share_type limit_order_create_operation::calculate_fee(const fee_schedule_type& 
 {
    return k.at( limit_order_fee_type );
 }
+
+void limit_order_cancel_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+}
+
+share_type limit_order_cancel_operation::calculate_fee(const fee_schedule_type& k) const
+{
+   return k.at( limit_order_fee_type );
+}
+
+void short_order_create_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+}
+
+share_type short_order_create_operation::calculate_fee(const fee_schedule_type& k) const
+{
+   return k.at( short_order_fee_type );
+}
+void short_order_cancel_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+}
+
+share_type short_order_cancel_operation::calculate_fee(const fee_schedule_type& k) const
+{
+   return k.at( short_order_fee_type );
+}
+
+void call_order_update_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+}
+
+share_type call_order_update_operation::calculate_fee(const fee_schedule_type& k) const
+{
+   return k.at( short_order_fee_type );
+}
+
 } } // namespace bts::chain

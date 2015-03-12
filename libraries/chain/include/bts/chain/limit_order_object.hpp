@@ -14,9 +14,9 @@ namespace bts { namespace chain {
         static const uint8_t space_id = protocol_ids;
         static const uint8_t type_id  = limit_order_object_type;
 
+        account_id_type  seller;   
         share_type       for_sale; ///< asset_id == sell_price.base.asset_id
         price            sell_price;
-        account_id_type  seller;   
 
         asset amount_for_sale()const { return asset( for_sale, sell_price.base.asset_id ); }
   };
@@ -39,53 +39,10 @@ namespace bts { namespace chain {
 
   typedef generic_index<limit_order_object, limit_order_multi_index_type> limit_order_index;
 
-#if 0
-
-  class call_order_object : public object
-  { 
-     public:
-        account_id_type  seller;   
-        price            call_price;
-        share_type       debt; // asset_id = call_price.quote.asset_id
-        share_type       collateral; // asset_id = call_price.quote.asset_id
-        time_point_sec   expiration;
-  };
-
-  class call_order_index : public object
-  {
-     public:
-        struct expiration;
-        struct price_index;
-        struct order_id;
-
-         typedef multi_index_container< 
-            call_order_object,
-            ordered_by<  
-               hashed_unique< tag<order_id>, 
-                  member< object, object_id_type, &object::id > >,
-               ordered_unique< tag<price_index>, 
-                  composite_key< call_order_object, 
-                     member< call_order_object, price, &call_order_object::call_price>,
-                     member< object, object_id_type, &object::id>
-                  >,
-               ordered_non_unique< tag<expiration>, 
-                     member< call_order_object, time_point_sec, &call_order_object::expiration>
-                  >
-            >
-         > call_order_index_type;
-
-  };
-
-  class limit_order_index : public index 
-  {
-     public:
-  };
-#endif
-
 } }
 
 FC_REFLECT_DERIVED( bts::chain::limit_order_object, 
                     (bts::chain::object), 
-                    (for_sale)(sell_price)(seller) 
+                    (seller)(for_sale)(sell_price) 
                   )
                     

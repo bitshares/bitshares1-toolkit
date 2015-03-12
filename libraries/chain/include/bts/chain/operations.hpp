@@ -151,6 +151,80 @@ namespace bts { namespace chain {
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
+   /**
+    *  Define a new short order, if it is filled it will
+    *  be merged with existing call orders for the same
+    *  account.  If maitenance_collateral_ratio is set
+    *  it will update any existing open call orders to
+    *  use the new maitenance level.
+    */
+   struct short_order_create_operation
+   {
+      account_id_type seller;
+      asset           fee;
+      asset           collateral;
+      price           short_price;
+      uint16_t        initial_collateral_ratio    = 0;
+      uint16_t        maitenance_collateral_ratio = 0;
+
+      void validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
+    * Cancel the short order and return the balance to the
+    * order->seller account.
+    */
+   struct short_order_cancel_operation
+   {
+      short_order_id_type order;
+      account_id_type     fee_paying_account;
+      asset               fee; // paid by order->seller
+      asset               refuneded; 
+
+      void validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
+    *  Used to cancel an existing limit order, fee_pay_account and the
+    *  account to receive the proceeds must be the same as order->seller
+    */
+   struct limit_order_cancel_operation
+   {
+      limit_order_id_type order;
+      account_id_type     fee_paying_account;
+      asset               fee; 
+      asset               refuneded; 
+
+      void validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
+    *  This operation can be used to add collateral, cover, and
+    *  adjust the margin call price with a new maitenance collateral
+    *  ratio.
+    *
+    *  The only way to "cancel" a call order is to pay off the
+    *  balance due.   The order is invalid if the payoff amount
+    *  is greater than the amount due.
+    *
+    *  @note the call_order_id is implied by the funding_account and
+    *  assets involved.  
+    */
+   struct call_order_update_operation
+   {
+      account_id_type     funding_account; ///< pays fee, collateral, and cover
+      asset               fee; //</ paid by funding_account
+      asset               collateral_to_add; ///< may be negative if amount_to_cover pays off the debt
+      asset               amount_to_cover; ///< the amount of the debt to be paid off 
+      uint16_t            maitenance_collateral_ratio = 0; ///< 0 means don't change, 1000 means feed
+
+      void validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
    struct asset_issue_operation
    {
       asset            asset_to_issue;
@@ -242,6 +316,10 @@ namespace bts { namespace chain {
    typedef fc::static_variant<
             transfer_operation,
             limit_order_create_operation,
+            limit_order_cancel_operation,
+            short_order_create_operation,
+            short_order_cancel_operation,
+            call_order_update_operation,
             key_create_operation,
             account_create_operation,
             account_update_operation,
@@ -322,6 +400,10 @@ FC_REFLECT( bts::chain::account_publish_feeds_operation,
 FC_REFLECT( bts::chain::limit_order_create_operation,
             (seller)(amount_to_sell)(fee)(min_to_receive)(fill_or_kill) 
           )
+FC_REFLECT( bts::chain::limit_order_cancel_operation,(fee_paying_account)(fee)(order)(refuneded) )
+FC_REFLECT( bts::chain::short_order_cancel_operation,(fee_paying_account)(fee)(order)(refuneded) )
+FC_REFLECT( bts::chain::short_order_create_operation, (seller)(fee)(collateral)(short_price)(initial_collateral_ratio)(maitenance_collateral_ratio) )
+FC_REFLECT( bts::chain::call_order_update_operation, (funding_account)(fee)(collateral_to_add)(amount_to_cover)(maitenance_collateral_ratio) )
 
 FC_REFLECT( bts::chain::transfer_operation,
             (from)(to)(amount)(fee)(memo) )
@@ -359,4 +441,5 @@ FC_REFLECT( bts::chain::delegate_update_operation,
 
 FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(proposed_ops) )
 FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (from_account)(asset_id)(amount)(fee) );
+
 
