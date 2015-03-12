@@ -7,6 +7,7 @@
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/delegate_object.hpp>
 #include <bts/chain/limit_order_object.hpp>
+#include <bts/chain/short_order_object.hpp>
 #include <bts/chain/block_summary_object.hpp>
 #include <bts/chain/simple_index.hpp>
 #include <bts/chain/flat_index.hpp>
@@ -186,6 +187,8 @@ void database::initialize_indexes()
    add_index< primary_index< simple_index<key_object>> >();
    add_index< primary_index< simple_index<delegate_object>> >();
    add_index< primary_index< limit_order_index > >();
+   add_index< primary_index< short_order_index > >();
+   add_index< primary_index< call_order_index > >();
 
    add_index< primary_index< simple_index< global_property_object         >> >();
    add_index< primary_index< simple_index< dynamic_global_property_object >> >();
