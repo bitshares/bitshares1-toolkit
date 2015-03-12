@@ -32,6 +32,35 @@ namespace bts { namespace chain {
          database& db()const;
 
       protected:
+         /** market helpers */
+         
+         /**
+          *  Matches the two orders, 
+          *  
+          *  @return a bit field indicating which orders were filled (and thus removed) 
+          *  
+          *  0 - no orders were matched
+          *  1 - bid was filled
+          *  2 - ask was filled
+          *  3 - both were filled
+          */
+         ///@{
+         int match( const limit_order_object& bid, const limit_order_object& ask );
+         int match( const limit_order_object& bid, const short_order_object& ask );
+         int match( const limit_order_object& bid, const call_order_object& ask );
+
+         int match( const short_order_object& bid, const short_order_object& ask );
+         int match( const short_order_object& bid, const call_order_object& ask );
+
+         int match( const call_order_object& bid, const call_order_object& ask );
+         ///@}
+         
+         /**
+          * @return true if the order was completely filled and thus freed.
+          */
+         bool fill_limit_order( const limit_order_object& order, const asset& pays, const asset& receives );
+
+
          /**
           *  Pays the fee and returns the number of CORE asset that were provided,
           *  after it is don, the fee_paying_account property will be set.
@@ -48,6 +77,7 @@ namespace bts { namespace chain {
          void       adjust_balance( const account_object* for_account, const asset_object* for_asset, share_type delta );
          void       adjust_votes( const vector<delegate_id_type>& delegate_ids, share_type delta );
          
+         asset      calculate_market_fee( const asset_object& aobj, const asset& trade_amount );
 
          void       apply_delta_balances();
          void       apply_delta_fee_pools();

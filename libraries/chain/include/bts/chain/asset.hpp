@@ -33,6 +33,16 @@ namespace bts { namespace chain {
          FC_ASSERT( a.asset_id == b.asset_id );
          return a.amount >= b.amount;
       }
+      friend bool operator > ( const asset& a, const asset& b )
+      {
+         FC_ASSERT( a.asset_id == b.asset_id );
+         return a.amount > b.amount;
+      }
+      friend asset operator - ( const asset& a, const asset& b )
+      {
+         FC_ASSERT( a.asset_id == b.asset_id );
+         return asset( a.amount - b.amount, a.asset_id );
+      }
 
    };
 
@@ -41,11 +51,13 @@ namespace bts { namespace chain {
    {
       asset base;
       asset quote;
+
    };
    inline price operator / ( const asset& base, const asset& quote )
    {
       return price{base,quote};
    }
+   inline price operator~( const price& p ) { return price{p.quote,p.base}; }
 
    bool  operator <  ( const asset& a, const asset& b );
    bool  operator <= ( const asset& a, const asset& b );

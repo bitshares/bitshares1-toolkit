@@ -31,6 +31,8 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
 {
    const auto& seller_balance = _seller->balances(db());
    db().modify( seller_balance, [&]( account_balance_object& bal ){
+         if( op.amount_to_sell.asset_id == asset_id_type() )
+            bal.total_core_in_orders += op.amount_to_sell.amount;
          bal.sub_balance( -op.amount_to_sell );
    });
 
@@ -39,138 +41,35 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
        obj.for_sale = op.amount_to_sell.amount;
        obj.sell_price = op.amount_to_sell / op.min_to_receive;
    });
-
-
-  if( op.amount_to_sell.asset_id == asset_id_type() )
-  {
-     auto& bal_obj = fee_paying_account->balances(db());
-     db().modify( bal_obj, [&]( account_balance_object& obj ){
-         obj.total_core_in_orders += op.amount_to_sell.amount;
-     });
-  }
-
+   auto result = new_order_object.id; // save this because we may remvoe the object by filling it
 
    const auto& order_idx = db().get_index_type<limit_order_index>();
-
    const auto& price_idx = order_idx.indices().get<by_price>();
+
+   // TODO: it should be possible to simply check the NEXT/PREV iterator after new_order_object to 
+   // determine whether or not this order has "changed the book" in a way that requires us to
+   // check orders.   For now I just lookup the lower bound and check for equality... this is log(n) vs 
+   // constant time check.
+   auto best_itr = price_idx.lower_bound( asset(0,op.amount_to_sell.asset_id) / op.min_to_receive );
+   if( best_itr->id != new_order_object.id ) return new_order_object.id;
+   
    auto max_price  = op.min_to_receive / op.amount_to_sell;
    auto itr = price_idx.lower_bound( asset(0,op.min_to_receive.asset_id) / op.amount_to_sell );
    auto end = price_idx.end();
 
-   asset total_sell_issuer_fees = asset( 0, _sell_asset->id    );
-   asset total_recv_issuer_fees = asset( 0, _receive_asset->id );
-
-   auto post_eval_order = new_order_object;
-
    while( itr != end && itr->sell_price <= max_price )
    {
-      auto match_price = itr->sell_price;
-      auto itr_for_sale = itr->amount_for_sale();
-      auto obj_for_sale = post_eval_order.amount_for_sale();
-      auto max_itr_pays = itr_for_sale*match_price;
-      auto max_obj_pays = obj_for_sale*match_price;
-      auto match_size  = std::min( max_itr_pays, max_obj_pays );
-
-      asset itr_receives;
-      asset itr_pays;
-      asset obj_receives;
-      asset obj_pays;
-
-      /* to handle rounding issues, we know that one order or the
-       * other MUST be filled.
-       */
-      if( match_size == max_itr_pays )
-      {
-         itr_pays     = itr_for_sale;
-         itr_receives = itr_for_sale * match_price;
-         obj_receives = itr_pays;
-         obj_pays     = itr_receives;
-      }
-      else
-      {
-         obj_pays     = obj_for_sale;
-         obj_receives = obj_for_sale * match_price;
-         itr_pays     = obj_receives;
-         itr_receives = obj_pays;
-      }
-      FC_ASSERT( itr_pays <= itr_for_sale );
-      FC_ASSERT( obj_pays <= obj_for_sale );
-
-      auto sell_issuer_fees     = calculate_market_fee( _sell_asset, obj_pays );
-      auto receive_issuer_fees  = calculate_market_fee( _receive_asset, obj_receives  );
-
-      obj_receives -= receive_issuer_fees;
-      itr_receives -= sell_issuer_fees;
-
-      const account_object& receiver = itr->seller(db());
-      adjust_balance( _seller, _receive_asset, obj_receives.amount );
-      adjust_balance( &receiver, _sell_asset, itr_receives.amount );
-
-      if( _sell_asset->id.instance() == 0 ) /* core asset vote update */
-         adjust_votes( _seller->delegate_votes, -obj_pays.amount );
-      if( _receive_asset->id.instance() == 0 ) /* core asset vote update */
-         adjust_votes( receiver.delegate_votes, -itr_pays.amount );
-
-      if( itr_pays.amount == itr->for_sale )
-      {
-         auto old_itr = itr;
-         ++itr;
-         db().remove( *old_itr );
-      }
-      else
-      {
-         db().modify( *itr, [&]( limit_order_object& itr_obj ){
-             itr_obj.for_sale -= itr_pays.amount;
-         });
-         ++itr;
-      }
-
-      total_sell_issuer_fees += sell_issuer_fees;
-      total_recv_issuer_fees += receive_issuer_fees;
-
-      post_eval_order.for_sale -= obj_pays.amount;
-      FC_ASSERT( post_eval_order.for_sale.value > 0 );
-      if( post_eval_order.for_sale == 0 )
-      {
-         // remove the object.
-         db().remove( new_order_object );
-         break;
-      }
-      // ITR is incremented when we decide to either modify or remove it.
+      auto old_itr = itr;
+      ++itr;
+      if( 2 != match( new_order_object, *old_itr ) ) 
+         break; // 2 means ONLY old iter matched
    }
-
-   if( post_eval_order.for_sale != new_order_object.for_sale )
-   {
-      db().modify( new_order_object, [&]( limit_order_object& obj ){
-                   obj.for_sale = post_eval_order.for_sale;
-                   });
-   }
-
-   const auto& sell_asset_dyn_data = _sell_asset->dynamic_asset_data_id(db());
-   db().modify( sell_asset_dyn_data, [&]( asset_dynamic_data_object& obj ){
-                obj.accumulated_fees += total_sell_issuer_fees.amount;
-                });
-
-   const auto& recv_asset_dyn_data = _receive_asset->dynamic_asset_data_id(db());
-   db().modify( recv_asset_dyn_data, [&]( asset_dynamic_data_object& obj ){
-                obj.accumulated_fees += total_recv_issuer_fees.amount;
-                });
-
 
    apply_delta_balances();
    apply_delta_fee_pools();
 
-   return new_order_object.id;
+   return result;
 } // limit_order_evaluator::do_apply
-
-asset limit_order_create_evaluator::calculate_market_fee( const asset_object* aobj, const asset& trade_amount )
-{
-   fc::uint128 a(trade_amount.amount.value);
-   a *= aobj->market_fee_percent;
-   a /= BTS_MAX_MARKET_FEE_PERCENT;
-   return asset( a.to_uint64(), trade_amount.asset_id );
-}
-
 
 object_id_type limit_order_cancel_evaluator::do_evaluate( const limit_order_cancel_operation& o )
 {

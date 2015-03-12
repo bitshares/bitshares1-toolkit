@@ -4,6 +4,10 @@
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/delegate_object.hpp>
+#include <bts/chain/limit_order_object.hpp>
+#include <bts/chain/short_order_object.hpp>
+
+#include <fc/uint128.hpp>
 
 namespace bts { namespace chain {
    database& generic_evaluator::db()const { return trx_state->db(); }
@@ -140,5 +144,103 @@ namespace bts { namespace chain {
 
       return result;
    }
+
+
+int generic_evaluator::match( const limit_order_object& bid, const limit_order_object& ask )
+{
+   assert( bid.sell_price >= ~ask.sell_price );
+   assert( bid.id > ask.id );
+   assert( bid.sell_price.quote.asset_id == ask.sell_price.base.asset_id );
+   assert( bid.sell_price.base.asset_id  == ask.sell_price.quote.asset_id );
+   assert( _bid_asset && _ask_asset );
+   assert( bid.for_sale > 0 && ask.for_sale > 0 );
+
+   auto match_price  = ask.sell_price;
+   auto bid_for_sale = bid.amount_for_sale();
+   auto ask_for_sale = ask.amount_for_sale();
+
+   auto max_bid_pays = bid_for_sale * match_price; // USD * PRICE => BTS
+
+   assert( max_bid_pays.asset_id == ask_for_sale.asset_id );
+
+   auto trade_amount = std::min( max_bid_pays, ask_for_sale ); 
+   if( trade_amount == max_bid_pays ) trade_amount = bid_for_sale;
+
+   auto bid_pays     = trade_amount;
+   auto bid_receives = trade_amount * match_price;
+   auto ask_receives = trade_amount;
+   auto ask_pays     = bid_receives;
+
+   if( ask_pays > ask_for_sale ) bid_receives = ask_for_sale;
+
+   // TODO: test a case where the order price is so wacky that trade_amount == 0 or pays/receives ammount == 0
+
+   int result = 0;
+   result |= fill_limit_order( bid, bid_pays, bid_receives );
+   result |= fill_limit_order( ask, ask_pays, ask_receives ) << 1;
+   return result;
+}
+
+asset generic_evaluator::calculate_market_fee( const asset_object& aobj, const asset& trade_amount )
+{
+   assert( aobj.id == trade_amount.asset_id );
+
+   fc::uint128 a(trade_amount.amount.value);
+   a *= aobj.market_fee_percent;
+   a /= BTS_MAX_MARKET_FEE_PERCENT;
+   return asset( a.to_uint64(), trade_amount.asset_id );
+}
+
+bool generic_evaluator::fill_limit_order( const limit_order_object& order, const asset& pays, const asset& receives )
+{
+   assert( order.amount_for_sale().asset_id == pays.asset_id );
+   assert( pays.asset_id != receives.asset_id );
+
+   const account_object& seller = order.seller(db());
+   //const asset_object& pays_asset = pays.asset_id(db());
+   const asset_object& recv_asset = receives.asset_id(db());
+
+   auto issuer_fees = calculate_market_fee( recv_asset, receives );
+
+   const auto& recv_dyn_data = recv_asset.dynamic_asset_data_id(db());
+   db().modify( recv_dyn_data, [&]( asset_dynamic_data_object& obj ){
+        obj.accumulated_fees += issuer_fees.amount;
+   });
+
+   const auto& balances = seller.balances(db());
+   db().modify( balances, [&]( account_balance_object& b ){
+         if( pays.asset_id == asset_id_type() ) b.total_core_in_orders -= pays.amount;
+         b.add_balance( receives - issuer_fees );
+   });
+
+   if( pays.asset_id == asset_id_type() ) adjust_votes( seller.delegate_votes, -pays.amount );
+
+   if( pays == order.amount_for_sale() )
+   {
+      db().remove( order );
+      return true;
+   }
+   else
+   {
+      db().modify( order, [&]( limit_order_object& b ) {
+                   b.for_sale -= pays.amount;
+                   });
+      return false;
+   }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 } }
