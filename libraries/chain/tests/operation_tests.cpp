@@ -25,6 +25,12 @@ BOOST_FIXTURE_TEST_SUITE( operation_unit_tests, database_fixture )
    op.field = bak; \
    BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception); \
 }
+///This simply resets v back to its default-constructed value. Requires v to have a working assingment operator and
+/// default constructor.
+#define RESET(v) v = decltype(v)()
+///This allows me to build consecutive test cases. It's pretty ugly, but it works well enough for unit tests.
+/// i.e. This allows a test on update_account to begin with the database at the end state of create_account.
+#define INVOKE(test) ((test*)this)->test_method(); RESET(trx)
 
 BOOST_AUTO_TEST_CASE( create_account )
 {
@@ -95,15 +101,11 @@ BOOST_AUTO_TEST_CASE( create_account )
 BOOST_AUTO_TEST_CASE( transfer_core_asset )
 {
    try {
+      INVOKE(create_account);
+
       account_id_type genesis_account;
       asset genesis_balance = genesis_account(db).balances(db).get_balance(asset_id_type());
 
-      trx.operations.push_back(make_account());
-      trx.validate();
-      BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
-      db.push_transaction(trx, ~0);
-
-      trx = signed_transaction();
       const account_object& nathan_account = *db.get_index_type<account_index>().indices().get<by_name>().find("nathan");
       trx.operations.push_back(transfer_operation({genesis_account,
                                                    nathan_account.id,
@@ -208,16 +210,12 @@ BOOST_AUTO_TEST_CASE( create_delegate )
 BOOST_AUTO_TEST_CASE( update_delegate )
 {
    try {
-      //So this isn't sketchy at all...
-      ((create_delegate*)this)->test_method();
+      INVOKE(create_delegate);
 
       delegate_id_type delegate_id = db.get_index_type<primary_index<simple_index<delegate_object>>>().get_next_id().instance() - 1;
       const delegate_object& d = delegate_id(db);
-      trx.operations.clear();
-      //Verify the totally un-sketchy move above worked correctly.
       BOOST_CHECK(d.next_secret == secret_hash_type::hash("my 53cr37 p4s5w0rd"));
 
-      //On to even more un-sketchy things!
       delegate_update_operation op;
       trx.operations.push_back(op);
       op.delegate_id = delegate_id;
@@ -265,7 +263,7 @@ BOOST_AUTO_TEST_CASE( update_delegate )
    }
 }
 
-BOOST_AUTO_TEST_CASE( create_asset )
+BOOST_AUTO_TEST_CASE( create_uia )
 {
    try {
       asset_id_type test_asset_id = db.get_index<asset_object>().get_next_id();
@@ -291,6 +289,11 @@ BOOST_AUTO_TEST_CASE( create_asset )
       BOOST_CHECK(test_asset.short_backing_asset == asset_id_type());
       BOOST_CHECK(test_asset.market_fee_percent == 1);
 
+      const asset_dynamic_data_object& test_asset_dynamic_data = test_asset.dynamic_asset_data_id(db);
+      BOOST_CHECK(test_asset_dynamic_data.current_supply == 0);
+      BOOST_CHECK(test_asset_dynamic_data.accumulated_fees == 0);
+      BOOST_CHECK(test_asset_dynamic_data.fee_pool == 0);
+
       auto op = trx.operations.back().get<asset_create_operation>();
       BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
       REQUIRE_THROW_WITH_VALUE(op, issuer, account_id_type(99999999));
@@ -311,12 +314,57 @@ BOOST_AUTO_TEST_CASE( create_asset )
    }
 }
 
-BOOST_AUTO_TEST_CASE( issue_asset )
+BOOST_AUTO_TEST_CASE( issue_uia )
 {
    try {
-      ((create_asset*)this)->test_method();
+      INVOKE(create_uia);
+      INVOKE(create_account);
 
       const asset_object& test_asset = *db.get_index_type<asset_index>().indices().get<by_symbol>().find("TEST");
+      const account_object& nathan_account = *db.get_index_type<account_index>().indices().get<by_name>().find("nathan");
+
+      asset_issue_operation op({test_asset.amount(5000), asset(), nathan_account.id});
+      trx.operations.push_back(op);
+
+      REQUIRE_THROW_WITH_VALUE(op, asset_to_issue, asset(200));
+      REQUIRE_THROW_WITH_VALUE(op, fee, asset(-1));
+      REQUIRE_THROW_WITH_VALUE(op, issue_to_account, account_id_type(999999999));
+
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+
+      const asset_dynamic_data_object& test_dynamic_data = test_asset.dynamic_asset_data_id(db);
+      BOOST_CHECK(nathan_account.balances(db).get_balance(test_asset.id) == test_asset.amount(5000));
+      BOOST_CHECK(test_dynamic_data.current_supply == 5000);
+      BOOST_CHECK(test_dynamic_data.accumulated_fees == 0);
+      BOOST_CHECK(test_dynamic_data.fee_pool == 0);
+
+      db.push_transaction(trx, ~0);
+
+      BOOST_CHECK(nathan_account.balances(db).get_balance(test_asset.id) == test_asset.amount(10000));
+      BOOST_CHECK(test_dynamic_data.current_supply == 10000);
+      BOOST_CHECK(test_dynamic_data.accumulated_fees == 0);
+      BOOST_CHECK(test_dynamic_data.fee_pool == 0);
+   } catch(fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
+BOOST_AUTO_TEST_CASE( transfer_uia )
+{
+   try {
+      INVOKE(issue_uia);
+
+      const asset_object& uia = *db.get_index_type<asset_index>().indices().get<by_symbol>().find("TEST");
+      const account_object& nathan = *db.get_index_type<account_index>().indices().get<by_name>().find("nathan");
+      const account_object& genesis = account_id_type()(db);
+
+      BOOST_CHECK(nathan.balances(db).get_balance(uia.id) == uia.amount(10000));
+      trx.operations.push_back(transfer_operation({nathan.id, genesis.id, uia.amount(5000)}));
+      db.push_transaction(trx, ~0);
+      BOOST_CHECK(nathan.balances(db).get_balance(uia.id) == uia.amount(5000));
+      BOOST_CHECK(genesis.balances(db).get_balance(uia.id) == uia.amount(5000));
    } catch(fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
