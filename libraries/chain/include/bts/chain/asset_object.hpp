@@ -4,7 +4,7 @@
 #include <bts/chain/generic_index.hpp>
 
 
-namespace bts { namespace chain { 
+namespace bts { namespace chain {
    class account_object;
 
    class asset_dynamic_data_object : public abstract_object<asset_dynamic_data_object>
@@ -28,26 +28,29 @@ namespace bts { namespace chain {
 
          bool enforce_white_list()const { return flags & white_list; }
 
+         /// Helper function to get an asset with the given amount in this asset's type
+         asset amount(share_type a)const { return asset(a, id); }
+
          string                  symbol;
          account_id_type         issuer;
 
          share_type              max_supply         = 0; // unlimited.
          uint16_t                market_fee_percent = 0; // 10,000 = 100%
-         uint16_t                issuer_permissions; 
-         uint16_t                flags; 
+         uint16_t                issuer_permissions;
+         uint16_t                flags;
 
-         asset_id_type           short_backing_asset; 
+         asset_id_type           short_backing_asset;
 
          price core_exchange_rate;    // base asset vs this asset
 
          /**
-          *  Stores current supply, fee pool, and collected fees 
+          *  Stores current supply, fee pool, and collected fees
           *  in a more efficient record to serialize/modify frequently
           */
          dynamic_asset_data_id_type  dynamic_asset_data_id;
 
          // meta_info -> uint8_t                 precision_digits  = 0; // 0 to 10
-         //   name, description, and precission 
+         //   name, description, and precission
    };
 
    struct by_symbol{};
@@ -65,8 +68,8 @@ namespace bts { namespace chain {
 FC_REFLECT_DERIVED( bts::chain::asset_dynamic_data_object, (bts::chain::object),
                     (accumulated_fees)(fee_pool) )
 
-FC_REFLECT_DERIVED( bts::chain::asset_object, 
-                    (bts::chain::annotated_object<bts::chain::asset_object>), 
+FC_REFLECT_DERIVED( bts::chain::asset_object,
+                    (bts::chain::annotated_object<bts::chain::asset_object>),
                     (symbol)
                     (issuer)
                     (max_supply)
@@ -76,4 +79,4 @@ FC_REFLECT_DERIVED( bts::chain::asset_object,
                     (short_backing_asset)
                     (core_exchange_rate)
                     (dynamic_asset_data_id)
-                  ) 
+                  )
