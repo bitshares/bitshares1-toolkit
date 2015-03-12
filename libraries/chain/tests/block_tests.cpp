@@ -142,6 +142,7 @@ BOOST_AUTO_TEST_CASE( undo_pending )
          const bts::chain::index& account_idx = db.get_index(protocol_ids, account_object_type);
 
          signed_transaction trx;
+         trx.relative_expiration = 1000;
          account_id_type nathan_id = account_idx.get_next_id();
          trx.operations.push_back(account_create_operation({account_id_type(), asset(), "nathan"}));
          trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
@@ -154,10 +155,12 @@ BOOST_AUTO_TEST_CASE( undo_pending )
          BOOST_CHECK(nathan_id(db).name == "nathan");
 
          trx = decltype(trx)();
+         trx.relative_expiration = 1000;
          trx.operations.push_back(transfer_operation({account_id_type(), nathan_id, asset(5000), asset(1)}));
          trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
          db.push_transaction(trx);
          trx = decltype(trx)();
+         trx.relative_expiration = 1000;
          trx.operations.push_back(transfer_operation({account_id_type(), nathan_id, asset(5000), asset(1)}));
          trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
          db.push_transaction(trx);
@@ -187,6 +190,7 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
       const bts::chain::index& account_idx = db1.get_index(protocol_ids, account_object_type);
 
       signed_transaction trx;
+      trx.relative_expiration = 1000;
       account_id_type nathan_id = account_idx.get_next_id();
       trx.operations.push_back(account_create_operation({account_id_type(), asset(), "nathan"}));
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
@@ -239,12 +243,14 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
       const bts::chain::index& account_idx = db1.get_index(protocol_ids, account_object_type);
 
       signed_transaction trx;
+      trx.relative_expiration = 1000;
       account_id_type nathan_id = account_idx.get_next_id();
       trx.operations.push_back(account_create_operation({account_id_type(), asset(), "nathan"}));
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
       db1.push_transaction(trx);
 
       trx = decltype(trx)();
+      trx.relative_expiration = 1000;
       trx.operations.push_back(transfer_operation({account_id_type(), nathan_id, asset(500)}));
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
       db1.push_transaction(trx);
@@ -260,6 +266,60 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
       BOOST_CHECK_THROW(db2.push_transaction(trx), fc::exception);
       BOOST_CHECK(nathan_id(db1).balances(db1).get_balance(asset_id_type()).amount == 500);
       BOOST_CHECK(nathan_id(db2).balances(db1).get_balance(asset_id_type()).amount == 500);
+   } catch (fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
+BOOST_AUTO_TEST_CASE( tapos )
+{
+   try {
+      fc::temp_directory dir1,
+                         dir2;
+      database db1,
+               db2;
+      db1.open(dir1.path());
+      db2.open(dir2.path());
+
+      start_simulated_time(bts::chain::now());
+      auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
+      const bts::chain::index& account_idx = db1.get_index(protocol_ids, account_object_type);
+
+      auto ad = db1.get_global_properties().active_delegates;
+      advance_simulated_time_to( db1.get_next_generation_time(  ad[db1.head_block_num()%ad.size()] ) );
+      auto b =  db1.generate_block( delegate_priv_key, ad[db1.head_block_num()%ad.size()] );
+
+      signed_transaction trx;
+      trx.ref_block_num = db1.head_block_num();
+      //This transaction must be in the next block after its reference, or it is invalid.
+      trx.relative_expiration = 1;
+
+      account_id_type nathan_id = account_idx.get_next_id();
+      trx.operations.push_back(account_create_operation({account_id_type(), asset(), "nathan"}));
+      trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+
+      //ref_block_prefix isn't set, so we should see an exception here.
+      BOOST_REQUIRE_THROW(db1.push_transaction(trx), fc::exception);
+      trx.ref_block_prefix = db1.head_block_id()._hash[1];
+      trx.signatures.clear();
+      trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+      db1.push_transaction(trx);
+
+      ad = db1.get_global_properties().active_delegates;
+      advance_simulated_time_to( db1.get_next_generation_time(  ad[db1.head_block_num()%ad.size()] ) );
+      b =  db1.generate_block( delegate_priv_key, ad[db1.head_block_num()%ad.size()] );
+
+      trx.operations.clear();
+      trx.signatures.clear();
+      trx.operations.push_back(transfer_operation({account_id_type(), nathan_id, asset(50)}));
+      trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+      //relative_expiration is 1, but ref block is 2 blocks old, so this should fail.
+      BOOST_REQUIRE_THROW(db1.push_transaction(trx), fc::exception);
+      trx.relative_expiration = 2;
+      trx.signatures.clear();
+      trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+      db1.push_transaction(trx);
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;

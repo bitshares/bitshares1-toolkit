@@ -155,7 +155,7 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
    for( auto id : next_ids )
       get_mutable_index( id ).set_next_id( id );
    }
-   catch ( const fc::exception& e )
+   catch ( const fc::exception& )
    {
       wlog( "unable to fetch next ids, must be new database" );
    }
@@ -253,7 +253,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
       init_delegates.push_back(init_delegate.id);
    }
    create<block_summary_object>( [&](block_summary_object& p) {
-           /** default block 0 */
+      p.timestamp = bts::chain::now();
    });
 
    const global_property_object& properties =
@@ -370,7 +370,8 @@ void database::reindex(fc::path data_dir, genesis_allocation initial_allocation)
                                 skip_transaction_signatures |
                                 skip_undo_block |
                                 skip_undo_transaction |
-                                skip_transaction_dupe_check );
+                                skip_transaction_dupe_check |
+                                skip_tapos_check );
       ++itr;
    }
    auto end = fc::time_point::now();
@@ -462,7 +463,8 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    _pending_block.previous = next_block.id();
 
    const auto& sum = create<block_summary_object>( [&](block_summary_object& p) {
-              p.block_id = _pending_block.previous;
+         p.block_id = next_block.id();
+         p.timestamp = next_block.timestamp;
    });
    FC_ASSERT( sum.id.instance() == next_block.block_num(), "", ("summary.id",sum.id)("next.block_num",next_block.block_num()) );
 
@@ -755,13 +757,34 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    }
    ptrx.operation_results = std::move( eval_state.operation_results );
 
+   //If we're skipping tapos check, but not expiration check, assume all transactions have maximum expiration time.
+   fc::time_point_sec trx_expiration = _pending_block.timestamp + get_global_properties().maximum_time_until_expiration;
+   if( !(skip & skip_tapos_check) )
+   {
+      //Check the TaPoS reference and expiration time
+      //Remember that the TaPoS block number is abbreviated; it contains only the lower 16 bits.
+      const global_property_object& global_properties = get_global_properties();
+      //Lookup TaPoS block summary by block number (remember block summary instances are the block numbers)
+      const block_summary_object& tapos_block_summary
+            = static_cast<const block_summary_object&>(get_index<block_summary_object>()
+                                                       .get(block_summary_id_type((head_block_num() & ~0xffff)
+                                                                                  + trx.ref_block_num)));
+      //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
+      FC_ASSERT( trx.ref_block_prefix == tapos_block_summary.block_id._hash[1] );
+      trx_expiration = tapos_block_summary.timestamp + global_properties.block_interval*trx.relative_expiration.value;
+      FC_ASSERT( _pending_block.timestamp <= trx_expiration, "", ("exp", trx_expiration) );
+      FC_ASSERT( trx_expiration <= head_block_time() + global_properties.maximum_time_until_expiration
+                 //Allow transactions through on block 1
+                 || head_block_num() == 0 );
+   }
+
    //Insert transaction into unique transactions database.
    if( !(skip & skip_transaction_dupe_check) )
-      get_mutable_index(implementation_ids, impl_transaction_object_type).create([this,trx](object& transaction_obj) {
+      get_mutable_index(implementation_ids, impl_transaction_object_type).create([this,
+                                                                                 trx,
+                                                                                 trx_expiration](object& transaction_obj) {
          transaction_object* transaction = static_cast<transaction_object*>(&transaction_obj);
-#warning set expiration!
-         transaction->expiration = std::max(bts::chain::now(), fc::time_point_sec(head_block_time())) + fc::seconds(20);
-         idump((head_block_time())(transaction->expiration));
+         transaction->expiration = trx_expiration;
          transaction->transaction_id = transaction_id_type::hash(trx);
       });
    return ptrx;

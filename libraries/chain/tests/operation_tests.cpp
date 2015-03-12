@@ -30,7 +30,7 @@ BOOST_FIXTURE_TEST_SUITE( operation_unit_tests, database_fixture )
 #define RESET(v) v = decltype(v)()
 ///This allows me to build consecutive test cases. It's pretty ugly, but it works well enough for unit tests.
 /// i.e. This allows a test on update_account to begin with the database at the end state of create_account.
-#define INVOKE(test) ((test*)this)->test_method(); RESET(trx)
+#define INVOKE(test) ((test*)this)->test_method(); RESET(trx); trx.relative_expiration = 1000
 
 BOOST_AUTO_TEST_CASE( create_account )
 {
@@ -365,6 +365,10 @@ BOOST_AUTO_TEST_CASE( transfer_uia )
       db.push_transaction(trx, ~0);
       BOOST_CHECK(nathan.balances(db).get_balance(uia.id) == uia.amount(5000));
       BOOST_CHECK(genesis.balances(db).get_balance(uia.id) == uia.amount(5000));
+
+      db.push_transaction(trx, ~0);
+      BOOST_CHECK(nathan.balances(db).get_balance(uia.id) == uia.amount(0));
+      BOOST_CHECK(genesis.balances(db).get_balance(uia.id) == uia.amount(10000));
    } catch(fc::exception& e) {
       edump((e.to_detail_string()));
       throw;

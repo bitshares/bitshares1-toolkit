@@ -39,6 +39,7 @@ namespace bts { namespace chain {
             skip_transaction_dupe_check = 0x10, ///< used while reindexing
             skip_fork_db                = 0x20, ///< used while reindexing
             skip_block_size_check       = 0x40, ///< used when applying locally generated transactions
+            skip_tapos_check            = 0x80, ///< used while reindexing -- note this skips expiration check as well
          };
 
          void open(const fc::path& data_dir, const genesis_allocation& initial_allocation = genesis_allocation());

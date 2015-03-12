@@ -10,7 +10,7 @@ namespace bts { namespace chain {
     *  The object is the fundamental building block of the database and
     *  is the level upon which undo/redo operations are performed.  Objects
     *  are used to track data and their relationships and provide an effecient
-    *  means to find and update information.   
+    *  means to find and update information.
     *
     *  Objects are assigned a unique and sequential object ID by the database within
     *  the id_space defined in the object.  Derived objects from plugins should specify
@@ -19,26 +19,26 @@ namespace bts { namespace chain {
     *
     *  All objects must be serializable via FC_REFLECT() and their content must be
     *  faithfully restored.   Additionally all objects must be copy-constructable and
-    *  assignable in a relatively efficient manner.  In general this means that objects 
+    *  assignable in a relatively efficient manner.  In general this means that objects
     *  should only refer to other objects by ID and avoid expensive operations when
-    *  they are copied, especially if they are modified frequently. 
+    *  they are copied, especially if they are modified frequently.
     *
     *  Additionally all objects may be annotated by plugins which wish to maintain
-    *  additional information to an object.  There can be at most one annotation 
+    *  additional information to an object.  There can be at most one annotation
     *  per id_space for each object.   An example of an annotation would be tracking
     *  extra data not required by validation such as the name and description of
     *  a user asset.  By carefully organizing how information is organized and
     *  tracked systems can minimize the workload to only that which is necessary
-    *  to perform their function.  
+    *  to perform their function.
     *
     *  @note Do not use multiple inheritance with object because the code assumes
-    *  a static_cast will work between object and derived types.  
+    *  a static_cast will work between object and derived types.
     */
-   class object 
+   class object
    {
       public:
          object(){}
-         virtual ~object(){};
+         virtual ~object(){}
 
          static const uint8_t space_id = protocol_ids;
          static const uint8_t type_id  = base_object_type;
@@ -57,7 +57,7 @@ namespace bts { namespace chain {
    /**
     * @class abstract_object
     * @brief   Use the Curiously Recurring Template Pattern to automatically add the ability to
-    *  clone, serialize, and move objects polymorphically. 
+    *  clone, serialize, and move objects polymorphically.
     *
     *  http://en.wikipedia.org/wiki/Curiously_recurring_template_pattern
     */
@@ -65,12 +65,12 @@ namespace bts { namespace chain {
    class abstract_object : public object
    {
       public:
-         virtual unique_ptr<object> clone()const 
-         { 
-            return unique_ptr<object>(new DerivedClass( *static_cast<const DerivedClass*>(this) )); 
+         virtual unique_ptr<object> clone()const
+         {
+            return unique_ptr<object>(new DerivedClass( *static_cast<const DerivedClass*>(this) ));
          }
 
-         virtual void    move_from( object& obj ) 
+         virtual void    move_from( object& obj )
          {
             static_cast<DerivedClass&>(*this) = std::move( static_cast<DerivedClass&>(obj) );
          }
@@ -83,7 +83,7 @@ namespace bts { namespace chain {
     *  @brief An object that is easily extended by providing pointers to other objects, one for each space.
     */
    template<typename DerivedClass>
-   class annotated_object : public abstract_object<DerivedClass> 
+   class annotated_object : public abstract_object<DerivedClass>
    {
       public:
          /** return object_id_type() if no anotation is found for id_space */

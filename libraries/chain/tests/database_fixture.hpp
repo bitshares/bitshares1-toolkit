@@ -16,6 +16,7 @@ struct database_fixture {
    {
       db.init_genesis();
       genesis_key(db); // attempt to deref
+      trx.relative_expiration = 1000;
    }
    ~database_fixture(){}
 
