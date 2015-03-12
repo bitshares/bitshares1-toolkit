@@ -97,11 +97,19 @@ namespace bts { namespace chain {
          }
    };
 
-   template<typename OperationClass>
+   template<typename DerivedEvaluator>
    class evaluator : public generic_evaluator
    {
       public:
-         typedef OperationClass  operation_class_type;
-         virtual int get_type()const { return operation::tag<operation_class_type>::value; }
+         virtual int get_type()const { return operation::tag<typename DerivedEvaluator::operation_type>::value; }
+
+         virtual object_id_type evaluate( const operation& o ) final override
+         {
+            return static_cast<DerivedEvaluator*>(this)->do_evaluate( o.get<typename DerivedEvaluator::operation_type>() );
+         }
+         virtual object_id_type apply( const operation& o ) final override
+         {
+            return static_cast<DerivedEvaluator*>(this)->do_apply( o.get<typename DerivedEvaluator::operation_type>() );
+         }
    };
 } }

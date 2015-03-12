@@ -2,10 +2,8 @@
 #include <bts/chain/account_object.hpp>
 
 namespace bts { namespace chain {
-object_id_type transfer_evaluator::evaluate( const operation& o )
+object_id_type transfer_evaluator::do_evaluate( const transfer_operation& op )
 {
-   const auto& op = o.get<transfer_operation>();
-
    database& d = db();
 
    auto bts_fee_paid = pay_fee( op.from, op.fee );
@@ -31,7 +29,7 @@ object_id_type transfer_evaluator::evaluate( const operation& o )
    return object_id_type();
 }
 
-object_id_type transfer_evaluator::apply( const operation& o )
+object_id_type transfer_evaluator::do_apply( const transfer_operation& o )
 {
    apply_delta_balances();
    apply_delta_fee_pools();

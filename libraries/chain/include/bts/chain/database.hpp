@@ -156,7 +156,7 @@ namespace bts { namespace chain {
          void register_evaluator()
          {
             _operation_evaluators[
-               operation::tag<typename EvaluatorType::operation_class_type>::value].reset( new op_evaluator_impl<EvaluatorType>() );
+               operation::tag<typename EvaluatorType::operation_type>::value].reset( new op_evaluator_impl<EvaluatorType>() );
          }
 
          void pop_undo();

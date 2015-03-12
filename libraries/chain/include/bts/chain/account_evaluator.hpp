@@ -4,19 +4,22 @@
 
 namespace bts { namespace chain {
 
-   class account_create_evaluator : public evaluator<account_create_operation>
+   class account_create_evaluator : public evaluator<account_create_evaluator>
    {
       public:
-         virtual object_id_type evaluate( const operation& o ) override;
-         virtual object_id_type apply( const operation& o ) override;
+         typedef account_create_operation operation_type;
+         
+         object_id_type do_evaluate( const account_create_operation& o );
+         object_id_type do_apply( const account_create_operation& o ) ;
    };
 
-   class account_update_evaluator : public evaluator<account_update_operation>
+   class account_update_evaluator : public evaluator<account_update_evaluator>
    {
       public:
-         virtual object_id_type evaluate( const operation& o ) override;
-         virtual object_id_type apply( const operation& o ) override;
+         typedef account_update_operation operation_type;
 
+         object_id_type do_evaluate( const account_update_operation& o );
+         object_id_type do_apply( const account_update_operation& o );
 
          const account_object*    acnt;
          vector<delegate_id_type> remove_votes;

@@ -5,11 +5,13 @@
 
 namespace bts { namespace chain {
 
-   class limit_order_evaluator : public evaluator<limit_order_create_operation>
+   class limit_order_create_evaluator : public evaluator<limit_order_create_evaluator>
    {
       public:
-         virtual object_id_type evaluate( const operation& o ) override;
-         virtual object_id_type apply( const operation& o ) override;
+         typedef limit_order_create_operation operation_type;
+
+         object_id_type do_evaluate( const limit_order_create_operation& o );
+         object_id_type do_apply( const limit_order_create_operation& o );
 
          asset calculate_market_fee( const asset_object* aobj, const asset& trade_amount );
 
@@ -17,6 +19,17 @@ namespace bts { namespace chain {
          const account_object*               _seller        = nullptr;
          const asset_object*                 _sell_asset    = nullptr;
          const asset_object*                 _receive_asset = nullptr;
+   };
+
+   class limit_order_cancel_evaluator : public evaluator<limit_order_cancel_evaluator>
+   {
+      public:
+         typedef limit_order_cancel_operation operation_type;
+
+         object_id_type do_evaluate( const limit_order_cancel_operation& o );
+         object_id_type do_apply( const limit_order_cancel_operation& o );
+
+         const limit_order_object* _order;
    };
 
 } } // bts::chain

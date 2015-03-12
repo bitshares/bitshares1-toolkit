@@ -5,17 +5,22 @@
 
 namespace bts { namespace chain {
 
-   class delegate_create_evaluator : public evaluator<delegate_create_operation>
+   class delegate_create_evaluator : public evaluator<delegate_create_evaluator>
    {
       public:
-         virtual object_id_type evaluate( const operation& o ) override;
-         virtual object_id_type apply( const operation& o ) override;
+         typedef delegate_create_operation operation_type;
+
+         object_id_type do_evaluate( const delegate_create_operation& o );
+         object_id_type do_apply( const delegate_create_operation& o );
    };
-   class delegate_update_evaluator : public evaluator<delegate_update_operation>
+
+   class delegate_update_evaluator : public evaluator<delegate_update_evaluator>
    {
       public:
-         virtual object_id_type evaluate( const operation& o ) override;
-         virtual object_id_type apply( const operation& o ) override;
+         typedef delegate_update_operation operation_type;
+
+         object_id_type do_evaluate( const delegate_update_operation& o );
+         object_id_type do_apply( const delegate_update_operation& o );
    };
 
 } } // bts::chain

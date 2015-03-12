@@ -4,10 +4,8 @@
 
 namespace bts { namespace chain {
 
-object_id_type account_create_evaluator::evaluate( const operation& o )
+object_id_type account_create_evaluator::do_evaluate( const account_create_operation& op )
 {
-   const auto& op = o.get<account_create_operation>();
-
    auto bts_fee_paid = pay_fee( op.fee_paying_account, op.fee );
    auto bts_fee_required = op.calculate_fee( db().current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
@@ -42,14 +40,13 @@ object_id_type account_create_evaluator::evaluate( const operation& o )
    return object_id_type();
 }
 
-object_id_type account_create_evaluator::apply( const operation& o )
+object_id_type account_create_evaluator::do_apply( const account_create_operation& o )
 {
    apply_delta_balances();
    apply_delta_fee_pools();
 
-   const auto& op = o.get<account_create_operation>();
-   auto owner  = resolve_relative_ids( op.owner );
-   auto active = resolve_relative_ids( op.active );
+   auto owner  = resolve_relative_ids( o.owner );
+   auto active = resolve_relative_ids( o.active );
 
    const auto& bal_obj = db().create<account_balance_object>( [&]( account_balance_object& obj ){
             /* no balances right now */
@@ -59,11 +56,11 @@ object_id_type account_create_evaluator::apply( const operation& o )
    });
 
    const auto& new_acnt_object = db().create<account_object>( [&]( account_object& obj ){
-         obj.name       = op.name;
+         obj.name       = o.name;
          obj.owner      = owner;
          obj.active     = active;
-         obj.memo_key   = get_relative_id(op.memo_key);
-         obj.voting_key = get_relative_id(op.voting_key);
+         obj.memo_key   = get_relative_id(o.memo_key);
+         obj.voting_key = get_relative_id(o.voting_key);
          obj.balances   = bal_obj.id;
          obj.debts      = dbt_obj.id;
    });
@@ -72,9 +69,8 @@ object_id_type account_create_evaluator::apply( const operation& o )
 }
 
 
-object_id_type account_update_evaluator::evaluate( const operation& op )
+object_id_type account_update_evaluator::do_evaluate( const account_update_operation& o )
 {
-   const auto& o = op.get<account_update_operation>();
    database&   d = db();
 
    auto bts_fee_paid = pay_fee( o.account, o.fee );
@@ -107,9 +103,8 @@ object_id_type account_update_evaluator::evaluate( const operation& op )
 
    return object_id_type();
 }
-object_id_type account_update_evaluator::apply( const operation& op )
+object_id_type account_update_evaluator::do_apply( const account_update_operation& o )
 {
-   const auto& o = op.get<account_update_operation>();
    if( remove_votes.size() || add_votes.size() )
    {
       auto core_bal = acnt->balances(db()).get_balance( asset_id_type() ).amount;

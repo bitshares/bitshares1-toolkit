@@ -4,9 +4,8 @@
 #include <bts/chain/database.hpp>
 
 namespace bts { namespace chain {
-object_id_type asset_create_evaluator::evaluate( const operation& o )
+object_id_type asset_create_evaluator::do_evaluate( const asset_create_operation& op )
 { try {
-   const auto& op = o.get<asset_create_operation>();
    database& d = db();
 
    auto& asset_indx = db().get_index_type<asset_index>();
@@ -24,11 +23,10 @@ object_id_type asset_create_evaluator::evaluate( const operation& o )
    FC_ASSERT( &op.short_backing_asset(d) != nullptr );
 
    return object_id_type();
-} FC_CAPTURE_AND_RETHROW( (o) ) }
+} FC_CAPTURE_AND_RETHROW( (op) ) }
 
-object_id_type asset_create_evaluator::apply( const operation& o )
+object_id_type asset_create_evaluator::do_apply( const asset_create_operation& op )
 {
-   const auto& op = o.get<asset_create_operation>();
    apply_delta_balances();
    apply_delta_fee_pools();
 
@@ -59,9 +57,8 @@ object_id_type asset_create_evaluator::apply( const operation& o )
    return next_asset_id;
 }
 
-object_id_type asset_issue_evaluator::evaluate( const operation& op )
+object_id_type asset_issue_evaluator::do_evaluate( const asset_issue_operation& o )
 { try {
-   const auto& o = op.get<asset_issue_operation>();
    database& d   = db();
 
    const asset_object& a = o.asset_to_issue.asset_id(d);
@@ -85,11 +82,10 @@ object_id_type asset_issue_evaluator::evaluate( const operation& op )
 
    return object_id_type();
 
-} FC_CAPTURE_AND_RETHROW( (op) ) }
+} FC_CAPTURE_AND_RETHROW( (o) ) }
 
-object_id_type asset_issue_evaluator::apply( const operation& op )
+object_id_type asset_issue_evaluator::do_apply( const asset_issue_operation& o )
 {
-   const auto& o = op.get<asset_issue_operation>();
    apply_delta_balances();
    apply_delta_fee_pools();
 
@@ -100,9 +96,8 @@ object_id_type asset_issue_evaluator::apply( const operation& op )
    return object_id_type();
 }
 
-object_id_type asset_fund_fee_pool_evaluator::evaluate(const operation& op)
+object_id_type asset_fund_fee_pool_evaluator::do_evaluate(const asset_fund_fee_pool_operation& o)
 { try {
-   const asset_fund_fee_pool_operation& o = op.get<asset_fund_fee_pool_operation>();
    database& d = db();
 
    const asset_object& a = o.asset_id(d);
@@ -115,11 +110,10 @@ object_id_type asset_fund_fee_pool_evaluator::evaluate(const operation& op)
    adjust_balance(&o.from_account(d), &d.get_core_asset(), -o.amount);
 
    return object_id_type();
-} FC_CAPTURE_AND_RETHROW( (op) ) }
+} FC_CAPTURE_AND_RETHROW( (o) ) }
 
-object_id_type asset_fund_fee_pool_evaluator::apply(const operation& op)
+object_id_type asset_fund_fee_pool_evaluator::do_apply(const asset_fund_fee_pool_operation& o)
 {
-   const auto& o = op.get<asset_fund_fee_pool_operation>();
    apply_delta_balances();
    apply_delta_fee_pools();
 

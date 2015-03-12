@@ -4,9 +4,8 @@
 #include <bts/chain/database.hpp>
 
 namespace bts { namespace chain {
-object_id_type delegate_create_evaluator::evaluate( const operation& o )
+object_id_type delegate_create_evaluator::do_evaluate( const delegate_create_operation& op )
 {
-   const auto& op = o.get<delegate_create_operation>();
    database& d = db();
 
    auto bts_fee_paid = pay_fee( op.delegate_account, op.fee );
@@ -17,9 +16,8 @@ object_id_type delegate_create_evaluator::evaluate( const operation& o )
    return object_id_type();
 }
 
-object_id_type delegate_create_evaluator::apply( const operation& o )
+object_id_type delegate_create_evaluator::do_apply( const delegate_create_operation& op )
 {
-   const auto& op = o.get<delegate_create_operation>();
    apply_delta_balances();
    apply_delta_fee_pools();
 
@@ -44,9 +42,8 @@ object_id_type delegate_create_evaluator::apply( const operation& o )
 }
 
 
-object_id_type delegate_update_evaluator::evaluate( const operation& o )
+object_id_type delegate_update_evaluator::do_evaluate( const delegate_update_operation& op )
 {
-   const auto& op = o.get<delegate_update_operation>();
    database& d = db();
    const delegate_object& del = op.delegate_id(d);
 
@@ -65,9 +62,8 @@ object_id_type delegate_update_evaluator::evaluate( const operation& o )
    return object_id_type();
 }
 
-object_id_type delegate_update_evaluator::apply( const operation& o )
+object_id_type delegate_update_evaluator::do_apply( const delegate_update_operation& op )
 {
-   const auto& op = o.get<delegate_update_operation>();
    apply_delta_balances();
    apply_delta_fee_pools();
 

@@ -3,12 +3,13 @@
 
 namespace bts { namespace chain {
 
-   class key_create_evaluator : public evaluator<key_create_operation>
+   class key_create_evaluator : public evaluator<key_create_evaluator>
    {
       public:
-         virtual object_id_type evaluate( const operation& o ) override
+         typedef key_create_operation operation_type;
+
+         object_id_type do_evaluate( const key_create_operation& op ) 
          {
-            const auto& op = o.get<key_create_operation>();
             auto bts_fee_paid = pay_fee( op.fee_paying_account, op.fee );
             auto bts_fee_required = op.calculate_fee( db().current_fee_schedule() );
             FC_ASSERT( bts_fee_paid >= bts_fee_required );
@@ -16,12 +17,11 @@ namespace bts { namespace chain {
             return object_id_type();
          }
 
-         virtual object_id_type apply( const operation& o ) override
+         object_id_type do_apply( const key_create_operation& op ) 
          {
             apply_delta_balances();
             apply_delta_fee_pools();
 
-            const auto& op = o.get<key_create_operation>();
             new_key_object = &db().create<key_object>( [&]( key_object& obj ){
                 obj.key_data = op.key_data;
             });

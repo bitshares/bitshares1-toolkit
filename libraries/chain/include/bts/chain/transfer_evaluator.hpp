@@ -5,11 +5,13 @@
 
 namespace bts { namespace chain {
 
-   class transfer_evaluator : public evaluator<transfer_operation>
+   class transfer_evaluator : public evaluator<transfer_evaluator>
    {
       public:
-         virtual object_id_type evaluate( const operation& o ) override;
-         virtual object_id_type apply( const operation& o ) override;
+         typedef transfer_operation operation_type;
+
+         object_id_type do_evaluate( const transfer_operation& o );
+         object_id_type do_apply( const transfer_operation& o );
    };
 
 } } // bts::chain

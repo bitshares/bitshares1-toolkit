@@ -152,6 +152,21 @@ namespace bts { namespace chain {
    };
 
    /**
+    *  Used to cancel an existing limit order, fee_pay_account and the
+    *  account to receive the proceeds must be the same as order->seller
+    */
+   struct limit_order_cancel_operation
+   {
+      limit_order_id_type order;
+      account_id_type     fee_paying_account;
+      asset               fee; 
+      asset               refunded; 
+
+      void validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
     *  Define a new short order, if it is filled it will
     *  be merged with existing call orders for the same
     *  account.  If maitenance_collateral_ratio is set
@@ -180,26 +195,12 @@ namespace bts { namespace chain {
       short_order_id_type order;
       account_id_type     fee_paying_account;
       asset               fee; // paid by order->seller
-      asset               refuneded; 
+      asset               refunded; 
 
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
-   /**
-    *  Used to cancel an existing limit order, fee_pay_account and the
-    *  account to receive the proceeds must be the same as order->seller
-    */
-   struct limit_order_cancel_operation
-   {
-      limit_order_id_type order;
-      account_id_type     fee_paying_account;
-      asset               fee; 
-      asset               refuneded; 
-
-      void validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-   };
 
    /**
     *  This operation can be used to add collateral, cover, and
@@ -400,8 +401,8 @@ FC_REFLECT( bts::chain::account_publish_feeds_operation,
 FC_REFLECT( bts::chain::limit_order_create_operation,
             (seller)(amount_to_sell)(fee)(min_to_receive)(fill_or_kill) 
           )
-FC_REFLECT( bts::chain::limit_order_cancel_operation,(fee_paying_account)(fee)(order)(refuneded) )
-FC_REFLECT( bts::chain::short_order_cancel_operation,(fee_paying_account)(fee)(order)(refuneded) )
+FC_REFLECT( bts::chain::limit_order_cancel_operation,(fee_paying_account)(fee)(order)(refunded) )
+FC_REFLECT( bts::chain::short_order_cancel_operation,(fee_paying_account)(fee)(order)(refunded) )
 FC_REFLECT( bts::chain::short_order_create_operation, (seller)(fee)(collateral)(short_price)(initial_collateral_ratio)(maitenance_collateral_ratio) )
 FC_REFLECT( bts::chain::call_order_update_operation, (funding_account)(fee)(collateral_to_add)(amount_to_cover)(maitenance_collateral_ratio) )
 

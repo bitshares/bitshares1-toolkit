@@ -4,11 +4,8 @@
 #include <fc/uint128.hpp>
 
 namespace bts { namespace chain {
-object_id_type limit_order_evaluator::evaluate( const operation& o )
+object_id_type limit_order_create_evaluator::do_evaluate( const limit_order_create_operation& op )
 {
-   const auto& op = o.get<limit_order_create_operation>();
-   _op = &op;
-
    database& d = db();
 
    auto bts_fee_paid = pay_fee( op.seller, op.fee );
@@ -30,24 +27,24 @@ object_id_type limit_order_evaluator::evaluate( const operation& o )
    return object_id_type();
 }
 
-object_id_type limit_order_evaluator::apply( const operation& o )
+object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_operation& op )
 {
    const auto& seller_balance = _seller->balances(db());
    db().modify( seller_balance, [&]( account_balance_object& bal ){
-         bal.sub_balance( -_op->amount_to_sell );
+         bal.sub_balance( -op.amount_to_sell );
    });
 
    const auto& new_order_object = db().create<limit_order_object>( [&]( limit_order_object& obj ){
        obj.seller   = _seller->id;
-       obj.for_sale = _op->amount_to_sell.amount;
-       obj.sell_price = _op->amount_to_sell / _op->min_to_receive;
+       obj.for_sale = op.amount_to_sell.amount;
+       obj.sell_price = op.amount_to_sell / op.min_to_receive;
    });
 
    const auto& order_idx = db().get_index_type<limit_order_index>();
 
    const auto& price_idx = order_idx.indices().get<by_price>();
-   auto max_price  = _op->min_to_receive / _op->amount_to_sell;
-   auto itr = price_idx.lower_bound( asset(0,_op->min_to_receive.asset_id) / _op->amount_to_sell );
+   auto max_price  = op.min_to_receive / op.amount_to_sell;
+   auto itr = price_idx.lower_bound( asset(0,op.min_to_receive.asset_id) / op.amount_to_sell );
    auto end = price_idx.end();
 
    asset total_sell_issuer_fees = asset( 0, _sell_asset->id    );
@@ -154,14 +151,52 @@ object_id_type limit_order_evaluator::apply( const operation& o )
    apply_delta_fee_pools();
 
    return new_order_object.id;
-} // limit_order_evaluator::apply
+} // limit_order_evaluator::do_apply
 
-asset limit_order_evaluator::calculate_market_fee( const asset_object* aobj, const asset& trade_amount )
+asset limit_order_create_evaluator::calculate_market_fee( const asset_object* aobj, const asset& trade_amount )
 {
    fc::uint128 a(trade_amount.amount.value);
    a *= aobj->market_fee_percent;
    a /= BTS_MAX_MARKET_FEE_PERCENT;
    return asset( a.to_uint64(), trade_amount.asset_id );
 }
+
+
+object_id_type limit_order_cancel_evaluator::do_evaluate( const limit_order_cancel_operation& o )
+{
+   database&    d = db();
+
+   auto bts_fee_paid      = pay_fee( o.fee_paying_account, o.fee );
+   auto bts_fee_required  = o.calculate_fee( d.current_fee_schedule() );
+   FC_ASSERT( bts_fee_paid >= bts_fee_required );
+  
+   _order = &o.order(d);
+   FC_ASSERT( _order->seller == o.fee_paying_account  );
+   FC_ASSERT( o.refunded == _order->amount_for_sale() );
+   adjust_balance( fee_paying_account, &o.refunded.asset_id(d),  o.refunded.amount );
+
+  return object_id_type();
+}
+
+object_id_type limit_order_cancel_evaluator::do_apply( const limit_order_cancel_operation& o )
+{
+  database&   d = db();
+
+  apply_delta_balances();
+  apply_delta_fee_pools();
+
+  d.remove( *_order );
+
+  if( o.refunded.asset_id == asset_id_type() )
+  {
+     auto& bal_obj = fee_paying_account->balances(d);
+     d.modify( bal_obj, [&]( account_balance_object& obj ){
+         obj.total_core_in_orders -= o.refunded.amount;
+     });
+  }
+  return object_id_type();
+}
+
+
 
 } } // bts::chain

@@ -5,31 +5,36 @@
 
 namespace bts { namespace chain {
 
-   class asset_create_evaluator : public evaluator<asset_create_operation>
+   class asset_create_evaluator : public evaluator<asset_create_evaluator>
    {
       public:
-         virtual object_id_type evaluate( const operation& o ) override;
-         virtual object_id_type apply( const operation& o ) override;
+         typedef asset_create_operation operation_type;
+
+         object_id_type do_evaluate( const asset_create_operation& o );
+         object_id_type do_apply( const asset_create_operation& o );
 
          share_type bts_fee_required;
    };
 
-   class asset_issue_evaluator : public evaluator<asset_issue_operation>
+   class asset_issue_evaluator : public evaluator<asset_issue_evaluator>
    {
       public:
-         virtual object_id_type evaluate( const operation& o ) override;
-         virtual object_id_type apply( const operation& o ) override;
+         typedef asset_issue_operation operation_type;
+         object_id_type do_evaluate( const asset_issue_operation& o );
+         object_id_type do_apply( const asset_issue_operation& o );
 
          share_type bts_fee_required;
          const asset_dynamic_data_object* asset_dyn_data = nullptr;
          const account_object*            to_account = nullptr;
    };
 
-   class asset_fund_fee_pool_evaluator : public evaluator<asset_fund_fee_pool_operation>
+   class asset_fund_fee_pool_evaluator : public evaluator<asset_fund_fee_pool_evaluator>
    {
       public:
-         virtual object_id_type evaluate(const operation& op) override;
-         virtual object_id_type apply(const operation& op) override;
+         typedef asset_fund_fee_pool_operation operation_type;
+
+         object_id_type do_evaluate(const asset_fund_fee_pool_operation& op);
+         object_id_type do_apply(const asset_fund_fee_pool_operation& op);
 
          share_type bts_fee_required;
          const asset_dynamic_data_object* asset_dyn_data = nullptr;
