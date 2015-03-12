@@ -27,6 +27,7 @@ namespace bts { namespace chain {
          static bool is_valid_symbol( const string& symbol );
 
          bool enforce_white_list()const { return flags & white_list; }
+         bool is_market_issued()const { return flags & market_issued; }
 
          /// Helper function to get an asset with the given amount in this asset's type
          asset amount(share_type a)const { return asset(a, id); }
