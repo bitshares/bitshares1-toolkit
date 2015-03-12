@@ -17,6 +17,9 @@
 #include <bts/chain/account_evaluator.hpp>
 #include <bts/chain/delegate_evaluator.hpp>
 #include <bts/chain/asset_evaluator.hpp>
+#include <bts/chain/limit_order_evaluator.hpp>
+#include <bts/chain/short_order_evaluator.hpp>
+#include <bts/chain/asset_evaluator.hpp>
 #include <bts/chain/transaction_object.hpp>
 #include <bts/chain/transfer_evaluator.hpp>
 
@@ -53,6 +56,10 @@ database::database()
    register_evaluator<delegate_update_evaluator>();
    register_evaluator<asset_create_evaluator>();
    register_evaluator<asset_issue_evaluator>();
+   register_evaluator<limit_order_create_evaluator>();
+   register_evaluator<limit_order_cancel_evaluator>();
+   register_evaluator<short_order_create_evaluator>();
+   register_evaluator<short_order_cancel_evaluator>();
    register_evaluator<transfer_evaluator>();
 
    _object_id_to_object = std::make_shared<db::level_map<object_id_type,vector<char>>>();
