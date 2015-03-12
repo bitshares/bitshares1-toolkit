@@ -20,11 +20,11 @@ struct database_fixture {
    }
    ~database_fixture(){}
 
-   account_create_operation make_account() {
+   account_create_operation make_account( const std::string& name = "nathan" ) {
       account_create_operation create_account;
       create_account.fee_paying_account = account_id_type();
 
-      create_account.name = "nathan";
+      create_account.name = name;
       create_account.owner.add_authority(genesis_key, 123);
       create_account.active.add_authority(genesis_key, 321);
       create_account.memo_key = genesis_key;
