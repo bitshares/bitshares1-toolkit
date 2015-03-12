@@ -16,13 +16,13 @@ namespace bts { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_account_feeds_object_type;
 
-         optional<price> get_feed( asset_id_type quote, asset_id_type base )const;
-         void            set_feed( const price& p );
+         optional<price_feed> get_feed( asset_id_type quote, asset_id_type base )const;
+         void                 set_feed( const price_feed& p );
 
          /**
           * Maps feeds to the last time they were updated.
           */
-         flat_map<price,time_point_sec> feeds;
+         flat_map<price_feed,time_point_sec> feeds;
    };
 
    /**
@@ -49,6 +49,15 @@ namespace bts { namespace chain {
          void                  add_balance( const asset& a );
          void                  sub_balance( const asset& a );
          asset                 get_balance( asset_id_type asset_id )const;
+
+         /**
+          *  When calculating votes it is necessary to know how much is
+          *  stored in orders (and thus unavailable for transfers).  Rather
+          *  than maintaining an index of  [asset,owner,order_id] we will
+          *  simply maintain the running total here and update it every
+          *  time an order is created or modified.
+          */
+         share_type            total_core_in_orders;
 
          /**
           * Keep balances sorted for best performance of lookups in log(n) time,
@@ -126,5 +135,5 @@ FC_REFLECT_DERIVED( bts::chain::meta_account_object,
                     (bts::chain::object), 
                     (memo_key)(delegate_id) )
 
-FC_REFLECT_DERIVED( bts::chain::account_balance_object, (bts::chain::object), (balances) )
+FC_REFLECT_DERIVED( bts::chain::account_balance_object, (bts::chain::object), (total_core_in_orders)(balances) )
 FC_REFLECT_DERIVED( bts::chain::account_debt_object, (bts::chain::object), (call_orders) );
