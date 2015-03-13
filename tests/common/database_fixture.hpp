@@ -27,15 +27,15 @@ struct database_fixture {
    }
    ~database_fixture(){}
 
-   account_create_operation make_account( const std::string& name = "nathan" ) {
+   account_create_operation make_account( const std::string& name = "nathan", key_id_type key = key_id_type() ) {
       account_create_operation create_account;
       create_account.fee_paying_account = account_id_type();
 
       create_account.name = name;
-      create_account.owner.add_authority(genesis_key, 123);
-      create_account.active.add_authority(genesis_key, 321);
-      create_account.memo_key = genesis_key;
-      create_account.voting_key = genesis_key;
+      create_account.owner.add_authority(key, 123);
+      create_account.active.add_authority(key, 321);
+      create_account.memo_key = key;
+      create_account.voting_key = key;
 
       create_account.fee = create_account.calculate_fee(db.current_fee_schedule());
       return create_account;
@@ -66,7 +66,7 @@ struct database_fixture {
       limit_order_create_operation buy_order;
       buy_order.seller = user.id;
       buy_order.amount_to_sell = amount;
-      buy_order.min_to_receive = recv; 
+      buy_order.min_to_receive = recv;
       trx.operations.push_back(buy_order);
       for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
       trx.validate();
