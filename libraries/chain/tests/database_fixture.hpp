@@ -2,7 +2,14 @@
 
 #include <bts/chain/database.hpp>
 
+#include <bts/chain/limit_order_object.hpp>
+#include <bts/chain/account_object.hpp>
+#include <bts/chain/asset_object.hpp>
 #include <boost/test/unit_test.hpp>
+#include <iostream>
+#include <iomanip>
+
+using std::cout;
 
 namespace bts { namespace chain {
 
@@ -32,6 +39,34 @@ struct database_fixture {
 
       create_account.fee = create_account.calculate_fee(db.current_fee_schedule());
       return create_account;
+   }
+
+   void print_market( const string& syma, const string&  symb )
+   {
+      const auto& limit_idx = db.get_index_type<limit_order_index>();
+      const auto& price_idx = limit_idx.indices().get<by_price>();
+
+      cout << std::fixed;
+      cout.precision(5);
+      cout << std::setw(10) << std::left  << "NAME"      << " ";
+      cout << std::setw(16) << std::right << "FOR SALE"  << " ";
+      cout << std::setw(16) << std::right << "FOR WHAT"  << " ";
+      cout << std::setw(10) << "PRICE"   << " ";
+      cout << std::setw(10) << "1/PRICE" << " ";
+      cout << "===========================================================================================================\n";
+      auto cur = price_idx.begin();
+      while( cur != price_idx.end() )
+      {
+         cout << std::setw( 10 ) << std::left   << cur->seller(db).name << " ";
+         cout << std::setw( 10 ) << std::right  << cur->for_sale.value << " ";
+         cout << std::setw( 5 )  << std::left   << cur->amount_for_sale().asset_id(db).symbol << " ";
+         cout << std::setw( 10 ) << std::right  << cur->amount_to_receive().amount.value << " ";
+         cout << std::setw( 5 )  << std::left   << cur->amount_to_receive().asset_id(db).symbol << " ";
+         cout << std::setw( 10 ) << std::right  << cur->sell_price.to_real() << " ";
+         cout << std::setw( 10 ) << std::right  << (~cur->sell_price).to_real() << " ";
+         cout << "\n";
+         ++cur;
+      }
    }
 };
 

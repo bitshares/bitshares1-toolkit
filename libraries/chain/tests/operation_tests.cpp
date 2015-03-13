@@ -407,19 +407,45 @@ BOOST_AUTO_TEST_CASE( create_buy_uia_order )
    trx.operations.clear();
 
    BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == asset( 10000 ) );
-   limit_order_create_operation buy_order;
-   buy_order.seller = buyer_account.id;
-   buy_order.amount_to_sell = asset( 5000 );
-   buy_order.min_to_receive = asset( 300, test_asset.id );
-   trx.operations.push_back(buy_order);
+   for( uint32_t i = 0; i < 3; ++i )
+   {
+      limit_order_create_operation buy_order;
+      buy_order.seller = buyer_account.id;
+      buy_order.amount_to_sell = asset( 1000 );
+      buy_order.min_to_receive = asset( 100+450*i, test_asset.id );
+      trx.operations.push_back(buy_order);
+   }
    for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
    trx.validate();
    auto fee = trx.operations.back().get<limit_order_create_operation>().fee;
    auto processed = db.push_transaction(trx, ~0);
    trx.operations.clear();
    wdump((fee));
-   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == (asset( 5000 )-fee) );
+   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == (asset( 7000 )-fee) );
    wdump((processed));
+
+   print_market( "", "" );
+
+   for( uint32_t i = 0; i < 3; ++i )
+   {
+      limit_order_create_operation buy_order;
+      buy_order.seller = nathan_account.id;
+      buy_order.amount_to_sell = asset( 1000, test_asset.id );
+      buy_order.min_to_receive = asset( 100+450*i );
+      trx.operations.push_back(buy_order);
+   }
+   for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
+   trx.validate();
+   processed = db.push_transaction(trx, ~0);
+   print_market( "", "" );
+
+   BOOST_CHECK( buyer_account.balances(db).get_balance(test_asset.id) == test_asset.amount(990) );
+   BOOST_CHECK( nathan_account.balances(db).get_balance(asset_id_type()) == asset(1000) );
+   wdump( (buyer_account.balances(db).get_balance(test_asset.id)) );
+   wdump( (buyer_account.balances(db).get_balance(asset_id_type())) );
+   wdump( (nathan_account.balances(db).get_balance(test_asset.id)) );
+   wdump( (nathan_account.balances(db).get_balance(asset_id_type())) );
+   //BOOST_CHECK( buyer_account.balances(db).get_balance(test_asset.id) == (asset( 1000 )-fee) );
 
 
  }
