@@ -18,7 +18,7 @@ namespace bts { namespace chain {
          if( a.quote.asset_id > b.quote.asset_id ) return false;
          auto amult = fc::uint128(a.quote.amount.value) * b.base.amount.value;
          auto bmult = fc::uint128(b.quote.amount.value) * a.base.amount.value;
-         return amult < bmult;
+         return amult > bmult;
       }
       bool operator <= ( const price& a, const price& b )
       {
@@ -28,15 +28,15 @@ namespace bts { namespace chain {
          if( a.quote.asset_id > b.quote.asset_id ) return false;
          auto amult = fc::uint128(a.quote.amount.value) * b.base.amount.value;
          auto bmult = fc::uint128(b.quote.amount.value) * a.base.amount.value;
-         return amult <= bmult;
+         return amult >= bmult;
       }
       bool operator >= ( const price& a, const price& b )
       {
-         return b < a;
+         return !(a < b);
       }
       bool operator > ( const price& a, const price& b )
       {
-         return b <= a;
+         return a <= b;
       }
 
       asset operator * ( const asset& a, const price& b )

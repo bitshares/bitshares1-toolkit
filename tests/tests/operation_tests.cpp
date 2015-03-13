@@ -32,10 +32,10 @@ BOOST_FIXTURE_TEST_SUITE( operation_unit_tests, database_fixture )
 /// i.e. This allows a test on update_account to begin with the database at the end state of create_account.
 #define INVOKE(test) ((test*)this)->test_method(); RESET(trx); trx.relative_expiration = 1000
 
-BOOST_AUTO_TEST_CASE( create_account )
+BOOST_AUTO_TEST_CASE( create_account_test )
 {
    try {
-      make_account();
+      trx.operations.push_back(make_account());
       account_create_operation op = trx.operations.back().get<account_create_operation>();
 
       REQUIRE_THROW_WITH_VALUE(op, fee_paying_account, account_id_type(9999999));
@@ -101,7 +101,7 @@ BOOST_AUTO_TEST_CASE( create_account )
 BOOST_AUTO_TEST_CASE( transfer_core_asset )
 {
    try {
-      INVOKE(create_account);
+      INVOKE(create_account_test);
 
       account_id_type genesis_account;
       asset genesis_balance = genesis_account(db).balances(db).get_balance(asset_id_type());
@@ -318,7 +318,7 @@ BOOST_AUTO_TEST_CASE( issue_uia )
 {
    try {
       INVOKE(create_uia);
-      INVOKE(create_account);
+      INVOKE(create_account_test);
 
       const asset_object& test_asset = *db.get_index_type<asset_index>().indices().get<by_symbol>().find("TEST");
       const account_object& nathan_account = *db.get_index_type<account_index>().indices().get<by_name>().find("nathan");
@@ -375,60 +375,65 @@ BOOST_AUTO_TEST_CASE( transfer_uia )
    }
 }
 
-BOOST_AUTO_TEST_CASE( create_buy_uia_order )
+BOOST_AUTO_TEST_CASE( create_buy_uia_exact_match )
 { try {
    INVOKE( issue_uia );
-   const asset_object& test_asset = *db.get_index_type<asset_index>().indices().get<by_symbol>().find("TEST");
-   const account_object& nathan_account = *db.get_index_type<account_index>().indices().get<by_name>().find("nathan");
+   const asset_object&   test_asset     = get_asset( "TEST" );
+   const account_object& nathan_account = get_account( "nathan" ); 
+   const account_object& buyer_account  = create_account( "buyer" );
 
-   trx.operations.push_back(make_account("buyer"));
-   trx.operations.push_back(make_account("seller"));
-   trx.signatures.push_back(fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis"))).sign_compact(fc::digest(trx)));
-   trx.validate();
-   db.push_transaction(trx, ~0);
-   trx.operations.clear();
-
-   const account_object& buyer_account = *db.get_index_type<account_index>().indices().get<by_name>().find("buyer");
-   const account_object& seller_account = *db.get_index_type<account_index>().indices().get<by_name>().find("seller");
-
-   account_id_type genesis_account;
-   asset genesis_balance = genesis_account(db).balances(db).get_balance(asset_id_type());
-
-   trx.operations.push_back(transfer_operation({genesis_account,
-                                                buyer_account.id,
-                                                asset(10000),
-                                                asset(),
-                                                vector<char>()
-                                               }));
-   for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
-
-   trx.validate();
-   db.push_transaction(trx, ~0);
-   trx.operations.clear();
+   transfer( genesis_account(db), buyer_account, asset( 10000 ) );
 
    BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == asset( 10000 ) );
-   limit_order_create_operation buy_order;
-   buy_order.seller = buyer_account.id;
-   buy_order.amount_to_sell = asset( 5000 );
-   buy_order.min_to_receive = asset( 300, test_asset.id );
-   trx.operations.push_back(buy_order);
-   for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
-   trx.validate();
-   auto fee = trx.operations.back().get<limit_order_create_operation>().fee;
-   auto processed = db.push_transaction(trx, ~0);
-   trx.operations.clear();
-   wdump((fee));
-   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == (asset( 5000 )-fee) );
-   wdump((processed));
+   for( uint32_t i = 0; i < 3; ++i )
+      create_sell_order( buyer_account, asset(1000), test_asset.amount(100+450*i) );
+   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == (asset( 7000 )) );
 
+   for( uint32_t i = 0; i < 3; ++i )
+      create_sell_order( nathan_account, test_asset.amount(1000), asset(100+450*i) );
 
+   BOOST_CHECK( buyer_account.balances(db).get_balance(test_asset.id) == test_asset.amount(990) );
+   BOOST_CHECK( nathan_account.balances(db).get_balance(asset_id_type()) == asset(1000) );
+   BOOST_CHECK( test_asset.dynamic_asset_data_id(db).accumulated_fees.value == 10 );
  }
  catch ( const fc::exception& e )
  {
     elog( "${e}", ("e", e.to_detail_string() ) );
+    throw;
  }
-
 }
+
+BOOST_AUTO_TEST_CASE( create_buy_uia_partial_match )
+{ try {
+   INVOKE( issue_uia );
+   const asset_object&   test_asset     = get_asset( "TEST" );
+   const account_object& nathan_account = get_account( "nathan" ); 
+   const account_object& buyer_account  = create_account( "buyer" );
+
+   transfer( genesis_account(db), buyer_account, asset( 10000 ) );
+
+   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == asset( 10000 ) );
+   for( uint32_t i = 0; i < 3; ++i )
+      create_sell_order( buyer_account, asset(1000), test_asset.amount(100+450*i) );
+   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == (asset( 7000 )) );
+
+   for( uint32_t i = 0; i < 3; ++i )
+      BOOST_CHECK(create_sell_order( nathan_account, test_asset.amount(1000*1.1), asset((100+450*i)*1.1) ));
+
+   print_market( "", "" );
+
+   BOOST_CHECK( buyer_account.balances(db).get_balance(test_asset.id) == test_asset.amount(990) );
+   BOOST_CHECK( nathan_account.balances(db).get_balance(asset_id_type()) == asset(1000) );
+   BOOST_CHECK( test_asset.dynamic_asset_data_id(db).accumulated_fees.value == 10 );
+ }
+ catch ( const fc::exception& e )
+ {
+    elog( "${e}", ("e", e.to_detail_string() ) );
+    throw;
+ }
+}
+
+
 
 
 

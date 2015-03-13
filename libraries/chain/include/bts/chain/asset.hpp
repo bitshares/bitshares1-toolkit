@@ -52,6 +52,7 @@ namespace bts { namespace chain {
       asset base;
       asset quote;
 
+      double to_real()const { return double(base.amount.value)/double(quote.amount.value); }
    };
    inline price operator / ( const asset& base, const asset& quote )
    {
