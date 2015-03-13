@@ -35,7 +35,7 @@ BOOST_FIXTURE_TEST_SUITE( operation_unit_tests, database_fixture )
 BOOST_AUTO_TEST_CASE( create_account )
 {
    try {
-      trx.operations.push_back(make_account());
+      make_account();
       account_create_operation op = trx.operations.back().get<account_create_operation>();
 
       REQUIRE_THROW_WITH_VALUE(op, fee_paying_account, account_id_type(9999999));
