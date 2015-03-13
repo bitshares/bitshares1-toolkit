@@ -432,6 +432,46 @@ BOOST_AUTO_TEST_CASE( create_buy_uia_partial_match_new )
     throw;
  }
 }
+
+BOOST_AUTO_TEST_CASE( create_buy_uia_multiple_match_new )
+{ try {
+   INVOKE( issue_uia );
+   const asset_object&   test_asset     = get_asset( "TEST" );
+   const account_object& nathan_account = get_account( "nathan" ); 
+   const account_object& buyer_account  = create_account( "buyer" );
+
+   transfer( genesis_account(db), buyer_account, asset( 10000 ) );
+
+   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == asset( 10000 ) );
+   for( uint32_t i = 0; i < 3; ++i )
+      create_sell_order( buyer_account, asset(1000), test_asset.amount(100+450*i) );
+   create_sell_order( buyer_account, asset(500), test_asset.amount(100+450) );
+   create_sell_order( buyer_account, asset(500), test_asset.amount(100+450) );
+   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == (asset( 6000 )) );
+
+   for( uint32_t i = 0; i < 2; ++i )
+      BOOST_CHECK(create_sell_order( nathan_account, test_asset.amount(1000*1.1), asset((100+450*i)*1.1) ));
+   BOOST_CHECK(nullptr == create_sell_order( nathan_account, test_asset.amount(1000*1.1), asset((100+450*2)*1.1) ));
+
+   print_market( "", "" );
+
+   BOOST_CHECK( buyer_account.balances(db).get_balance(test_asset.id) == test_asset.amount(1090) );
+   BOOST_CHECK( nathan_account.balances(db).get_balance(asset_id_type()) == asset(1000) );
+
+   /** NOTE: the fee is 10 despite 1% of 1100 being 11 because to orders of size
+    *   550 which result in fees of 5.5 and 5.5 respectively have the .5 truncated
+    *   resulting in 5+5 == 10.
+    */
+   BOOST_CHECK( test_asset.dynamic_asset_data_id(db).accumulated_fees.value == 10 );
+ }
+ catch ( const fc::exception& e )
+ {
+    elog( "${e}", ("e", e.to_detail_string() ) );
+    throw;
+ }
+}
+
+
 BOOST_AUTO_TEST_CASE( create_buy_uia_partial_match_prior )
 { try {
    INVOKE( issue_uia );

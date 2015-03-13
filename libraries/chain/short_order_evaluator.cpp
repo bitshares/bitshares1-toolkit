@@ -54,7 +54,7 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
 } // short_order_evaluator::do_apply
 
 
-object_id_type short_order_cancel_evaluator::do_evaluate( const short_order_cancel_operation& o )
+asset short_order_cancel_evaluator::do_evaluate( const short_order_cancel_operation& o )
 {
    database&    d = db();
 
@@ -64,29 +64,31 @@ object_id_type short_order_cancel_evaluator::do_evaluate( const short_order_canc
   
    _order = &o.order(d);
    FC_ASSERT( _order->seller == o.fee_paying_account  );
-   FC_ASSERT( o.refunded == _order->get_collateral() );
-   adjust_balance( fee_paying_account, &o.refunded.asset_id(d),  o.refunded.amount );
+   auto refunded = _order->get_collateral();
+   adjust_balance( fee_paying_account, &refunded.asset_id(d),  refunded.amount );
 
-  return object_id_type();
+  return refunded;
 }
 
-object_id_type short_order_cancel_evaluator::do_apply( const short_order_cancel_operation& o )
+asset short_order_cancel_evaluator::do_apply( const short_order_cancel_operation& o )
 {
   database&   d = db();
 
   apply_delta_balances();
   apply_delta_fee_pools();
 
+  auto refunded = _order->get_collateral();
+
   d.remove( *_order );
 
-  if( o.refunded.asset_id == asset_id_type() )
+  if( refunded.asset_id == asset_id_type() )
   {
      auto& bal_obj = fee_paying_account->balances(d);
      d.modify( bal_obj, [&]( account_balance_object& obj ){
-         obj.total_core_in_orders -= o.refunded.amount;
+         obj.total_core_in_orders -= refunded.amount;
      });
   }
-  return object_id_type();
+  return refunded;
 }
 
 

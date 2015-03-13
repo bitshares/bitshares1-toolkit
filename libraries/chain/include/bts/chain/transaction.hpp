@@ -4,6 +4,8 @@
 
 namespace bts { namespace chain {
 
+
+
    /**
     *  All transactions are sets of operations that must be
     *  applied atomically.  Transactions must refer to a recent
@@ -79,7 +81,7 @@ namespace bts { namespace chain {
       processed_transaction( const signed_transaction& trx )
       :signed_transaction(trx){}
 
-      vector<object_id_type> operation_results;
+      vector<operation_result> operation_results;
    };
 
 

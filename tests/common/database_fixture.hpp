@@ -86,7 +86,7 @@ struct database_fixture {
       trx.validate();
       auto r = db.push_transaction(trx, ~0);
       trx.operations.clear();
-      return db.get<account_object>(r.operation_results[0]);
+      return db.get<account_object>(r.operation_results[0].get<object_id_type>());
    }
 
    const limit_order_object* create_sell_order( const account_object& user, const asset& amount, const asset& recv )
@@ -100,7 +100,7 @@ struct database_fixture {
       trx.validate();
       auto processed = db.push_transaction(trx, ~0);
       trx.operations.clear();
-      return db.find<limit_order_object>( processed.operation_results[0] );
+      return db.find<limit_order_object>( processed.operation_results[0].get<object_id_type>() );
    }
    void transfer( const account_object& from, const account_object& to, const asset& amount, const asset& fee = asset() )
    {

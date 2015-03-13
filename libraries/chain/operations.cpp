@@ -299,7 +299,6 @@ share_type limit_order_create_operation::calculate_fee(const fee_schedule_type& 
 void limit_order_cancel_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( refunded.amount > 0 );
 }
 
 share_type limit_order_cancel_operation::calculate_fee(const fee_schedule_type& k) const
@@ -319,7 +318,6 @@ share_type short_order_create_operation::calculate_fee(const fee_schedule_type& 
 void short_order_cancel_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( refunded.amount > 0 );
 }
 
 share_type short_order_cancel_operation::calculate_fee(const fee_schedule_type& k) const

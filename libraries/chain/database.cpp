@@ -335,7 +335,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          trx.validate();
          auto ptrx = apply_transaction(trx, ~0);
          trx = signed_transaction();
-         account_id_type account_id(ptrx.operation_results.back());
+         account_id_type account_id(ptrx.operation_results.back().get<object_id_type>());
          trx.operations.emplace_back(transfer_operation({
                                                            genesis_account.id,
                                                            account_id,

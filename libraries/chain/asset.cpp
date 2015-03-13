@@ -22,14 +22,28 @@ namespace bts { namespace chain {
       }
       bool operator <= ( const price& a, const price& b )
       {
+         //wdump((a)(b));
          if( a.base.asset_id < b.base.asset_id ) return true;
          if( a.base.asset_id > b.base.asset_id ) return false;
          if( a.quote.asset_id < b.quote.asset_id ) return true;
          if( a.quote.asset_id > b.quote.asset_id ) return false;
          auto amult = fc::uint128(a.quote.amount.value) * b.base.amount.value;
          auto bmult = fc::uint128(b.quote.amount.value) * a.base.amount.value;
+         //wdump( (a.to_real())(b.to_real()));
+         //wdump( (amult)(bmult) );
          return amult >= bmult;
       }
+      bool operator == ( const price& a, const price& b )
+      {
+         if( a.base.asset_id < b.base.asset_id ) return true;
+         if( a.base.asset_id > b.base.asset_id ) return false;
+         if( a.quote.asset_id < b.quote.asset_id ) return true;
+         if( a.quote.asset_id > b.quote.asset_id ) return false;
+         auto amult = fc::uint128(a.quote.amount.value) * b.base.amount.value;
+         auto bmult = fc::uint128(b.quote.amount.value) * a.base.amount.value;
+         return amult == bmult;
+      }
+
       bool operator >= ( const price& a, const price& b )
       {
          return !(a < b);
