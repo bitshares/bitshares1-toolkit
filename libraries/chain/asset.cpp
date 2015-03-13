@@ -30,6 +30,14 @@ namespace bts { namespace chain {
          auto bmult = fc::uint128(b.quote.amount.value) * a.base.amount.value;
          return amult <= bmult;
       }
+      bool operator >= ( const price& a, const price& b )
+      {
+         return b < a;
+      }
+      bool operator > ( const price& a, const price& b )
+      {
+         return b <= a;
+      }
 
       asset operator * ( const asset& a, const price& b )
       {

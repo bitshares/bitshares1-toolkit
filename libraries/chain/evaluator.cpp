@@ -152,7 +152,6 @@ int generic_evaluator::match( const limit_order_object& bid, const limit_order_o
    assert( bid.id > ask.id );
    assert( bid.sell_price.quote.asset_id == ask.sell_price.base.asset_id );
    assert( bid.sell_price.base.asset_id  == ask.sell_price.quote.asset_id );
-   assert( _bid_asset && _ask_asset );
    assert( bid.for_sale > 0 && ask.for_sale > 0 );
 
    auto match_price  = ask.sell_price;

@@ -212,6 +212,14 @@ namespace bts { namespace chain {
       {
          return a.instance == b.instance;
       }
+      friend bool  operator == ( const object_id_type& a, const object_id& b )
+      {
+         return a == object_id_type(b);
+      }
+      friend bool  operator == ( const object_id& b, const object_id_type& a )
+      {
+         return a == object_id_type(b);
+      }
 
       unsigned_int instance;
    };
