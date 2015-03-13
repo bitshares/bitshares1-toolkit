@@ -42,6 +42,7 @@ struct database_fixture {
          total_balances[asset_id_type()] += asset_obj.dynamic_asset_data_id(db).fee_pool;
       }
 
+      idump((total_balances[asset_id_type()])(core_asset_data.current_supply));
       BOOST_CHECK( total_balances[asset_id_type()] == core_asset_data.current_supply );
    }
 

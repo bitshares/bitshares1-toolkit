@@ -115,6 +115,10 @@ namespace bts { namespace chain {
                           dyn.fee_pool         -= fee.second.from_pool;
                           dyn.accumulated_fees += fee.second.to_issuer;
                      });
+         if( dyn_asst_data.id != asset_id_type() )
+            db().modify(dynamic_asset_data_id_type()(db()), [&]( asset_dynamic_data_object& dyn) {
+               dyn.accumulated_fees += fee.second.from_pool;
+            });
       }
    }
    object_id_type generic_evaluator::get_relative_id( object_id_type rel_id )const
@@ -167,7 +171,7 @@ int generic_evaluator::match( const limit_order_object& usd, const limit_order_o
    assert( max_usd_pays.asset_id != core_for_sale.asset_id );
 
    auto usd_trade_amount = max_usd_pays;
-   if( usd_trade_amount > usd_for_sale ) usd_trade_amount = usd_for_sale; 
+   if( usd_trade_amount > usd_for_sale ) usd_trade_amount = usd_for_sale;
 
    auto usd_pays     = usd_trade_amount;
    auto usd_receives = usd_trade_amount * match_price;
