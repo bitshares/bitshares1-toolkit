@@ -149,6 +149,7 @@ namespace bts { namespace chain {
          uint32_t       head_block_num()const;
          block_id_type  head_block_id()const;
 
+         void initialize_evaluators();
          /// Reset the object graph in-memory
          void initialize_indexes();
          void init_genesis(const genesis_allocation& initial_allocation = genesis_allocation());

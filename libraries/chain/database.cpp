@@ -48,22 +48,10 @@ database::database()
    _index.resize(255);
 
    _undo_db.enable();
-   _operation_evaluators.resize(255);
-   register_evaluator<key_create_evaluator>();
-   register_evaluator<account_create_evaluator>();
-   register_evaluator<account_update_evaluator>();
-   register_evaluator<delegate_create_evaluator>();
-   register_evaluator<delegate_update_evaluator>();
-   register_evaluator<asset_create_evaluator>();
-   register_evaluator<asset_issue_evaluator>();
-   register_evaluator<limit_order_create_evaluator>();
-   register_evaluator<limit_order_cancel_evaluator>();
-   register_evaluator<short_order_create_evaluator>();
-   register_evaluator<short_order_cancel_evaluator>();
-   register_evaluator<transfer_evaluator>();
 
    _object_id_to_object = std::make_shared<db::level_map<object_id_type,vector<char>>>();
 
+   initialize_evaluators();
    initialize_indexes();
 }
 
@@ -179,6 +167,24 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
 
    _data_dir = data_dir;
 } FC_CAPTURE_AND_RETHROW( (data_dir) ) }
+
+void database::initialize_evaluators()
+{
+   _operation_evaluators.resize(255);
+   register_evaluator<key_create_evaluator>();
+   register_evaluator<account_create_evaluator>();
+   register_evaluator<account_update_evaluator>();
+   register_evaluator<delegate_create_evaluator>();
+   register_evaluator<delegate_update_evaluator>();
+   register_evaluator<asset_create_evaluator>();
+   register_evaluator<asset_issue_evaluator>();
+   register_evaluator<limit_order_create_evaluator>();
+   register_evaluator<limit_order_cancel_evaluator>();
+   register_evaluator<short_order_create_evaluator>();
+   register_evaluator<short_order_cancel_evaluator>();
+   register_evaluator<transfer_evaluator>();
+   register_evaluator<asset_fund_fee_pool_evaluator>();
+}
 
 void database::initialize_indexes()
 {

@@ -55,7 +55,7 @@ namespace bts { namespace chain {
          dynamic_asset_data_id_type  dynamic_asset_data_id;
 
          // meta_info -> uint8_t                 precision_digits  = 0; // 0 to 10
-         //   name, description, and precission
+         //   name, description, and precision
    };
 
    struct by_symbol{};

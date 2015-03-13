@@ -2,11 +2,12 @@
 
 #include <bts/chain/database.hpp>
 #include <bts/chain/simple_index.hpp>
-
 #include <bts/chain/limit_order_object.hpp>
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
+
 #include <boost/test/unit_test.hpp>
+
 #include <iostream>
 #include <iomanip>
 
@@ -104,6 +105,15 @@ struct database_fixture {
    void transfer( const account_object& from, const account_object& to, const asset& amount, const asset& fee = asset() )
    {
       trx.operations.push_back(transfer_operation({from.id, to.id, amount, fee, vector<char>() }));
+
+      for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
+      trx.validate();
+      db.push_transaction(trx, ~0);
+      trx.operations.clear();
+   }
+   void fund_fee_pool( const account_object& from, const asset_object& asset_to_fund, const share_type amount )
+   {
+      trx.operations.push_back(asset_fund_fee_pool_operation({from.id, asset_to_fund.id, amount}));
 
       for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
       trx.validate();
