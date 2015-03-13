@@ -403,7 +403,7 @@ BOOST_AUTO_TEST_CASE( create_buy_uia_exact_match )
  }
 }
 
-BOOST_AUTO_TEST_CASE( create_buy_uia_partial_match )
+BOOST_AUTO_TEST_CASE( create_buy_uia_partial_match_new )
 { try {
    INVOKE( issue_uia );
    const asset_object&   test_asset     = get_asset( "TEST" );
@@ -425,6 +425,40 @@ BOOST_AUTO_TEST_CASE( create_buy_uia_partial_match )
    BOOST_CHECK( buyer_account.balances(db).get_balance(test_asset.id) == test_asset.amount(990) );
    BOOST_CHECK( nathan_account.balances(db).get_balance(asset_id_type()) == asset(1000) );
    BOOST_CHECK( test_asset.dynamic_asset_data_id(db).accumulated_fees.value == 10 );
+ }
+ catch ( const fc::exception& e )
+ {
+    elog( "${e}", ("e", e.to_detail_string() ) );
+    throw;
+ }
+}
+BOOST_AUTO_TEST_CASE( create_buy_uia_partial_match_prior )
+{ try {
+   INVOKE( issue_uia );
+   const asset_object&   test_asset     = get_asset( "TEST" );
+   const account_object& nathan_account = get_account( "nathan" ); 
+   const account_object& buyer_account  = create_account( "buyer" );
+
+   transfer( genesis_account(db), buyer_account, asset( 10000 ) );
+
+   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == asset( 10000 ) );
+   for( uint32_t i = 0; i < 3; ++i )
+      create_sell_order( buyer_account, asset(1000), test_asset.amount(100+450*i) );
+   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == (asset( 7000 )) );
+
+   for( uint32_t i = 0; i < 2; ++i )
+      BOOST_CHECK(create_sell_order( nathan_account, test_asset.amount(1000*.9), asset((100+450*i)*.9) ));
+   BOOST_CHECK(! create_sell_order( nathan_account, test_asset.amount(1000*.9), asset((100+450*2)*.9) ));
+
+   print_market( "", "" );
+
+   wdump( (buyer_account.balances(db).get_balance(test_asset.id) ) );
+   wdump( (nathan_account.balances(db).get_balance(test_asset.id) ) );
+   wdump( (nathan_account.balances(db).get_balance(asset_id_type()) ) );
+   wdump( (test_asset.dynamic_asset_data_id(db).accumulated_fees.value) );
+   BOOST_CHECK( buyer_account.balances(db).get_balance(test_asset.id) == test_asset.amount(891) ); 
+   BOOST_CHECK( nathan_account.balances(db).get_balance(asset_id_type()) == asset(900) );
+   BOOST_CHECK( test_asset.dynamic_asset_data_id(db).accumulated_fees.value == 9 );
  }
  catch ( const fc::exception& e )
  {
