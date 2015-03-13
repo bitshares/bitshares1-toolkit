@@ -103,6 +103,18 @@ struct database_fixture {
       trx.operations.clear();
       return db.find<limit_order_object>( processed.operation_results[0].get<object_id_type>() );
    }
+   asset cancel_limit_order( const limit_order_object& order )
+   {
+      limit_order_cancel_operation cancel_order;
+      cancel_order.fee_paying_account = order.seller;
+      trx.operations.push_back(cancel_order);
+      for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
+      trx.validate();
+      auto processed = db.push_transaction(trx, ~0);
+      trx.operations.clear();
+      return processed.operation_results[0].get<asset>();
+   }
+
    void transfer( const account_object& from, const account_object& to, const asset& amount, const asset& fee = asset() )
    {
       trx.operations.push_back(transfer_operation({from.id, to.id, amount, fee, vector<char>() }));

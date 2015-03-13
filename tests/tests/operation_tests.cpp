@@ -574,6 +574,28 @@ BOOST_AUTO_TEST_CASE( uia_fees )
    }
 }
 
+BOOST_AUTO_TEST_CASE( cancel_limit_order_test )
+{ try {
+   INVOKE( issue_uia );
+   const asset_object&   test_asset     = get_asset( "TEST" );
+   const account_object& nathan_account = get_account( "nathan" );
+   const account_object& buyer_account  = create_account( "buyer" );
+
+   transfer( genesis_account(db), buyer_account, asset( 10000 ) );
+
+   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == asset( 10000 ) );
+   auto sell_order = create_sell_order( buyer_account, asset(1000), test_asset.amount(100+450*1) );
+   FC_ASSERT( sell_order );
+   auto refunded = cancel_limit_order( *sell_order );
+   BOOST_CHECK( refunded == asset(1000) );
+   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == asset(10000) );
+ }
+ catch ( const fc::exception& e )
+ {
+    elog( "${e}", ("e", e.to_detail_string() ) );
+    throw;
+ }
+}
 
 
 BOOST_AUTO_TEST_SUITE_END()
