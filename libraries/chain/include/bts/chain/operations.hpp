@@ -122,7 +122,7 @@ namespace bts { namespace chain {
     *  @class limit_order_create_operation
     *  @brief instructs the blockchain to attempt to sell one asset for another
     *
-    *  The blockchain will atempt to sell amount_to_sell.asset_id for as 
+    *  The blockchain will atempt to sell amount_to_sell.asset_id for as
     *  much min_to_receive.asset_id as possible.  The fee will be paid by
     *  the seller's account.  Market fees will apply as specified by the
     *  issuer of both the selling asset and the receiving asset as
@@ -159,8 +159,8 @@ namespace bts { namespace chain {
    {
       limit_order_id_type order;
       account_id_type     fee_paying_account;
-      asset               fee; 
-      asset               refunded; 
+      asset               fee;
+      asset               refunded;
 
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -195,7 +195,7 @@ namespace bts { namespace chain {
       short_order_id_type order;
       account_id_type     fee_paying_account;
       asset               fee; // paid by order->seller
-      asset               refunded; 
+      asset               refunded;
 
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -212,14 +212,14 @@ namespace bts { namespace chain {
     *  is greater than the amount due.
     *
     *  @note the call_order_id is implied by the funding_account and
-    *  assets involved.  
+    *  assets involved.
     */
    struct call_order_update_operation
    {
       account_id_type     funding_account; ///< pays fee, collateral, and cover
       asset               fee; //</ paid by funding_account
       asset               collateral_to_add; ///< may be negative if amount_to_cover pays off the debt
-      asset               amount_to_cover; ///< the amount of the debt to be paid off 
+      asset               amount_to_cover; ///< the amount of the debt to be paid off
       uint16_t            maitenance_collateral_ratio = 0; ///< 0 means don't change, 1000 means feed
 
       void validate()const;
@@ -290,7 +290,7 @@ namespace bts { namespace chain {
    {
       account_id_type fee_paying_account;
       asset           fee;
-      uint16_t        type;
+      uint16_t        type = 0;
       vector<char>    data;
 
       void       validate()const;
@@ -399,7 +399,7 @@ FC_REFLECT( bts::chain::account_publish_feeds_operation,
             (account)(fee)(feeds) )
 
 FC_REFLECT( bts::chain::limit_order_create_operation,
-            (seller)(amount_to_sell)(fee)(min_to_receive)(fill_or_kill) 
+            (seller)(amount_to_sell)(fee)(min_to_receive)(fill_or_kill)
           )
 FC_REFLECT( bts::chain::limit_order_cancel_operation,(fee_paying_account)(fee)(order)(refunded) )
 FC_REFLECT( bts::chain::short_order_cancel_operation,(fee_paying_account)(fee)(order)(refunded) )

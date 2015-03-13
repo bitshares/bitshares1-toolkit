@@ -20,11 +20,6 @@ namespace bts { namespace chain {
          :_db(db),_skip_signature_check(skip_sig_check){}
 
          bool check_authority( const account_object*, authority::classification auth_class = authority::active, int depth = 0 );
-         void adjust_votes( const vector<delegate_id_type>& delegates, share_type amount );
-
-         void withdraw_from_account( account_id_type, const asset& what );
-         void deposit_to_account( account_id_type, const asset& what );
-
 
          database& db()const { FC_ASSERT( _db ); return *_db; }
 
