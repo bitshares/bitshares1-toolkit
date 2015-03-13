@@ -1,6 +1,7 @@
 #pragma once
 
 #include <bts/chain/database.hpp>
+#include <bts/chain/simple_index.hpp>
 
 #include <bts/chain/limit_order_object.hpp>
 #include <bts/chain/account_object.hpp>
@@ -19,13 +20,39 @@ struct database_fixture {
    key_id_type genesis_key;
    fc::ecc::private_key private_key = fc::ecc::private_key::generate();
 
+   void verify_asset_supplies()
+   {
+      const asset_dynamic_data_object& core_asset_data = db.get_core_asset().dynamic_asset_data_id(db);
+      BOOST_CHECK(core_asset_data.current_supply == BTS_INITIAL_SUPPLY);
+      BOOST_CHECK(core_asset_data.fee_pool == 0);
+
+      const simple_index<account_balance_object>& balance_index = db.get_index_type<simple_index<account_balance_object>>();
+      map<asset_id_type,share_type> total_balances;
+      for( const account_balance_object& a : balance_index )
+         for( const auto& balance : a.balances )
+            total_balances[balance.first] += balance.second;
+      for( const limit_order_object& o : db.get_index_type<limit_order_index>().indices() )
+         total_balances[o.amount_for_sale().asset_id] += o.amount_for_sale().amount;
+      for( const asset_object& asset_obj : db.get_index_type<asset_index>().indices() )
+      {
+         total_balances[asset_obj.id] += asset_obj.dynamic_asset_data_id(db).accumulated_fees;
+         if( asset_obj.id != asset_id_type() )
+            BOOST_CHECK(total_balances[asset_obj.id] == asset_obj.dynamic_asset_data_id(db).current_supply);
+         total_balances[asset_id_type()] += asset_obj.dynamic_asset_data_id(db).fee_pool;
+      }
+
+      BOOST_CHECK( total_balances[asset_id_type()] == core_asset_data.current_supply );
+   }
+
    database_fixture()
    {
       db.init_genesis();
       genesis_key(db); // attempt to deref
       trx.relative_expiration = 1000;
    }
-   ~database_fixture(){}
+   ~database_fixture(){
+      verify_asset_supplies();
+   }
 
    account_create_operation make_account( const std::string& name = "nathan", key_id_type key = key_id_type() ) {
       account_create_operation create_account;
