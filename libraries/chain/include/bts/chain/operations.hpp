@@ -11,6 +11,8 @@ namespace bts { namespace chain {
    bool is_premium_name( const string& n );
    bool is_cheap_name( const string& n );
 
+   typedef fc::static_variant<object_id_type,asset> operation_result;
+
    struct key_create_operation
    {
       account_id_type  fee_paying_account;

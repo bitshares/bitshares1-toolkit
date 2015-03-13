@@ -123,8 +123,9 @@ namespace bts { namespace chain {
       {
          FC_ASSERT( rel_id.instance() < trx_state->operation_results.size() );
          // fetch the object just to make sure it exists.
-         db().get_object( trx_state->operation_results[rel_id.instance()] );
-         return trx_state->operation_results[rel_id.instance()];
+         auto r = trx_state->operation_results[rel_id.instance()].get<object_id_type>();
+         db().get_object( r ); // make sure it exists.
+         return r;
       }
       return rel_id;
    }

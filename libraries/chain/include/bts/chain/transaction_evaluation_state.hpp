@@ -31,7 +31,7 @@ namespace bts { namespace chain {
          /**
           * Used to lookup new objects using transaction relative IDs
           */
-         vector<object_id_type>                                     operation_results;
+         vector<operation_result>   operation_results;
 
          transaction* _trx;
          database*    _db = nullptr;
