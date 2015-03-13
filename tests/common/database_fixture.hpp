@@ -95,8 +95,8 @@ struct database_fixture {
       cout << std::setw(16) << std::right << "FOR SALE"  << " ";
       cout << std::setw(16) << std::right << "FOR WHAT"  << " ";
       cout << std::setw(10) << "PRICE"   << " ";
-      cout << std::setw(10) << "1/PRICE" << " ";
-      cout << "\n===========================================================================================================\n";
+      cout << std::setw(10) << "1/PRICE" << "\n";
+      cout << string(70, '=') << std::endl;
       auto cur = price_idx.begin();
       while( cur != price_idx.end() )
       {
