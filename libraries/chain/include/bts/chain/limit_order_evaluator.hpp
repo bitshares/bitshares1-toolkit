@@ -26,8 +26,8 @@ namespace bts { namespace chain {
       public:
          typedef limit_order_cancel_operation operation_type;
 
-         object_id_type do_evaluate( const limit_order_cancel_operation& o );
-         object_id_type do_apply( const limit_order_cancel_operation& o );
+         asset do_evaluate( const limit_order_cancel_operation& o );
+         asset do_apply( const limit_order_cancel_operation& o );
 
          const limit_order_object* _order;
    };

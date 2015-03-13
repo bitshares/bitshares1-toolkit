@@ -20,14 +20,14 @@ namespace bts { namespace chain {
          virtual ~generic_evaluator(){}
 
          virtual int get_type()const = 0;
-         virtual object_id_type start_evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply  );
+         virtual operation_result start_evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply  );
 
          /** @note derived classes should ASSUME that the default validation that is
           * indepenent of chain state should be performed by op.validate() and should
           * not perform these extra checks.
           */
-         virtual object_id_type evaluate( const operation& op ) = 0;
-         virtual object_id_type apply( const operation& op ) = 0;
+         virtual operation_result evaluate( const operation& op ) = 0;
+         virtual operation_result apply( const operation& op ) = 0;
 
          database& db()const;
 
@@ -109,7 +109,7 @@ namespace bts { namespace chain {
    {
       public:
          virtual ~op_evaluator(){}
-         virtual object_id_type evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply ) = 0;
+         virtual operation_result evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply ) = 0;
 
          vector< shared_ptr<post_evaluator> > post_evals;
    };
@@ -118,7 +118,7 @@ namespace bts { namespace chain {
    class op_evaluator_impl : public op_evaluator
    {
       public:
-         virtual object_id_type evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply = true ) override
+         virtual operation_result evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply = true ) override
          {
              T eval;
              auto result = eval.start_evaluate( eval_state, op, apply );
@@ -133,11 +133,11 @@ namespace bts { namespace chain {
       public:
          virtual int get_type()const { return operation::tag<typename DerivedEvaluator::operation_type>::value; }
 
-         virtual object_id_type evaluate( const operation& o ) final override
+         virtual operation_result evaluate( const operation& o ) final override
          {
             return static_cast<DerivedEvaluator*>(this)->do_evaluate( o.get<typename DerivedEvaluator::operation_type>() );
          }
-         virtual object_id_type apply( const operation& o ) final override
+         virtual operation_result apply( const operation& o ) final override
          {
             return static_cast<DerivedEvaluator*>(this)->do_apply( o.get<typename DerivedEvaluator::operation_type>() );
          }

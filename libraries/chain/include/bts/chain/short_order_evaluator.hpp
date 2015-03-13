@@ -25,8 +25,8 @@ namespace bts { namespace chain {
       public:
          typedef short_order_cancel_operation operation_type;
 
-         object_id_type do_evaluate( const short_order_cancel_operation& o );
-         object_id_type do_apply( const short_order_cancel_operation& o );
+         asset do_evaluate( const short_order_cancel_operation& o );
+         asset do_apply( const short_order_cancel_operation& o );
 
          const short_order_object* _order;
    };
