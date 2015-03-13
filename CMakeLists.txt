@@ -203,6 +203,7 @@ set_target_properties(leveldb PROPERTIES COMPILE_DEFINITIONS "${LEVELDB_BUILD_DE
 find_package( BerkeleyDB )
 
 add_subdirectory( libraries )
+add_subdirectory( tests )
 add_subdirectory( vendor/miniupnp/miniupnpc )
 #add_subdirectory( programs )
 #add_subdirectory( tests )

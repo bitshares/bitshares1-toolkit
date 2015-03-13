@@ -58,7 +58,7 @@ namespace bts { namespace chain {
       delta_balance[for_account][for_asset] += delta;
    }
    /**
-    *  Gets the balance of the account after all modifications that have been applied 
+    *  Gets the balance of the account after all modifications that have been applied
     *  while evaluating this operation.
     */
    asset  generic_evaluator::get_balance( const account_object* for_account, const asset_object* for_asset )const
@@ -77,7 +77,7 @@ namespace bts { namespace chain {
       for( const auto& acnt : delta_balance )
       {
          const auto& balances = acnt.first->balances(db());
-         db().modify( 
+         db().modify(
              balances, [&]( account_balance_object& bal ){
                 for( const auto& delta : acnt.second )
                 {
@@ -112,7 +112,7 @@ namespace bts { namespace chain {
       {
          const auto& dyn_asst_data = fee.first->dynamic_asset_data_id(db());
          db().modify( dyn_asst_data, [&]( asset_dynamic_data_object& dyn ){
-                          dyn.fee_pool         -= fee.second.from_pool;  
+                          dyn.fee_pool         -= fee.second.from_pool;
                           dyn.accumulated_fees += fee.second.to_issuer;
                      });
       }
@@ -162,7 +162,7 @@ int generic_evaluator::match( const limit_order_object& bid, const limit_order_o
 
    assert( max_bid_pays.asset_id == ask_for_sale.asset_id );
 
-   auto trade_amount = std::min( max_bid_pays, ask_for_sale ); 
+   auto trade_amount = std::min( max_bid_pays, ask_for_sale );
    if( trade_amount == max_bid_pays ) trade_amount = bid_for_sale;
 
    auto bid_pays     = trade_amount;
@@ -170,9 +170,10 @@ int generic_evaluator::match( const limit_order_object& bid, const limit_order_o
    auto ask_receives = trade_amount;
    auto ask_pays     = bid_receives;
 
-   if( ask_pays > ask_for_sale ) bid_receives = ask_for_sale;
+   ask_pays = std::min(ask_pays, ask_for_sale);
+   bid_receives = ask_pays;
 
-   // TODO: test a case where the order price is so wacky that trade_amount == 0 or pays/receives ammount == 0
+   // TODO: test a case where the order price is so wacky that trade_amount == 0 or pays/receives amount == 0
 
    int result = 0;
    result |= fill_limit_order( bid, bid_pays, bid_receives );
@@ -180,14 +181,14 @@ int generic_evaluator::match( const limit_order_object& bid, const limit_order_o
    return result;
 }
 
-asset generic_evaluator::calculate_market_fee( const asset_object& aobj, const asset& trade_amount )
+asset generic_evaluator::calculate_market_fee( const asset_object& trade_asset, const asset& trade_amount )
 {
-   assert( aobj.id == trade_amount.asset_id );
+   assert( trade_asset.id == trade_amount.asset_id );
 
    fc::uint128 a(trade_amount.amount.value);
-   a *= aobj.market_fee_percent;
+   a *= trade_asset.market_fee_percent;
    a /= BTS_MAX_MARKET_FEE_PERCENT;
-   return asset( a.to_uint64(), trade_amount.asset_id );
+   return trade_asset.amount(a.to_uint64());
 }
 
 bool generic_evaluator::fill_limit_order( const limit_order_object& order, const asset& pays, const asset& receives )
@@ -200,11 +201,16 @@ bool generic_evaluator::fill_limit_order( const limit_order_object& order, const
    const asset_object& recv_asset = receives.asset_id(db());
 
    auto issuer_fees = calculate_market_fee( recv_asset, receives );
+   assert(issuer_fees <= receives );
 
-   const auto& recv_dyn_data = recv_asset.dynamic_asset_data_id(db());
-   db().modify( recv_dyn_data, [&]( asset_dynamic_data_object& obj ){
-        obj.accumulated_fees += issuer_fees.amount;
-   });
+   //Don't dirty undo state if not actually collecting any fees
+   if( issuer_fees.amount > 0 )
+   {
+      const auto& recv_dyn_data = recv_asset.dynamic_asset_data_id(db());
+      db().modify( recv_dyn_data, [&]( asset_dynamic_data_object& obj ){
+         obj.accumulated_fees += issuer_fees.amount;
+      });
+   }
 
    const auto& balances = seller.balances(db());
    db().modify( balances, [&]( account_balance_object& b ){
@@ -227,19 +233,5 @@ bool generic_evaluator::fill_limit_order( const limit_order_object& order, const
       return false;
    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 } }
