@@ -40,6 +40,49 @@ struct database_fixture {
       create_account.fee = create_account.calculate_fee(db.current_fee_schedule());
       return create_account;
    }
+   account_id_type genesis_account;
+
+   const asset_object& get_asset( const string& symbol )
+   {
+      return *db.get_index_type<asset_index>().indices().get<by_symbol>().find(symbol);
+   }
+
+   const account_object& get_account( const string& name )
+   {
+      return *db.get_index_type<account_index>().indices().get<by_name>().find(name);
+   }
+
+   const account_object& create_account( const string& name )
+   {
+      trx.operations.push_back(make_account(name));
+      trx.validate();
+      auto r = db.push_transaction(trx, ~0);
+      trx.operations.clear();
+      return db.get<account_object>(r.operation_results[0]);
+   }
+
+   const limit_order_object* create_sell_order( const account_object& user, const asset& amount, const asset& recv )
+   {
+      limit_order_create_operation buy_order;
+      buy_order.seller = user.id;
+      buy_order.amount_to_sell = amount;
+      buy_order.min_to_receive = recv; 
+      trx.operations.push_back(buy_order);
+      for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
+      trx.validate();
+      auto processed = db.push_transaction(trx, ~0);
+      trx.operations.clear();
+      return db.find<limit_order_object>( processed.operation_results[0] );
+   }
+   void transfer( const account_object& from, const account_object& to, const asset& amount, const asset& fee = asset() )
+   {
+      trx.operations.push_back(transfer_operation({from.id, to.id, amount, fee, vector<char>() }));
+
+      for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
+      trx.validate();
+      db.push_transaction(trx, ~0);
+      trx.operations.clear();
+   }
 
    void print_market( const string& syma, const string&  symb )
    {
