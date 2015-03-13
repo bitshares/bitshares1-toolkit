@@ -42,28 +42,28 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
        obj.for_sale = op.amount_to_sell.amount;
        obj.sell_price = op.amount_to_sell / op.min_to_receive;
    });
-   auto result = new_order_object.id; // save this because we may remvoe the object by filling it
+   auto result = new_order_object.id; // save this because we may remove the object by filling it
 
    const auto& order_idx = db().get_index_type<limit_order_index>();
    const auto& price_idx = order_idx.indices().get<by_price>();
 
-   // TODO: it should be possible to simply check the NEXT/PREV iterator after new_order_object to 
+   // TODO: it should be possible to simply check the NEXT/PREV iterator after new_order_object to
    // determine whether or not this order has "changed the book" in a way that requires us to
-   // check orders.   For now I just lookup the lower bound and check for equality... this is log(n) vs 
-   // constant time check.
-   auto best_itr = price_idx.lower_bound( asset(0,op.amount_to_sell.asset_id) / op.min_to_receive );
+   // check orders.   For now I just lookup the lower bound and check for equality... this is log(n) vs
+   // constant time check. Potential optimization.
+   auto best_itr = price_idx.lower_bound( _sell_asset->amount(0) / op.min_to_receive );
    if( best_itr->id != new_order_object.id ) return new_order_object.id;
-   
+
    auto max_price  = op.min_to_receive / op.amount_to_sell;
-   auto itr = price_idx.lower_bound( asset(0,op.min_to_receive.asset_id) / op.amount_to_sell );
+   auto itr = price_idx.lower_bound( _receive_asset->amount(0) / op.amount_to_sell );
    auto end = price_idx.end();
 
    while( itr != end && itr->sell_price <= max_price )
    {
       auto old_itr = itr;
       ++itr;
-      if( 2 != match( new_order_object, *old_itr ) ) 
-         break; // 2 means ONLY old iter matched
+      if( match( new_order_object, *old_itr ) != 2 )
+         break; // 2 means ONLY old iter filled
    }
 
    apply_delta_balances();
@@ -79,7 +79,7 @@ object_id_type limit_order_cancel_evaluator::do_evaluate( const limit_order_canc
    auto bts_fee_paid      = pay_fee( o.fee_paying_account, o.fee );
    auto bts_fee_required  = o.calculate_fee( d.current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
-  
+
    _order = &o.order(d);
    FC_ASSERT( _order->seller == o.fee_paying_account  );
    FC_ASSERT( o.refunded == _order->amount_for_sale() );
