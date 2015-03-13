@@ -184,7 +184,7 @@ BOOST_AUTO_TEST_CASE( create_delegate )
       trx.operations.back() = op;
 
       delegate_id_type delegate_id = db.get_index_type<primary_index<simple_index<delegate_object>>>().get_next_id();
-      BOOST_CHECK(db.push_transaction(trx, ~0));
+      db.push_transaction(trx, ~0);
       const delegate_object& d = delegate_id(db);
 
       BOOST_CHECK(d.delegate_account == account_id_type());
@@ -242,7 +242,7 @@ BOOST_AUTO_TEST_CASE( update_delegate )
       REQUIRE_THROW_WITH_VALUE(op, fee_schedule->at(0), 0);
 
       trx.operations.back() = op;
-      BOOST_CHECK(db.push_transaction(trx, ~0));
+      db.push_transaction(trx, ~0);
 
       BOOST_CHECK(d.delegate_account == account_id_type());
       BOOST_CHECK(d.pay_rate == 100);
@@ -273,7 +273,7 @@ BOOST_AUTO_TEST_CASE( create_uia )
       creator.symbol = "TEST";
       creator.max_supply = 100000;
       creator.precision = 2;
-      creator.market_fee_percent = 1;
+      creator.market_fee_percent = BTS_MAX_MARKET_FEE_PERCENT/100; /*1%*/
       creator.permissions = 0;
       creator.flags = 0;
       creator.core_exchange_rate = price({asset(2),asset(1)});
@@ -287,7 +287,7 @@ BOOST_AUTO_TEST_CASE( create_uia )
       BOOST_CHECK(!test_asset.enforce_white_list());
       BOOST_CHECK(test_asset.max_supply == 100000);
       BOOST_CHECK(test_asset.short_backing_asset == asset_id_type());
-      BOOST_CHECK(test_asset.market_fee_percent == 1);
+      BOOST_CHECK(test_asset.market_fee_percent == BTS_MAX_MARKET_FEE_PERCENT/100);
 
       const asset_dynamic_data_object& test_asset_dynamic_data = test_asset.dynamic_asset_data_id(db);
       BOOST_CHECK(test_asset_dynamic_data.current_supply == 0);
@@ -415,10 +415,11 @@ BOOST_AUTO_TEST_CASE( create_buy_uia_order )
    for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
    trx.validate();
    auto fee = trx.operations.back().get<limit_order_create_operation>().fee;
-   db.push_transaction(trx, ~0);
+   auto processed = db.push_transaction(trx, ~0);
    trx.operations.clear();
    wdump((fee));
    BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == (asset( 5000 )-fee) );
+   wdump((processed));
 
 
  }

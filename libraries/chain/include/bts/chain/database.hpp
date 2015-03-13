@@ -62,7 +62,7 @@ namespace bts { namespace chain {
          optional<signed_block> fetch_block_by_number( uint32_t num )const;
 
          void push_block( const signed_block& b, uint32_t skip = skip_nothing );
-         bool push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+         processed_transaction push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
 
          time_point   get_next_generation_time( delegate_id_type del_id )const;
          signed_block generate_block( const fc::ecc::private_key& delegate_key,

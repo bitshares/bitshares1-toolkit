@@ -726,21 +726,21 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
  * queues full as well, it will be kept in the queue to be propagated later when a new block flushes out the pending
  * queues.
  */
-bool database::push_transaction( const signed_transaction& trx, uint32_t skip )
+processed_transaction database::push_transaction( const signed_transaction& trx, uint32_t skip )
 {
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
    if( !_pending_block_session ) _pending_block_session = _undo_db.start_undo_session();
    auto session = _undo_db.start_undo_session();
-   apply_transaction( trx, skip );
-   _pending_block.transactions.push_back(trx);
+   auto processed_trx = apply_transaction( trx, skip );
+   _pending_block.transactions.push_back(processed_trx);
 
    FC_ASSERT( (skip & skip_block_size_check) ||
               fc::raw::pack_size(_pending_block) <= get_global_properties().maximum_block_size );
 
    // The transaction applied successfully. Merge its changes into the pending block session.
    session.merge();
-   return true;
+   return processed_trx;
 }
 
 processed_transaction database::apply_transaction( const signed_transaction& trx, uint32_t skip )

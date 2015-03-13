@@ -22,7 +22,7 @@ object_id_type limit_order_create_evaluator::do_evaluate( const limit_order_crea
 
    FC_ASSERT( get_balance( _seller, _sell_asset ) >= op.amount_to_sell );
 
-   adjust_balance( _seller, _sell_asset, -op.amount_to_sell.amount );
+   // adjust_balance( _seller, _sell_asset, -op.amount_to_sell.amount );
 
    return object_id_type();
 }
@@ -30,10 +30,11 @@ object_id_type limit_order_create_evaluator::do_evaluate( const limit_order_crea
 object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_operation& op )
 {
    const auto& seller_balance = _seller->balances(db());
+   wdump( (seller_balance)(op) );
    db().modify( seller_balance, [&]( account_balance_object& bal ){
          if( op.amount_to_sell.asset_id == asset_id_type() )
             bal.total_core_in_orders += op.amount_to_sell.amount;
-         bal.sub_balance( -op.amount_to_sell );
+         bal.sub_balance( op.amount_to_sell );
    });
 
    const auto& new_order_object = db().create<limit_order_object>( [&]( limit_order_object& obj ){
