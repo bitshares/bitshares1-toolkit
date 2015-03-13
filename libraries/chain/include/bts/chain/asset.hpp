@@ -66,7 +66,7 @@ namespace bts { namespace chain {
    bool  operator <= ( const price& a, const price& b );
    bool  operator >  ( const price& a, const price& b );
    bool  operator >= ( const price& a, const price& b );
-   inline bool  operator == ( const price& a, const price& b ) { return std::tie(a.base,a.quote) == std::tie(b.base,b.quote); }
+   bool  operator == ( const price& a, const price& b );
    asset operator *  ( const asset& a, const price& b );
 
    /**

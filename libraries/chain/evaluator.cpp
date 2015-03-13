@@ -146,38 +146,46 @@ namespace bts { namespace chain {
    }
 
 
-int generic_evaluator::match( const limit_order_object& bid, const limit_order_object& ask )
+int generic_evaluator::match( const limit_order_object& usd, const limit_order_object& core )
 {
-   assert( bid.sell_price >= ~ask.sell_price );
-   assert( bid.id > ask.id );
-   assert( bid.sell_price.quote.asset_id == ask.sell_price.base.asset_id );
-   assert( bid.sell_price.base.asset_id  == ask.sell_price.quote.asset_id );
-   assert( bid.for_sale > 0 && ask.for_sale > 0 );
+   //wdump( (usd)(core) );
+   assert( core.sell_price  <= ~usd.sell_price );
+   assert( ~usd.sell_price >= core.sell_price );
+   assert( usd.id > core.id );
+   assert( usd.sell_price.quote.asset_id == core.sell_price.base.asset_id );
+   assert( usd.sell_price.base.asset_id  == core.sell_price.quote.asset_id );
+   assert( usd.for_sale > 0 && core.for_sale > 0 );
 
-   auto match_price  = ask.sell_price;
-   auto bid_for_sale = bid.amount_for_sale();
-   auto ask_for_sale = ask.amount_for_sale();
+   auto match_price  = core.sell_price;
+   auto usd_for_sale = usd.amount_for_sale();
+   auto core_for_sale = core.amount_for_sale();
+//   wdump( (usd_for_sale)(core_for_sale) );
 
-   auto max_bid_pays = bid_for_sale * match_price; // USD * PRICE => BTS
+   auto max_usd_pays = core_for_sale * match_price; // USD * PRICE => BTS
+//   wdump( (usd_for_sale)(core_for_sale)(max_usd_pays) );
+   assert( max_usd_pays.asset_id != core_for_sale.asset_id );
 
-   assert( max_bid_pays.asset_id == ask_for_sale.asset_id );
+   auto usd_trade_amount = max_usd_pays;
+   if( usd_trade_amount > usd_for_sale ) usd_trade_amount = usd_for_sale; 
 
-   auto trade_amount = std::min( max_bid_pays, ask_for_sale );
-   if( trade_amount == max_bid_pays ) trade_amount = bid_for_sale;
+   auto usd_pays     = usd_trade_amount;
+   auto usd_receives = usd_trade_amount * match_price;
+   auto core_receives = usd_pays;
+   auto core_pays     = usd_receives;
+//   wdump( (usd_pays)(usd_receives) );
+//   wdump( (core_pays)(core_receives) );
 
-   auto bid_pays     = trade_amount;
-   auto bid_receives = trade_amount * match_price;
-   auto ask_receives = trade_amount;
-   auto ask_pays     = bid_receives;
+   core_pays = std::min(core_pays, core_for_sale);
+   usd_receives = core_pays;
 
-   ask_pays = std::min(ask_pays, ask_for_sale);
-   bid_receives = ask_pays;
+//   wdump( (usd_pays)(usd_receives) );
+//   wdump( (core_pays)(core_receives) );
 
    // TODO: test a case where the order price is so wacky that trade_amount == 0 or pays/receives amount == 0
 
    int result = 0;
-   result |= fill_limit_order( bid, bid_pays, bid_receives );
-   result |= fill_limit_order( ask, ask_pays, ask_receives ) << 1;
+   result |= fill_limit_order( usd, usd_pays, usd_receives );
+   result |= fill_limit_order( core, core_pays, core_receives ) << 1;
    return result;
 }
 
@@ -193,6 +201,7 @@ asset generic_evaluator::calculate_market_fee( const asset_object& trade_asset, 
 
 bool generic_evaluator::fill_limit_order( const limit_order_object& order, const asset& pays, const asset& receives )
 {
+   //wdump( (order)(pays)(receives) );
    assert( order.amount_for_sale().asset_id == pays.asset_id );
    assert( pays.asset_id != receives.asset_id );
 
