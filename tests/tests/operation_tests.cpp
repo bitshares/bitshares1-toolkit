@@ -276,6 +276,23 @@ BOOST_AUTO_TEST_CASE( create_mia )
    }
 }
 
+BOOST_AUTO_TEST_CASE( create_short_test )
+{
+   try {
+      const asset_object& bitusd = create_bitasset( "BITUSD" );
+      const account_object& shorter_account  = create_account( "shorter" );
+      transfer( genesis_account(db), shorter_account, asset( 10000 ) );
+      BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 100 ) ) ); // 1:1 price
+      BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 200 ) ) ); // 1:2 price
+      BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 300 ) ) ); // 1:3 price
+      print_short_market("","");
+   }catch ( const fc::exception& e )
+   {
+      elog( "${e}", ("e", e.to_detail_string() ) );
+      throw;
+   }
+}
+
 BOOST_AUTO_TEST_CASE( create_uia )
 {
    try {

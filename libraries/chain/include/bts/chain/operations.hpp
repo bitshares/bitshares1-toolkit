@@ -3,6 +3,7 @@
 #include <bts/chain/asset.hpp>
 #include <bts/chain/authority.hpp>
 #include <fc/static_variant.hpp>
+#include <fc/uint128.hpp>
 
 namespace bts { namespace chain {
 
@@ -175,18 +176,38 @@ namespace bts { namespace chain {
     *  account.  If maitenance_collateral_ratio is set
     *  it will update any existing open call orders to
     *  use the new maitenance level.
+    *
+    *  When shorting you specify the total amount to sell
+    *  and the amount of collateral along with the initial
+    *  ratio.  The price it will sell at is (amount_to_sell/(collateral*initial_collateral_ratio/2000))
     */
    struct short_order_create_operation
    {
       account_id_type seller;
+      asset           amount_to_sell;
       asset           fee;
       asset           collateral;
-      price           short_price;
       uint16_t        initial_collateral_ratio    = 0;
       uint16_t        maitenance_collateral_ratio = 0;
 
-      void validate()const;
+      void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
+      price      short_price()const
+      {
+         fc::uint128 tmp(collateral.amount.value);
+         tmp *= (initial_collateral_ratio - 1000);
+         tmp /= 1000;
+         FC_ASSERT( tmp  <= BTS_MAX_SHARE_SUPPLY );
+         return amount_to_sell / asset( tmp.to_uint64(), collateral.asset_id);
+      }
+      price call_price() const
+      { 
+         fc::uint128 tmp( collateral.amount.value );
+         tmp *= maitenance_collateral_ratio - 1000;
+         tmp /= 1000;
+         FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
+         return  amount_to_sell / asset( tmp.to_uint64(), collateral.asset_id); 
+      }
    };
 
    /**
@@ -405,7 +426,7 @@ FC_REFLECT( bts::chain::limit_order_create_operation,
           )
 FC_REFLECT( bts::chain::limit_order_cancel_operation,(fee_paying_account)(fee)(order) )
 FC_REFLECT( bts::chain::short_order_cancel_operation,(fee_paying_account)(fee)(order) )
-FC_REFLECT( bts::chain::short_order_create_operation, (seller)(fee)(collateral)(short_price)(initial_collateral_ratio)(maitenance_collateral_ratio) )
+FC_REFLECT( bts::chain::short_order_create_operation, (seller)(fee)(amount_to_sell)(collateral)(initial_collateral_ratio)(maitenance_collateral_ratio) )
 FC_REFLECT( bts::chain::call_order_update_operation, (funding_account)(fee)(collateral_to_add)(amount_to_cover)(maitenance_collateral_ratio) )
 
 FC_REFLECT( bts::chain::transfer_operation,

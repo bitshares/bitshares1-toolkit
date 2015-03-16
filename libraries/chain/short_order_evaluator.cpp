@@ -13,12 +13,16 @@ object_id_type short_order_create_evaluator::do_evaluate( const short_order_crea
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
    //_priority_fee = bts_fee_paid - bts_fee_required;
 
-   const asset_object& base_asset  = op.short_price.base.asset_id(d);    
-   const asset_object& quote_asset = op.short_price.quote.asset_id(d);    
+   const asset_object& base_asset  = op.amount_to_sell.asset_id(d);    
+   const asset_object& quote_asset = op.collateral.asset_id(d);    
 
-   FC_ASSERT( base_asset.is_market_issued() || quote_asset.is_market_issued() );
-   if( base_asset.is_market_issued() ) FC_ASSERT( object_id_type(base_asset.short_backing_asset) == quote_asset.id );
-   if( quote_asset.is_market_issued() ) FC_ASSERT( object_id_type(quote_asset.short_backing_asset) == base_asset.id );
+   FC_ASSERT( base_asset.is_market_issued() );
+   FC_ASSERT( quote_asset.id == base_asset.short_backing_asset );
+   _seller = fee_paying_account;
+
+   // TODO: FC_ASSERT( op.initial_collateral_ratio >= CURRENT_INIT_COLLATERAL_RATIO_REQUIREMENTS )
+   // TODO: FC_ASSERT( op.maintenance_collateral_ratio >= CURRENT_INIT_COLLATERAL_RATIO_REQUIREMENTS )
+   // TODO: FC_ASSERT( op.short_price() >= CURRENT_PRICE_LIMIT  )
 
    return object_id_type();
 }
@@ -27,14 +31,15 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
 {
    const auto& seller_balance = _seller->balances(db());
    db().modify( seller_balance, [&]( account_balance_object& bal ){
-         bal.sub_balance( -op.collateral );
+         bal.sub_balance( op.collateral );
    });
 
    const auto& new_order_object = db().create<short_order_object>( [&]( short_order_object& obj ){
        obj.seller                      = _seller->id;
+       obj.for_sale                    = op.amount_to_sell.amount;
        obj.available_collateral        = op.collateral.amount;
-       obj.short_price                 = op.short_price;
-       //obj.priority_fee                = _priority_fee;
+       obj.short_price                 = op.short_price();
+       obj.call_price                  = op.call_price();
        obj.initial_collateral_ratio    = op.initial_collateral_ratio;
        obj.maitenance_collateral_ratio = op.maitenance_collateral_ratio;
    });

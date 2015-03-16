@@ -103,6 +103,25 @@ struct database_fixture {
       return db.get<asset_object>(r.operation_results[0].get<object_id_type>());
    }
 
+   const short_order_object* create_short( const account_object& seller, 
+                                           const asset& amount_to_sell,
+                                           const asset& collateral_provided,
+                                           uint16_t initial_collateral_ratio = 2000,
+                                           uint16_t maitenance_collateral_ratio = 1750 )
+   {
+      short_order_create_operation op;
+      op.seller = seller.id;
+      op.amount_to_sell = amount_to_sell;
+      op.collateral = collateral_provided;
+      op.initial_collateral_ratio = initial_collateral_ratio;
+      op.maitenance_collateral_ratio = maitenance_collateral_ratio;
+      trx.operations.push_back(std::move(op));
+      trx.validate();
+      auto r = db.push_transaction(trx, ~0);
+      trx.operations.clear();
+      return db.find<short_order_object>(r.operation_results[0].get<object_id_type>());
+   }
+
    const account_object& create_account( const string& name )
    {
       trx.operations.push_back(make_account(name));
@@ -174,8 +193,8 @@ struct database_fixture {
       cout << std::setw(10) << std::left  << "NAME"      << " ";
       cout << std::setw(16) << std::right << "FOR SALE"  << " ";
       cout << std::setw(16) << std::right << "FOR WHAT"  << " ";
-      cout << std::setw(10) << "PRICE"   << " ";
-      cout << std::setw(10) << "1/PRICE" << "\n";
+      cout << std::setw(10) << std::right << "PRICE"   << " ";
+      cout << std::setw(10) << std::right << "1/PRICE" << "\n";
       cout << string(70, '=') << std::endl;
       auto cur = price_idx.begin();
       while( cur != price_idx.end() )
@@ -206,19 +225,19 @@ struct database_fixture {
 
       cout << std::fixed;
       cout.precision(5);
-      cout << std::setw(10) << std::left  << "NAME"      << " ";
-      cout << std::setw(16) << std::right << "FOR SHORT"  << " ";
-      cout << std::setw(16) << std::right << "FOR WHAT"  << " ";
-      cout << std::setw(10) << "PRICE"   << " ";
-      cout << std::setw(10) << "1/PRICE" << "\n";
-      cout << std::setw(16) << std::right << "I-Ratio"  << " ";
-      cout << std::setw(16) << std::right << "M-Ratio"  << " ";
-      cout << string(70, '=') << std::endl;
+      cout << std::setw(10) << std::left  << "NAME"        << " ";
+      cout << std::setw(16) << std::right << "FOR SHORT"   << " ";
+      cout << std::setw(16) << std::right << "COLLATERAL"  << " ";
+      cout << std::setw(10) << std::right << "PRICE"       << " ";
+      cout << std::setw(10) << std::right << "1/PRICE"     << " ";
+      cout << std::setw(10) << std::right << "I-Ratio"     << " ";
+      cout << std::setw(10) << std::right << "M-Ratio"     << "\n";
+      cout << string(100, '=') << std::endl;
       auto cur = price_idx.begin();
       while( cur != price_idx.end() )
       {
          cout << std::setw( 10 ) << std::left   << cur->seller(db).name << " ";
-         cout << std::setw( 16 ) << std::right  << pretty( cur->amount_for_sale(BTS_DEFAULT_INITIAL_COLLATERAL_RATIO ) ) << " ";
+         cout << std::setw( 16 ) << std::right  << pretty( cur->amount_for_sale() ) << " ";
          cout << std::setw( 16 ) << std::right  << pretty( cur->get_collateral() ) << " ";
          cout << std::setw( 10 ) << std::right  << cur->short_price.to_real() << " ";
          cout << std::setw( 10 ) << std::right  << (~cur->short_price).to_real() << " ";
