@@ -263,6 +263,19 @@ BOOST_AUTO_TEST_CASE( update_delegate )
    }
 }
 
+BOOST_AUTO_TEST_CASE( create_mia )
+{
+   try {
+      const asset_object& bitusd = create_bitasset( "BITUSD" );
+      (void)bitusd;
+      BOOST_REQUIRE_THROW( create_bitasset("BITUSD"), fc::exception);
+   }catch ( const fc::exception& e )
+   {
+      elog( "${e}", ("e", e.to_detail_string() ) );
+      throw;
+   }
+}
+
 BOOST_AUTO_TEST_CASE( create_uia )
 {
    try {

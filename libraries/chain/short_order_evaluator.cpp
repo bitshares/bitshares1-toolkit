@@ -11,7 +11,7 @@ object_id_type short_order_create_evaluator::do_evaluate( const short_order_crea
    auto bts_fee_paid = pay_fee( op.seller, op.fee );
    auto bts_fee_required = op.calculate_fee( d.current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
-   _priority_fee = bts_fee_paid - bts_fee_required;
+   //_priority_fee = bts_fee_paid - bts_fee_required;
 
    const asset_object& base_asset  = op.short_price.base.asset_id(d);    
    const asset_object& quote_asset = op.short_price.quote.asset_id(d);    
@@ -34,7 +34,7 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
        obj.seller                      = _seller->id;
        obj.available_collateral        = op.collateral.amount;
        obj.short_price                 = op.short_price;
-       obj.priority_fee                = _priority_fee;
+       //obj.priority_fee                = _priority_fee;
        obj.initial_collateral_ratio    = op.initial_collateral_ratio;
        obj.maitenance_collateral_ratio = op.maitenance_collateral_ratio;
    });
