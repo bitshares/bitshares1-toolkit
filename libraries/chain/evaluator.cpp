@@ -288,7 +288,7 @@ void generic_evaluator::pay_order( const account_object& receiver, const asset& 
 
 bool generic_evaluator::fill_order( const limit_order_object& order, const asset& pays, const asset& receives )
 {
-   //wdump( (order)(pays)(receives) );
+   wdump( (order)(pays)(receives) );
    assert( order.amount_for_sale().asset_id == pays.asset_id );
    assert( pays.asset_id != receives.asset_id );
 
@@ -316,7 +316,7 @@ bool generic_evaluator::fill_order( const limit_order_object& order, const asset
 
 bool generic_evaluator::fill_order( const short_order_object& order, const asset& pays, const asset& receives )
 { try {
-   //wdump( (order)(pays)(receives) );
+   idump( (order)(pays)(receives) );
    assert( order.amount_for_sale().asset_id == pays.asset_id );
    assert( pays.asset_id != receives.asset_id );
 

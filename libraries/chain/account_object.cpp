@@ -3,7 +3,7 @@ namespace bts { namespace chain {
 void account_object::authorize_asset(asset_id_type asset_id, bool state)
 {
    if( state )
-      FC_ASSERT(authorized_assets.insert_unique(asset_id).second);
+      FC_ASSERT(authorized_assets.insert(asset_id).second);
    else
       authorized_assets.erase(asset_id);
 }
