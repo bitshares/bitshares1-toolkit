@@ -125,18 +125,18 @@ struct database_fixture {
       return db.get<asset_object>(r.operation_results[0].get<object_id_type>());
    }
 
-   const short_order_object* create_short( const account_object& seller, 
+   const short_order_object* create_short( const account_object& seller,
                                            const asset& amount_to_sell,
                                            const asset& collateral_provided,
                                            uint16_t initial_collateral_ratio = 2000,
-                                           uint16_t maitenance_collateral_ratio = 1750 )
+                                           uint16_t maintenance_collateral_ratio = 1750 )
    {
       short_order_create_operation op;
       op.seller = seller.id;
       op.amount_to_sell = amount_to_sell;
       op.collateral = collateral_provided;
       op.initial_collateral_ratio = initial_collateral_ratio;
-      op.maitenance_collateral_ratio = maitenance_collateral_ratio;
+      op.maintenance_collateral_ratio = maintenance_collateral_ratio;
       trx.operations.push_back(std::move(op));
       trx.validate();
       auto r = db.push_transaction(trx, ~0);
@@ -277,7 +277,7 @@ struct database_fixture {
          cout << std::setw( 10 ) << std::right  << (~cur->short_price).to_real() << " ";
          cout << std::setw( 10 ) << std::right  << (cur->call_price).to_real() << " ";
          cout << std::setw( 10 ) << std::right  << (cur->initial_collateral_ratio)/double(1000) << " ";
-         cout << std::setw( 10 ) << std::right  << (cur->maitenance_collateral_ratio)/double(1000) << " ";
+         cout << std::setw( 10 ) << std::right  << (cur->maintenance_collateral_ratio)/double(1000) << " ";
          cout << "\n";
          ++cur;
       }

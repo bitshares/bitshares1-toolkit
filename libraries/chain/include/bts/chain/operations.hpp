@@ -173,7 +173,7 @@ namespace bts { namespace chain {
    /**
     *  Define a new short order, if it is filled it will
     *  be merged with existing call orders for the same
-    *  account.  If maitenance_collateral_ratio is set
+    *  account.  If maintenance_collateral_ratio is set
     *  it will update any existing open call orders to
     *  use the new maitenance level.
     *
@@ -183,12 +183,20 @@ namespace bts { namespace chain {
     */
    struct short_order_create_operation
    {
+      /// The account placing a short order (this account must sign the transaction)
       account_id_type seller;
+      /// The amount of market-issued asset to short sell
       asset           amount_to_sell;
+      /// The fee paid by seller
       asset           fee;
+      /// The amount of collateral to withdraw from the seller
       asset           collateral;
+      /// Fixed point representation of initial collateral ratio, with three digits of precision
+      /// Must be greater than or equal to the minimum specified by price feed
       uint16_t        initial_collateral_ratio    = 0;
-      uint16_t        maitenance_collateral_ratio = 0;
+      /// Fixed point representation of maintenance collateral ratio, with three digits of precision
+      /// Must be greater than or equal to the minimum specified by price feed
+      uint16_t        maintenance_collateral_ratio = 0;
 
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -201,12 +209,12 @@ namespace bts { namespace chain {
          return  asset( tmp.to_uint64(), collateral.asset_id) / amount_to_sell;
       }
       price call_price() const
-      { 
+      {
          fc::uint128 tmp( collateral.amount.value );
-         tmp *= maitenance_collateral_ratio - 1000;
+         tmp *= maintenance_collateral_ratio - 1000;
          tmp /= 1000;
          FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
-         return  amount_to_sell / asset( tmp.to_uint64(), collateral.asset_id); 
+         return  amount_to_sell / asset( tmp.to_uint64(), collateral.asset_id);
       }
    };
 
@@ -243,7 +251,7 @@ namespace bts { namespace chain {
       asset               fee; //</ paid by funding_account
       asset               collateral_to_add; ///< may be negative if amount_to_cover pays off the debt
       asset               amount_to_cover; ///< the amount of the debt to be paid off
-      uint16_t            maitenance_collateral_ratio = 0; ///< 0 means don't change, 1000 means feed
+      uint16_t            maintenance_collateral_ratio = 0; ///< 0 means don't change, 1000 means feed
 
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -452,8 +460,8 @@ FC_REFLECT( bts::chain::limit_order_create_operation,
           )
 FC_REFLECT( bts::chain::limit_order_cancel_operation,(fee_paying_account)(fee)(order) )
 FC_REFLECT( bts::chain::short_order_cancel_operation,(fee_paying_account)(fee)(order) )
-FC_REFLECT( bts::chain::short_order_create_operation, (seller)(fee)(amount_to_sell)(collateral)(initial_collateral_ratio)(maitenance_collateral_ratio) )
-FC_REFLECT( bts::chain::call_order_update_operation, (funding_account)(fee)(collateral_to_add)(amount_to_cover)(maitenance_collateral_ratio) )
+FC_REFLECT( bts::chain::short_order_create_operation, (seller)(fee)(amount_to_sell)(collateral)(initial_collateral_ratio)(maintenance_collateral_ratio) )
+FC_REFLECT( bts::chain::call_order_update_operation, (funding_account)(fee)(collateral_to_add)(amount_to_cover)(maintenance_collateral_ratio) )
 
 FC_REFLECT( bts::chain::transfer_operation,
             (from)(to)(amount)(fee)(memo) )
