@@ -360,7 +360,7 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
             c.collateral += seller_to_collateral.amount + buyer_to_collateral.amount;
 
             fc::uint128 tmp( c.collateral.value );
-            tmp *= order.maitenance_collateral_ratio - 1000;
+            tmp *= order.maintenance_collateral_ratio - 1000;
             tmp /= 1000;
             FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
 
