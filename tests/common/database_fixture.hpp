@@ -42,7 +42,6 @@ struct database_fixture {
          total_balances[asset_id_type()] += asset_obj.dynamic_asset_data_id(db).fee_pool;
       }
 
-      idump((total_balances[asset_id_type()])(core_asset_data.current_supply));
       BOOST_CHECK( total_balances[asset_id_type()] == core_asset_data.current_supply );
    }
 
@@ -132,6 +131,14 @@ struct database_fixture {
       trx.validate();
       db.push_transaction(trx, ~0);
       trx.operations.clear();
+   }
+   void enable_fees( share_type fee = BTS_BLOCKCHAIN_PRECISION )
+   {
+      db.modify(global_property_id_type()(db), [fee](global_property_object& gpo) {
+         for( int i=0; i < FEE_TYPE_COUNT; ++i)
+            gpo.current_fees.at(i) = fee;
+      });
+
    }
 
    void print_market( const string& syma, const string&  symb )

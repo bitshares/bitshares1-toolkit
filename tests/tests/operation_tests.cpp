@@ -512,10 +512,7 @@ BOOST_AUTO_TEST_CASE( uia_fees )
    try {
       INVOKE( issue_uia );
 
-      db.modify(global_property_id_type()(db), [](global_property_object& gpo) {
-         for( int i=0; i < FEE_TYPE_COUNT; ++i)
-            gpo.current_fees.at(i) = BTS_BLOCKCHAIN_PRECISION;
-      });
+      enable_fees();
 
       const asset_object& test_asset = get_asset("TEST");
       const asset_dynamic_data_object& asset_dynamic = test_asset.dynamic_asset_data_id(db);
