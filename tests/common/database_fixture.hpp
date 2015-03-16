@@ -36,6 +36,10 @@ struct database_fixture {
             total_balances[balance.first] += balance.second;
       for( const limit_order_object& o : db.get_index_type<limit_order_index>().indices() )
          total_balances[o.amount_for_sale().asset_id] += o.amount_for_sale().amount;
+      for( const short_order_object& o : db.get_index_type<short_order_index>().indices() )
+      {
+         total_balances[o.get_collateral().asset_id] += o.get_collateral().amount;
+      }
       for( const asset_object& asset_obj : db.get_index_type<asset_index>().indices() )
       {
          total_balances[asset_obj.id] += asset_obj.dynamic_asset_data_id(db).accumulated_fees;
