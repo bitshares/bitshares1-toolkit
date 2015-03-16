@@ -173,7 +173,7 @@ namespace bts { namespace chain {
    /**
     *  Define a new short order, if it is filled it will
     *  be merged with existing call orders for the same
-    *  account.  If maitenance_collateral_ratio is set
+    *  account.  If maintenance_collateral_ratio is set
     *  it will update any existing open call orders to
     *  use the new maitenance level.
     *
@@ -183,12 +183,20 @@ namespace bts { namespace chain {
     */
    struct short_order_create_operation
    {
+      /// The account placing a short order (this account must sign the transaction)
       account_id_type seller;
+      /// The amount of market-issued asset to short sell
       asset           amount_to_sell;
+      /// The fee paid by seller
       asset           fee;
+      /// The amount of collateral to withdraw from the seller
       asset           collateral;
+      /// Fixed point representation of initial collateral ratio, with three digits of precision
+      /// Must be greater than or equal to the minimum specified by price feed
       uint16_t        initial_collateral_ratio    = 0;
-      uint16_t        maitenance_collateral_ratio = 0;
+      /// Fixed point representation of maintenance collateral ratio, with three digits of precision
+      /// Must be greater than or equal to the minimum specified by price feed
+      uint16_t        maintenance_collateral_ratio = 0;
 
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -201,12 +209,12 @@ namespace bts { namespace chain {
          return  asset( tmp.to_uint64(), collateral.asset_id) / amount_to_sell;
       }
       price call_price() const
-      { 
+      {
          fc::uint128 tmp( collateral.amount.value );
-         tmp *= maitenance_collateral_ratio - 1000;
+         tmp *= maintenance_collateral_ratio - 1000;
          tmp /= 1000;
          FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
-         return  amount_to_sell / asset( tmp.to_uint64(), collateral.asset_id); 
+         return  amount_to_sell / asset( tmp.to_uint64(), collateral.asset_id);
       }
    };
 
@@ -243,7 +251,32 @@ namespace bts { namespace chain {
       asset               fee; //</ paid by funding_account
       asset               collateral_to_add; ///< may be negative if amount_to_cover pays off the debt
       asset               amount_to_cover; ///< the amount of the debt to be paid off
-      uint16_t            maitenance_collateral_ratio = 0; ///< 0 means don't change, 1000 means feed
+      uint16_t            maintenance_collateral_ratio = 0; ///< 0 means don't change, 1000 means feed
+
+      void validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
+    * @brief This operation is used to authorize accounts to hold and transact in a whitelisted asset.
+    *
+    * Whitelisted assets can only be held and transfered by explicitly authorized accounts. This operation is how that
+    * authorization is granted or revoked. An asset issuer may publish this operation in order to authorize an account
+    * to hold his asset by setting authorize_account to true. The issuer may also use this operation to revoke the
+    * account's authorization by setting authorize_account to false.
+    *
+    * If authorize_account is set to true and the account is already authorized, or authorize_account is set to false
+    * and the account is already not authorized, this operation will fail. In other words, this operation must change
+    * the whitelist_account's authorization status in order to succeed.
+    *
+    * This operation must be signed by asset_id's issuer. authorize_account's signature is not required.
+    */
+   struct asset_whitelist_operation
+   {
+      asset_id_type    asset_id; ///< ID of the whitelist asset in question
+      asset            fee; ///< paid by asset_id->issuer
+      account_id_type  whitelist_account; ///< ID of the account to allow or disallow to hold the asset
+      bool             authorize_account; ///< True if whitelist_account may hold and transact the asset; false otherwise
 
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -352,6 +385,7 @@ namespace bts { namespace chain {
             delegate_update_operation,
             asset_create_operation,
             asset_update_operation,
+            asset_whitelist_operation,
             asset_issue_operation,
             asset_fund_fee_pool_operation,
             proposal_create_operation
@@ -426,8 +460,8 @@ FC_REFLECT( bts::chain::limit_order_create_operation,
           )
 FC_REFLECT( bts::chain::limit_order_cancel_operation,(fee_paying_account)(fee)(order) )
 FC_REFLECT( bts::chain::short_order_cancel_operation,(fee_paying_account)(fee)(order) )
-FC_REFLECT( bts::chain::short_order_create_operation, (seller)(fee)(amount_to_sell)(collateral)(initial_collateral_ratio)(maitenance_collateral_ratio) )
-FC_REFLECT( bts::chain::call_order_update_operation, (funding_account)(fee)(collateral_to_add)(amount_to_cover)(maitenance_collateral_ratio) )
+FC_REFLECT( bts::chain::short_order_create_operation, (seller)(fee)(amount_to_sell)(collateral)(initial_collateral_ratio)(maintenance_collateral_ratio) )
+FC_REFLECT( bts::chain::call_order_update_operation, (funding_account)(fee)(collateral_to_add)(amount_to_cover)(maintenance_collateral_ratio) )
 
 FC_REFLECT( bts::chain::transfer_operation,
             (from)(to)(amount)(fee)(memo) )
@@ -449,6 +483,9 @@ FC_REFLECT( bts::chain::asset_update_operation,
             (asset_to_update)(fee)(flags)(permissions)(core_exchange_rate)
           )
 
+FC_REFLECT( bts::chain::asset_whitelist_operation,
+            (asset_id)(fee)(whitelist_account)(authorize_account)
+          )
 FC_REFLECT( bts::chain::asset_issue_operation,
             (asset_to_issue)(fee)(issue_to_account) )
 FC_REFLECT( bts::chain::delegate_create_operation,

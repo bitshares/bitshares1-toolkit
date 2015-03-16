@@ -1,5 +1,13 @@
 #include <bts/chain/account_object.hpp>
 namespace bts { namespace chain {
+void account_object::authorize_asset(asset_id_type asset_id, bool state)
+{
+   if( state )
+      FC_ASSERT(authorized_assets.insert_unique(asset_id).second);
+   else
+      authorized_assets.erase(asset_id);
+}
+
 bool  account_object::is_authorized_asset( asset_id_type asset_id )const
 {
    return std::binary_search( authorized_assets.begin(), authorized_assets.end(), asset_id );

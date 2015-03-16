@@ -15,6 +15,24 @@
 
 using std::cout;
 
+///Shortcut to require an exception when processing a transaction with an operation containing an expected bad value
+/// Uses require insteach of check, because these transactions are expected to fail. If they don't, subsequent tests
+/// may spuriously succeed or fail due to unexpected database state.
+#define REQUIRE_THROW_WITH_VALUE(op, field, value) \
+{ \
+   auto bak = op.field; \
+   op.field = value; \
+   trx.operations.back() = op; \
+   op.field = bak; \
+   BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception); \
+}
+///This simply resets v back to its default-constructed value. Requires v to have a working assingment operator and
+/// default constructor.
+#define RESET(v) v = decltype(v)()
+///This allows me to build consecutive test cases. It's pretty ugly, but it works well enough for unit tests.
+/// i.e. This allows a test on update_account to begin with the database at the end state of create_account.
+#define INVOKE(test) ((test*)this)->test_method(); RESET(trx); trx.relative_expiration = 1000
+
 namespace bts { namespace chain {
 
 struct database_fixture {
@@ -117,18 +135,18 @@ struct database_fixture {
       return db.get<asset_object>(r.operation_results[0].get<object_id_type>());
    }
 
-   const short_order_object* create_short( const account_object& seller, 
+   const short_order_object* create_short( const account_object& seller,
                                            const asset& amount_to_sell,
                                            const asset& collateral_provided,
                                            uint16_t initial_collateral_ratio = 2000,
-                                           uint16_t maitenance_collateral_ratio = 1750 )
+                                           uint16_t maintenance_collateral_ratio = 1750 )
    {
       short_order_create_operation op;
       op.seller = seller.id;
       op.amount_to_sell = amount_to_sell;
       op.collateral = collateral_provided;
       op.initial_collateral_ratio = initial_collateral_ratio;
-      op.maitenance_collateral_ratio = maitenance_collateral_ratio;
+      op.maintenance_collateral_ratio = maintenance_collateral_ratio;
       trx.operations.push_back(std::move(op));
       trx.validate();
       auto r = db.push_transaction(trx, ~0);
@@ -269,7 +287,7 @@ struct database_fixture {
          cout << std::setw( 10 ) << std::right  << (~cur->short_price).to_real() << " ";
          cout << std::setw( 10 ) << std::right  << (cur->call_price).to_real() << " ";
          cout << std::setw( 10 ) << std::right  << (cur->initial_collateral_ratio)/double(1000) << " ";
-         cout << std::setw( 10 ) << std::right  << (cur->maitenance_collateral_ratio)/double(1000) << " ";
+         cout << std::setw( 10 ) << std::right  << (cur->maintenance_collateral_ratio)/double(1000) << " ";
          cout << "\n";
          ++cur;
       }

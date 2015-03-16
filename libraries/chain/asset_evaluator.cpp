@@ -124,5 +124,34 @@ object_id_type asset_fund_fee_pool_evaluator::do_apply(const asset_fund_fee_pool
    return object_id_type();
 }
 
+object_id_type asset_whitelist_evaluator::do_evaluate(const asset_whitelist_operation& o)
+{ try {
+   database& d = db();
+
+   const asset_object& a = o.asset_id(d);
+
+   auto bts_fee_paid = pay_fee( a.issuer, o.fee );
+   bts_fee_required = o.calculate_fee( d.current_fee_schedule() );
+   FC_ASSERT( bts_fee_paid >= bts_fee_required );
+
+   whitelist_account = &o.whitelist_account(d);
+
+   if( o.authorize_account )
+      FC_ASSERT( !whitelist_account->is_authorized_asset(o.asset_id) );
+   else
+      FC_ASSERT( whitelist_account->is_authorized_asset(o.asset_id) );
+
+   return object_id_type();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+object_id_type asset_whitelist_evaluator::do_apply(const asset_whitelist_operation& o)
+{
+   db().modify(*whitelist_account, [o](account_object& account) {
+      account.authorize_asset(o.asset_id, o.authorize_account);
+   });
+
+   return object_id_type();
+}
+
 
 } } // bts::chain

@@ -177,6 +177,7 @@ void database::initialize_evaluators()
    register_evaluator<delegate_create_evaluator>();
    register_evaluator<delegate_update_evaluator>();
    register_evaluator<asset_create_evaluator>();
+   register_evaluator<asset_whitelist_evaluator>();
    register_evaluator<asset_issue_evaluator>();
    register_evaluator<limit_order_create_evaluator>();
    register_evaluator<limit_order_cancel_evaluator>();

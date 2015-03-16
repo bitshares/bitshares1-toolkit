@@ -14,8 +14,8 @@ object_id_type short_order_create_evaluator::do_evaluate( const short_order_crea
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
    //_priority_fee = bts_fee_paid - bts_fee_required;
 
-   const asset_object& base_asset  = op.amount_to_sell.asset_id(d);    
-   const asset_object& quote_asset = op.collateral.asset_id(d);    
+   const asset_object& base_asset  = op.amount_to_sell.asset_id(d);
+   const asset_object& quote_asset = op.collateral.asset_id(d);
 
    FC_ASSERT( base_asset.is_market_issued() );
    FC_ASSERT( quote_asset.id == base_asset.short_backing_asset );
@@ -37,13 +37,13 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
    });
    
    const auto& new_order_object = db().create<short_order_object>( [&]( short_order_object& obj ){
-       obj.seller                      = _seller->id;
-       obj.for_sale                    = op.amount_to_sell.amount;
-       obj.available_collateral        = op.collateral.amount;
-       obj.short_price                 = op.short_price();
-       obj.call_price                  = op.call_price();
-       obj.initial_collateral_ratio    = op.initial_collateral_ratio;
-       obj.maitenance_collateral_ratio = op.maitenance_collateral_ratio;
+       obj.seller                       = _seller->id;
+       obj.for_sale                     = op.amount_to_sell.amount;
+       obj.available_collateral         = op.collateral.amount;
+       obj.short_price                  = op.short_price();
+       obj.call_price                   = op.call_price();
+       obj.initial_collateral_ratio     = op.initial_collateral_ratio;
+       obj.maintenance_collateral_ratio = op.maintenance_collateral_ratio;
    });
    auto new_id = new_order_object.id;
    
@@ -93,7 +93,7 @@ asset short_order_cancel_evaluator::do_evaluate( const short_order_cancel_operat
    auto bts_fee_paid      = pay_fee( o.fee_paying_account, o.fee );
    auto bts_fee_required  = o.calculate_fee( d.current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
-  
+
    _order = &o.order(d);
    FC_ASSERT( _order->seller == o.fee_paying_account  );
    auto refunded = _order->get_collateral();
