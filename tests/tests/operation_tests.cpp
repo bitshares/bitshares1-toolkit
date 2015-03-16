@@ -282,10 +282,33 @@ BOOST_AUTO_TEST_CASE( create_short_test )
       const asset_object& bitusd = create_bitasset( "BITUSD" );
       const account_object& shorter_account  = create_account( "shorter" );
       transfer( genesis_account(db), shorter_account, asset( 10000 ) );
-      BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 100 ) ) ); // 1:1 price
+      auto first_short = create_short( shorter_account, bitusd.amount(100), asset( 100 ) ); // 1:1 price
+      BOOST_REQUIRE( first_short != nullptr );
       BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 200 ) ) ); // 1:2 price
       BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 300 ) ) ); // 1:3 price
       BOOST_REQUIRE( shorter_account.balances(db).get_balance( asset_id_type() ).amount == 10000-600 ); 
+      print_short_market("","");
+   }catch ( const fc::exception& e )
+   {
+      elog( "${e}", ("e", e.to_detail_string() ) );
+      throw;
+   }
+}
+BOOST_AUTO_TEST_CASE( cancel_short_test )
+{
+   try {
+      const asset_object& bitusd = create_bitasset( "BITUSD" );
+      const account_object& shorter_account  = create_account( "shorter" );
+      transfer( genesis_account(db), shorter_account, asset( 10000 ) );
+      auto first_short = create_short( shorter_account, bitusd.amount(100), asset( 100 ) ); // 1:1 price
+      BOOST_REQUIRE( first_short != nullptr );
+      BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 200 ) ) ); // 1:2 price
+      BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 300 ) ) ); // 1:3 price
+      BOOST_REQUIRE( shorter_account.balances(db).get_balance( asset_id_type() ).amount == 10000-600 ); 
+      print_short_market("","");
+      auto refund = cancel_short_order( *first_short );
+      BOOST_REQUIRE( shorter_account.balances(db).get_balance( asset_id_type() ).amount == 10000-500 ); 
+      FC_ASSERT( refund == asset(100) );
       print_short_market("","");
    }catch ( const fc::exception& e )
    {
