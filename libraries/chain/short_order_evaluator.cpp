@@ -68,19 +68,18 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
    auto itr = price_idx.lower_bound( _receive_asset->amount(0) / op.amount_to_sell );
    auto end = price_idx.end();
 
-   while( itr != end && itr->sell_price <= max_price )
+   while( itr != end && itr->sell_price <= ~max_price )
    {
+      wdump( (itr->sell_price)(max_price) );
+      wdump( (itr->sell_price.to_real())(max_price.to_real()) );
       auto old_itr = itr;
       ++itr;
       if( match( *old_itr, new_order_object, old_itr->sell_price ) != 1 )
          break; // 1 means ONLY old iter filled
    }
 
-   wlog( "." );
    apply_delta_balances();
-   wlog( "." );
    apply_delta_fee_pools();
-   wlog( "." );
 
    return new_id;
 } // short_order_evaluator::do_apply

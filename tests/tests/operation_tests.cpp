@@ -324,6 +324,61 @@ BOOST_AUTO_TEST_CASE( match_short_now_exact )
    }
 }
 
+/**
+ *  Assume there exists an offer to buy BITUSD
+ *  Create a short that exactly matches that offer at a price 2:1
+ */
+BOOST_AUTO_TEST_CASE( dont_match_short )
+{
+   try {
+      const asset_object& bitusd = create_bitasset( "BITUSD" );
+      const account_object& shorter_account  = create_account( "shorter" );
+      const account_object& buyer_account  = create_account( "buyer" );
+      transfer( genesis_account(db), shorter_account, asset( 10000 ) );
+      transfer( genesis_account(db), buyer_account, asset( 10000 ) );
+
+      //auto buy_order = create_sell_order( buyer_account, asset(200), bitusd.amount(101) );
+      auto buy_order = create_sell_order( buyer_account, asset(100), bitusd.amount(100) );
+      print_market("","");
+      BOOST_REQUIRE( buy_order );
+      auto first_short = create_short( shorter_account, bitusd.amount(100), asset( 200 ) ); // 1:1 price
+      print_short_market("","");
+      BOOST_REQUIRE( first_short );
+      print_short_market("","");
+   }catch ( const fc::exception& e )
+   {
+      elog( "${e}", ("e", e.to_detail_string() ) );
+      throw;
+   }
+}
+/**
+ *  Assume there exists an offer to buy BITUSD
+ *  Create a short that exactly matches that offer at a price 2:1
+ */
+BOOST_AUTO_TEST_CASE( match_all_short_with_surplus_collaterl )
+{
+   try {
+      const asset_object& bitusd = create_bitasset( "BITUSD" );
+      const account_object& shorter_account  = create_account( "shorter" );
+      const account_object& buyer_account  = create_account( "buyer" );
+      transfer( genesis_account(db), shorter_account, asset( 10000 ) );
+      transfer( genesis_account(db), buyer_account, asset( 10000 ) );
+
+      //auto buy_order = create_sell_order( buyer_account, asset(200), bitusd.amount(101) );
+      auto buy_order = create_sell_order( buyer_account, asset(300), bitusd.amount(100) );
+      print_market("","");
+      BOOST_REQUIRE( buy_order );
+      auto first_short = create_short( shorter_account, bitusd.amount(100), asset( 200 ) ); // 1:1 price
+      print_short_market("","");
+      BOOST_REQUIRE( !first_short );
+      print_short_market("","");
+   }catch ( const fc::exception& e )
+   {
+      elog( "${e}", ("e", e.to_detail_string() ) );
+      throw;
+   }
+}
+
 
 BOOST_AUTO_TEST_CASE( create_uia )
 {

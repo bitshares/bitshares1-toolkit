@@ -196,7 +196,7 @@ int generic_evaluator::match( const limit_order_object& usd, const limit_order_o
 
 int generic_evaluator::match( const limit_order_object& core, const short_order_object& usd, const price& match_price )
 { try {
-   //wdump( (usd)(core) );
+   wdump( (core.sell_price.to_real())( (~usd.short_price).to_real()) );
    assert( core.sell_price  <= ~usd.short_price );
    assert( ~usd.short_price >= core.sell_price );
    assert( usd.get_collateral().asset_id  == core.amount_for_sale().asset_id );
