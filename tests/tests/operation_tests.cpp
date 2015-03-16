@@ -285,6 +285,7 @@ BOOST_AUTO_TEST_CASE( create_short_test )
       BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 100 ) ) ); // 1:1 price
       BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 200 ) ) ); // 1:2 price
       BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 300 ) ) ); // 1:3 price
+      BOOST_REQUIRE( shorter_account.balances(db).get_balance( asset_id_type() ).amount == 10000-600 ); 
       print_short_market("","");
    }catch ( const fc::exception& e )
    {

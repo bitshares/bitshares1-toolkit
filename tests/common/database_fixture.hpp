@@ -234,6 +234,7 @@ struct database_fixture {
       cout << std::setw(16) << std::right << "COLLATERAL"  << " ";
       cout << std::setw(10) << std::right << "PRICE"       << " ";
       cout << std::setw(10) << std::right << "1/PRICE"     << " ";
+      cout << std::setw(10) << std::right << "CALL PRICE"  << " ";
       cout << std::setw(10) << std::right << "I-Ratio"     << " ";
       cout << std::setw(10) << std::right << "M-Ratio"     << "\n";
       cout << string(100, '=') << std::endl;
@@ -245,6 +246,7 @@ struct database_fixture {
          cout << std::setw( 16 ) << std::right  << pretty( cur->get_collateral() ) << " ";
          cout << std::setw( 10 ) << std::right  << cur->short_price.to_real() << " ";
          cout << std::setw( 10 ) << std::right  << (~cur->short_price).to_real() << " ";
+         cout << std::setw( 10 ) << std::right  << (cur->call_price).to_real() << " ";
          cout << std::setw( 10 ) << std::right  << (cur->initial_collateral_ratio)/double(1000) << " ";
          cout << std::setw( 10 ) << std::right  << (cur->maitenance_collateral_ratio)/double(1000) << " ";
          cout << "\n";

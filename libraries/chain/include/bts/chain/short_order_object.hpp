@@ -41,8 +41,8 @@ namespace bts { namespace chain {
         uint16_t         initial_collateral_ratio    = 0; ///< may be higher than the network requires
         uint16_t         maitenance_collateral_ratio = 0; ///< may optionally be higher than the network requires
 
-        asset get_collateral()const  { return asset( available_collateral, short_price.quote.asset_id ); }
-        asset amount_for_sale()const { return asset( for_sale, short_price.base.asset_id ); }
+        asset get_collateral()const  { return asset( available_collateral, short_price.base.asset_id ); }
+        asset amount_for_sale()const { return asset( for_sale, short_price.quote.asset_id ); }
   };
 
   /**
