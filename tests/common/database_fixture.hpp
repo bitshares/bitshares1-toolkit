@@ -13,6 +13,24 @@
 
 using std::cout;
 
+///Shortcut to require an exception when processing a transaction with an operation containing an expected bad value
+/// Uses require insteach of check, because these transactions are expected to fail. If they don't, subsequent tests
+/// may spuriously succeed or fail due to unexpected database state.
+#define REQUIRE_THROW_WITH_VALUE(op, field, value) \
+{ \
+   auto bak = op.field; \
+   op.field = value; \
+   trx.operations.back() = op; \
+   op.field = bak; \
+   BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception); \
+}
+///This simply resets v back to its default-constructed value. Requires v to have a working assingment operator and
+/// default constructor.
+#define RESET(v) v = decltype(v)()
+///This allows me to build consecutive test cases. It's pretty ugly, but it works well enough for unit tests.
+/// i.e. This allows a test on update_account to begin with the database at the end state of create_account.
+#define INVOKE(test) ((test*)this)->test_method(); RESET(trx); trx.relative_expiration = 1000
+
 namespace bts { namespace chain {
 
 struct database_fixture {

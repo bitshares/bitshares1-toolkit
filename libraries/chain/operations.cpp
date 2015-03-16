@@ -189,8 +189,8 @@ void  asset_create_operation::validate()const
    FC_ASSERT( max_supply <= BTS_MAX_SHARE_SUPPLY );
    FC_ASSERT( max_supply > 0 );
    FC_ASSERT( market_fee_percent <= BTS_MAX_MARKET_FEE_PERCENT );
-   FC_ASSERT( permissions <= market_issued );
-   FC_ASSERT( flags <= market_issued );
+   FC_ASSERT( permissions <= ASSET_ISSUER_PERMISSION_MASK );
+   FC_ASSERT( flags <= ASSET_ISSUER_PERMISSION_MASK );
    FC_ASSERT( core_exchange_rate.quote.asset_id == asset_id_type() );
    FC_ASSERT( core_exchange_rate.base.asset_id == asset_id_type() );
    FC_ASSERT( core_exchange_rate.base.amount > 0 );
@@ -333,6 +333,16 @@ void call_order_update_operation::validate()const
 share_type call_order_update_operation::calculate_fee(const fee_schedule_type& k) const
 {
    return k.at( short_order_fee_type );
+}
+
+void asset_whitelist_operation::validate() const
+{
+   FC_ASSERT( fee.amount >= 0 );
+}
+
+share_type asset_whitelist_operation::calculate_fee(const fee_schedule_type& k) const
+{
+   return k.at( asset_issue_fee_type );
 }
 
 } } // namespace bts::chain

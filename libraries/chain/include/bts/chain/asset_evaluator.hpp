@@ -16,6 +16,19 @@ namespace bts { namespace chain {
          share_type bts_fee_required;
    };
 
+   class asset_whitelist_evaluator : public evaluator<asset_whitelist_evaluator>
+   {
+      public:
+         typedef asset_whitelist_operation operation_type;
+
+         object_id_type do_evaluate( const asset_whitelist_operation& o );
+         object_id_type do_apply( const asset_whitelist_operation& o );
+
+         share_type bts_fee_required;
+         const account_object* whitelist_account = nullptr;
+         const asset_object* whitelist_asset = nullptr;
+   };
+
    class asset_issue_evaluator : public evaluator<asset_issue_evaluator>
    {
       public:

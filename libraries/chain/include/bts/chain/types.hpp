@@ -55,6 +55,7 @@ namespace bts { namespace chain {
       override_authority  = 0x08,
       market_issued       = 0x10
    };
+   const static uint32_t ASSET_ISSUER_PERMISSION_MASK = 0x1f;
 
 
    /**

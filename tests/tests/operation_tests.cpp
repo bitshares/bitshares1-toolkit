@@ -14,24 +14,6 @@ using namespace bts::chain;
 
 BOOST_FIXTURE_TEST_SUITE( operation_unit_tests, database_fixture )
 
-///Shortcut to require an exception when processing a transaction with an operation containing an expected bad value
-/// Uses require insteach of check, because these transactions are expected to fail. If they don't, subsequent tests
-/// may spuriously succeed or fail due to unexpected database state.
-#define REQUIRE_THROW_WITH_VALUE(op, field, value) \
-{ \
-   auto bak = op.field; \
-   op.field = value; \
-   trx.operations.back() = op; \
-   op.field = bak; \
-   BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception); \
-}
-///This simply resets v back to its default-constructed value. Requires v to have a working assingment operator and
-/// default constructor.
-#define RESET(v) v = decltype(v)()
-///This allows me to build consecutive test cases. It's pretty ugly, but it works well enough for unit tests.
-/// i.e. This allows a test on update_account to begin with the database at the end state of create_account.
-#define INVOKE(test) ((test*)this)->test_method(); RESET(trx); trx.relative_expiration = 1000
-
 BOOST_AUTO_TEST_CASE( create_account_test )
 {
    try {
@@ -288,6 +270,7 @@ BOOST_AUTO_TEST_CASE( create_uia )
       BOOST_CHECK(test_asset.max_supply == 100000000);
       BOOST_CHECK(test_asset.short_backing_asset == asset_id_type());
       BOOST_CHECK(test_asset.market_fee_percent == BTS_MAX_MARKET_FEE_PERCENT/100);
+      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
 
       const asset_dynamic_data_object& test_asset_dynamic_data = test_asset.dynamic_asset_data_id(db);
       BOOST_CHECK(test_asset_dynamic_data.current_supply == 0);
@@ -295,7 +278,7 @@ BOOST_AUTO_TEST_CASE( create_uia )
       BOOST_CHECK(test_asset_dynamic_data.fee_pool == 0);
 
       auto op = trx.operations.back().get<asset_create_operation>();
-      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
+      op.symbol = "TESTFAIL";
       REQUIRE_THROW_WITH_VALUE(op, issuer, account_id_type(99999999));
       REQUIRE_THROW_WITH_VALUE(op, max_supply, -1);
       REQUIRE_THROW_WITH_VALUE(op, max_supply, 0);

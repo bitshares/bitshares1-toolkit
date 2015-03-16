@@ -228,6 +228,31 @@ namespace bts { namespace chain {
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
+   /**
+    * @brief This operation is used to authorize accounts to hold and transact in a whitelisted asset.
+    *
+    * Whitelisted assets can only be held and transfered by explicitly authorized accounts. This operation is how that
+    * authorization is granted or revoked. An asset issuer may publish this operation in order to authorize an account
+    * to hold his asset by setting authorize_account to true. The issuer may also use this operation to revoke the
+    * account's authorization by setting authorize_account to false.
+    *
+    * If authorize_account is set to true and the account is already authorized, or authorize_account is set to false
+    * and the account is already not authorized, this operation will fail. In other words, this operation must change
+    * the whitelist_account's authorization status in order to succeed.
+    *
+    * This operation must be signed by asset_id's issuer. authorize_account's signature is not required.
+    */
+   struct asset_whitelist_operation
+   {
+      asset_id_type    asset_id; ///< ID of the whitelist asset in question
+      asset            fee; ///< paid by asset_id->issuer
+      account_id_type  whitelist_account; ///< ID of the account to allow or disallow to hold the asset
+      bool             authorize_account; ///< True if whitelist_account may hold and transact the asset; false otherwise
+
+      void validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
    struct asset_issue_operation
    {
       asset            asset_to_issue;
@@ -331,6 +356,7 @@ namespace bts { namespace chain {
             delegate_update_operation,
             asset_create_operation,
             asset_update_operation,
+            asset_whitelist_operation,
             asset_issue_operation,
             asset_fund_fee_pool_operation,
             proposal_create_operation
@@ -428,6 +454,9 @@ FC_REFLECT( bts::chain::asset_update_operation,
             (asset_to_update)(fee)(flags)(permissions)(core_exchange_rate)
           )
 
+FC_REFLECT( bts::chain::asset_whitelist_operation,
+            (asset_id)(fee)(whitelist_account)(authorize_account)
+          )
 FC_REFLECT( bts::chain::asset_issue_operation,
             (asset_to_issue)(fee)(issue_to_account) )
 FC_REFLECT( bts::chain::delegate_create_operation,
