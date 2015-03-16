@@ -5,6 +5,7 @@
 #include <bts/chain/asset.hpp>
 #include <bts/chain/generic_index.hpp>
 #include <boost/multi_index/composite_key.hpp>
+#include <fc/uint128.hpp>
 
 namespace bts { namespace chain {
 
@@ -33,15 +34,15 @@ namespace bts { namespace chain {
         static const uint8_t type_id  = short_order_object_type;
 
         account_id_type  seller;   
+        share_type       for_sale;
         share_type       available_collateral; ///< asset_id == short_price.quote.asset_id
         price            short_price; ///< the price the short is currently at = min(limit_price,feed)
-        share_type       priority_fee;  ///< short sellers can prioritize their order against others with the same price
+        price            call_price; ///< the price that will be used to trigger margin calls after match
         uint16_t         initial_collateral_ratio    = 0; ///< may be higher than the network requires
         uint16_t         maitenance_collateral_ratio = 0; ///< may optionally be higher than the network requires
 
-        asset get_collateral()const { return asset( available_collateral, short_price.quote.asset_id ); }
-        asset amount_for_sale(uint16_t network_init_collateral_ratio)const;
-        price call_price(uint16_t network_maitenance_collateral_ratio)const;
+        asset get_collateral()const  { return asset( available_collateral, short_price.base.asset_id ); }
+        asset amount_for_sale()const { return asset( for_sale, short_price.quote.asset_id ); }
   };
 
   /**
@@ -76,7 +77,6 @@ namespace bts { namespace chain {
         ordered_unique< tag<by_price>, 
            composite_key< short_order_object, 
               member< short_order_object, price, &short_order_object::short_price>,
-              member< short_order_object, share_type, &short_order_object::priority_fee>,
               member< object, object_id_type, &object::id>
            >
         >
@@ -105,7 +105,7 @@ namespace bts { namespace chain {
 } } // bts::chain 
 
 FC_REFLECT_DERIVED( bts::chain::short_order_object, (bts::chain::object), 
-                    (seller)(available_collateral)(priority_fee)(short_price)(initial_collateral_ratio)(maitenance_collateral_ratio) 
+                    (seller)(for_sale)(available_collateral)(short_price)(call_price)(initial_collateral_ratio)(maitenance_collateral_ratio) 
                   )
 
 FC_REFLECT_DERIVED( bts::chain::call_order_object, (bts::chain::object),

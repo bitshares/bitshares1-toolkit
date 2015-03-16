@@ -199,9 +199,8 @@ void  asset_create_operation::validate()const
    FC_ASSERT( !(flags & ~permissions ) );
    if( permissions & market_issued )
    {
-      FC_ASSERT( !(permissions & ~(white_list) ) );
-      FC_ASSERT( !(permissions & ~(override_authority) ) );
-      FC_ASSERT( !(permissions & ~(halt_transfer) ) );
+      FC_ASSERT( (permissions == market_issued) );
+      FC_ASSERT( (flags == market_issued) );
    }
 }
 

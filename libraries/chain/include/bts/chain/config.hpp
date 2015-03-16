@@ -33,3 +33,6 @@
 /** NOTE: making this a power of 2 (say 2^15) would greatly accelerate fee calcs */
 #define BTS_MAX_MARKET_FEE_PERCENT                         10000
 #define BTS_MAX_FEED_PRODUCERS                             200
+
+#define BTS_DEFAULT_INITIAL_COLLATERAL_RATIO       2000
+#define BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO   1750

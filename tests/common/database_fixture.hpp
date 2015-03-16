@@ -3,6 +3,7 @@
 #include <bts/chain/database.hpp>
 #include <bts/chain/simple_index.hpp>
 #include <bts/chain/limit_order_object.hpp>
+#include <bts/chain/short_order_object.hpp>
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
 
@@ -10,6 +11,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 
 using std::cout;
 
@@ -52,6 +54,10 @@ struct database_fixture {
             total_balances[balance.first] += balance.second;
       for( const limit_order_object& o : db.get_index_type<limit_order_index>().indices() )
          total_balances[o.amount_for_sale().asset_id] += o.amount_for_sale().amount;
+      for( const short_order_object& o : db.get_index_type<short_order_index>().indices() )
+      {
+         total_balances[o.get_collateral().asset_id] += o.get_collateral().amount;
+      }
       for( const asset_object& asset_obj : db.get_index_type<asset_index>().indices() )
       {
          total_balances[asset_obj.id] += asset_obj.dynamic_asset_data_id(db).accumulated_fees;
@@ -98,6 +104,46 @@ struct database_fixture {
       return *db.get_index_type<account_index>().indices().get<by_name>().find(name);
    }
 
+   const asset_object& create_bitasset( const string& name )
+   {
+      asset_create_operation creator;
+      creator.issuer = account_id_type();
+      creator.fee = asset();
+      creator.symbol = name;
+      creator.max_supply = 0;
+      creator.precision = 2;
+      creator.market_fee_percent = BTS_MAX_MARKET_FEE_PERCENT/100; /*1%*/
+      creator.permissions = market_issued;
+      creator.flags = market_issued;
+      creator.core_exchange_rate = price({asset(1),asset(1)});
+      creator.short_backing_asset = asset_id_type();
+      creator.max_supply = BTS_MAX_SHARE_SUPPLY;
+      trx.operations.push_back(std::move(creator));
+      trx.validate();
+      auto r = db.push_transaction(trx, ~0);
+      trx.operations.clear();
+      return db.get<asset_object>(r.operation_results[0].get<object_id_type>());
+   }
+
+   const short_order_object* create_short( const account_object& seller, 
+                                           const asset& amount_to_sell,
+                                           const asset& collateral_provided,
+                                           uint16_t initial_collateral_ratio = 2000,
+                                           uint16_t maitenance_collateral_ratio = 1750 )
+   {
+      short_order_create_operation op;
+      op.seller = seller.id;
+      op.amount_to_sell = amount_to_sell;
+      op.collateral = collateral_provided;
+      op.initial_collateral_ratio = initial_collateral_ratio;
+      op.maitenance_collateral_ratio = maitenance_collateral_ratio;
+      trx.operations.push_back(std::move(op));
+      trx.validate();
+      auto r = db.push_transaction(trx, ~0);
+      trx.operations.clear();
+      return db.find<short_order_object>(r.operation_results[0].get<object_id_type>());
+   }
+
    const account_object& create_account( const string& name )
    {
       trx.operations.push_back(make_account(name));
@@ -123,6 +169,17 @@ struct database_fixture {
    asset cancel_limit_order( const limit_order_object& order )
    {
       limit_order_cancel_operation cancel_order;
+      cancel_order.fee_paying_account = order.seller;
+      trx.operations.push_back(cancel_order);
+      for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
+      trx.validate();
+      auto processed = db.push_transaction(trx, ~0);
+      trx.operations.clear();
+      return processed.operation_results[0].get<asset>();
+   }
+   asset cancel_short_order( const short_order_object& order )
+   {
+      short_order_cancel_operation cancel_order;
       cancel_order.fee_paying_account = order.seller;
       trx.operations.push_back(cancel_order);
       for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
@@ -169,8 +226,8 @@ struct database_fixture {
       cout << std::setw(10) << std::left  << "NAME"      << " ";
       cout << std::setw(16) << std::right << "FOR SALE"  << " ";
       cout << std::setw(16) << std::right << "FOR WHAT"  << " ";
-      cout << std::setw(10) << "PRICE"   << " ";
-      cout << std::setw(10) << "1/PRICE" << "\n";
+      cout << std::setw(10) << std::right << "PRICE"   << " ";
+      cout << std::setw(10) << std::right << "1/PRICE" << "\n";
       cout << string(70, '=') << std::endl;
       auto cur = price_idx.begin();
       while( cur != price_idx.end() )
@@ -182,6 +239,45 @@ struct database_fixture {
          cout << std::setw( 5 )  << std::left   << cur->amount_to_receive().asset_id(db).symbol << " ";
          cout << std::setw( 10 ) << std::right  << cur->sell_price.to_real() << " ";
          cout << std::setw( 10 ) << std::right  << (~cur->sell_price).to_real() << " ";
+         cout << "\n";
+         ++cur;
+      }
+   }
+   string pretty( const asset& a )
+   {
+      std::stringstream ss;
+      ss << a.amount.value << " ";
+      ss << a.asset_id(db).symbol;
+      return ss.str();
+   }
+
+   void print_short_market( const string& syma, const string&  symb )
+   {
+      const auto& limit_idx = db.get_index_type<short_order_index>();
+      const auto& price_idx = limit_idx.indices().get<by_price>();
+
+      cout << std::fixed;
+      cout.precision(5);
+      cout << std::setw(10) << std::left  << "NAME"        << " ";
+      cout << std::setw(16) << std::right << "FOR SHORT"   << " ";
+      cout << std::setw(16) << std::right << "COLLATERAL"  << " ";
+      cout << std::setw(10) << std::right << "PRICE"       << " ";
+      cout << std::setw(10) << std::right << "1/PRICE"     << " ";
+      cout << std::setw(10) << std::right << "CALL PRICE"  << " ";
+      cout << std::setw(10) << std::right << "I-Ratio"     << " ";
+      cout << std::setw(10) << std::right << "M-Ratio"     << "\n";
+      cout << string(100, '=') << std::endl;
+      auto cur = price_idx.begin();
+      while( cur != price_idx.end() )
+      {
+         cout << std::setw( 10 ) << std::left   << cur->seller(db).name << " ";
+         cout << std::setw( 16 ) << std::right  << pretty( cur->amount_for_sale() ) << " ";
+         cout << std::setw( 16 ) << std::right  << pretty( cur->get_collateral() ) << " ";
+         cout << std::setw( 10 ) << std::right  << cur->short_price.to_real() << " ";
+         cout << std::setw( 10 ) << std::right  << (~cur->short_price).to_real() << " ";
+         cout << std::setw( 10 ) << std::right  << (cur->call_price).to_real() << " ";
+         cout << std::setw( 10 ) << std::right  << (cur->initial_collateral_ratio)/double(1000) << " ";
+         cout << std::setw( 10 ) << std::right  << (cur->maitenance_collateral_ratio)/double(1000) << " ";
          cout << "\n";
          ++cur;
       }
