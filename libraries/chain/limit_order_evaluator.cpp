@@ -62,7 +62,7 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
    {
       auto old_itr = itr;
       ++itr;
-      if( match( new_order_object, *old_itr ) != 2 )
+      if( match( new_order_object, *old_itr, old_itr->sell_price ) != 2 )
          break; // 2 means ONLY old iter filled
    }
 

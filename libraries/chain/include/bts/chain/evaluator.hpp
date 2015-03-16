@@ -45,21 +45,21 @@ namespace bts { namespace chain {
           *  3 - both were filled
           */
          ///@{
-         int match( const limit_order_object& bid, const limit_order_object& ask );
-         int match( const limit_order_object& bid, const short_order_object& ask );
-         int match( const limit_order_object& bid, const call_order_object& ask );
-
-         int match( const short_order_object& bid, const short_order_object& ask );
-         int match( const short_order_object& bid, const call_order_object& ask );
-
-         int match( const call_order_object& bid, const call_order_object& ask );
+         int match( const limit_order_object& bid, const limit_order_object& ask, const price& trade_price );
+         int match( const limit_order_object& bid, const short_order_object& ask, const price& trade_price );
+         int match( const call_order_object& ask, const limit_order_object& );
+         int match( const call_order_object& ask, const short_order_object& );
          ///@}
          
          /**
           * @return true if the order was completely filled and thus freed.
           */
-         bool fill_limit_order( const limit_order_object& order, const asset& pays, const asset& receives );
+         bool fill_order( const limit_order_object& order, const asset& pays, const asset& receives );
+         bool fill_order( const short_order_object& order, const asset& pays, const asset& receives );
 
+         // helpers to fill_order
+         void pay_order( const account_object& receiver, const asset& receives, const asset& pays );
+         asset pay_market_fees( const asset_object& recv_asset, const asset& receives );
 
          /**
           *  Pays the fee and returns the number of CORE asset that were provided,

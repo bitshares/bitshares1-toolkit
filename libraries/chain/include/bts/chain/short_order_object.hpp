@@ -59,7 +59,7 @@ namespace bts { namespace chain {
         static const uint8_t type_id  = call_order_object_type;
 
         asset get_collateral()const { return asset( collateral, call_price.quote.asset_id ); }
-        asset get_debt()const { return asset( collateral, call_price.base.asset_id ); }
+        asset get_debt()const { return asset( debt, call_price.base.asset_id ); }
 
         account_id_type  borrower;   
         share_type       collateral;  ///< call_price.quote.asset_id, access via get_collateral

@@ -73,7 +73,14 @@ namespace bts { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_account_debt_object_type;
 
-         flat_map<asset_id_type, object_id_type> call_orders;
+         optional<call_order_id_type> get_call_order(asset_id_type aid )const
+         {
+            auto itr = call_orders.find(aid);
+            if( itr != call_orders.end() ) return itr->second;
+            return optional<call_order_id_type>();
+         }
+
+         flat_map<asset_id_type, call_order_id_type> call_orders;
    };
 
    class account_object : public annotated_object<account_object>
