@@ -1,10 +1,12 @@
 #pragma once
+#include "asset.hpp"
+
 #include <bts/chain/object.hpp>
 
 namespace bts { namespace chain {
    class account_object;
 
-   class delegate_object : public abstract_object<delegate_object> 
+   class delegate_object : public abstract_object<delegate_object>
    {
       public:
          static const uint8_t space_id = protocol_ids;
@@ -19,6 +21,7 @@ namespace bts { namespace chain {
          uint32_t                       max_block_size            = BTS_DEFAULT_MAX_BLOCK_SIZE;
          uint32_t                       max_transaction_size      = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
          uint32_t                       max_sec_until_expiration  = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
+         delegate_feeds_id_type         feeds;
          // updated once per round
          secret_hash_type               next_secret;
          secret_hash_type               last_secret;
@@ -47,6 +50,24 @@ namespace bts { namespace chain {
 
          share_type  total_votes;
    };
+
+   /**
+    * @class delegate_feeds_object
+    * @brief tracks price feeds published by a particular delegate
+    *
+    */
+   class delegate_feeds_object : public abstract_object<delegate_feeds_object>
+   {
+      public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_delegate_feeds_object_type;
+
+         optional<price_feed> get_feed( asset_id_type quote, asset_id_type base )const;
+         price_feed& set_feed( const price_feed& p );
+
+         flat_set<price_feed> feeds;
+   };
+
 } } // bts::chain
 
 FC_REFLECT_DERIVED( bts::chain::delegate_object, (bts::chain::object),
@@ -60,6 +81,9 @@ FC_REFLECT_DERIVED( bts::chain::delegate_object, (bts::chain::object),
                     (max_block_size)
                     (max_transaction_size)
                     (max_sec_until_expiration)
+                    (feeds)
                     (vote) )
 
 FC_REFLECT_DERIVED( bts::chain::delegate_vote_object, (bts::chain::object), (total_votes) )
+
+FC_REFLECT_DERIVED( bts::chain::delegate_feeds_object, (bts::chain::object), (feeds) )

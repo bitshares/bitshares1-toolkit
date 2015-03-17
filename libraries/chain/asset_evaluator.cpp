@@ -146,6 +146,9 @@ object_id_type asset_whitelist_evaluator::do_evaluate(const asset_whitelist_oper
 
 object_id_type asset_whitelist_evaluator::do_apply(const asset_whitelist_operation& o)
 {
+   apply_delta_balances();
+   apply_delta_fee_pools();
+
    db().modify(*whitelist_account, [o](account_object& account) {
       account.authorize_asset(o.asset_id, o.authorize_account);
    });

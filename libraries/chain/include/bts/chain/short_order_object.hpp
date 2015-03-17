@@ -22,9 +22,9 @@ namespace bts { namespace chain {
    * defined by the network, but individuals may choose to have a higher
    * initial collateral to avoid the risk of being margin called.
    *
-   * All shorts have a maitenance collateral ratio that must be kept or
+   * All shorts have a maintenance collateral ratio that must be kept or
    * the network will automatically cover the short order.  Users can
-   * specify a higher maitenance collateral ratio as a form of "stop loss"
+   * specify a higher maintenance collateral ratio as a form of "stop loss"
    * and to potentially get ahead of a short squeeze.
    */
   class short_order_object : public abstract_object<short_order_object>

@@ -57,11 +57,23 @@ namespace bts { namespace chain {
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
-
-   struct account_publish_feeds_operation
+   /**
+    * @brief Publish delegate-specified price feeds for market-issued assets
+    *
+    * Delegates use this operation to publish their price feeds for market-issued assets which are maintained by the
+    * delegates. Each price feed is used to tune the market for a particular market-issued asset. For each value in the
+    * feeds, the median across all delegate feeds for that asset is calculated and the market for the asset is
+    * configured with the median of each value.
+    *
+    * The feeds in the operation each contain two prices: a call price limit and a short price limit. For each feed,
+    * the quote and base asset IDs of one price must match those of the other price in that feed. Furthermore, the
+    * quote asset is the market-issued asset this feed is for (thus the quote asset's issuer must be genesis,
+    * indicating that it is a delegate-fed asset), and the base asset must be the quote asset's short backing asset.
+    */
+   struct delegate_publish_feeds_operation
    {
-      account_id_type        account;
-      asset                  fee; ///< paid for by account
+      delegate_id_type       delegate;
+      asset                  fee; ///< paid for by delegate->delegate_account
       flat_set<price_feed>   feeds; ///< must be sorted with no duplicates
 
       void       validate()const;
@@ -175,7 +187,7 @@ namespace bts { namespace chain {
     *  be merged with existing call orders for the same
     *  account.  If maintenance_collateral_ratio is set
     *  it will update any existing open call orders to
-    *  use the new maitenance level.
+    *  use the new maintenance level.
     *
     *  When shorting you specify the total amount to sell
     *  and the amount of collateral along with the initial
@@ -235,7 +247,7 @@ namespace bts { namespace chain {
 
    /**
     *  This operation can be used to add collateral, cover, and
-    *  adjust the margin call price with a new maitenance collateral
+    *  adjust the margin call price with a new maintenance collateral
     *  ratio.
     *
     *  The only way to "cancel" a call order is to pay off the
@@ -380,7 +392,7 @@ namespace bts { namespace chain {
             key_create_operation,
             account_create_operation,
             account_update_operation,
-            account_publish_feeds_operation,
+            delegate_publish_feeds_operation,
             delegate_create_operation,
             delegate_update_operation,
             asset_create_operation,
@@ -452,8 +464,8 @@ FC_REFLECT( bts::chain::account_update_operation,
             (account)(fee)(owner)(active)(voting_key)(memo_key)(vote)
           )
 
-FC_REFLECT( bts::chain::account_publish_feeds_operation,
-            (account)(fee)(feeds) )
+FC_REFLECT( bts::chain::delegate_publish_feeds_operation,
+            (delegate)(fee)(feeds) )
 
 FC_REFLECT( bts::chain::limit_order_create_operation,
             (seller)(amount_to_sell)(fee)(min_to_receive)(fill_or_kill)
