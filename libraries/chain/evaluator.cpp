@@ -151,7 +151,7 @@ namespace bts { namespace chain {
    }
 
 
-int generic_evaluator::match( const limit_order_object& usd, const limit_order_object& core )
+int generic_evaluator::match( const limit_order_object& usd, const limit_order_object& core, const price& match_price )
 {
    //wdump( (usd)(core) );
    assert( core.sell_price  <= ~usd.sell_price );
@@ -161,7 +161,7 @@ int generic_evaluator::match( const limit_order_object& usd, const limit_order_o
    assert( usd.sell_price.base.asset_id  == core.sell_price.quote.asset_id );
    assert( usd.for_sale > 0 && core.for_sale > 0 );
 
-   auto match_price  = core.sell_price;
+   //auto match_price  = core.sell_price;
    auto usd_for_sale = usd.amount_for_sale();
    auto core_for_sale = core.amount_for_sale();
 //   wdump( (usd_for_sale)(core_for_sale) );
@@ -189,10 +189,59 @@ int generic_evaluator::match( const limit_order_object& usd, const limit_order_o
    // TODO: test a case where the order price is so wacky that trade_amount == 0 or pays/receives amount == 0
 
    int result = 0;
-   result |= fill_limit_order( usd, usd_pays, usd_receives );
-   result |= fill_limit_order( core, core_pays, core_receives ) << 1;
+   result |= fill_order( usd, usd_pays, usd_receives );
+   result |= fill_order( core, core_pays, core_receives ) << 1;
    return result;
 }
+
+int generic_evaluator::match( const limit_order_object& core, const short_order_object& usd, const price& match_price )
+{ try {
+   wdump( (core.sell_price.to_real())( (~usd.short_price).to_real()) );
+   assert( core.sell_price  <= ~usd.short_price );
+   assert( ~usd.short_price >= core.sell_price );
+   assert( usd.get_collateral().asset_id  == core.amount_for_sale().asset_id );
+   assert( usd.amount_for_sale().asset_id == core.amount_to_receive().asset_id );
+   assert( usd.for_sale > 0 && core.for_sale > 0 );
+
+   auto usd_for_sale = usd.amount_for_sale();
+   auto core_for_sale = core.amount_for_sale();
+
+   auto max_usd_pays = core_for_sale * match_price; // USD * PRICE => BTS
+//   wdump( (usd_for_sale)(core_for_sale)(max_usd_pays) );
+   assert( max_usd_pays.asset_id != core_for_sale.asset_id );
+
+   auto usd_trade_amount = max_usd_pays;
+   if( usd_trade_amount > usd_for_sale ) usd_trade_amount = usd_for_sale;
+
+   auto usd_pays     = usd_trade_amount;
+   auto usd_receives = usd_trade_amount * match_price;
+   auto core_receives = usd_pays;
+   auto core_pays     = usd_receives;
+//   wdump( (usd_pays)(usd_receives) );
+//   wdump( (core_pays)(core_receives) );
+
+   core_pays = std::min(core_pays, core_for_sale);
+   usd_receives = core_pays;
+
+//   wdump( (usd_pays)(usd_receives) );
+//   wdump( (core_pays)(core_receives) );
+
+   // TODO: test a case where the order price is so wacky that trade_amount == 0 or pays/receives amount == 0
+
+   int result = 0;
+   result |= fill_order( usd, usd_pays, usd_receives );
+   result |= fill_order( core, core_pays, core_receives ) << 1;
+   return result;
+} FC_CAPTURE_AND_RETHROW( (core)(usd)(match_price) ) }
+
+
+
+
+
+
+
+
+
 
 asset generic_evaluator::calculate_market_fee( const asset_object& trade_asset, const asset& trade_amount )
 {
@@ -204,16 +253,8 @@ asset generic_evaluator::calculate_market_fee( const asset_object& trade_asset, 
    return trade_asset.amount(a.to_uint64());
 }
 
-bool generic_evaluator::fill_limit_order( const limit_order_object& order, const asset& pays, const asset& receives )
+asset generic_evaluator::pay_market_fees( const asset_object& recv_asset, const asset& receives )
 {
-   //wdump( (order)(pays)(receives) );
-   assert( order.amount_for_sale().asset_id == pays.asset_id );
-   assert( pays.asset_id != receives.asset_id );
-
-   const account_object& seller = order.seller(db());
-   //const asset_object& pays_asset = pays.asset_id(db());
-   const asset_object& recv_asset = receives.asset_id(db());
-
    auto issuer_fees = calculate_market_fee( recv_asset, receives );
    assert(issuer_fees <= receives );
 
@@ -226,13 +267,38 @@ bool generic_evaluator::fill_limit_order( const limit_order_object& order, const
       });
    }
 
-   const auto& balances = seller.balances(db());
+   return issuer_fees;
+}
+
+void generic_evaluator::pay_order( const account_object& receiver, const asset& receives, const asset& pays )
+{
+   const auto& balances = receiver.balances(db());
    db().modify( balances, [&]( account_balance_object& b ){
-         if( pays.asset_id == asset_id_type() ) b.total_core_in_orders -= pays.amount;
-         b.add_balance( receives - issuer_fees );
+         if( pays.asset_id == asset_id_type() )
+            b.total_core_in_orders -= pays.amount;
+         b.add_balance( receives );
    });
 
-   if( pays.asset_id == asset_id_type() ) adjust_votes( seller.delegate_votes, -pays.amount );
+   if( receives.asset_id == asset_id_type() ) 
+      adjust_votes( receiver.delegate_votes, receives.amount );
+
+   if( pays.asset_id == asset_id_type() ) 
+      adjust_votes( receiver.delegate_votes, -pays.amount );
+}
+
+
+bool generic_evaluator::fill_order( const limit_order_object& order, const asset& pays, const asset& receives )
+{
+   //wdump( (order)(pays)(receives) );
+   assert( order.amount_for_sale().asset_id == pays.asset_id );
+   assert( pays.asset_id != receives.asset_id );
+
+   const account_object& seller = order.seller(db());
+   //const asset_object& pays_asset = pays.asset_id(db());
+   const asset_object& recv_asset = receives.asset_id(db());
+
+   auto issuer_fees = pay_market_fees( recv_asset, receives );
+   pay_order( seller, receives - issuer_fees, pays );
 
    if( pays == order.amount_for_sale() )
    {
@@ -247,5 +313,82 @@ bool generic_evaluator::fill_limit_order( const limit_order_object& order, const
       return false;
    }
 }
+
+
+bool generic_evaluator::fill_order( const short_order_object& order, const asset& pays, const asset& receives )
+{ try {
+   idump( (order)(pays)(receives) );
+   assert( order.amount_for_sale().asset_id == pays.asset_id );
+   assert( pays.asset_id != receives.asset_id );
+
+   const account_object& seller = order.seller(db());
+   const asset_object& recv_asset = receives.asset_id(db());
+   const asset_object& pays_asset = pays.asset_id(db());
+   assert( pays_asset.is_market_issued() );
+
+   auto issuer_fees = pay_market_fees( recv_asset, receives );
+
+   auto seller_to_collateral = pays * order.short_price;
+   auto buyer_to_collateral  = receives - issuer_fees;
+
+   if( receives.asset_id == asset_id_type() ) 
+   {
+      const auto& balances = seller.balances(db());
+      db().modify( balances, [&]( account_balance_object& b ){
+             b.total_core_in_orders += receives.amount;
+      });
+      adjust_votes( seller.delegate_votes, buyer_to_collateral.amount );
+   }
+
+   bool filled = pays == order.amount_for_sale();
+
+   db().modify( pays_asset.dynamic_asset_data_id(db()), [&]( asset_dynamic_data_object& obj ){
+                  obj.current_supply += pays.amount;
+                });
+
+   const auto& debts = seller.debts(db());
+   auto call_id = debts.get_call_order(pays.asset_id);
+   if( !call_id )
+   {
+      const auto& call_obj = db().create<call_order_object>( [&]( call_order_object& c ){
+             c.borrower    = seller.id;
+             c.collateral  = seller_to_collateral.amount + buyer_to_collateral.amount;
+             c.debt        = pays.amount;
+             c.call_price  = order.call_price;
+        });
+      db().modify( debts, [&]( account_debt_object& d ) {
+                   d.call_orders[pays.asset_id] = call_obj.id;
+                  });
+   }
+   else
+   {
+      db().modify( (*call_id)(db()), [&]( call_order_object& c ){
+            c.debt       += pays.amount;
+            c.collateral += seller_to_collateral.amount + buyer_to_collateral.amount;
+
+            fc::uint128 tmp( c.collateral.value );
+            tmp *= order.maintenance_collateral_ratio - 1000;
+            tmp /= 1000;
+            FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
+
+            c.call_price = c.get_debt() / asset( tmp.to_uint64(), c.get_collateral().asset_id); 
+      });
+   }
+
+   if( filled )
+   {
+      db().remove( order );
+   }
+   else
+   {
+      db().modify( order, [&]( short_order_object& b ) {
+                   b.for_sale -= pays.amount;
+                   b.available_collateral -= seller_to_collateral.amount;
+                   assert( b.available_collateral > 0 );
+                   assert( b.for_sale > 0 );
+                   });
+   }
+   return filled;
+} FC_CAPTURE_AND_RETHROW( (order)(pays)(receives) ) }
 
 } }

@@ -287,10 +287,63 @@ BOOST_AUTO_TEST_CASE( cancel_short_test )
       BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 200 ) ) ); // 1:2 price
       BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 300 ) ) ); // 1:3 price
       BOOST_REQUIRE( shorter_account.balances(db).get_balance( asset_id_type() ).amount == 10000-600 ); 
-      print_short_market("","");
+     // print_short_market("","");
       auto refund = cancel_short_order( *first_short );
       BOOST_REQUIRE( shorter_account.balances(db).get_balance( asset_id_type() ).amount == 10000-500 ); 
       FC_ASSERT( refund == asset(100) );
+     // print_short_market("","");
+   }catch ( const fc::exception& e )
+   {
+      elog( "${e}", ("e", e.to_detail_string() ) );
+      throw;
+   }
+}
+
+/**
+ *  Assume there exists an offer to buy BITUSD
+ *  Create a short that exactly matches that offer at a price 2:1
+ */
+BOOST_AUTO_TEST_CASE( match_short_now_exact )
+{
+   try {
+      const asset_object& bitusd = create_bitasset( "BITUSD" );
+      const account_object& shorter_account  = create_account( "shorter" );
+      const account_object& buyer_account  = create_account( "buyer" );
+      transfer( genesis_account(db), shorter_account, asset( 10000 ) );
+      transfer( genesis_account(db), buyer_account, asset( 10000 ) );
+
+      auto buy_order = create_sell_order( buyer_account, asset(200), bitusd.amount(100) );
+      BOOST_REQUIRE( buy_order );
+      auto first_short = create_short( shorter_account, bitusd.amount(100), asset( 200 ) ); // 1:1 price
+      BOOST_REQUIRE( first_short == nullptr );
+      //print_short_market("","");
+   }catch ( const fc::exception& e )
+   {
+      elog( "${e}", ("e", e.to_detail_string() ) );
+      throw;
+   }
+}
+
+/**
+ *  Assume there exists an offer to buy BITUSD
+ *  Create a short that exactly matches that offer at a price 2:1
+ */
+BOOST_AUTO_TEST_CASE( dont_match_short )
+{
+   try {
+      const asset_object& bitusd = create_bitasset( "BITUSD" );
+      const account_object& shorter_account  = create_account( "shorter" );
+      const account_object& buyer_account  = create_account( "buyer" );
+      transfer( genesis_account(db), shorter_account, asset( 10000 ) );
+      transfer( genesis_account(db), buyer_account, asset( 10000 ) );
+
+      //auto buy_order = create_sell_order( buyer_account, asset(200), bitusd.amount(101) );
+      auto buy_order = create_sell_order( buyer_account, asset(100), bitusd.amount(100) );
+      print_market("","");
+      BOOST_REQUIRE( buy_order );
+      auto first_short = create_short( shorter_account, bitusd.amount(100), asset( 200 ) ); // 1:1 price
+      print_short_market("","");
+      BOOST_REQUIRE( first_short );
       print_short_market("","");
    }catch ( const fc::exception& e )
    {
@@ -298,6 +351,34 @@ BOOST_AUTO_TEST_CASE( cancel_short_test )
       throw;
    }
 }
+/**
+ *  Assume there exists an offer to buy BITUSD
+ *  Create a short that exactly matches that offer at a price 2:1
+ */
+BOOST_AUTO_TEST_CASE( match_all_short_with_surplus_collaterl )
+{
+   try {
+      const asset_object& bitusd = create_bitasset( "BITUSD" );
+      const account_object& shorter_account  = create_account( "shorter" );
+      const account_object& buyer_account  = create_account( "buyer" );
+      transfer( genesis_account(db), shorter_account, asset( 10000 ) );
+      transfer( genesis_account(db), buyer_account, asset( 10000 ) );
+
+      //auto buy_order = create_sell_order( buyer_account, asset(200), bitusd.amount(101) );
+      auto buy_order = create_sell_order( buyer_account, asset(300), bitusd.amount(100) );
+      print_market("","");
+      BOOST_REQUIRE( buy_order );
+      auto first_short = create_short( shorter_account, bitusd.amount(100), asset( 200 ) ); // 1:1 price
+      print_short_market("","");
+      BOOST_REQUIRE( !first_short );
+      print_short_market("","");
+   }catch ( const fc::exception& e )
+   {
+      elog( "${e}", ("e", e.to_detail_string() ) );
+      throw;
+   }
+}
+
 
 BOOST_AUTO_TEST_CASE( create_uia )
 {
@@ -425,9 +506,11 @@ BOOST_AUTO_TEST_CASE( create_buy_uia_exact_match )
    for( uint32_t i = 0; i < 3; ++i )
       create_sell_order( buyer_account, asset(1000), test_asset.amount(100+450*i) );
    BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == (asset( 7000 )) );
+   print_market("","");
 
    for( uint32_t i = 0; i < 3; ++i )
       create_sell_order( nathan_account, test_asset.amount(1000), asset(100+450*i) );
+   print_market("","");
 
    BOOST_CHECK( buyer_account.balances(db).get_balance(test_asset.id) == test_asset.amount(990) );
    BOOST_CHECK( nathan_account.balances(db).get_balance(asset_id_type()) == asset(1000) );

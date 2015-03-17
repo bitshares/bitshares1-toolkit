@@ -49,14 +49,36 @@ struct database_fixture {
 
       const simple_index<account_balance_object>& balance_index = db.get_index_type<simple_index<account_balance_object>>();
       map<asset_id_type,share_type> total_balances;
+      map<asset_id_type,share_type> total_debts;
+      share_type core_in_orders;
+      share_type reported_core_in_orders;
+
       for( const account_balance_object& a : balance_index )
+      {
          for( const auto& balance : a.balances )
+         {
             total_balances[balance.first] += balance.second;
+         }
+         reported_core_in_orders += a.total_core_in_orders;
+      }
       for( const limit_order_object& o : db.get_index_type<limit_order_index>().indices() )
-         total_balances[o.amount_for_sale().asset_id] += o.amount_for_sale().amount;
+      {
+         auto for_sale = o.amount_for_sale();
+         if( for_sale.asset_id == asset_id_type() ) core_in_orders += for_sale.amount;
+         total_balances[for_sale.asset_id] += for_sale.amount;
+      }
       for( const short_order_object& o : db.get_index_type<short_order_index>().indices() )
       {
-         total_balances[o.get_collateral().asset_id] += o.get_collateral().amount;
+         auto col = o.get_collateral();
+         if( col.asset_id == asset_id_type() ) core_in_orders += col.amount;
+         total_balances[col.asset_id] += col.amount;
+      }
+      for( const call_order_object& o : db.get_index_type<call_order_index>().indices() )
+      {
+         auto col = o.get_collateral();
+         if( col.asset_id == asset_id_type() ) core_in_orders += col.amount;
+         total_balances[col.asset_id] += col.amount;
+         total_debts[o.get_debt().asset_id] += o.get_debt().amount;
       }
       for( const asset_object& asset_obj : db.get_index_type<asset_index>().indices() )
       {
@@ -65,7 +87,15 @@ struct database_fixture {
             BOOST_CHECK(total_balances[asset_obj.id] == asset_obj.dynamic_asset_data_id(db).current_supply);
          total_balances[asset_id_type()] += asset_obj.dynamic_asset_data_id(db).fee_pool;
       }
+      for( auto item : total_debts )
+      {
+         //wdump( (item.first(db).dynamic_asset_data_id(db).current_supply)(item.second) );
+         BOOST_CHECK(item.first(db).dynamic_asset_data_id(db).current_supply == item.second);
+      }
+      // wdump( (core_in_orders)(reported_core_in_orders) );
+      BOOST_CHECK( core_in_orders == reported_core_in_orders );
 
+      //wdump( (core_asset_data.current_supply)(total_balances[asset_id_type()]) );
       BOOST_CHECK( total_balances[asset_id_type()] == core_asset_data.current_supply );
    }
 

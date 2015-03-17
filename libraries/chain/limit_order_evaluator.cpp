@@ -33,7 +33,9 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
    //wdump( (seller_balance)(op) );
    db().modify( seller_balance, [&]( account_balance_object& bal ){
          if( op.amount_to_sell.asset_id == asset_id_type() )
+         {
             bal.total_core_in_orders += op.amount_to_sell.amount;
+         }
          bal.sub_balance( op.amount_to_sell );
    });
 
@@ -62,7 +64,7 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
    {
       auto old_itr = itr;
       ++itr;
-      if( match( new_order_object, *old_itr ) != 2 )
+      if( match( new_order_object, *old_itr, old_itr->sell_price ) != 2 )
          break; // 2 means ONLY old iter filled
    }
 
