@@ -21,6 +21,7 @@ object_id_type short_order_create_evaluator::do_evaluate( const short_order_crea
    FC_ASSERT( quote_asset.id == base_asset.short_backing_asset );
    _seller = fee_paying_account;
    _receive_asset = &quote_asset;
+   _sell_asset    = &base_asset;
 
    // TODO: FC_ASSERT( op.initial_collateral_ratio >= CURRENT_INIT_COLLATERAL_RATIO_REQUIREMENTS )
    // TODO: FC_ASSERT( op.maintenance_collateral_ratio >= CURRENT_INIT_COLLATERAL_RATIO_REQUIREMENTS )
@@ -46,6 +47,15 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
        obj.maintenance_collateral_ratio = op.maintenance_collateral_ratio;
    });
    short_order_id_type new_id = new_order_object.id;
+
+   check_call_orders(*_sell_asset);
+
+   if( !db().find(new_id) ) // then we were filled by call order
+   {
+      apply_delta_balances();
+      apply_delta_fee_pools();
+      return new_id;
+   }
    
    if( op.collateral.asset_id == asset_id_type() )
    {
@@ -85,29 +95,6 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
       ++itr;
       if( match( *old_itr, new_order_object, old_itr->sell_price ) != 1 )
          break; // 1 means ONLY old iter filled
-   }
-
-   /**
-    *  There are times when the AMOUNT_FOR_SALE * SALE_PRICE == 0 which means that we
-    *  have hit the limit where the seller is asking for nothing in return.  When this
-    *  happens we must refund any balance back to the seller, it is too small to be
-    *  sold at the sale price.
-    */
-   const short_order_object* left_over = db().find(new_id);
-   if( left_over && new_order_object.amount_to_receive().amount == 0 && new_order_object.for_sale > 0 )
-   {
-      wlog( "TIME TO REFUND" );
-      wdump( (left_over->amount_for_sale()) );
-      adjust_balance( _seller, _sell_asset, new_order_object.amount_for_sale().amount );
-
-      if( _sell_asset->id == asset_id_type() )
-      {
-         const auto& balances = _seller->balances(db());
-         db().modify( balances, [&]( account_balance_object& b ){
-              b.total_core_in_orders -= new_order_object.for_sale;
-         });
-      }
-      db().remove( new_order_object );
    }
 
    apply_delta_balances();

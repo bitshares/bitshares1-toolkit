@@ -235,6 +235,26 @@ int generic_evaluator::match( const limit_order_object& core, const short_order_
 } FC_CAPTURE_AND_RETHROW( (core)(usd)(match_price) ) }
 
 
+/**
+ *  
+ */
+void generic_evaluator::check_call_orders( const asset_object& mia )
+{
+    if( !mia.is_market_issued() ) return;
+
+    const call_order_index& call_index = db().get_index_type<call_order_index>();
+    const auto& call_price_index = call_index.indices().get<by_price>();
+
+    const limit_order_index& limit_index = db().get_index_type<limit_order_index>();
+    const auto& limit_price_index = limit_index.indices().get<by_price>();
+
+    const short_order_index& short_index = db().get_index_type<short_order_index>();
+    const auto& short_price_index = short_index.indices().get<by_price>();
+
+    auto call_itr = call_price_index.lower_bound( mia.amount(0) / asset(1,mia.short_backing_asset) );
+    auto call_end = call_price_index.lower_bound( mia.amount(BTS_MAX_SHARE_SUPPLY) / asset(1,mia.short_backing_asset) );
+
+}
 
 
 
@@ -294,7 +314,7 @@ bool generic_evaluator::fill_order( const limit_order_object& order, const asset
    assert( pays.asset_id != receives.asset_id );
 
    const account_object& seller = order.seller(db());
-   //const asset_object& pays_asset = pays.asset_id(db());
+   const asset_object& pays_asset = pays.asset_id(db());
    const asset_object& recv_asset = receives.asset_id(db());
 
    auto issuer_fees = pay_market_fees( recv_asset, receives );
@@ -310,6 +330,26 @@ bool generic_evaluator::fill_order( const limit_order_object& order, const asset
       db().modify( order, [&]( limit_order_object& b ) {
                    b.for_sale -= pays.amount;
                    });
+      /**
+       *  There are times when the AMOUNT_FOR_SALE * SALE_PRICE == 0 which means that we
+       *  have hit the limit where the seller is asking for nothing in return.  When this
+       *  happens we must refund any balance back to the seller, it is too small to be
+       *  sold at the sale price.
+       */
+      if( order.amount_to_receive().amount == 0 )
+      {
+         adjust_balance( &seller, &pays_asset, order.for_sale );
+         if( pays.asset_id == asset_id_type() )
+         {
+            const auto& balances = seller.balances(db());
+            db().modify( balances, [&]( account_balance_object& b ){
+                 b.total_core_in_orders -= order.for_sale;
+            });
+         }
+
+         db().remove( order );
+         return true;
+      }
       return false;
    }
 }
@@ -387,6 +427,27 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
                    assert( b.available_collateral > 0 );
                    assert( b.for_sale > 0 );
                    });
+
+      /**
+       *  There are times when the AMOUNT_FOR_SALE * SALE_PRICE == 0 which means that we
+       *  have hit the limit where the seller is asking for nothing in return.  When this
+       *  happens we must refund any balance back to the seller, it is too small to be
+       *  sold at the sale price.
+       */
+      if( order.amount_to_receive().amount == 0 )
+      {
+         adjust_balance( &seller, &recv_asset, order.available_collateral);
+         if( order.get_collateral().asset_id == asset_id_type() )
+         {
+            const auto& balances = seller.balances(db());
+            db().modify( balances, [&]( account_balance_object& b ){
+                 b.total_core_in_orders -= order.available_collateral;
+            });
+         }
+
+         db().remove( order );
+         filled = true;
+      }
    }
    return filled;
 } FC_CAPTURE_AND_RETHROW( (order)(pays)(receives) ) }

@@ -226,7 +226,8 @@ namespace bts { namespace chain {
          tmp *= maintenance_collateral_ratio - 1000;
          tmp /= 1000;
          FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
-         return  amount_to_sell / asset( tmp.to_uint64(), collateral.asset_id);
+         return amount_to_sell / asset( tmp.to_uint64(), collateral.asset_id);
+         //return asset( tmp.to_uint64(), collateral.asset_id) / amount_to_sell;
       }
    };
 

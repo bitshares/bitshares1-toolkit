@@ -47,6 +47,15 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
    });
    limit_order_id_type result = new_order_object.id; // save this because we may remove the object by filling it
 
+   check_call_orders(*_sell_asset);
+   check_call_orders(*_receive_asset);
+   if( !db().find(result) ) // then we were filled by call order
+   {
+      apply_delta_balances();
+      apply_delta_fee_pools();
+      return result;
+   }
+
    const auto& limit_order_idx = db().get_index_type<limit_order_index>();
    const auto& limit_price_idx = limit_order_idx.indices().get<by_price>();
 
@@ -120,29 +129,6 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
          filled = (2 != match( new_order_object, *old_itr, old_itr->sell_price ));
    }
    
-
-   /**
-    *  There are times when the AMOUNT_FOR_SALE * SALE_PRICE == 0 which means that we
-    *  have hit the limit where the seller is asking for nothing in return.  When this
-    *  happens we must refund any balance back to the seller, it is too small to be
-    *  sold at the sale price.
-    */
-   const limit_order_object* left_over = db().find(result);
-   if( left_over && new_order_object.amount_to_receive().amount == 0 && new_order_object.for_sale > 0 )
-   {
-      wlog( "TIME TO REFUND" );
-      wdump( (left_over->amount_for_sale()) );
-      adjust_balance( _seller, _sell_asset, new_order_object.amount_for_sale().amount );
-
-      if( _sell_asset->id == asset_id_type() )
-      {
-         const auto& balances = _seller->balances(db());
-         db().modify( balances, [&]( account_balance_object& b ){
-              b.total_core_in_orders -= new_order_object.for_sale;
-         });
-      }
-      db().remove( new_order_object );
-   }
 
    apply_delta_balances();
    apply_delta_fee_pools();
