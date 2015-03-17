@@ -274,7 +274,8 @@ void generic_evaluator::pay_order( const account_object& receiver, const asset& 
 {
    const auto& balances = receiver.balances(db());
    db().modify( balances, [&]( account_balance_object& b ){
-         if( pays.asset_id == asset_id_type() ) b.total_core_in_orders -= pays.amount;
+         if( pays.asset_id == asset_id_type() )
+            b.total_core_in_orders -= pays.amount;
          b.add_balance( receives );
    });
 
@@ -288,7 +289,7 @@ void generic_evaluator::pay_order( const account_object& receiver, const asset& 
 
 bool generic_evaluator::fill_order( const limit_order_object& order, const asset& pays, const asset& receives )
 {
-   wdump( (order)(pays)(receives) );
+   //wdump( (order)(pays)(receives) );
    assert( order.amount_for_sale().asset_id == pays.asset_id );
    assert( pays.asset_id != receives.asset_id );
 
@@ -331,7 +332,13 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
    auto buyer_to_collateral  = receives - issuer_fees;
 
    if( receives.asset_id == asset_id_type() ) 
+   {
+      const auto& balances = seller.balances(db());
+      db().modify( balances, [&]( account_balance_object& b ){
+             b.total_core_in_orders += receives.amount;
+      });
       adjust_votes( seller.delegate_votes, buyer_to_collateral.amount );
+   }
 
    bool filled = pays == order.amount_for_sale();
 

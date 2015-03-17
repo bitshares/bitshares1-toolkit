@@ -33,7 +33,9 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
    //wdump( (seller_balance)(op) );
    db().modify( seller_balance, [&]( account_balance_object& bal ){
          if( op.amount_to_sell.asset_id == asset_id_type() )
+         {
             bal.total_core_in_orders += op.amount_to_sell.amount;
+         }
          bal.sub_balance( op.amount_to_sell );
    });
 

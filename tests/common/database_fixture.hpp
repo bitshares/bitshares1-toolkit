@@ -54,11 +54,13 @@ struct database_fixture {
       share_type reported_core_in_orders;
 
       for( const account_balance_object& a : balance_index )
+      {
          for( const auto& balance : a.balances )
          {
             total_balances[balance.first] += balance.second;
-            reported_core_in_orders += a.total_core_in_orders;
          }
+         reported_core_in_orders += a.total_core_in_orders;
+      }
       for( const limit_order_object& o : db.get_index_type<limit_order_index>().indices() )
       {
          auto for_sale = o.amount_for_sale();
@@ -90,7 +92,7 @@ struct database_fixture {
          //wdump( (item.first(db).dynamic_asset_data_id(db).current_supply)(item.second) );
          BOOST_CHECK(item.first(db).dynamic_asset_data_id(db).current_supply == item.second);
       }
-      wdump( (core_in_orders)(reported_core_in_orders) );
+      // wdump( (core_in_orders)(reported_core_in_orders) );
       BOOST_CHECK( core_in_orders == reported_core_in_orders );
 
       //wdump( (core_asset_data.current_supply)(total_balances[asset_id_type()]) );
