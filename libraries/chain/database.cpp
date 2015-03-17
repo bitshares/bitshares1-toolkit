@@ -712,7 +712,6 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
                 }
             }
          }
-         ilog("done");
          return;
       }
    }

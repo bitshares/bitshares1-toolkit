@@ -21,6 +21,7 @@ object_id_type short_order_create_evaluator::do_evaluate( const short_order_crea
    FC_ASSERT( quote_asset.id == base_asset.short_backing_asset );
    _seller = fee_paying_account;
    _receive_asset = &quote_asset;
+   _sell_asset    = &base_asset;
 
    // TODO: FC_ASSERT( op.initial_collateral_ratio >= CURRENT_INIT_COLLATERAL_RATIO_REQUIREMENTS )
    // TODO: FC_ASSERT( op.maintenance_collateral_ratio >= CURRENT_INIT_COLLATERAL_RATIO_REQUIREMENTS )
@@ -45,7 +46,16 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
        obj.initial_collateral_ratio     = op.initial_collateral_ratio;
        obj.maintenance_collateral_ratio = op.maintenance_collateral_ratio;
    });
-   auto new_id = new_order_object.id;
+   short_order_id_type new_id = new_order_object.id;
+
+   check_call_orders(*_sell_asset);
+
+   if( !db().find(new_id) ) // then we were filled by call order
+   {
+      apply_delta_balances();
+      apply_delta_fee_pools();
+      return new_id;
+   }
    
    if( op.collateral.asset_id == asset_id_type() )
    {
@@ -67,18 +77,20 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
    // TODO: limit max_price by asset properties. 
    auto itr = price_idx.lower_bound( _receive_asset->amount(0) / op.amount_to_sell );
    auto end = price_idx.end();
+   /*
    if( itr == end ) elog( "no orders found" );
    else 
    {
       wdump( (itr->sell_price)(max_price) );
       wdump( (itr->sell_price.to_real())(max_price.to_real()) );
    }
+   */
 
 
    while( itr != end && itr->sell_price >= max_price )
    {
-      wdump( (itr->sell_price)(max_price) );
-      wdump( (itr->sell_price.to_real())(max_price.to_real()) );
+      //wdump( (itr->sell_price)(max_price) );
+      //wdump( (itr->sell_price.to_real())(max_price.to_real()) );
       auto old_itr = itr;
       ++itr;
       if( match( *old_itr, new_order_object, old_itr->sell_price ) != 1 )
