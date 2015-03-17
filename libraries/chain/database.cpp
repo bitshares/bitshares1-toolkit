@@ -210,6 +210,7 @@ void database::initialize_indexes()
    add_index< primary_index< simple_index< account_debt_object            >> >();
    add_index< primary_index< simple_index< asset_dynamic_data_object      >> >();
    add_index< primary_index< flat_index<   delegate_vote_object           >> >();
+   add_index< primary_index< flat_index<   delegate_feeds_object           >> >();
    add_index< primary_index< flat_index<   block_summary_object           >> >();
 }
 

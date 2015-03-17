@@ -10,7 +10,7 @@ namespace bts { namespace chain {
     *  @brief Maintains global state information (delegate list, current fees)
     *
     *  This is an implementation detail.  The values provided here are the
-    *  median values of the delegate objects and they are updated on a 
+    *  median values of the delegate objects and they are updated on a
     *  limited basis.  Active delegates are updated once per round and the
     *  other properties are updated once per day.
     */
@@ -23,7 +23,7 @@ namespace bts { namespace chain {
          vector<delegate_id_type>              active_delegates; // updated once per round
          fee_schedule_type                     current_fees; // indexed by fee_type, median of active delegate fee schedules
          uint8_t                               block_interval                = BTS_DEFAULT_BLOCK_INTERVAL; // seconds
-         uint32_t                              maintenance_interval          = BTS_DEFAULT_MAITENANCE_INTERVAL;
+         uint32_t                              maintenance_interval          = BTS_DEFAULT_maintenance_INTERVAL;
          uint32_t                              maximum_transaction_size      = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
          uint32_t                              maximum_block_size            = BTS_DEFAULT_MAX_BLOCK_SIZE;
          uint32_t                              maximum_undo_history          = BTS_DEFAULT_MAX_UNDO_HISTORY;
@@ -35,7 +35,7 @@ namespace bts { namespace chain {
     *  @brief Maintains global state information (delegate list, current fees)
     *
     *  This is an implementation detail.  The values provided here are the
-    *  median values of the delegate objects and they are updated on a 
+    *  median values of the delegate objects and they are updated on a
     *  limited basis.  Active delegates are updated once per round and the
     *  other properties are updated once per day.
     */
@@ -51,13 +51,13 @@ namespace bts { namespace chain {
          time_point_sec    time;
          delegate_id_type  current_delegate;
    };
-}} 
+}}
 
 
-FC_REFLECT_DERIVED( bts::chain::dynamic_global_property_object, (bts::chain::object), 
+FC_REFLECT_DERIVED( bts::chain::dynamic_global_property_object, (bts::chain::object),
                     (random)(head_block_number)(head_block_id)(time)(current_delegate) )
 
-FC_REFLECT_DERIVED( bts::chain::global_property_object, (bts::chain::object), 
+FC_REFLECT_DERIVED( bts::chain::global_property_object, (bts::chain::object),
                     (active_delegates)
                     (current_fees)
                     (block_interval)

@@ -151,27 +151,31 @@ void account_create_operation::validate()const
 }
 
 
-share_type account_publish_feeds_operation::calculate_fee( const fee_schedule_type& schedule )const
+share_type delegate_publish_feeds_operation::calculate_fee( const fee_schedule_type& schedule )const
 {
    auto bts_fee_required = schedule.at( publish_feed_fee_type );
+   bts_fee_required *= feeds.size();
    return bts_fee_required;
 }
 
-void account_publish_feeds_operation::validate()const
+void delegate_publish_feeds_operation::validate()const
 {
+   FC_ASSERT( feeds.size() > 0 );
    FC_ASSERT( fee.amount >= 0 );
    optional<price_feed> prev;
-   for( auto item : feeds )
+   for( const price_feed& item : feeds )
    {
-      FC_ASSERT( item.rate.base.amount >= share_type(0) ); // prevent divide by 0
-      FC_ASSERT( item.rate.quote.amount >= share_type(0) ); // prevent divide by 0
-      FC_ASSERT( item.required_maitenance_collateral < item.required_initial_collateral );
-      FC_ASSERT( item.required_maitenance_collateral >= 1000 );
+      FC_ASSERT( item.call_limit.base.amount > share_type(0) ); // prevent divide by 0
+      FC_ASSERT( item.call_limit.quote.amount > share_type(0) ); // prevent divide by 0
+      FC_ASSERT( item.call_limit.base.asset_id == item.short_limit.base.asset_id );
+      FC_ASSERT( item.call_limit.quote.asset_id == item.short_limit.quote.asset_id );
+      FC_ASSERT( item.required_maintenance_collateral < item.required_initial_collateral );
+      FC_ASSERT( item.required_maintenance_collateral >= 1000 );
       if( prev )
-      {
-         FC_ASSERT( !(prev->rate.base.asset_id == item.rate.base.asset_id && prev->rate.quote.asset_id == item.rate.quote.asset_id) );
-      }
-      else prev = item;
+         //Verify uniqueness and sortedness.
+         FC_ASSERT( std::tie(prev->call_limit.base.asset_id, prev->call_limit.quote.asset_id) <
+                    std::tie(item.call_limit.base.asset_id, item.call_limit.quote.asset_id) );
+      prev = item;
    }
 }
 

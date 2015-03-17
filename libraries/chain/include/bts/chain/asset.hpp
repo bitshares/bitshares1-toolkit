@@ -76,17 +76,27 @@ namespace bts { namespace chain {
    struct price_feed
    {
       /**
-       * A fair market exchange rate between debt and collateral
+       * This is the lowest price at which margin positions will be forced to sell their collateral. This does not
+       * directly affect the price at which margin positions will be called; it is only a safety to prevent calls at
+       * unreasonable prices.
        */
-      price rate;
+      price call_limit;
+      /**
+       * Short orders will only be matched against bids above this price.
+       */
+      price short_limit;
+      /**
+       * Maximum number of seconds margin positions should be able to remain open.
+       */
+      uint32_t max_margin_period_sec;
 
       /**
-       *  Required maitenance collateral is defined
+       *  Required maintenance collateral is defined
        *  as a fixed point number with a maximum value of 10.000
-       *  and a minimum value of 1.000.  
+       *  and a minimum value of 1.000.
        *
-       *  This value must be greater than required_maitenance_collateral or
-       *  a margin call would be triggered immediately. 
+       *  This value must be greater than required_maintenance_collateral or
+       *  a margin call would be triggered immediately.
        *
        *  Default requirement is $2 of collateral per $1 of debt based
        *  upon the premise that both parties to every trade should bring
@@ -95,29 +105,29 @@ namespace bts { namespace chain {
       uint16_t required_initial_collateral = 2000;
 
       /**
-       *  Required maitenance collateral is defined
+       *  Required maintenance collateral is defined
        *  as a fixed point number with a maximum value of 10.000
-       *  and a minimum value of 1.000.  
-       *  
+       *  and a minimum value of 1.000.
+       *
        *  A black swan event occurs when value_of_collateral equals
        *  value_of_debt, to avoid a black swan a margin call is
-       *  executed when value_of_debt * required_maitenance_collateral 
+       *  executed when value_of_debt * required_maintenance_collateral
        *  equals value_of_collateral using rate.
        *
        *  Default requirement is $1.75 of collateral per $1 of debt
        */
-      uint16_t required_maitenance_collateral = 1750;
+      uint16_t required_maintenance_collateral = 1750;
 
       friend bool operator < ( const price_feed& a, const price_feed& b )
       {
-         return std::tie( a.rate, a.required_initial_collateral, a.required_maitenance_collateral ) <
-                std::tie( b.rate, b.required_initial_collateral, b.required_maitenance_collateral );
+         return std::tie( a.call_limit.base.asset_id, a.call_limit.quote.asset_id ) <
+                std::tie( b.call_limit.base.asset_id, b.call_limit.quote.asset_id );
       }
 
       friend bool operator == ( const price_feed& a, const price_feed& b )
       {
-         return std::tie( a.rate, a.required_initial_collateral, a.required_maitenance_collateral ) == 
-                std::tie( b.rate, b.required_initial_collateral, b.required_maitenance_collateral );
+         return std::tie( a.call_limit.base.asset_id, a.call_limit.quote.asset_id ) ==
+                std::tie( b.call_limit.base.asset_id, b.call_limit.quote.asset_id );
       }
    };
 
@@ -125,4 +135,4 @@ namespace bts { namespace chain {
 
 FC_REFLECT( bts::chain::asset, (amount)(asset_id) )
 FC_REFLECT( bts::chain::price, (base)(quote) )
-FC_REFLECT( bts::chain::price_feed, (rate)(required_initial_collateral)(required_maitenance_collateral) )
+FC_REFLECT( bts::chain::price_feed, (call_limit)(required_initial_collateral)(required_maintenance_collateral) )

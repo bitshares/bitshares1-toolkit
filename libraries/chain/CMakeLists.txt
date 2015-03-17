@@ -14,6 +14,7 @@ add_library( bts_chain
              transfer_evaluator.cpp
              asset_evaluator.cpp
              account_object.cpp
+             delegate_object.cpp
              key_object.cpp
              index.cpp
              types.cpp
