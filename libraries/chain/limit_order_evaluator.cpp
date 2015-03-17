@@ -47,9 +47,9 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
    });
    limit_order_id_type result = new_order_object.id; // save this because we may remove the object by filling it
 
-   check_call_orders(*_sell_asset);
-   check_call_orders(*_receive_asset);
-   if( !db().find(result) ) // then we were filled by call order
+   bool called_some = check_call_orders(*_sell_asset);
+   called_some |= check_call_orders(*_receive_asset);
+   if( called_some && !db().find(result) ) // then we were filled by call order
    {
       apply_delta_balances();
       apply_delta_fee_pools();
@@ -73,8 +73,22 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
    auto limit_end = limit_price_idx.lower_bound( _receive_asset->amount(BTS_MAX_SHARE_SUPPLY) / asset(1,op.amount_to_sell.asset_id) );
 
    bool filled = false;
-   if( new_order_object.amount_to_receive().asset_id(db()).is_market_issued() )
+   //if( new_order_object.amount_to_receive().asset_id(db()).is_market_issued() )
+   if( _receive_asset->is_market_issued() )
    { // then we may also match against shorts
+      if( _receive_asset->short_backing_asset == asset_id_type() )
+      {
+         bool converted_some = convert_fees( *_receive_asset );
+         // just incase the new order was completely filled from fees
+         if( converted_some && !db().find(result) ) // then we were filled by call order
+         {
+            apply_delta_balances();
+            apply_delta_fee_pools();
+            return result;
+         }
+      }
+
+
       const auto& short_order_idx = db().get_index_type<short_order_index>();
       const auto& short_price_idx = short_order_idx.indices().get<by_price>();
 

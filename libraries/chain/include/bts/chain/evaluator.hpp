@@ -58,7 +58,8 @@ namespace bts { namespace chain {
          bool fill_order( const short_order_object& order, const asset& pays, const asset& receives );
          bool fill_order( const call_order_object& order, const asset& pays, const asset& receives );
 
-         void check_call_orders( const asset_object& mia );
+         bool convert_fees( const asset_object& mia );
+         bool check_call_orders( const asset_object& mia );
 
 
          // helpers to fill_order

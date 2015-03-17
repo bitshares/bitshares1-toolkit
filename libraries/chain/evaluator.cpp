@@ -238,9 +238,9 @@ int generic_evaluator::match( const limit_order_object& core, const short_order_
 /**
  *  
  */
-void generic_evaluator::check_call_orders( const asset_object& mia )
+bool generic_evaluator::check_call_orders( const asset_object& mia )
 {
-    if( !mia.is_market_issued() ) return;
+    if( !mia.is_market_issued() ) return false;
 
     const call_order_index& call_index = db().get_index_type<call_order_index>();
     const auto& call_price_index = call_index.indices().get<by_price>();
@@ -254,6 +254,7 @@ void generic_evaluator::check_call_orders( const asset_object& mia )
     auto call_itr = call_price_index.lower_bound( mia.amount(0) / asset(1,mia.short_backing_asset) );
     auto call_end = call_price_index.lower_bound( mia.amount(BTS_MAX_SHARE_SUPPLY) / asset(1,mia.short_backing_asset) );
 
+    return false;
 }
 
 
@@ -352,6 +353,16 @@ bool generic_evaluator::fill_order( const limit_order_object& order, const asset
       }
       return false;
    }
+}
+
+/**
+ *  For Market Issued assets Managed by Delegates, any fees collected in the MIA need
+ *  to be sold and converted into CORE by accepting the best offer on the table.
+ */
+bool generic_evaluator::convert_fees( const asset_object& mia )
+{
+   if( mia.issuer != account_id_type() ) return false;
+   return false;
 }
 
 
