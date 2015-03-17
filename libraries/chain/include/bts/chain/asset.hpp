@@ -49,6 +49,9 @@ namespace bts { namespace chain {
 
    struct price
    {
+      price(const asset& base = asset(), const asset quote = asset())
+         : base(base),quote(quote){}
+
       asset base;
       asset quote;
 
@@ -102,7 +105,7 @@ namespace bts { namespace chain {
        *  upon the premise that both parties to every trade should bring
        *  equal value to the table.
        */
-      uint16_t required_initial_collateral = 2000;
+      uint16_t required_initial_collateral = BTS_DEFAULT_INITIAL_COLLATERAL_RATIO;
 
       /**
        *  Required maintenance collateral is defined
@@ -116,7 +119,7 @@ namespace bts { namespace chain {
        *
        *  Default requirement is $1.75 of collateral per $1 of debt
        */
-      uint16_t required_maintenance_collateral = 1750;
+      uint16_t required_maintenance_collateral = BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO;
 
       friend bool operator < ( const price_feed& a, const price_feed& b )
       {
@@ -135,4 +138,5 @@ namespace bts { namespace chain {
 
 FC_REFLECT( bts::chain::asset, (amount)(asset_id) )
 FC_REFLECT( bts::chain::price, (base)(quote) )
-FC_REFLECT( bts::chain::price_feed, (call_limit)(required_initial_collateral)(required_maintenance_collateral) )
+FC_REFLECT( bts::chain::price_feed, (call_limit)(short_limit)(max_margin_period_sec)
+            (required_initial_collateral)(required_maintenance_collateral) )

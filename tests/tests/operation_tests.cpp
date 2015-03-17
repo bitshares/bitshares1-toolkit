@@ -249,7 +249,9 @@ BOOST_AUTO_TEST_CASE( create_mia )
 {
    try {
       const asset_object& bitusd = create_bitasset( "BITUSD" );
-      (void)bitusd;
+      BOOST_CHECK(bitusd.symbol == "BITUSD");
+      BOOST_CHECK(bitusd.short_backing_asset == asset_id_type());
+      BOOST_CHECK(bitusd.dynamic_asset_data_id(db).current_supply == 0);
       BOOST_REQUIRE_THROW( create_bitasset("BITUSD"), fc::exception);
    }catch ( const fc::exception& e )
    {
@@ -268,7 +270,7 @@ BOOST_AUTO_TEST_CASE( create_short_test )
       BOOST_REQUIRE( first_short != nullptr );
       BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 200 ) ) ); // 1:2 price
       BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 300 ) ) ); // 1:3 price
-      BOOST_REQUIRE( shorter_account.balances(db).get_balance( asset_id_type() ).amount == 10000-600 ); 
+      BOOST_REQUIRE( shorter_account.balances(db).get_balance( asset_id_type() ).amount == 10000-600 );
       print_short_market("","");
    }catch ( const fc::exception& e )
    {
@@ -286,10 +288,10 @@ BOOST_AUTO_TEST_CASE( cancel_short_test )
       BOOST_REQUIRE( first_short != nullptr );
       BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 200 ) ) ); // 1:2 price
       BOOST_REQUIRE( create_short( shorter_account, bitusd.amount(100), asset( 300 ) ) ); // 1:3 price
-      BOOST_REQUIRE( shorter_account.balances(db).get_balance( asset_id_type() ).amount == 10000-600 ); 
+      BOOST_REQUIRE( shorter_account.balances(db).get_balance( asset_id_type() ).amount == 10000-600 );
      // print_short_market("","");
       auto refund = cancel_short_order( *first_short );
-      BOOST_REQUIRE( shorter_account.balances(db).get_balance( asset_id_type() ).amount == 10000-500 ); 
+      BOOST_REQUIRE( shorter_account.balances(db).get_balance( asset_id_type() ).amount == 10000-500 );
       FC_ASSERT( refund == asset(100) );
      // print_short_market("","");
    }catch ( const fc::exception& e )
@@ -713,5 +715,64 @@ BOOST_AUTO_TEST_CASE( cancel_limit_order_test )
  }
 }
 
+BOOST_AUTO_TEST_CASE( delegate_feeds )
+{
+   try {
+      INVOKE( create_mia );
+      const asset_object& bit_usd = get_asset("BITUSD");
+      const vector<delegate_id_type>& active_delegates = db.get_global_properties().active_delegates;
+      BOOST_REQUIRE(active_delegates.size() == 10);
+
+      delegate_publish_feeds_operation op({active_delegates[0], asset()});
+      op.feeds.insert(price_feed());
+      // Supposing 1 core asset is worth 2 cents... Don't call if it hasn't reached 1 cent
+      op.feeds.begin()->call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(1));
+      // Block shorts at more than 3 cents
+      op.feeds.begin()->short_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(3));
+      // We'll expire margins after a month
+      op.feeds.begin()->max_margin_period_sec = fc::days(30).to_seconds();
+      // Accept defaults for required collateral
+      trx.operations.emplace_back(op);
+      db.push_transaction(trx, ~0);
+
+      BOOST_CHECK(bit_usd.current_feed.call_limit.to_real() == BTS_BLOCKCHAIN_PRECISION);
+      BOOST_CHECK(bit_usd.current_feed.short_limit.to_real() == BTS_BLOCKCHAIN_PRECISION / 3.0);
+      BOOST_CHECK(bit_usd.current_feed.max_margin_period_sec == fc::days(30).to_seconds());
+      BOOST_CHECK(bit_usd.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
+      BOOST_CHECK(bit_usd.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);
+
+      op.delegate = active_delegates[1];
+      op.feeds.begin()->call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(2));
+      op.feeds.begin()->short_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(2));
+      op.feeds.begin()->max_margin_period_sec = fc::days(10).to_seconds();
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+
+      BOOST_CHECK(bit_usd.current_feed.call_limit.to_real() == BTS_BLOCKCHAIN_PRECISION);
+      BOOST_CHECK(bit_usd.current_feed.short_limit.to_real() == BTS_BLOCKCHAIN_PRECISION / 2.0);
+      BOOST_CHECK(bit_usd.current_feed.max_margin_period_sec == fc::days(30).to_seconds());
+      BOOST_CHECK(bit_usd.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
+      BOOST_CHECK(bit_usd.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);
+
+      op.delegate = active_delegates[2];
+      op.feeds.begin()->call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(1));
+      op.feeds.begin()->short_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(4));
+      op.feeds.begin()->max_margin_period_sec = fc::days(100).to_seconds();
+      // But this delegate is an idiot.
+      op.feeds.begin()->required_initial_collateral = 1001;
+      op.feeds.begin()->required_maintenance_collateral = 1000;
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+
+      BOOST_CHECK(bit_usd.current_feed.call_limit.to_real() == BTS_BLOCKCHAIN_PRECISION);
+      BOOST_CHECK(bit_usd.current_feed.short_limit.to_real() == BTS_BLOCKCHAIN_PRECISION / 3.0);
+      BOOST_CHECK(bit_usd.current_feed.max_margin_period_sec == fc::days(30).to_seconds());
+      BOOST_CHECK(bit_usd.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
+      BOOST_CHECK(bit_usd.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);
+   } catch (const fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
 
 BOOST_AUTO_TEST_SUITE_END()

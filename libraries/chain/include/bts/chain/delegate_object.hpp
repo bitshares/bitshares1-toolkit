@@ -62,7 +62,7 @@ namespace bts { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_delegate_feeds_object_type;
 
-         optional<price_feed> get_feed( asset_id_type quote, asset_id_type base )const;
+         const price_feed* get_feed(asset_id_type base , asset_id_type quote)const;
          price_feed& set_feed( const price_feed& p );
 
          flat_set<price_feed> feeds;
