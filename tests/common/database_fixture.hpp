@@ -280,6 +280,67 @@ struct database_fixture {
       ss << a.asset_id(db).symbol;
       return ss.str();
    }
+   void print_short_order( const short_order_object& cur )
+   {
+      std::cout << std::setw(10) << cur.seller(db).name << " ";
+      std::cout << std::setw(10) << "SHORT" << " ";
+      std::cout << std::setw(16) << pretty( cur.amount_for_sale() ) << " ";
+      std::cout << std::setw(16) << pretty( cur.amount_to_receive() ) << " ";
+      std::cout << std::setw(16) << cur.short_price.to_real() << " ";
+   }
+
+   void print_limit_order( const limit_order_object& cur )
+   {
+      std::cout << std::setw(10) << cur.seller(db).name << " ";
+      std::cout << std::setw(10) << "LIMIT" << " ";
+      std::cout << std::setw(16) << pretty( cur.amount_for_sale() ) << " ";
+      std::cout << std::setw(16) << pretty( cur.amount_to_receive() ) << " ";
+      std::cout << std::setw(16) << cur.sell_price.to_real() << " ";
+   }
+
+   void print_joint_market( const string& syma, const string&  symb )
+   {
+      cout << std::fixed;
+      cout.precision(5);
+
+      cout << std::setw(10) << std::left  << "NAME"      << " ";
+      cout << std::setw(10) << std::right << "TYPE"      << " ";
+      cout << std::setw(16) << std::right << "FOR SALE"  << " ";
+      cout << std::setw(16) << std::right << "FOR WHAT"  << " ";
+      cout << std::setw(16) << std::right << "PRICE"     << "\n";
+      cout << string(70, '=');
+
+      const auto& limit_idx = db.get_index_type<limit_order_index>();
+      const auto& limit_price_idx = limit_idx.indices().get<by_price>();
+      const auto& short_idx = db.get_index_type<short_order_index>();
+      const auto& short_price_idx = short_idx.indices().get<by_price>();
+
+      auto limit_itr = limit_price_idx.begin();
+      auto short_itr = short_price_idx.begin();
+      while( true )
+      {
+         std::cout << std::endl;
+         if( limit_itr != limit_price_idx.end() )
+         {
+            if( short_itr != short_price_idx.end() && limit_itr->sell_price > short_itr->short_price )
+            { 
+               print_short_order( *short_itr );
+               ++short_itr;
+            }
+            else // print the limit
+            {
+               print_limit_order( *limit_itr );
+               ++limit_itr;
+            }
+         }
+         else if( short_itr != short_price_idx.end() )
+         { 
+            print_short_order( *short_itr );
+            ++short_itr;
+         }
+         else break;
+      }
+   }
 
    void print_short_market( const string& syma, const string&  symb )
    {

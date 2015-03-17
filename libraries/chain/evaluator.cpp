@@ -196,7 +196,7 @@ int generic_evaluator::match( const limit_order_object& usd, const limit_order_o
 
 int generic_evaluator::match( const limit_order_object& core, const short_order_object& usd, const price& match_price )
 { try {
-   wdump( (core.sell_price.to_real())( (~usd.short_price).to_real()) );
+   //wdump( (core.sell_price.to_real())( (~usd.short_price).to_real()) );
    assert( core.sell_price  <= ~usd.short_price );
    assert( ~usd.short_price >= core.sell_price );
    assert( usd.get_collateral().asset_id  == core.amount_for_sale().asset_id );
@@ -229,8 +229,8 @@ int generic_evaluator::match( const limit_order_object& core, const short_order_
    // TODO: test a case where the order price is so wacky that trade_amount == 0 or pays/receives amount == 0
 
    int result = 0;
-   result |= fill_order( usd, usd_pays, usd_receives );
-   result |= fill_order( core, core_pays, core_receives ) << 1;
+   result |= fill_order( usd, usd_pays, usd_receives ) << 1;
+   result |= fill_order( core, core_pays, core_receives ) << 0;
    return result;
 } FC_CAPTURE_AND_RETHROW( (core)(usd)(match_price) ) }
 
@@ -289,7 +289,7 @@ void generic_evaluator::pay_order( const account_object& receiver, const asset& 
 
 bool generic_evaluator::fill_order( const limit_order_object& order, const asset& pays, const asset& receives )
 {
-   //wdump( (order)(pays)(receives) );
+//   wdump( (order)(pays)(receives) );
    assert( order.amount_for_sale().asset_id == pays.asset_id );
    assert( pays.asset_id != receives.asset_id );
 
@@ -317,7 +317,7 @@ bool generic_evaluator::fill_order( const limit_order_object& order, const asset
 
 bool generic_evaluator::fill_order( const short_order_object& order, const asset& pays, const asset& receives )
 { try {
-   idump( (order)(pays)(receives) );
+//   idump( (order)(pays)(receives) );
    assert( order.amount_for_sale().asset_id == pays.asset_id );
    assert( pays.asset_id != receives.asset_id );
 
