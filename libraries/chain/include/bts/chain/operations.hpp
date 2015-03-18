@@ -66,9 +66,9 @@ namespace bts { namespace chain {
     * configured with the median of each value.
     *
     * The feeds in the operation each contain two prices: a call price limit and a short price limit. For each feed,
-    * the quote and base asset IDs of one price must match those of the other price in that feed. Furthermore, the
-    * quote asset is the market-issued asset this feed is for (thus the quote asset's issuer must be genesis,
-    * indicating that it is a delegate-fed asset), and the base asset must be the quote asset's short backing asset.
+    * the call price is structured as (collateral asset) / (debt asset) and the short price is structured as (asset for
+    * sale) / (collateral asset). Note that the asset IDs are opposite to eachother, so if we're publishing a feed for
+    * USD, the call limit price will be CORE/USD and the short limit price will be USD/CORE.
     */
    struct delegate_publish_feeds_operation
    {

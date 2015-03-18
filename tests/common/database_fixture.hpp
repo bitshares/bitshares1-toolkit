@@ -6,6 +6,7 @@
 #include <bts/chain/short_order_object.hpp>
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
+#include <bts/chain/time.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -107,6 +108,7 @@ struct database_fixture {
    }
    ~database_fixture(){
       verify_asset_supplies();
+      shutdown_ntp_time();
    }
 
    account_create_operation make_account( const std::string& name = "nathan", key_id_type key = key_id_type() ) {

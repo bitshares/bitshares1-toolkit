@@ -10,6 +10,14 @@ namespace bts { namespace chain {
     */
    struct authority
    {
+      authority(){}
+      template<class ...Args>
+      authority(uint32_t threshhold, Args... auths)
+         : weight_threshold(threshhold)
+      {
+         add_authorities(auths...);
+      }
+
       enum classification
       {
          /** the key that is authorized to change owner, active, and voting keys */
@@ -25,6 +33,17 @@ namespace bts { namespace chain {
       void add_authority( account_id_type k, weight_type w )
       {
          auths[k] = w;
+      }
+      template<typename AuthType>
+      void add_authorities(AuthType k, weight_type w)
+      {
+         add_authority(k, w);
+      }
+      template<typename AuthType, class ...Args>
+      void add_authorities(AuthType k, weight_type w, Args... auths)
+      {
+         add_authority(k, w);
+         add_authorities(auths...);
       }
       uint32_t                             weight_threshold = 0;
       flat_map<object_id_type,weight_type> auths;

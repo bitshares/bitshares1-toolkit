@@ -98,7 +98,7 @@ share_type account_update_operation::calculate_fee( const fee_schedule_type& sch
 }
 void account_update_operation::validate()const
 {
-   FC_ASSERT( fee.amount > 0 );
+   FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( owner || active || voting_key || memo_key || vote );
 
    if( vote && vote->size() > 1 )
@@ -167,8 +167,8 @@ void delegate_publish_feeds_operation::validate()const
    {
       FC_ASSERT( item.call_limit.base.amount > share_type(0) ); // prevent divide by 0
       FC_ASSERT( item.call_limit.quote.amount > share_type(0) ); // prevent divide by 0
-      FC_ASSERT( item.call_limit.base.asset_id == item.short_limit.base.asset_id );
-      FC_ASSERT( item.call_limit.quote.asset_id == item.short_limit.quote.asset_id );
+      FC_ASSERT( item.call_limit.base.asset_id == item.short_limit.quote.asset_id );
+      FC_ASSERT( item.call_limit.quote.asset_id == item.short_limit.base.asset_id );
       FC_ASSERT( item.required_maintenance_collateral < item.required_initial_collateral );
       FC_ASSERT( item.required_maintenance_collateral >= 1000 );
       if( prev )
