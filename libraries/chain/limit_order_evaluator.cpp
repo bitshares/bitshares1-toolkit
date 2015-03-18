@@ -71,9 +71,22 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
 
 
    auto max_price  = ~op.get_price(); //op.min_to_receive / op.amount_to_sell;
-   //auto limit_itr = limit_price_idx.lower_bound( _receive_asset->amount(0) / op.amount_to_sell );
-   auto limit_itr = limit_price_idx.lower_bound( max_price.min() ); 
-   auto limit_end = limit_price_idx.upper_bound( max_price ); 
+   //auto limit_end = reverse(limit_price_idx.lower_bound( max_price ));
+   //auto limit_itr = reverse(limit_price_idx.upper_bound( max_price.max() ));
+   auto limit_itr = limit_price_idx.lower_bound( max_price.max() );
+   auto limit_end = limit_price_idx.upper_bound( max_price );
+   for( auto itr = limit_price_idx.begin(); itr != limit_price_idx.end(); ++itr )
+   {
+      idump((*itr));
+      if( itr == limit_itr ) wdump((*limit_itr));
+      if( itr == limit_end ) edump((*limit_end));
+   }
+
+   for( auto tmp = limit_itr; tmp != limit_end; ++tmp )
+   {
+      assert( tmp != limit_price_idx.end() );
+      wdump((*tmp));
+   }
 
    bool filled = false;
    //if( new_order_object.amount_to_receive().asset_id(db()).is_market_issued() )
@@ -93,21 +106,26 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
       const auto& short_order_idx = db().get_index_type<short_order_index>();
       const auto& sell_price_idx = short_order_idx.indices().get<by_price>();
 
-      auto short_end = reverse(sell_price_idx.lower_bound( max_price ));
-      auto short_itr = reverse(sell_price_idx.upper_bound( max_price.max() ));
+      FC_ASSERT( max_price.max() >= max_price );
+      //auto short_itr = reverse(sell_price_idx.upper_bound( max_price.max() ));
+      //auto short_end = reverse(sell_price_idx.lower_bound( max_price ));
+      auto short_itr = sell_price_idx.lower_bound( max_price.max() );
+      auto short_end = sell_price_idx.upper_bound( max_price );
 
       while( !filled )
       {
          if( limit_itr != limit_end )
          {
-            if( short_itr != short_end && limit_itr->sell_price > short_itr->sell_price )
+            if( short_itr != short_end && limit_itr->sell_price < short_itr->sell_price )
             {
+               ilog( "next short with limits" );
                auto old_short_itr = short_itr;
                ++short_itr;
                filled = (2 != match( new_order_object, *old_short_itr, old_short_itr->sell_price ) );
             }
             else 
             {
+               ilog( "next limit" );
                auto old_limit_itr = limit_itr;
                ++limit_itr;
                filled = (2 != match( new_order_object, *old_limit_itr, old_limit_itr->sell_price ) );
@@ -115,6 +133,7 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
          } 
          else if( short_itr != short_end  )
          {
+            wlog( "next short no limits left" );
             auto old_short_itr = short_itr;
             ++short_itr;
             filled = (2 != match( new_order_object, *old_short_itr, old_short_itr->sell_price ) );

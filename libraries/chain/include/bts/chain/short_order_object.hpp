@@ -68,6 +68,7 @@ namespace bts { namespace chain {
         price            call_price;
   };
 
+
   struct by_id;
   struct by_price;
   typedef multi_index_container<
@@ -79,7 +80,8 @@ namespace bts { namespace chain {
            composite_key< short_order_object,
               member< short_order_object, price, &short_order_object::sell_price>,
               member< object, object_id_type, &object::id>
-           >
+           >,
+           composite_key_compare< std::greater<price>, std::less<object_id_type> >
         >
      >
   > short_order_multi_index_type;

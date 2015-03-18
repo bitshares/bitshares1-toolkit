@@ -72,8 +72,10 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
    auto min_limit_price  = ~op.sell_price();
    //wdump( (min_limit_price.to_real()) );
 
-   auto itr = limit_price_idx.lower_bound( min_limit_price );
-   auto end = limit_price_idx.upper_bound( min_limit_price.max() );
+   //auto itr = limit_price_idx.lower_bound( min_limit_price );
+   //auto end = limit_price_idx.upper_bound( min_limit_price.max() );
+   auto itr = limit_price_idx.lower_bound( min_limit_price.max() );
+   auto end = limit_price_idx.upper_bound( min_limit_price );
 
    while( itr != end )
    {

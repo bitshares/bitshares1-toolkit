@@ -396,6 +396,11 @@ struct database_fixture {
          ++cur;
       }
    }
+
+   int64_t get_balance( const account_object& account, const asset_object& a )const
+   {
+      return account.balances(db).get_balance( a.id ).amount.value;
+   }
 };
 
 } }

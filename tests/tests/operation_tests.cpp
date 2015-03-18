@@ -499,96 +499,39 @@ BOOST_AUTO_TEST_CASE( transfer_uia )
    }
 }
 
-BOOST_AUTO_TEST_CASE( create_buy_uia_exact_match )
-{ try {
-   INVOKE( issue_uia );
-   const asset_object&   test_asset     = get_asset( "TEST" );
-   const account_object& nathan_account = get_account( "nathan" );
-   const account_object& buyer_account  = create_account( "buyer" );
-
-   transfer( genesis_account(db), buyer_account, asset( 10000 ) );
-
-   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == asset( 10000 ) );
-   for( uint32_t i = 0; i < 3; ++i )
-      create_sell_order( buyer_account, asset(1000), test_asset.amount(100+450*i) );
-   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == (asset( 7000 )) );
-   //print_market("","");
-
-   for( uint32_t i = 0; i < 3; ++i )
-      create_sell_order( nathan_account, test_asset.amount(1000), asset(100+450*i) );
-   //print_market("","");
-
-   BOOST_CHECK( buyer_account.balances(db).get_balance(test_asset.id) == test_asset.amount(990) );
-   BOOST_CHECK( nathan_account.balances(db).get_balance(asset_id_type()) == asset(1000) );
-   BOOST_CHECK( test_asset.dynamic_asset_data_id(db).accumulated_fees.value == 10 );
- }
- catch ( const fc::exception& e )
- {
-    elog( "${e}", ("e", e.to_detail_string() ) );
-    throw;
- }
-}
-
-BOOST_AUTO_TEST_CASE( create_buy_uia_partial_match_new )
-{ try {
-   INVOKE( issue_uia );
-   const asset_object&   test_asset     = get_asset( "TEST" );
-   const account_object& nathan_account = get_account( "nathan" );
-   const account_object& buyer_account  = create_account( "buyer" );
-
-   transfer( genesis_account(db), buyer_account, asset( 10000 ) );
-
-   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == asset( 10000 ) );
-   for( uint32_t i = 0; i < 3; ++i )
-      create_sell_order( buyer_account, asset(1000), test_asset.amount(100+450*i) );
-   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == (asset( 7000 )) );
-
-   for( uint32_t i = 0; i < 3; ++i )
-      BOOST_CHECK(create_sell_order( nathan_account, test_asset.amount(1000*1.1), asset((100+450*i)*1.1) ));
-
-   //print_market( "", "" );
-
-   BOOST_CHECK( buyer_account.balances(db).get_balance(test_asset.id) == test_asset.amount(990) );
-   BOOST_CHECK( nathan_account.balances(db).get_balance(asset_id_type()) == asset(1000) );
-   BOOST_CHECK( test_asset.dynamic_asset_data_id(db).accumulated_fees.value == 10 );
- }
- catch ( const fc::exception& e )
- {
-    elog( "${e}", ("e", e.to_detail_string() ) );
-    throw;
- }
-}
 
 BOOST_AUTO_TEST_CASE( create_buy_uia_multiple_match_new )
 { try {
    INVOKE( issue_uia );
-   const asset_object&   test_asset     = get_asset( "TEST" );
+   const asset_object&   core_asset     = get_asset( "TEST" );
+   const asset_object&   test_asset     = get_asset( BTS_SYMBOL );
    const account_object& nathan_account = get_account( "nathan" );
    const account_object& buyer_account  = create_account( "buyer" );
+   const account_object& seller_account = create_account( "seller" );
 
-   transfer( genesis_account(db), buyer_account, asset( 10000 ) );
+   transfer( genesis_account(db), buyer_account, test_asset.amount( 10000 ) );
+   transfer( nathan_account, seller_account, core_asset.amount(10000) );
 
-   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == asset( 10000 ) );
-   for( uint32_t i = 0; i < 3; ++i )
-      create_sell_order( buyer_account, asset(1000), test_asset.amount(100+450*i) );
-   create_sell_order( buyer_account, asset(500), test_asset.amount(100+450) );
-   create_sell_order( buyer_account, asset(500), test_asset.amount(100+450) );
-   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == (asset( 6000 )) );
+   BOOST_CHECK_EQUAL( get_balance( buyer_account, test_asset ), 10000 );
 
-   for( uint32_t i = 0; i < 2; ++i )
-      BOOST_CHECK(create_sell_order( nathan_account, test_asset.amount(1000*1.1), asset((100+450*i)*1.1) ));
-   BOOST_CHECK(nullptr == create_sell_order( nathan_account, test_asset.amount(1000*1.1), asset((100+450*2)*1.1) ));
+   limit_order_id_type first_id  = create_sell_order( buyer_account, test_asset.amount(100), core_asset.amount(100) )->id;
+   limit_order_id_type second_id = create_sell_order( buyer_account, test_asset.amount(100), core_asset.amount(200) )->id;
+   limit_order_id_type third_id  = create_sell_order( buyer_account, test_asset.amount(100), core_asset.amount(300) )->id;
 
-   //print_market( "", "" );
+   BOOST_CHECK_EQUAL( get_balance( buyer_account, test_asset ), 9700 );
 
-   BOOST_CHECK( buyer_account.balances(db).get_balance(test_asset.id) == test_asset.amount(1090) );
-   BOOST_CHECK( nathan_account.balances(db).get_balance(asset_id_type()) == asset(1000) );
+   print_market( "", "" );
+   auto unmatched = create_sell_order( seller_account, core_asset.amount(300), test_asset.amount(150) );
+   print_market( "", "" );
+   BOOST_CHECK( !db.find( first_id ) );
+   BOOST_CHECK( !db.find( second_id ) );
+   BOOST_CHECK( db.find( third_id ) );
+   if( unmatched ) wdump((*unmatched));
+   BOOST_CHECK( !unmatched );
 
-   /** NOTE: the fee is 10 despite 1% of 1100 being 11 because to orders of size
-    *   550 which result in fees of 5.5 and 5.5 respectively have the .5 truncated
-    *   resulting in 5+5 == 10.
-    */
-   BOOST_CHECK( test_asset.dynamic_asset_data_id(db).accumulated_fees.value == 10 );
+   BOOST_CHECK_EQUAL( get_balance( seller_account, test_asset ), 200 );
+   BOOST_CHECK_EQUAL( get_balance( buyer_account, core_asset ), 297 );
+   BOOST_CHECK_EQUAL( core_asset.dynamic_asset_data_id(db).accumulated_fees.value , 3 );
  }
  catch ( const fc::exception& e )
  {
@@ -597,35 +540,38 @@ BOOST_AUTO_TEST_CASE( create_buy_uia_multiple_match_new )
  }
 }
 
-
-BOOST_AUTO_TEST_CASE( create_buy_uia_partial_match_prior )
+BOOST_AUTO_TEST_CASE( create_buy_exact_match_uia )
 { try {
    INVOKE( issue_uia );
    const asset_object&   test_asset     = get_asset( "TEST" );
+   const asset_object&   core_asset     = get_asset( BTS_SYMBOL );
    const account_object& nathan_account = get_account( "nathan" );
    const account_object& buyer_account  = create_account( "buyer" );
+   const account_object& seller_account = create_account( "seller" );
 
-   transfer( genesis_account(db), buyer_account, asset( 10000 ) );
+   transfer( genesis_account(db), seller_account, asset( 10000 ) );
+   transfer( nathan_account, buyer_account, test_asset.amount(10000) );
 
-   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == asset( 10000 ) );
-   for( uint32_t i = 0; i < 3; ++i )
-      create_sell_order( buyer_account, asset(1000), test_asset.amount(100+450*i) );
-   BOOST_CHECK( buyer_account.balances(db).get_balance(asset_id_type()) == (asset( 7000 )) );
+   BOOST_CHECK_EQUAL( get_balance( buyer_account, test_asset ), 10000 );
 
-   for( uint32_t i = 0; i < 2; ++i )
-      BOOST_CHECK(create_sell_order( nathan_account, test_asset.amount(1000*.9), asset((100+450*i)*.9) ));
-   BOOST_CHECK(! create_sell_order( nathan_account, test_asset.amount(1000*.9), asset((100+450*2)*.9) ));
+   limit_order_id_type first_id  = create_sell_order( buyer_account, test_asset.amount(100), core_asset.amount(100) )->id;
+   limit_order_id_type second_id = create_sell_order( buyer_account, test_asset.amount(100), core_asset.amount(200) )->id;
+   limit_order_id_type third_id  = create_sell_order( buyer_account, test_asset.amount(100), core_asset.amount(300) )->id;
 
-   //print_market( "", "" );
-   /*
-   wdump( (buyer_account.balances(db).get_balance(test_asset.id) ) );
-   wdump( (nathan_account.balances(db).get_balance(test_asset.id) ) );
-   wdump( (nathan_account.balances(db).get_balance(asset_id_type()) ) );
-   wdump( (test_asset.dynamic_asset_data_id(db).accumulated_fees.value) );
-   */
-   BOOST_CHECK( buyer_account.balances(db).get_balance(test_asset.id) == test_asset.amount(891) );
-   BOOST_CHECK( nathan_account.balances(db).get_balance(asset_id_type()) == asset(900) );
-   BOOST_CHECK( test_asset.dynamic_asset_data_id(db).accumulated_fees.value == 9 );
+   BOOST_CHECK_EQUAL( get_balance( buyer_account, test_asset ), 9700 );
+
+   print_market( "", "" );
+   auto unmatched = create_sell_order( seller_account, core_asset.amount(100), test_asset.amount(100) );
+   print_market( "", "" );
+   BOOST_CHECK( !db.find( first_id ) );
+   BOOST_CHECK( db.find( second_id ) );
+   BOOST_CHECK( db.find( third_id ) );
+   if( unmatched ) wdump((*unmatched));
+   BOOST_CHECK( !unmatched );
+
+   BOOST_CHECK_EQUAL( get_balance( seller_account, test_asset ), 99 );
+   BOOST_CHECK_EQUAL( get_balance( buyer_account, core_asset ), 100 );
+   BOOST_CHECK_EQUAL( test_asset.dynamic_asset_data_id(db).accumulated_fees.value , 1 );
  }
  catch ( const fc::exception& e )
  {
@@ -633,6 +579,91 @@ BOOST_AUTO_TEST_CASE( create_buy_uia_partial_match_prior )
     throw;
  }
 }
+
+
+BOOST_AUTO_TEST_CASE( create_buy_uia_multiple_match_new_reverse )
+{ try {
+   INVOKE( issue_uia );
+   const asset_object&   test_asset     = get_asset( "TEST" );
+   const asset_object&   core_asset     = get_asset( BTS_SYMBOL );
+   const account_object& nathan_account = get_account( "nathan" );
+   const account_object& buyer_account  = create_account( "buyer" );
+   const account_object& seller_account = create_account( "seller" );
+
+   transfer( genesis_account(db), seller_account, asset( 10000 ) );
+   transfer( nathan_account, buyer_account, test_asset.amount(10000) );
+
+   BOOST_CHECK_EQUAL( get_balance( buyer_account, test_asset ), 10000 );
+
+   limit_order_id_type first_id  = create_sell_order( buyer_account, test_asset.amount(100), core_asset.amount(100) )->id;
+   limit_order_id_type second_id = create_sell_order( buyer_account, test_asset.amount(100), core_asset.amount(200) )->id;
+   limit_order_id_type third_id  = create_sell_order( buyer_account, test_asset.amount(100), core_asset.amount(300) )->id;
+
+   BOOST_CHECK_EQUAL( get_balance( buyer_account, test_asset ), 9700 );
+
+   print_market( "", "" );
+   auto unmatched = create_sell_order( seller_account, core_asset.amount(300), test_asset.amount(150) );
+   print_market( "", "" );
+   BOOST_CHECK( !db.find( first_id ) );
+   BOOST_CHECK( !db.find( second_id ) );
+   BOOST_CHECK( db.find( third_id ) );
+   if( unmatched ) wdump((*unmatched));
+   BOOST_CHECK( !unmatched );
+
+   BOOST_CHECK_EQUAL( get_balance( seller_account, test_asset ), 198 );
+   BOOST_CHECK_EQUAL( get_balance( buyer_account, core_asset ), 300 );
+   BOOST_CHECK_EQUAL( test_asset.dynamic_asset_data_id(db).accumulated_fees.value , 2 );
+ }
+ catch ( const fc::exception& e )
+ {
+    elog( "${e}", ("e", e.to_detail_string() ) );
+    throw;
+ }
+}
+
+BOOST_AUTO_TEST_CASE( create_buy_uia_multiple_match_new_reverse_fract )
+{ try {
+   INVOKE( issue_uia );
+   const asset_object&   test_asset     = get_asset( "TEST" );
+   const asset_object&   core_asset     = get_asset( BTS_SYMBOL );
+   const account_object& nathan_account = get_account( "nathan" );
+   const account_object& buyer_account  = create_account( "buyer" );
+   const account_object& seller_account = create_account( "seller" );
+
+   transfer( genesis_account(db), seller_account, asset( 30 ) );
+   transfer( nathan_account, buyer_account, test_asset.amount(10000) );
+
+   BOOST_CHECK_EQUAL( get_balance( buyer_account, test_asset ), 10000 );
+   BOOST_CHECK_EQUAL( get_balance( buyer_account, core_asset ), 0 );
+   BOOST_CHECK_EQUAL( get_balance( seller_account, core_asset ), 30 );
+
+   limit_order_id_type first_id  = create_sell_order( buyer_account, test_asset.amount(100), core_asset.amount(10) )->id;
+   limit_order_id_type second_id = create_sell_order( buyer_account, test_asset.amount(100), core_asset.amount(20) )->id;
+   limit_order_id_type third_id  = create_sell_order( buyer_account, test_asset.amount(100), core_asset.amount(30) )->id;
+
+   BOOST_CHECK_EQUAL( get_balance( buyer_account, test_asset ), 9700 );
+
+   print_market( "", "" );
+   auto unmatched = create_sell_order( seller_account, core_asset.amount(30), test_asset.amount(150) );
+   print_market( "", "" );
+   BOOST_CHECK( !db.find( first_id ) );
+   BOOST_CHECK( !db.find( second_id ) );
+   BOOST_CHECK( db.find( third_id ) );
+   if( unmatched ) wdump((*unmatched));
+   BOOST_CHECK( !unmatched );
+
+   BOOST_CHECK_EQUAL( get_balance( seller_account, test_asset ), 198 );
+   BOOST_CHECK_EQUAL( get_balance( buyer_account, core_asset ), 30 );
+   BOOST_CHECK_EQUAL( get_balance( seller_account, core_asset ), 0 );
+   BOOST_CHECK_EQUAL( test_asset.dynamic_asset_data_id(db).accumulated_fees.value , 2 );
+ }
+ catch ( const fc::exception& e )
+ {
+    elog( "${e}", ("e", e.to_detail_string() ) );
+    throw;
+ }
+}
+
 
 BOOST_AUTO_TEST_CASE( uia_fees )
 {
@@ -975,7 +1006,7 @@ BOOST_AUTO_TEST_CASE( limit_dont_match_existing_short_partial_over_price )
    }
 }
 
-BOOST_AUTO_TEST_CASE( margin_call_order_test )
+BOOST_AUTO_TEST_CASE( multiple_shorts_matching_multiple_bids_in_order )
 { try {
    const asset_object& bitusd = create_bitasset( "BITUSD" );
    const account_object& shorter1_account  = create_account( "shorter1" );
@@ -1002,23 +1033,55 @@ BOOST_AUTO_TEST_CASE( margin_call_order_test )
   throw;
 } }
 
-BOOST_AUTO_TEST_CASE( margin_call_order_test_no_match )
+BOOST_AUTO_TEST_CASE( limit_order_matching_mix_of_shorts_and_limits )
 { try {
-   const asset_object& bitusd = create_bitasset( "BITUSD" );
-   const account_object& shorter1_account  = create_account( "shorter1" );
-   const account_object& shorter2_account  = create_account( "shorter2" );
-   const account_object& shorter3_account  = create_account( "shorter3" );
-   const account_object& buyer_account  = create_account( "buyer" );
-   transfer( genesis_account(db), shorter1_account, asset( 10000 ) );
-   transfer( genesis_account(db), shorter2_account, asset( 10000 ) );
-   transfer( genesis_account(db), shorter3_account, asset( 10000 ) );
-   transfer( genesis_account(db), buyer_account, asset( 10000 ) );
+   const asset_object& bitusd      = create_bitasset( "BITUSD" );
+   const asset_object& bts         = get_asset( BTS_SYMBOL );
+   const account_object& shorter1  = create_account( "shorter1" );
+   const account_object& shorter2  = create_account( "shorter2" );
+   const account_object& shorter3  = create_account( "shorter3" );
+   const account_object& buyer1    = create_account( "buyer1" );
+   const account_object& buyer2    = create_account( "buyer2" );
+   const account_object& buyer3    = create_account( "buyer3" );
 
-   BOOST_REQUIRE( create_sell_order( buyer_account, asset(125), bitusd.amount(100) ) );
-   BOOST_REQUIRE( create_sell_order( buyer_account, asset(150), bitusd.amount(100) ) );
-   BOOST_REQUIRE( create_sell_order( buyer_account, asset(200), bitusd.amount(100) ) );
+   wlog(".");
+   transfer( genesis_account(db), shorter1, asset( 10000 ) );
+   transfer( genesis_account(db), shorter2, asset( 10000 ) );
+   transfer( genesis_account(db), shorter3, asset( 10000 ) );
+   wlog(".");
+   transfer( genesis_account(db), buyer1, asset( 10000 ) );
+   wlog(".");
+   transfer( genesis_account(db), buyer2, asset( 10000 ) );
+   transfer( genesis_account(db), buyer3, asset( 10000 ) );
+   wlog(".");
+
+   // create some BitUSD
+   BOOST_REQUIRE( create_sell_order( buyer1, asset(1000), bitusd.amount(1000) ) );
+   BOOST_REQUIRE( !create_short( shorter1, bitusd.amount(1000), asset(1000) )   );
+   BOOST_REQUIRE_EQUAL( get_balance(buyer1, bitusd), 990 ); // 1000 - 1% fee
+
+   wlog(".");
+
+   // create a mixture of BitUSD sells and shorts
+   BOOST_REQUIRE( create_short(      shorter1, bitusd.amount(100), asset(125) )   );
+   BOOST_REQUIRE( create_sell_order( buyer1,   bitusd.amount(100), asset(150) )   );
+   BOOST_REQUIRE( create_short(      shorter2, bitusd.amount(100), asset(200) )   );
+   BOOST_REQUIRE( create_sell_order( buyer1,   bitusd.amount(100), asset(225) )   );
+   BOOST_REQUIRE( create_short(      shorter3, bitusd.amount(100), asset(250) )   );
+   
+   print_joint_market("",""); // may have bugs
+
+   // buy up everything but the highest order
+   auto unfilled_order = create_sell_order( buyer2, asset(700), bitusd.amount(311) );
+   if( unfilled_order ) wdump((*unfilled_order));
+   //wdump( (get_balance(buyer2,bts)) );
+   //wdump( (get_balance(buyer2,bitusd)) );
    print_joint_market("","");
-   BOOST_REQUIRE( create_short( shorter1_account, bitusd.amount(100), asset( 250 ) ) );
+   if( unfilled_order ) wdump((*unfilled_order));
+   BOOST_REQUIRE( !unfilled_order );
+   BOOST_REQUIRE_EQUAL( get_balance(buyer2, bitusd), 396 );
+
+   print_joint_market("","");
    print_call_orders();
 
 }catch ( const fc::exception& e )
