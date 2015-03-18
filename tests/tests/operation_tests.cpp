@@ -30,8 +30,8 @@ BOOST_AUTO_TEST_CASE( create_account_test )
       REQUIRE_THROW_WITH_VALUE(op, name, "j-");
       REQUIRE_THROW_WITH_VALUE(op, name, "-j");
       REQUIRE_THROW_WITH_VALUE(op, name, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-      REQUIRE_THROW_WITH_VALUE(op, name, "a.");
-      REQUIRE_THROW_WITH_VALUE(op, name, ".a");
+      REQUIRE_THROW_WITH_VALUE(op, name, "aaaa.");
+      REQUIRE_THROW_WITH_VALUE(op, name, ".aaaa");
       REQUIRE_THROW_WITH_VALUE(op, voting_key, key_id_type(999999999));
       REQUIRE_THROW_WITH_VALUE(op, memo_key, key_id_type(999999999));
 
@@ -74,6 +74,53 @@ BOOST_AUTO_TEST_CASE( create_account_test )
       BOOST_CHECK(debts.id.space() == implementation_ids);
       BOOST_CHECK(debts.id.type() == impl_account_debt_object_type);
       BOOST_CHECK(debts.call_orders.empty());
+   } catch (fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
+BOOST_AUTO_TEST_CASE( update_account )
+{
+   try {
+      INVOKE(create_account_test);
+      const account_object& nathan = get_account("nathan");
+      const fc::ecc::private_key nathan_new_key = fc::ecc::private_key::generate();
+      const key_id_type key_id = db.get_index<key_object>().get_next_id();
+      const auto& active_delegates = db.get_global_properties().active_delegates;
+
+      transfer(account_id_type()(db), nathan, asset(30000));
+
+      trx.operations.emplace_back(key_create_operation({nathan.id, asset(), address(nathan_new_key.get_public_key())}));
+      db.push_transaction(trx, ~0);
+
+      account_update_operation op = {
+         nathan.id, asset(),
+         authority(2, key_id, 1, key_id_type(), 1),
+         authority(2, key_id, 1, key_id_type(), 1),
+         key_id, optional<key_id_type>(),
+         vector<delegate_id_type>({active_delegates[0], active_delegates[5]})
+      };
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+
+      BOOST_CHECK(nathan.voting_key == key_id);
+      BOOST_CHECK(nathan.memo_key == key_id_type());
+      BOOST_CHECK(nathan.active.weight_threshold == 2);
+      BOOST_CHECK(nathan.active.auths.size() == 2);
+      BOOST_CHECK(nathan.active.auths.at(key_id) == 1);
+      BOOST_CHECK(nathan.active.auths.at(key_id_type()) == 1);
+      BOOST_CHECK(nathan.owner.weight_threshold == 2);
+      BOOST_CHECK(nathan.owner.auths.size() == 2);
+      BOOST_CHECK(nathan.owner.auths.at(key_id) == 1);
+      BOOST_CHECK(nathan.owner.auths.at(key_id_type()) == 1);
+      BOOST_CHECK(nathan.delegate_votes.size() == 2);
+
+      BOOST_CHECK(active_delegates[0](db).vote(db).total_votes == 30000);
+      BOOST_CHECK(active_delegates[1](db).vote(db).total_votes == 0);
+      BOOST_CHECK(active_delegates[4](db).vote(db).total_votes == 0);
+      BOOST_CHECK(active_delegates[5](db).vote(db).total_votes == 30000);
+      BOOST_CHECK(active_delegates[6](db).vote(db).total_votes == 0);
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
@@ -426,6 +473,8 @@ BOOST_AUTO_TEST_CASE( create_uia )
       REQUIRE_THROW_WITH_VALUE(op, symbol, "A");
       REQUIRE_THROW_WITH_VALUE(op, symbol, "qqq");
       REQUIRE_THROW_WITH_VALUE(op, symbol, "11");
+      REQUIRE_THROW_WITH_VALUE(op, symbol, ".AAA");
+      REQUIRE_THROW_WITH_VALUE(op, symbol, "AAA.");
       REQUIRE_THROW_WITH_VALUE(op, symbol, "AB CD");
       REQUIRE_THROW_WITH_VALUE(op, symbol, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
       REQUIRE_THROW_WITH_VALUE(op, core_exchange_rate, price({asset(-100), asset(1)}));
@@ -764,35 +813,48 @@ BOOST_AUTO_TEST_CASE( delegate_feeds )
       // Supposing 1 core asset is worth 2 cents... Don't call if it hasn't reached 1 cent
       op.feeds.begin()->call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(1));
       // Block shorts at more than 3 cents
-      op.feeds.begin()->short_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(3));
+      op.feeds.begin()->short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(3));
       // We'll expire margins after a month
       op.feeds.begin()->max_margin_period_sec = fc::days(30).to_seconds();
       // Accept defaults for required collateral
       trx.operations.emplace_back(op);
       db.push_transaction(trx, ~0);
 
+      {
+         //Dumb sanity check of some operators. Only here to improve code coverage. :D
+         price_feed dummy = *op.feeds.begin();
+         BOOST_CHECK(*op.feeds.begin() == dummy);
+         price a(asset(1), bit_usd.amount(2));
+         price b(asset(2), bit_usd.amount(2));
+         price c(asset(1), bit_usd.amount(2));
+         BOOST_CHECK(a < b);
+         BOOST_CHECK(b > a);
+         BOOST_CHECK(a == c);
+         BOOST_CHECK(!(b == c));
+      }
+
       BOOST_CHECK(bit_usd.current_feed.call_limit.to_real() == BTS_BLOCKCHAIN_PRECISION);
-      BOOST_CHECK(bit_usd.current_feed.short_limit.to_real() == BTS_BLOCKCHAIN_PRECISION / 3.0);
+      BOOST_CHECK(bit_usd.current_feed.short_limit.to_real() == 3.0 / BTS_BLOCKCHAIN_PRECISION);
       BOOST_CHECK(bit_usd.current_feed.max_margin_period_sec == fc::days(30).to_seconds());
       BOOST_CHECK(bit_usd.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
       BOOST_CHECK(bit_usd.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);
 
       op.delegate = active_delegates[1];
       op.feeds.begin()->call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(2));
-      op.feeds.begin()->short_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(2));
+      op.feeds.begin()->short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(2));
       op.feeds.begin()->max_margin_period_sec = fc::days(10).to_seconds();
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
 
       BOOST_CHECK(bit_usd.current_feed.call_limit.to_real() == BTS_BLOCKCHAIN_PRECISION);
-      BOOST_CHECK(bit_usd.current_feed.short_limit.to_real() == BTS_BLOCKCHAIN_PRECISION / 2.0);
+      BOOST_CHECK_EQUAL(bit_usd.current_feed.short_limit.to_real(), 3.0 / BTS_BLOCKCHAIN_PRECISION);
       BOOST_CHECK(bit_usd.current_feed.max_margin_period_sec == fc::days(30).to_seconds());
       BOOST_CHECK(bit_usd.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
       BOOST_CHECK(bit_usd.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);
 
       op.delegate = active_delegates[2];
       op.feeds.begin()->call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(1));
-      op.feeds.begin()->short_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(4));
+      op.feeds.begin()->short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(4));
       op.feeds.begin()->max_margin_period_sec = fc::days(100).to_seconds();
       // But this delegate is an idiot.
       op.feeds.begin()->required_initial_collateral = 1001;
@@ -801,7 +863,7 @@ BOOST_AUTO_TEST_CASE( delegate_feeds )
       db.push_transaction(trx, ~0);
 
       BOOST_CHECK(bit_usd.current_feed.call_limit.to_real() == BTS_BLOCKCHAIN_PRECISION);
-      BOOST_CHECK(bit_usd.current_feed.short_limit.to_real() == BTS_BLOCKCHAIN_PRECISION / 3.0);
+      BOOST_CHECK(bit_usd.current_feed.short_limit.to_real() == 3.0 / BTS_BLOCKCHAIN_PRECISION);
       BOOST_CHECK(bit_usd.current_feed.max_margin_period_sec == fc::days(30).to_seconds());
       BOOST_CHECK(bit_usd.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
       BOOST_CHECK(bit_usd.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);

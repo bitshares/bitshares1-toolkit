@@ -1,16 +1,16 @@
-# Defines WhiteRabbit library target.
-project( WhiteRabbit )
+# Defines Graphene library target.
+project( Graphene )
 cmake_minimum_required( VERSION 2.8.12 )
 
 # this variable is set to different values in each git branch:
-# develop branch                => WhiteRabbitTestNet
+# develop branch                => GrapheneTestNet
 # devshares branch              => DevShares
-# bitshares and master branches => WhiteRabbit
-set( BLOCKCHAIN_NAME "WhiteRabbitTestNet" )
+# bitshares and master branches => Graphene
+set( BLOCKCHAIN_NAME "GrapheneTestNet" )
 
-if( BLOCKCHAIN_NAME STREQUAL WhiteRabbit )
+if( BLOCKCHAIN_NAME STREQUAL Graphene )
   set( CLI_CLIENT_EXECUTABLE_NAME bitshares_client )
-  set( GUI_CLIENT_EXECUTABLE_NAME WhiteRabbit )
+  set( GUI_CLIENT_EXECUTABLE_NAME Graphene )
   set( CUSTOM_URL_SCHEME "bts" )
   set( INSTALLER_APP_ID "68ad7005-8eee-49c9-95ce-9eed97e5b347" )
 elseif( BLOCKCHAIN_NAME STREQUAL DevShares )
@@ -18,13 +18,13 @@ elseif( BLOCKCHAIN_NAME STREQUAL DevShares )
   set( GUI_CLIENT_EXECUTABLE_NAME DevShares )
   set( CUSTOM_URL_SCHEME "dvs" )
   set( INSTALLER_APP_ID "6bc47c81-1c8a-461d-ae7b-d14f974b1846" )
-elseif(BLOCKCHAIN_NAME STREQUAL WhiteRabbitTestNet )
+elseif(BLOCKCHAIN_NAME STREQUAL GrapheneTestNet )
   set( CLI_CLIENT_EXECUTABLE_NAME bitsharestestnet_client )
-  set( GUI_CLIENT_EXECUTABLE_NAME WhiteRabbitTestNet )
+  set( GUI_CLIENT_EXECUTABLE_NAME GrapheneTestNet )
   set( CUSTOM_URL_SCHEME "xts" )
   set( INSTALLER_APP_ID "3f87ba55-e899-4bcf-ad92-0a8074c931e6" )
 else()
-  message( FATAL_ERROR "Expected BLOCKCHAIN_NAME to be set to WhiteRabbit, DevShares, or WhiteRabbitTestNet" )
+  message( FATAL_ERROR "Expected BLOCKCHAIN_NAME to be set to Graphene, DevShares, or GrapheneTestNet" )
 endif()
 
 # http://stackoverflow.com/a/18369825
@@ -99,7 +99,7 @@ set(LEVELDB_BUILD_LIBRARIES)
 set(LEVELDB_BUILD_PRIVATE_INCLUDES "${LEVEL_DB_DIR}")
 
 if( WIN32 )
-    message( STATUS "Configuring WhiteRabbit on WIN32")
+    message( STATUS "Configuring Graphene on WIN32")
     set( DB_VERSION 60 )
     set( BDB_STATIC_LIBS 1 )
 
@@ -162,11 +162,11 @@ else( WIN32 ) # Apple AND Linux
 
     if( APPLE )
         # Apple Specific Options Here
-        message( STATUS "Configuring WhiteRabbit on OS X" )
+        message( STATUS "Configuring Graphene on OS X" )
         set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++11 -stdlib=libc++ -Wall" )
     else( APPLE )
         # Linux Specific Options Here
-        message( STATUS "Configuring WhiteRabbit on Linux" )
+        message( STATUS "Configuring Graphene on Linux" )
         set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++11 -Wall" )
         set( rt_library rt )
         set( pthread_library pthread)
@@ -202,6 +202,11 @@ set_target_properties(leveldb PROPERTIES COMPILE_DEFINITIONS "${LEVELDB_BUILD_DE
 
 find_package( BerkeleyDB )
 
+# Enable code coverage
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+   SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
+endif()
+
 add_subdirectory( libraries )
 add_subdirectory( tests )
 add_subdirectory( vendor/miniupnp/miniupnpc )
@@ -221,28 +226,28 @@ set(CPACK_OUTPUT_FILE_PREFIX ${CMAKE_BINARY_DIR}/packages)
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
 
 SET(CPACK_PACKAGE_DIRECTORY "${CMAKE_INSTALL_PREFIX}")
-set(CPACK_PACKAGE_NAME "whiterabbit")
+set(CPACK_PACKAGE_NAME "graphene")
 set(CPACK_PACKAGE_VENDOR "Someone, Inc")
 set(CPACK_PACKAGE_VERSION_MAJOR "${VERSION_MAJOR}")
 set(CPACK_PACKAGE_VERSION_MINOR "${VERSION_MINOR}")
 set(CPACK_PACKAGE_VERSION_PATCH "${VERSION_PATCH}")
 set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
-set(CPACK_PACKAGE_DESCRIPTION "A client for the WhiteRabbit network")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A client for the WhiteRabbit network")
+set(CPACK_PACKAGE_DESCRIPTION "A client for the Graphene network")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A client for the Graphene network")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.md")
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "WhiteRabbit ${CPACK_PACKAGE_VERSION}")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "Graphene ${CPACK_PACKAGE_VERSION}")
 
 if(WIN32)
  SET(CPACK_GENERATOR "ZIP;NSIS")
- set(CPACK_PACKAGE_NAME "WhiteRabbit") # override above
+ set(CPACK_PACKAGE_NAME "Graphene") # override above
  set(CPACK_NSIS_CONTACT "nobody@nowhere.com")
  set(CPACK_NSIS_EXECUTABLES_DIRECTORY .)
- set(CPACK_NSIS_PACKAGE_NAME "WhiteRabbit v${CPACK_PACKAGE_VERSION}")
+ set(CPACK_NSIS_PACKAGE_NAME "Graphene v${CPACK_PACKAGE_VERSION}")
  set(CPACK_NSIS_DISPLAY_NAME "${CPACK_NSIS_PACKAGE_NAME}")
  set(CPACK_NSIS_URL_INFO_ABOUT "http://somewhere.org")
  set(CPACK_NSIS_HELP_LINK "https://somewhere.org/index.php?board=3.0")
  set(CPACK_NSIS_MENU_LINKS "http://somewhere.org" "somewhere.org")
- set(CPACK_NSIS_DEFINES "  !define MUI_STARTMENUPAGE_DEFAULTFOLDER \\\"WhiteRabbit\\\"")
+ set(CPACK_NSIS_DEFINES "  !define MUI_STARTMENUPAGE_DEFAULTFOLDER \\\"Graphene\\\"")
  # it seems like windows zip files usually don't have a single directory inside them, unix tgz frequently do
  SET(CPACK_INCLUDE_TOPLEVEL_DIRECTORY 0)
 
