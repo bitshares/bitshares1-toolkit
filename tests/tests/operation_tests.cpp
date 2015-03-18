@@ -89,6 +89,8 @@ BOOST_AUTO_TEST_CASE( update_account )
       const key_id_type key_id = db.get_index<key_object>().get_next_id();
       const auto& active_delegates = db.get_global_properties().active_delegates;
 
+      transfer(account_id_type()(db), nathan, asset(30000));
+
       trx.operations.emplace_back(key_create_operation({nathan.id, asset(), address(nathan_new_key.get_public_key())}));
       db.push_transaction(trx, ~0);
 
@@ -113,6 +115,12 @@ BOOST_AUTO_TEST_CASE( update_account )
       BOOST_CHECK(nathan.owner.auths.at(key_id) == 1);
       BOOST_CHECK(nathan.owner.auths.at(key_id_type()) == 1);
       BOOST_CHECK(nathan.delegate_votes.size() == 2);
+
+      BOOST_CHECK(active_delegates[0](db).vote(db).total_votes == 30000);
+      BOOST_CHECK(active_delegates[1](db).vote(db).total_votes == 0);
+      BOOST_CHECK(active_delegates[4](db).vote(db).total_votes == 0);
+      BOOST_CHECK(active_delegates[5](db).vote(db).total_votes == 30000);
+      BOOST_CHECK(active_delegates[6](db).vote(db).total_votes == 0);
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
