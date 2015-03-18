@@ -69,8 +69,9 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
 
 
    auto max_price  = op.min_to_receive / op.amount_to_sell;
-   auto limit_itr = limit_price_idx.lower_bound( _receive_asset->amount(0) / op.amount_to_sell );
-   auto limit_end = limit_price_idx.lower_bound( _receive_asset->amount(BTS_MAX_SHARE_SUPPLY) / asset(1,op.amount_to_sell.asset_id) );
+   //auto limit_itr = limit_price_idx.lower_bound( _receive_asset->amount(0) / op.amount_to_sell );
+   auto limit_itr = limit_price_idx.lower_bound( max_price.min() ); 
+   auto limit_end = limit_price_idx.lower_bound( max_price.max() ); 
 
    bool filled = false;
    //if( new_order_object.amount_to_receive().asset_id(db()).is_market_issued() )

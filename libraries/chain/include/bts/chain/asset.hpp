@@ -1,5 +1,6 @@
 #pragma once
 #include <bts/chain/types.hpp>
+#include <bts/chain/config.hpp>
 
 namespace bts { namespace chain {
 
@@ -52,12 +53,16 @@ namespace bts { namespace chain {
       asset base;
       asset quote;
 
+      static price max( asset_id_type a, asset_id_type b );
+      static price min( asset_id_type a, asset_id_type b );
+
+      price max()const { return price::max( base.asset_id, quote.asset_id ); }
+      price min()const { return price::min( base.asset_id, quote.asset_id ); }
+
       double to_real()const { return double(base.amount.value)/double(quote.amount.value); }
    };
-   inline price operator / ( const asset& base, const asset& quote )
-   {
-      return price{base,quote};
-   }
+
+   price operator / ( const asset& base, const asset& quote );
    inline price operator~( const price& p ) { return price{p.quote,p.base}; }
 
    bool  operator <  ( const asset& a, const asset& b );
@@ -67,6 +72,7 @@ namespace bts { namespace chain {
    bool  operator >  ( const price& a, const price& b );
    bool  operator >= ( const price& a, const price& b );
    bool  operator == ( const price& a, const price& b );
+   bool  operator != ( const price& a, const price& b );
    asset operator *  ( const asset& a, const price& b );
 
    /**

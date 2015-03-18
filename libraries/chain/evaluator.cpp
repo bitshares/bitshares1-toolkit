@@ -405,7 +405,22 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
              c.borrower    = seller.id;
              c.collateral  = seller_to_collateral.amount + buyer_to_collateral.amount;
              c.debt        = pays.amount;
+
              c.call_price  = order.call_price;
+             fc::uint128 tmp( c.collateral.value );
+             tmp *= order.maintenance_collateral_ratio - 1000;
+             tmp /= 1000;
+             FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
+
+             c.call_price = (c.get_debt() / asset( tmp.to_uint64(), c.get_collateral().asset_id)); 
+             wdump( (c.debt)(c.collateral) );
+             wlog( "required collateral at call price: ${c}",( "c",(c.get_debt()*c.call_price).amount ) );
+             /*
+             auto tmp_price = (c.get_debt() / asset( tmp.to_uint64(), c.get_collateral().asset_id)); 
+             wdump((tmp_price)(c.call_price));
+             wdump((tmp_price.to_real())(c.call_price.to_real()));
+             c.call_price = tmp_price;
+             */
         });
       db().modify( debts, [&]( account_debt_object& d ) {
                    d.call_orders[pays.asset_id] = call_obj.id;
@@ -422,7 +437,9 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
             tmp /= 1000;
             FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
 
-            c.call_price = c.get_debt() / asset( tmp.to_uint64(), c.get_collateral().asset_id); 
+            c.call_price = (c.get_debt() / asset( tmp.to_uint64(), c.get_collateral().asset_id)); 
+            wdump( (c.debt)(c.collateral) );
+            wlog( "required collateral at call price: ${c}",( "c",(c.get_debt()*c.call_price).amount ) );
       });
    }
 

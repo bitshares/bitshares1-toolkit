@@ -297,6 +297,29 @@ struct database_fixture {
       std::cout << std::setw(16) << pretty( cur.amount_to_receive() ) << " ";
       std::cout << std::setw(16) << cur.sell_price.to_real() << " ";
    }
+   void print_call_orders()
+   {
+      cout << std::fixed;
+      cout.precision(5);
+      cout << std::setw(10) << std::left  << "NAME"      << " ";
+      cout << std::setw(10) << std::right << "TYPE"      << " ";
+      cout << std::setw(16) << std::right << "DEBT"  << " ";
+      cout << std::setw(16) << std::right << "COLLAT"  << " ";
+      cout << std::setw(16) << std::right << "CALL PRICE"     << " ";
+      cout << std::setw(16) << std::right << "~CALL PRICE"     << "\n";
+      cout << string(70, '=');
+
+      for( const call_order_object& o : db.get_index_type<call_order_index>().indices() )
+      {
+         std::cout << "\n";
+         cout << std::setw( 10 ) << std::left   << o.borrower(db).name << " ";
+         cout << std::setw( 16 ) << std::right  << pretty( o.get_debt() ) << " ";
+         cout << std::setw( 16 ) << std::right  << pretty( o.get_collateral() ) << " ";
+         cout << std::setw( 16 ) << std::right  << o.call_price.to_real() << " ";
+         cout << std::setw( 16 ) << std::right  << (~o.call_price).to_real() << " ";
+      }
+         std::cout << "\n";
+   }
 
    void print_joint_market( const string& syma, const string&  symb )
    {

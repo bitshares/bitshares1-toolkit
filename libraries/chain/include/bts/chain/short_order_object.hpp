@@ -61,6 +61,7 @@ namespace bts { namespace chain {
 
         asset get_collateral()const { return asset( collateral, call_price.quote.asset_id ); }
         asset get_debt()const { return asset( debt, call_price.base.asset_id ); }
+        asset amount_to_receive()const { return get_debt(); }
 
         account_id_type  borrower;
         share_type       collateral;  ///< call_price.quote.asset_id, access via get_collateral
