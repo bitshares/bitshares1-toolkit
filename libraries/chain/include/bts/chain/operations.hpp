@@ -213,7 +213,9 @@ namespace bts { namespace chain {
 
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
-      price      short_price()const
+
+      /** convention: amount_to_sell / amount_to_receive */
+      price      sell_price()const
       {
          fc::uint128 tmp(collateral.amount.value);
          tmp *= (initial_collateral_ratio - 1000);
@@ -221,6 +223,10 @@ namespace bts { namespace chain {
          FC_ASSERT( tmp  <= BTS_MAX_SHARE_SUPPLY );
          return  amount_to_sell / asset( tmp.to_uint64(), collateral.asset_id);
       }
+
+      /** convention: amount_to_sell / amount_to_receive means we are
+       * selling collateral to receive debt 
+       **/
       price call_price() const
       {
          fc::uint128 tmp( collateral.amount.value );

@@ -45,6 +45,8 @@ namespace bts { namespace chain {
           *  3 - both were filled
           */
          ///@{
+         template<typename OrderType>
+         int match( const limit_order_object& bid, const OrderType& ask, const price& match_price );
          int match( const limit_order_object& bid, const limit_order_object& ask, const price& trade_price );
          int match( const limit_order_object& bid, const short_order_object& ask, const price& trade_price );
          int match( const call_order_object& ask, const limit_order_object& );
@@ -108,6 +110,9 @@ namespace bts { namespace chain {
          flat_map<const asset_object*, fee_stats>                                     fees_paid;
          flat_map< const account_object*, flat_map<const asset_object*, share_type> > delta_balance;
          transaction_evaluation_state*                                                trx_state;
+
+
+
    };
 
    class op_evaluator

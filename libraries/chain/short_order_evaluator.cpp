@@ -25,7 +25,7 @@ object_id_type short_order_create_evaluator::do_evaluate( const short_order_crea
 
    // TODO: FC_ASSERT( op.initial_collateral_ratio >= CURRENT_INIT_COLLATERAL_RATIO_REQUIREMENTS )
    // TODO: FC_ASSERT( op.maintenance_collateral_ratio >= CURRENT_INIT_COLLATERAL_RATIO_REQUIREMENTS )
-   // TODO: FC_ASSERT( op.short_price() >= CURRENT_PRICE_LIMIT  )
+   // TODO: FC_ASSERT( op.sell_price() >= CURRENT_PRICE_LIMIT  )
 
    return object_id_type();
 }
@@ -41,7 +41,7 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
        obj.seller                       = _seller->id;
        obj.for_sale                     = op.amount_to_sell.amount;
        obj.available_collateral         = op.collateral.amount;
-       obj.short_price                  = op.short_price();
+       obj.sell_price                  = op.sell_price();
        obj.call_price                   = op.call_price();
        obj.initial_collateral_ratio     = op.initial_collateral_ratio;
        obj.maintenance_collateral_ratio = op.maintenance_collateral_ratio;
@@ -68,10 +68,12 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
    const auto& limit_order_idx = db().get_index_type<limit_order_index>();
    const auto& limit_price_idx = limit_order_idx.indices().get<by_price>();
 
-   auto max_limit_price  = ~op.short_price();
+   //wdump( (op.sell_price().to_real()) );
+   auto min_limit_price  = ~op.sell_price();
+   //wdump( (min_limit_price.to_real()) );
 
-   auto itr = limit_price_idx.lower_bound( max_limit_price.min() );
-   auto end = limit_price_idx.upper_bound( max_limit_price );
+   auto itr = limit_price_idx.lower_bound( min_limit_price );
+   auto end = limit_price_idx.upper_bound( min_limit_price.max() );
 
    while( itr != end )
    {

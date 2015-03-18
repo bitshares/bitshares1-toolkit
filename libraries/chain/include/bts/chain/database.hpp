@@ -1,15 +1,16 @@
 #pragma once
-#include <bts/db/level_map.hpp>
-#include <bts/db/level_pod_map.hpp>
+#include <bts/chain/evaluator.hpp>
 #include <bts/chain/object.hpp>
 #include <bts/chain/block.hpp>
 #include <bts/chain/asset.hpp>
 #include <bts/chain/index.hpp>
 #include <bts/chain/global_property_object.hpp>
 #include <bts/chain/asset_object.hpp>
-#include <bts/chain/evaluator.hpp>
 #include <bts/chain/fork_database.hpp>
 #include <bts/chain/undo_database.hpp>
+
+#include <bts/db/level_map.hpp>
+#include <bts/db/level_pod_map.hpp>
 
 #include <fc/log/logger.hpp>
 

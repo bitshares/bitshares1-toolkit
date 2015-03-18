@@ -286,7 +286,7 @@ struct database_fixture {
       std::cout << std::setw(10) << "SHORT" << " ";
       std::cout << std::setw(16) << pretty( cur.amount_for_sale() ) << " ";
       std::cout << std::setw(16) << pretty( cur.amount_to_receive() ) << " ";
-      std::cout << std::setw(16) << cur.short_price.to_real() << " ";
+      std::cout << std::setw(16) << (~cur.sell_price).to_real() << " ";
    }
 
    void print_limit_order( const limit_order_object& cur )
@@ -336,16 +336,16 @@ struct database_fixture {
       const auto& limit_idx = db.get_index_type<limit_order_index>();
       const auto& limit_price_idx = limit_idx.indices().get<by_price>();
       const auto& short_idx = db.get_index_type<short_order_index>();
-      const auto& short_price_idx = short_idx.indices().get<by_price>();
+      const auto& sell_price_idx = short_idx.indices().get<by_price>();
 
       auto limit_itr = limit_price_idx.begin();
-      auto short_itr = short_price_idx.begin();
+      auto short_itr = sell_price_idx.rbegin();
       while( true )
       {
          std::cout << std::endl;
          if( limit_itr != limit_price_idx.end() )
          {
-            if( short_itr != short_price_idx.end() && limit_itr->sell_price > short_itr->short_price )
+            if( short_itr != sell_price_idx.rend() && limit_itr->sell_price > ~short_itr->sell_price )
             { 
                print_short_order( *short_itr );
                ++short_itr;
@@ -356,7 +356,7 @@ struct database_fixture {
                ++limit_itr;
             }
          }
-         else if( short_itr != short_price_idx.end() )
+         else if( short_itr != sell_price_idx.rend() )
          { 
             print_short_order( *short_itr );
             ++short_itr;
@@ -387,8 +387,8 @@ struct database_fixture {
          cout << std::setw( 10 ) << std::left   << cur->seller(db).name << " ";
          cout << std::setw( 16 ) << std::right  << pretty( cur->amount_for_sale() ) << " ";
          cout << std::setw( 16 ) << std::right  << pretty( cur->get_collateral() ) << " ";
-         cout << std::setw( 10 ) << std::right  << cur->short_price.to_real() << " ";
-         cout << std::setw( 10 ) << std::right  << (~cur->short_price).to_real() << " ";
+         cout << std::setw( 10 ) << std::right  << cur->sell_price.to_real() << " ";
+         cout << std::setw( 10 ) << std::right  << (~cur->sell_price).to_real() << " ";
          cout << std::setw( 10 ) << std::right  << (cur->call_price).to_real() << " ";
          cout << std::setw( 10 ) << std::right  << (cur->initial_collateral_ratio)/double(1000) << " ";
          cout << std::setw( 10 ) << std::right  << (cur->maintenance_collateral_ratio)/double(1000) << " ";

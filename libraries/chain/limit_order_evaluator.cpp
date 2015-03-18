@@ -27,6 +27,8 @@ object_id_type limit_order_create_evaluator::do_evaluate( const limit_order_crea
 
    return object_id_type();
 }
+template<typename I>
+std::reverse_iterator<I> reverse( const I& itr ) { return std::reverse_iterator<I>(itr); }
 
 object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_operation& op )
 {
@@ -89,20 +91,20 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
          }
       }
       const auto& short_order_idx = db().get_index_type<short_order_index>();
-      const auto& short_price_idx = short_order_idx.indices().get<by_price>();
+      const auto& sell_price_idx = short_order_idx.indices().get<by_price>();
 
-      auto short_itr = short_price_idx.lower_bound( max_price.min() );
-      auto short_end = short_price_idx.upper_bound( max_price );
+      auto short_end = reverse(sell_price_idx.lower_bound( max_price ));
+      auto short_itr = reverse(sell_price_idx.upper_bound( max_price.max() ));
 
       while( !filled )
       {
          if( limit_itr != limit_end )
          {
-            if( short_itr != short_end && limit_itr->sell_price > short_itr->short_price )
+            if( short_itr != short_end && limit_itr->sell_price > short_itr->sell_price )
             {
                auto old_short_itr = short_itr;
                ++short_itr;
-               filled = (2 != match( new_order_object, *old_short_itr, old_short_itr->short_price ) );
+               filled = (2 != match( new_order_object, *old_short_itr, old_short_itr->sell_price ) );
             }
             else 
             {
@@ -115,7 +117,7 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
          {
             auto old_short_itr = short_itr;
             ++short_itr;
-            filled = (2 != match( new_order_object, *old_short_itr, old_short_itr->short_price ) );
+            filled = (2 != match( new_order_object, *old_short_itr, old_short_itr->sell_price ) );
          }
          else break;
       }

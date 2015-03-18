@@ -344,9 +344,9 @@ BOOST_AUTO_TEST_CASE( dont_match_short )
       auto buy_order = create_sell_order( buyer_account, asset(100), bitusd.amount(100) );
       //print_market("","");
       BOOST_REQUIRE( buy_order );
-      auto first_short = create_short( shorter_account, bitusd.amount(100), asset( 200 ) ); // 1:1 price
+      auto first_short  = create_short( shorter_account, bitusd.amount(100), asset( 200 ) ); // 1:1 price
       auto second_short = create_short( shorter_account, bitusd.amount(100), asset( 300 ) ); // 1:1 price
-      auto third_short = create_short( shorter_account, bitusd.amount(100), asset( 400 ) ); // 1:1 price
+      auto third_short  = create_short( shorter_account, bitusd.amount(100), asset( 400 ) ); // 1:1 price
       //print_short_market("","");
       BOOST_REQUIRE( first_short && second_short && third_short );
       //print_joint_market("","");
@@ -371,10 +371,10 @@ BOOST_AUTO_TEST_CASE( match_all_short_with_surplus_collaterl )
 
       //auto buy_order = create_sell_order( buyer_account, asset(200), bitusd.amount(101) );
       auto buy_order = create_sell_order( buyer_account, asset(300), bitusd.amount(100) );
-      //print_market("","");
+      print_market("","");
       BOOST_REQUIRE( buy_order );
       auto first_short = create_short( shorter_account, bitusd.amount(100), asset( 200 ) ); // 1:1 price
-      //print_short_market("","");
+      print_short_market("","");
       BOOST_REQUIRE( !first_short );
       //print_short_market("","");
       print_call_orders();
@@ -803,7 +803,7 @@ BOOST_AUTO_TEST_CASE( limit_match_existing_short_exact )
       auto third_short = create_short( shorter_account, bitusd.amount(100), asset( 400 ) ); // 1:1 price
       //print_short_market("","");
       BOOST_REQUIRE( first_short && second_short && third_short );
-     // print_joint_market("","");
+      //print_joint_market("","");
       auto unmatched_order = create_sell_order( buyer_account, asset(200), bitusd.amount(100) );
       //print_joint_market("","");
       BOOST_REQUIRE( !unmatched_order );
