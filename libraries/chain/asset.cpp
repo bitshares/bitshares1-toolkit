@@ -43,6 +43,10 @@ namespace bts { namespace chain {
          auto bmult = fc::uint128(b.quote.amount.value) * a.base.amount.value;
          return amult == bmult;
       }
+      bool operator != ( const price& a, const price& b )
+      {
+         return !(a==b);
+      }
 
       bool operator >= ( const price& a, const price& b )
       {
@@ -50,7 +54,7 @@ namespace bts { namespace chain {
       }
       bool operator > ( const price& a, const price& b )
       {
-         return a <= b;
+         return !(a <= b);
       }
 
       asset operator * ( const asset& a, const price& b )
@@ -71,4 +75,12 @@ namespace bts { namespace chain {
          }
          FC_ASSERT( !"invalid asset * price", "", ("asset",a)("price",b) );
       }
+
+      price operator / ( const asset& base, const asset& quote )
+      {
+         return price{base,quote};
+      }
+      price price::max( asset_id_type a, asset_id_type b ) { return asset( share_type(BTS_MAX_SHARE_SUPPLY), a ) / asset( share_type(1), b); }
+      price price::min( asset_id_type a, asset_id_type b ) { return asset( 1, a ) / asset( BTS_MAX_SHARE_SUPPLY, b); }
+
 } } // bts::chain

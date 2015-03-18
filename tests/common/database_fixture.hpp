@@ -85,19 +85,19 @@ struct database_fixture {
       {
          total_balances[asset_obj.id] += asset_obj.dynamic_asset_data_id(db).accumulated_fees;
          if( asset_obj.id != asset_id_type() )
-            BOOST_CHECK(total_balances[asset_obj.id] == asset_obj.dynamic_asset_data_id(db).current_supply);
+            BOOST_CHECK_EQUAL(total_balances[asset_obj.id].value, asset_obj.dynamic_asset_data_id(db).current_supply.value);
          total_balances[asset_id_type()] += asset_obj.dynamic_asset_data_id(db).fee_pool;
       }
       for( auto item : total_debts )
       {
          //wdump( (item.first(db).dynamic_asset_data_id(db).current_supply)(item.second) );
-         BOOST_CHECK(item.first(db).dynamic_asset_data_id(db).current_supply == item.second);
+         BOOST_CHECK_EQUAL(item.first(db).dynamic_asset_data_id(db).current_supply.value, item.second.value);
       }
       // wdump( (core_in_orders)(reported_core_in_orders) );
-      BOOST_CHECK( core_in_orders == reported_core_in_orders );
+      BOOST_CHECK_EQUAL( core_in_orders.value , reported_core_in_orders.value );
 
       //wdump( (core_asset_data.current_supply)(total_balances[asset_id_type()]) );
-      BOOST_CHECK( total_balances[asset_id_type()] == core_asset_data.current_supply );
+      BOOST_CHECK_EQUAL( total_balances[asset_id_type()].value , core_asset_data.current_supply.value );
    }
 
    database_fixture()
@@ -288,7 +288,7 @@ struct database_fixture {
       std::cout << std::setw(10) << "SHORT" << " ";
       std::cout << std::setw(16) << pretty( cur.amount_for_sale() ) << " ";
       std::cout << std::setw(16) << pretty( cur.amount_to_receive() ) << " ";
-      std::cout << std::setw(16) << cur.short_price.to_real() << " ";
+      std::cout << std::setw(16) << (~cur.sell_price).to_real() << " ";
    }
 
    void print_limit_order( const limit_order_object& cur )
@@ -298,6 +298,29 @@ struct database_fixture {
       std::cout << std::setw(16) << pretty( cur.amount_for_sale() ) << " ";
       std::cout << std::setw(16) << pretty( cur.amount_to_receive() ) << " ";
       std::cout << std::setw(16) << cur.sell_price.to_real() << " ";
+   }
+   void print_call_orders()
+   {
+      cout << std::fixed;
+      cout.precision(5);
+      cout << std::setw(10) << std::left  << "NAME"      << " ";
+      cout << std::setw(10) << std::right << "TYPE"      << " ";
+      cout << std::setw(16) << std::right << "DEBT"  << " ";
+      cout << std::setw(16) << std::right << "COLLAT"  << " ";
+      cout << std::setw(16) << std::right << "CALL PRICE"     << " ";
+      cout << std::setw(16) << std::right << "~CALL PRICE"     << "\n";
+      cout << string(70, '=');
+
+      for( const call_order_object& o : db.get_index_type<call_order_index>().indices() )
+      {
+         std::cout << "\n";
+         cout << std::setw( 10 ) << std::left   << o.borrower(db).name << " ";
+         cout << std::setw( 16 ) << std::right  << pretty( o.get_debt() ) << " ";
+         cout << std::setw( 16 ) << std::right  << pretty( o.get_collateral() ) << " ";
+         cout << std::setw( 16 ) << std::right  << o.call_price.to_real() << " ";
+         cout << std::setw( 16 ) << std::right  << (~o.call_price).to_real() << " ";
+      }
+         std::cout << "\n";
    }
 
    void print_joint_market( const string& syma, const string&  symb )
@@ -315,16 +338,16 @@ struct database_fixture {
       const auto& limit_idx = db.get_index_type<limit_order_index>();
       const auto& limit_price_idx = limit_idx.indices().get<by_price>();
       const auto& short_idx = db.get_index_type<short_order_index>();
-      const auto& short_price_idx = short_idx.indices().get<by_price>();
+      const auto& sell_price_idx = short_idx.indices().get<by_price>();
 
       auto limit_itr = limit_price_idx.begin();
-      auto short_itr = short_price_idx.begin();
+      auto short_itr = sell_price_idx.rbegin();
       while( true )
       {
          std::cout << std::endl;
          if( limit_itr != limit_price_idx.end() )
          {
-            if( short_itr != short_price_idx.end() && limit_itr->sell_price > short_itr->short_price )
+            if( short_itr != sell_price_idx.rend() && limit_itr->sell_price > ~short_itr->sell_price )
             { 
                print_short_order( *short_itr );
                ++short_itr;
@@ -335,7 +358,7 @@ struct database_fixture {
                ++limit_itr;
             }
          }
-         else if( short_itr != short_price_idx.end() )
+         else if( short_itr != sell_price_idx.rend() )
          { 
             print_short_order( *short_itr );
             ++short_itr;
@@ -366,8 +389,8 @@ struct database_fixture {
          cout << std::setw( 10 ) << std::left   << cur->seller(db).name << " ";
          cout << std::setw( 16 ) << std::right  << pretty( cur->amount_for_sale() ) << " ";
          cout << std::setw( 16 ) << std::right  << pretty( cur->get_collateral() ) << " ";
-         cout << std::setw( 10 ) << std::right  << cur->short_price.to_real() << " ";
-         cout << std::setw( 10 ) << std::right  << (~cur->short_price).to_real() << " ";
+         cout << std::setw( 10 ) << std::right  << cur->sell_price.to_real() << " ";
+         cout << std::setw( 10 ) << std::right  << (~cur->sell_price).to_real() << " ";
          cout << std::setw( 10 ) << std::right  << (cur->call_price).to_real() << " ";
          cout << std::setw( 10 ) << std::right  << (cur->initial_collateral_ratio)/double(1000) << " ";
          cout << std::setw( 10 ) << std::right  << (cur->maintenance_collateral_ratio)/double(1000) << " ";

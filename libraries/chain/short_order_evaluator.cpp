@@ -25,7 +25,7 @@ object_id_type short_order_create_evaluator::do_evaluate( const short_order_crea
 
    // TODO: FC_ASSERT( op.initial_collateral_ratio >= CURRENT_INIT_COLLATERAL_RATIO_REQUIREMENTS )
    // TODO: FC_ASSERT( op.maintenance_collateral_ratio >= CURRENT_INIT_COLLATERAL_RATIO_REQUIREMENTS )
-   // TODO: FC_ASSERT( op.short_price() >= CURRENT_PRICE_LIMIT  )
+   // TODO: FC_ASSERT( op.sell_price() >= CURRENT_PRICE_LIMIT  )
 
    return object_id_type();
 }
@@ -41,7 +41,7 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
        obj.seller                       = _seller->id;
        obj.for_sale                     = op.amount_to_sell.amount;
        obj.available_collateral         = op.collateral.amount;
-       obj.short_price                  = op.short_price();
+       obj.sell_price                  = op.sell_price();
        obj.call_price                   = op.call_price();
        obj.initial_collateral_ratio     = op.initial_collateral_ratio;
        obj.maintenance_collateral_ratio = op.maintenance_collateral_ratio;
@@ -65,29 +65,17 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
       });
    }
 
-   const auto& order_idx = db().get_index_type<limit_order_index>();
-   const auto& price_idx = order_idx.indices().get<by_price>();
-   
-   // TODO if this isn't the BEST short order above the limit then we can skip
-   // the rest of the evaluation.
-   //auto best_itr = price_idx.lower_bound( _sell_asset->amount(0) / op.min_to_receive );
-   //if( best_itr->id != new_order_object.id ) return new_order_object.id;
+   const auto& limit_order_idx = db().get_index_type<limit_order_index>();
+   const auto& limit_price_idx = limit_order_idx.indices().get<by_price>();
 
-   auto max_price  = op.short_price();
-   // TODO: limit max_price by asset properties. 
-   auto itr = price_idx.lower_bound( _receive_asset->amount(0) / op.amount_to_sell );
-   auto end = price_idx.end();
-   /*
-   if( itr == end ) elog( "no orders found" );
-   else 
-   {
-      wdump( (itr->sell_price)(max_price) );
-      wdump( (itr->sell_price.to_real())(max_price.to_real()) );
-   }
-   */
+   //wdump( (op.sell_price().to_real()) );
+   auto min_limit_price  = ~op.sell_price();
+   //wdump( (min_limit_price.to_real()) );
 
+   auto itr = limit_price_idx.lower_bound( min_limit_price );
+   auto end = limit_price_idx.upper_bound( min_limit_price.max() );
 
-   while( itr != end && itr->sell_price >= max_price )
+   while( itr != end )
    {
       //wdump( (itr->sell_price)(max_price) );
       //wdump( (itr->sell_price.to_real())(max_price.to_real()) );

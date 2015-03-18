@@ -356,6 +356,7 @@ BOOST_AUTO_TEST_CASE( match_short_now_exact )
       BOOST_REQUIRE( buy_order );
       auto first_short = create_short( shorter_account, bitusd.amount(100), asset( 200 ) ); // 1:1 price
       BOOST_REQUIRE( first_short == nullptr );
+      print_call_orders();
       //print_short_market("","");
    }catch ( const fc::exception& e )
    {
@@ -382,9 +383,9 @@ BOOST_AUTO_TEST_CASE( dont_match_short )
       auto buy_order = create_sell_order( buyer_account, asset(100), bitusd.amount(100) );
       //print_market("","");
       BOOST_REQUIRE( buy_order );
-      auto first_short = create_short( shorter_account, bitusd.amount(100), asset( 200 ) ); // 1:1 price
+      auto first_short  = create_short( shorter_account, bitusd.amount(100), asset( 200 ) ); // 1:1 price
       auto second_short = create_short( shorter_account, bitusd.amount(100), asset( 300 ) ); // 1:1 price
-      auto third_short = create_short( shorter_account, bitusd.amount(100), asset( 400 ) ); // 1:1 price
+      auto third_short  = create_short( shorter_account, bitusd.amount(100), asset( 400 ) ); // 1:1 price
       //print_short_market("","");
       BOOST_REQUIRE( first_short && second_short && third_short );
       //print_joint_market("","");
@@ -409,12 +410,13 @@ BOOST_AUTO_TEST_CASE( match_all_short_with_surplus_collaterl )
 
       //auto buy_order = create_sell_order( buyer_account, asset(200), bitusd.amount(101) );
       auto buy_order = create_sell_order( buyer_account, asset(300), bitusd.amount(100) );
-      //print_market("","");
+      print_market("","");
       BOOST_REQUIRE( buy_order );
       auto first_short = create_short( shorter_account, bitusd.amount(100), asset( 200 ) ); // 1:1 price
-      //print_short_market("","");
+      print_short_market("","");
       BOOST_REQUIRE( !first_short );
       //print_short_market("","");
+      print_call_orders();
    }catch ( const fc::exception& e )
    {
       elog( "${e}", ("e", e.to_detail_string() ) );
@@ -855,7 +857,7 @@ BOOST_AUTO_TEST_CASE( limit_match_existing_short_exact )
       auto third_short = create_short( shorter_account, bitusd.amount(100), asset( 400 ) ); // 1:1 price
       //print_short_market("","");
       BOOST_REQUIRE( first_short && second_short && third_short );
-     // print_joint_market("","");
+      //print_joint_market("","");
       auto unmatched_order = create_sell_order( buyer_account, asset(200), bitusd.amount(100) );
       //print_joint_market("","");
       BOOST_REQUIRE( !unmatched_order );
@@ -982,6 +984,7 @@ BOOST_AUTO_TEST_CASE( limit_match_multiple_existing_short_partial_over_price )
       BOOST_CHECK( next_short->get_collateral()  == asset(97) );
       BOOST_CHECK( second_short->amount_for_sale() == bitusd.amount(100) );
       BOOST_CHECK( third_short->amount_for_sale() == bitusd.amount(100) );
+      print_call_orders();
 
    }catch ( const fc::exception& e )
    {
@@ -1006,7 +1009,6 @@ BOOST_AUTO_TEST_CASE( limit_dont_match_existing_short_partial_over_price )
       create_sell_order( buyer_account, asset(125), bitusd.amount(100) );
       create_sell_order( buyer_account, asset(150), bitusd.amount(100) );
       auto buy_order = create_sell_order( buyer_account, asset(100), bitusd.amount(100) );
-      //print_market("","");
       BOOST_REQUIRE( buy_order );
       auto first_short = create_short( shorter_account, bitusd.amount(100), asset( 200 ) ); // 1:1 price
       auto second_short = create_short( shorter_account, bitusd.amount(100), asset( 300 ) ); // 1:1 price
@@ -1020,12 +1022,64 @@ BOOST_AUTO_TEST_CASE( limit_dont_match_existing_short_partial_over_price )
       BOOST_CHECK( first_short->get_collateral()  == asset(200) );
       BOOST_CHECK( second_short->amount_for_sale() == bitusd.amount(100) );
       BOOST_CHECK( third_short->amount_for_sale() == bitusd.amount(100) );
-
    }catch ( const fc::exception& e )
    {
       elog( "${e}", ("e", e.to_detail_string() ) );
       throw;
    }
 }
+
+BOOST_AUTO_TEST_CASE( margin_call_order_test )
+{ try {
+   const asset_object& bitusd = create_bitasset( "BITUSD" );
+   const account_object& shorter1_account  = create_account( "shorter1" );
+   const account_object& shorter2_account  = create_account( "shorter2" );
+   const account_object& shorter3_account  = create_account( "shorter3" );
+   const account_object& buyer_account  = create_account( "buyer" );
+   transfer( genesis_account(db), shorter1_account, asset( 10000 ) );
+   transfer( genesis_account(db), shorter2_account, asset( 10000 ) );
+   transfer( genesis_account(db), shorter3_account, asset( 10000 ) );
+   transfer( genesis_account(db), buyer_account, asset( 10000 ) );
+
+   BOOST_REQUIRE( create_sell_order( buyer_account, asset(125), bitusd.amount(100) ) );
+   BOOST_REQUIRE( create_sell_order( buyer_account, asset(150), bitusd.amount(100) ) );
+   BOOST_REQUIRE( create_sell_order( buyer_account, asset(200), bitusd.amount(100) ) );
+   print_joint_market("","");
+   BOOST_REQUIRE( !create_short( shorter1_account, bitusd.amount(100), asset( 200 ) ) );
+   BOOST_REQUIRE( !create_short( shorter2_account, bitusd.amount(100), asset( 150 ) ) );
+   BOOST_REQUIRE( !create_short( shorter3_account, bitusd.amount(100), asset( 125 ) ) );
+   print_call_orders();
+
+}catch ( const fc::exception& e )
+{
+  elog( "${e}", ("e", e.to_detail_string() ) );
+  throw;
+} }
+
+BOOST_AUTO_TEST_CASE( margin_call_order_test_no_match )
+{ try {
+   const asset_object& bitusd = create_bitasset( "BITUSD" );
+   const account_object& shorter1_account  = create_account( "shorter1" );
+   const account_object& shorter2_account  = create_account( "shorter2" );
+   const account_object& shorter3_account  = create_account( "shorter3" );
+   const account_object& buyer_account  = create_account( "buyer" );
+   transfer( genesis_account(db), shorter1_account, asset( 10000 ) );
+   transfer( genesis_account(db), shorter2_account, asset( 10000 ) );
+   transfer( genesis_account(db), shorter3_account, asset( 10000 ) );
+   transfer( genesis_account(db), buyer_account, asset( 10000 ) );
+
+   BOOST_REQUIRE( create_sell_order( buyer_account, asset(125), bitusd.amount(100) ) );
+   BOOST_REQUIRE( create_sell_order( buyer_account, asset(150), bitusd.amount(100) ) );
+   BOOST_REQUIRE( create_sell_order( buyer_account, asset(200), bitusd.amount(100) ) );
+   print_joint_market("","");
+   BOOST_REQUIRE( create_short( shorter1_account, bitusd.amount(100), asset( 250 ) ) );
+   print_call_orders();
+
+}catch ( const fc::exception& e )
+{
+  elog( "${e}", ("e", e.to_detail_string() ) );
+  throw;
+} }
+
 
 BOOST_AUTO_TEST_SUITE_END()

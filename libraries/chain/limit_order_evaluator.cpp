@@ -27,6 +27,8 @@ object_id_type limit_order_create_evaluator::do_evaluate( const limit_order_crea
 
    return object_id_type();
 }
+template<typename I>
+std::reverse_iterator<I> reverse( const I& itr ) { return std::reverse_iterator<I>(itr); }
 
 object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_operation& op )
 {
@@ -43,7 +45,7 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
    const auto& new_order_object = db().create<limit_order_object>( [&]( limit_order_object& obj ){
        obj.seller   = _seller->id;
        obj.for_sale = op.amount_to_sell.amount;
-       obj.sell_price = op.amount_to_sell / op.min_to_receive;
+       obj.sell_price = op.get_price();
    });
    limit_order_id_type result = new_order_object.id; // save this because we may remove the object by filling it
 
@@ -68,9 +70,10 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
    //if( best_limit_itr->id != new_order_object.id ) return new_order_object.id;
 
 
-   auto max_price  = op.min_to_receive / op.amount_to_sell;
-   auto limit_itr = limit_price_idx.lower_bound( _receive_asset->amount(0) / op.amount_to_sell );
-   auto limit_end = limit_price_idx.lower_bound( _receive_asset->amount(BTS_MAX_SHARE_SUPPLY) / asset(1,op.amount_to_sell.asset_id) );
+   auto max_price  = ~op.get_price(); //op.min_to_receive / op.amount_to_sell;
+   //auto limit_itr = limit_price_idx.lower_bound( _receive_asset->amount(0) / op.amount_to_sell );
+   auto limit_itr = limit_price_idx.lower_bound( max_price.min() ); 
+   auto limit_end = limit_price_idx.upper_bound( max_price ); 
 
    bool filled = false;
    //if( new_order_object.amount_to_receive().asset_id(db()).is_market_issued() )
@@ -87,62 +90,44 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
             return result;
          }
       }
-
-
       const auto& short_order_idx = db().get_index_type<short_order_index>();
-      const auto& short_price_idx = short_order_idx.indices().get<by_price>();
+      const auto& sell_price_idx = short_order_idx.indices().get<by_price>();
 
-      auto min_short_price = _receive_asset->amount(0) / op.amount_to_sell;
-      //auto short_itr = short_price_idx.lower_bound( min_price );
-      auto short_itr = short_price_idx.begin();
-      auto short_end = short_price_idx.end();
-      //auto short_end = short_price_idx.lower_bound( _receive_asset->amount(BTS_MAX_SHARE_SUPPLY) / asset(1,op.amount_to_sell.asset_id) );
-      // if( short_itr != short_price_idx.end() ) edump((short_itr->short_price.to_real()) );
-      // if( limit_itr != limit_price_idx.end() ) wdump((limit_itr->sell_price.to_real()) );
+      auto short_end = reverse(sell_price_idx.lower_bound( max_price ));
+      auto short_itr = reverse(sell_price_idx.upper_bound( max_price.max() ));
 
       while( !filled )
       {
          if( limit_itr != limit_end )
          {
-            if( short_itr != short_end && 
-                short_itr->short_price <= ~max_price &&
-                limit_itr->sell_price > short_itr->short_price )
+            if( short_itr != short_end && limit_itr->sell_price > short_itr->sell_price )
             {
                auto old_short_itr = short_itr;
                ++short_itr;
-               filled = (2 != match( new_order_object, *old_short_itr, old_short_itr->short_price ) );
+               filled = (2 != match( new_order_object, *old_short_itr, old_short_itr->sell_price ) );
             }
-            else if( limit_itr->sell_price <= max_price )
+            else 
             {
                auto old_limit_itr = limit_itr;
                ++limit_itr;
                filled = (2 != match( new_order_object, *old_limit_itr, old_limit_itr->sell_price ) );
             }
-            else break;
          } 
-         else if( short_itr != short_end && short_itr->short_price <= ~max_price )
+         else if( short_itr != short_end  )
          {
             auto old_short_itr = short_itr;
             ++short_itr;
-            filled = (2 != match( new_order_object, *old_short_itr, old_short_itr->short_price ) );
+            filled = (2 != match( new_order_object, *old_short_itr, old_short_itr->sell_price ) );
          }
          else break;
       }
-
-      //if( limit_itr != limit_end && short_itr != short_end )
-      /* {
-        wdump( (filled) );
-        wdump( (limit_itr->sell_price)(short_itr->short_price)(max_price)((~short_itr->short_price).to_real()) );
-        wdump( (short_itr->short_price.to_real()) ((~max_price).to_real()) );
-      } */
    }
-   else while( !filled && limit_itr != limit_end && limit_itr->sell_price <= max_price  )
+   else while( !filled && limit_itr != limit_end  )
    {
          auto old_itr = limit_itr;
          ++limit_itr;
          filled = (2 != match( new_order_object, *old_itr, old_itr->sell_price ));
    }
-   
 
    apply_delta_balances();
    apply_delta_fee_pools();
