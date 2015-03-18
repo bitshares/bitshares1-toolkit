@@ -1182,4 +1182,37 @@ BOOST_AUTO_TEST_CASE( big_short )
    }
 }
 
+BOOST_AUTO_TEST_CASE( margin_call_limit_test )
+{ try {
+      const asset_object& bitusd      = create_bitasset( "BITUSD" );
+      const asset_object& bts         = get_asset( BTS_SYMBOL );
+
+      const account_object& shorter1  = create_account( "shorter1" );
+      const account_object& shorter2  = create_account( "shorter2" );
+      const account_object& buyer1    = create_account( "buyer1" );
+      const account_object& buyer2    = create_account( "buyer2" );
+
+      transfer( genesis_account(db), shorter1, asset( 10000 ) );
+      transfer( genesis_account(db), shorter2, asset( 10000 ) );
+      transfer( genesis_account(db), buyer1, asset( 10000 ) );
+      transfer( genesis_account(db), buyer2, asset( 10000 ) );
+
+      BOOST_REQUIRE( create_sell_order( buyer1, asset(1000), bitusd.amount(1000) ) );
+      BOOST_REQUIRE( !create_short( shorter1, bitusd.amount(1000), asset(1000) )   );
+      BOOST_REQUIRE_EQUAL( get_balance(buyer1, bitusd), 990 ); // 1000 - 1% fee
+
+      // this should cause the highest bid to below the margin call threshold
+      // which means it should be filled by the cover
+      auto unmatched = create_sell_order( buyer2, bitusd.amount(1000), bts.amount(1500) );
+      if( unmatched ) edump((*unmatched));
+      BOOST_REQUIRE( !unmatched );
+   } catch( const fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
+
+
+
 BOOST_AUTO_TEST_SUITE_END()

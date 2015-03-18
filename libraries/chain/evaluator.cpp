@@ -228,10 +228,29 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
     const auto& limit_price_index = limit_index.indices().get<by_price>();
 
     const short_order_index& short_index = db().get_index_type<short_order_index>();
-    const auto& sell_price_index = short_index.indices().get<by_price>();
+    const auto& short_price_index = short_index.indices().get<by_price>();
 
-    auto call_itr = call_price_index.lower_bound( mia.amount(0) / asset(1,mia.short_backing_asset) );
-    auto call_end = call_price_index.lower_bound( mia.amount(BTS_MAX_SHARE_SUPPLY) / asset(1,mia.short_backing_asset) );
+
+    auto max_short = short_price_index.lower_bound( price::max( mia.id, mia.short_backing_asset ) );
+    auto end_short = short_price_index.upper_bound( price::min( mia.id, mia.short_backing_asset ) );
+
+    auto max_limit = limit_price_index.lower_bound( price::max( mia.id, mia.short_backing_asset ) );
+    auto end_limit = limit_price_index.upper_bound( price::min( mia.id, mia.short_backing_asset ) );
+
+    wdump( (max_short->sell_price.to_real()) );
+    wdump( (end_short->sell_price.to_real()) );
+    wdump( (max_limit->sell_price.to_real()) );
+    wdump( (end_limit->sell_price.to_real()) );
+
+    auto call_itr = call_price_index.lower_bound( price::min( mia.id, mia.short_backing_asset ) );
+    auto call_end = call_price_index.upper_bound( price::max( mia.id, mia.short_backing_asset ) );
+
+    for( auto itr = call_price_index.begin(); itr != call_price_index.end(); ++itr )
+    {
+       idump((*itr));
+       if( call_itr == itr ) wdump((*call_itr));
+       if( call_end == itr ) edump((*call_end));
+    }
 
     return false;
 }
