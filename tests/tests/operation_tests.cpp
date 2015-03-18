@@ -1106,23 +1106,17 @@ BOOST_AUTO_TEST_CASE( limit_order_matching_mix_of_shorts_and_limits )
    const account_object& buyer2    = create_account( "buyer2" );
    const account_object& buyer3    = create_account( "buyer3" );
 
-   wlog(".");
    transfer( genesis_account(db), shorter1, asset( 10000 ) );
    transfer( genesis_account(db), shorter2, asset( 10000 ) );
    transfer( genesis_account(db), shorter3, asset( 10000 ) );
-   wlog(".");
    transfer( genesis_account(db), buyer1, asset( 10000 ) );
-   wlog(".");
    transfer( genesis_account(db), buyer2, asset( 10000 ) );
    transfer( genesis_account(db), buyer3, asset( 10000 ) );
-   wlog(".");
 
    // create some BitUSD
    BOOST_REQUIRE( create_sell_order( buyer1, asset(1000), bitusd.amount(1000) ) );
    BOOST_REQUIRE( !create_short( shorter1, bitusd.amount(1000), asset(1000) )   );
    BOOST_REQUIRE_EQUAL( get_balance(buyer1, bitusd), 990 ); // 1000 - 1% fee
-
-   wlog(".");
 
    // create a mixture of BitUSD sells and shorts
    BOOST_REQUIRE( create_short(      shorter1, bitusd.amount(100), asset(125) )   );
@@ -1130,7 +1124,7 @@ BOOST_AUTO_TEST_CASE( limit_order_matching_mix_of_shorts_and_limits )
    BOOST_REQUIRE( create_short(      shorter2, bitusd.amount(100), asset(200) )   );
    BOOST_REQUIRE( create_sell_order( buyer1,   bitusd.amount(100), asset(225) )   );
    BOOST_REQUIRE( create_short(      shorter3, bitusd.amount(100), asset(250) )   );
-   
+
    print_joint_market("",""); // may have bugs
 
    // buy up everything but the highest order
@@ -1152,5 +1146,40 @@ BOOST_AUTO_TEST_CASE( limit_order_matching_mix_of_shorts_and_limits )
   throw;
 } }
 
+BOOST_AUTO_TEST_CASE( big_short )
+{
+   try {
+      const asset_object& bitusd      = create_bitasset( "BITUSD" );
+      const asset_object& bts         = get_asset( BTS_SYMBOL );
+      const account_object& shorter1  = create_account( "shorter1" );
+      const account_object& buyer1    = create_account( "buyer1" );
+      const account_object& buyer2    = create_account( "buyer2" );
+      const account_object& buyer3    = create_account( "buyer3" );
+
+      transfer( genesis_account(db), shorter1, asset( 10000 ) );
+      transfer( genesis_account(db), buyer1, asset( 10000 ) );
+      transfer( genesis_account(db), buyer2, asset( 10000 ) );
+      transfer( genesis_account(db), buyer3, asset( 10000 ) );
+
+      create_sell_order(buyer1, bts.amount(500), bitusd.amount(500));
+      create_sell_order(buyer2, bts.amount(500), bitusd.amount(600));
+      create_sell_order(buyer3, bts.amount(500), bitusd.amount(700));
+
+      print_joint_market("","");
+
+      create_short(shorter1, bitusd.amount(1300), bts.amount(800));
+
+      print_joint_market("","");
+
+      elog("TODO: Assert postconditions are correct programmatically.");
+      idump((shorter1.debts(db).call_orders.begin()->second(db)));
+      idump((buyer1.balances(db)));
+      idump((buyer2.balances(db)));
+      idump((buyer3.balances(db)));
+   } catch( const fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
 
 BOOST_AUTO_TEST_SUITE_END()
