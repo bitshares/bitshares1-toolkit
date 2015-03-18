@@ -84,19 +84,19 @@ struct database_fixture {
       {
          total_balances[asset_obj.id] += asset_obj.dynamic_asset_data_id(db).accumulated_fees;
          if( asset_obj.id != asset_id_type() )
-            BOOST_CHECK(total_balances[asset_obj.id] == asset_obj.dynamic_asset_data_id(db).current_supply);
+            BOOST_CHECK_EQUAL(total_balances[asset_obj.id].value, asset_obj.dynamic_asset_data_id(db).current_supply.value);
          total_balances[asset_id_type()] += asset_obj.dynamic_asset_data_id(db).fee_pool;
       }
       for( auto item : total_debts )
       {
          //wdump( (item.first(db).dynamic_asset_data_id(db).current_supply)(item.second) );
-         BOOST_CHECK(item.first(db).dynamic_asset_data_id(db).current_supply == item.second);
+         BOOST_CHECK_EQUAL(item.first(db).dynamic_asset_data_id(db).current_supply.value, item.second.value);
       }
       // wdump( (core_in_orders)(reported_core_in_orders) );
-      BOOST_CHECK( core_in_orders == reported_core_in_orders );
+      BOOST_CHECK_EQUAL( core_in_orders.value , reported_core_in_orders.value );
 
       //wdump( (core_asset_data.current_supply)(total_balances[asset_id_type()]) );
-      BOOST_CHECK( total_balances[asset_id_type()] == core_asset_data.current_supply );
+      BOOST_CHECK_EQUAL( total_balances[asset_id_type()].value , core_asset_data.current_supply.value );
    }
 
    database_fixture()

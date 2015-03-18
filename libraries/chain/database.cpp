@@ -185,6 +185,7 @@ void database::initialize_evaluators()
    register_evaluator<short_order_cancel_evaluator>();
    register_evaluator<transfer_evaluator>();
    register_evaluator<asset_fund_fee_pool_evaluator>();
+   register_evaluator<delegate_publish_feeds_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -256,6 +257,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
             // Nothing to do here...
             (void)v;
          });
+      const delegate_feeds_object& delegate_feeds = create<delegate_feeds_object>([](delegate_feeds_object&){});
       const delegate_object& init_delegate = create<delegate_object>( [&](delegate_object& d) {
          d.delegate_account = delegate_account.id;
          d.signing_key = genesis_key.id;
@@ -264,6 +266,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          fc::raw::pack( enc, d.last_secret );
          d.next_secret = secret_hash_type::hash(enc.result());
          d.vote = vote.id;
+         d.feeds = delegate_feeds.id;
       });
       init_delegates.push_back(init_delegate.id);
    }
@@ -766,6 +769,7 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    processed_transaction ptrx(trx);
    for( auto op : ptrx.operations )
    {
+      assert("No registered evaluator for this operation." && _operation_evaluators[op.which()]);
       auto r = _operation_evaluators[op.which()]->evaluate( eval_state, op, true );
       eval_state.operation_results.push_back(r);
    }

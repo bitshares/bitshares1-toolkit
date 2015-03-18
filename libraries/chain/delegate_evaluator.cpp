@@ -82,7 +82,7 @@ object_id_type delegate_update_evaluator::do_apply( const delegate_update_operat
 }
 
 object_id_type delegate_publish_feeds_evaluator::do_evaluate(const delegate_publish_feeds_operation& o)
-{
+{ try {
    database& d = db();
    const delegate_object& del = o.delegate(d);
 
@@ -102,28 +102,28 @@ object_id_type delegate_publish_feeds_evaluator::do_evaluate(const delegate_publ
    feed_box = &del.feeds(d);
 
    return object_id_type();
-}
+} FC_CAPTURE_AND_RETHROW((o)) }
 
 object_id_type delegate_publish_feeds_evaluator::do_apply(const delegate_publish_feeds_operation& o)
-{
+{ try {
    apply_delta_balances();
    apply_delta_fee_pools();
 
    database& d = db();
 
-   d.modify<delegate_feeds_object>( *feed_box, [this,o]( delegate_feeds_object& feed_box ) {
+   d.modify<delegate_feeds_object>( *feed_box, [this,o]( delegate_feeds_object& fobj) {
       for( const price_feed& feed : o.feeds )
          all_delegate_feeds[make_pair(feed.call_limit.base.asset_id,feed.call_limit.quote.asset_id)]
-               .push_back(&feed_box.set_feed(feed));
+               .push_back(&fobj.set_feed(feed));
    });
 
    for( delegate_id_type delegate_id : d.get_global_properties().active_delegates )
       for( const price_feed& feed : o.feeds )
       {
-         auto current_pair = make_pair(feed.call_limit.quote.asset_id, feed.call_limit.base.asset_id);
+         auto current_pair = make_pair(feed.call_limit.base.asset_id, feed.call_limit.quote.asset_id);
          if( delegate_id != o.delegate )
          {
-            const fc::optional<price_feed>& f = delegate_id(d).feeds(d).get_feed(current_pair.first, current_pair.second);
+            const price_feed* f = delegate_id(d).feeds(d).get_feed(current_pair.first, current_pair.second);
             if( f )
                all_delegate_feeds[current_pair].push_back(&*f);
          }
@@ -131,10 +131,14 @@ object_id_type delegate_publish_feeds_evaluator::do_apply(const delegate_publish
 
    for( const price_feed& feed : o.feeds )
    {
-      auto current_pair = make_pair(feed.call_limit.quote.asset_id, feed.call_limit.base.asset_id);
+      auto current_pair = make_pair(feed.call_limit.base.asset_id, feed.call_limit.quote.asset_id);
       vector<const price_feed*>& current_feeds = all_delegate_feeds[current_pair];
       price_feed& median_feed = median_feed_values[current_pair];
-      auto median_itr = current_feeds.begin() + current_feeds.size() / 2;
+
+      if( current_feeds.empty() )
+         continue;
+
+      const auto median_itr = current_feeds.begin() + current_feeds.size() / 2;
 
       // *** Begin Median Calculations ***
       std::nth_element( current_feeds.begin(), median_itr, current_feeds.end(),
@@ -175,6 +179,6 @@ object_id_type delegate_publish_feeds_evaluator::do_apply(const delegate_publish
    }
 
    return object_id_type();
-}
+} FC_CAPTURE_AND_RETHROW((o)) }
 
 } } // bts::chain

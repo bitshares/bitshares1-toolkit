@@ -312,6 +312,9 @@ share_type limit_order_cancel_operation::calculate_fee(const fee_schedule_type& 
 void short_order_create_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( initial_collateral_ratio >= BTS_MIN_COLLATERAL_RATIO     );
+   FC_ASSERT( initial_collateral_ratio >  maintenance_collateral_ratio );
+   FC_ASSERT( initial_collateral_ratio <= BTS_MAX_COLLATERAL_RATIO     );
 }
 
 share_type short_order_create_operation::calculate_fee(const fee_schedule_type& k) const

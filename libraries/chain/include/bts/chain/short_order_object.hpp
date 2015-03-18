@@ -41,8 +41,8 @@ namespace bts { namespace chain {
         uint16_t         initial_collateral_ratio    = 0; ///< may be higher than the network requires
         uint16_t         maintenance_collateral_ratio = 0; ///< may optionally be higher than the network requires
 
-        asset get_collateral()const    { return asset( available_collateral, short_price.base.asset_id ); }
-        asset amount_for_sale()const   { return asset( for_sale, short_price.quote.asset_id ); }
+        asset get_collateral()const    { return asset( available_collateral, short_price.quote.asset_id ); }
+        asset amount_for_sale()const   { return asset( for_sale, short_price.base.asset_id ); }
         asset amount_to_receive()const { return amount_for_sale() * short_price; }
   };
 
@@ -59,8 +59,8 @@ namespace bts { namespace chain {
         static const uint8_t space_id = protocol_ids;
         static const uint8_t type_id  = call_order_object_type;
 
-        asset get_collateral()const { return asset( collateral, call_price.quote.asset_id ); }
-        asset get_debt()const { return asset( debt, call_price.base.asset_id ); }
+        asset get_collateral()const { return asset( collateral, call_price.base.asset_id ); }
+        asset get_debt()const { return asset( debt, call_price.quote.asset_id ); }
         asset amount_to_receive()const { return get_debt(); }
 
         account_id_type  borrower;

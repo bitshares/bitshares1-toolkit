@@ -65,29 +65,15 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
       });
    }
 
-   const auto& order_idx = db().get_index_type<limit_order_index>();
-   const auto& price_idx = order_idx.indices().get<by_price>();
-   
-   // TODO if this isn't the BEST short order above the limit then we can skip
-   // the rest of the evaluation.
-   //auto best_itr = price_idx.lower_bound( _sell_asset->amount(0) / op.min_to_receive );
-   //if( best_itr->id != new_order_object.id ) return new_order_object.id;
+   const auto& limit_order_idx = db().get_index_type<limit_order_index>();
+   const auto& limit_price_idx = limit_order_idx.indices().get<by_price>();
 
-   auto max_price  = op.short_price();
-   // TODO: limit max_price by asset properties. 
-   auto itr = price_idx.lower_bound( _receive_asset->amount(0) / op.amount_to_sell );
-   auto end = price_idx.end();
-   /*
-   if( itr == end ) elog( "no orders found" );
-   else 
-   {
-      wdump( (itr->sell_price)(max_price) );
-      wdump( (itr->sell_price.to_real())(max_price.to_real()) );
-   }
-   */
+   auto max_limit_price  = ~op.short_price();
 
+   auto itr = limit_price_idx.lower_bound( max_limit_price.min() );
+   auto end = limit_price_idx.upper_bound( max_limit_price );
 
-   while( itr != end && itr->sell_price >= max_price )
+   while( itr != end )
    {
       //wdump( (itr->sell_price)(max_price) );
       //wdump( (itr->sell_price.to_real())(max_price.to_real()) );

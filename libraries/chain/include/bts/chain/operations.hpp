@@ -162,8 +162,9 @@ namespace bts { namespace chain {
        */
       bool            fill_or_kill = false;
 
-      void validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+      price           get_price()const { return amount_to_sell / min_to_receive; }
    };
 
    /**
@@ -205,10 +206,10 @@ namespace bts { namespace chain {
       asset           collateral;
       /// Fixed point representation of initial collateral ratio, with three digits of precision
       /// Must be greater than or equal to the minimum specified by price feed
-      uint16_t        initial_collateral_ratio    = 0;
+      uint16_t        initial_collateral_ratio    = BTS_DEFAULT_INITIAL_COLLATERAL_RATIO;
       /// Fixed point representation of maintenance collateral ratio, with three digits of precision
       /// Must be greater than or equal to the minimum specified by price feed
-      uint16_t        maintenance_collateral_ratio = 0;
+      uint16_t        maintenance_collateral_ratio = BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO;
 
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -218,7 +219,7 @@ namespace bts { namespace chain {
          tmp *= (initial_collateral_ratio - 1000);
          tmp /= 1000;
          FC_ASSERT( tmp  <= BTS_MAX_SHARE_SUPPLY );
-         return  asset( tmp.to_uint64(), collateral.asset_id) / amount_to_sell;
+         return  amount_to_sell / asset( tmp.to_uint64(), collateral.asset_id);
       }
       price call_price() const
       {
@@ -226,8 +227,7 @@ namespace bts { namespace chain {
          tmp *= maintenance_collateral_ratio - 1000;
          tmp /= 1000;
          FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
-         return amount_to_sell / asset( tmp.to_uint64(), collateral.asset_id);
-         //return asset( tmp.to_uint64(), collateral.asset_id) / amount_to_sell;
+         return asset( tmp.to_uint64(), collateral.asset_id) / amount_to_sell;
       }
    };
 

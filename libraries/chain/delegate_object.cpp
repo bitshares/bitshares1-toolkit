@@ -2,14 +2,14 @@
 
 using namespace bts::chain;
 
-fc::optional<price_feed> delegate_feeds_object::get_feed(asset_id_type quote, asset_id_type base) const
+const price_feed* delegate_feeds_object::get_feed(asset_id_type base, asset_id_type quote) const
 {
-   fc::optional<price_feed> result;
+   price_feed* result = nullptr;
    price_feed dummy;
    dummy.call_limit = price({asset(1, base), asset(1, quote)});
    auto itr = feeds.find(dummy);
    if( itr != feeds.end() )
-      result = *itr;
+      result = &*itr;
    return result;
 }
 
