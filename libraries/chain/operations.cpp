@@ -206,13 +206,23 @@ void  asset_create_operation::validate()const
 void asset_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( permissions <= ASSET_ISSUER_PERMISSION_MASK );
-   FC_ASSERT( flags <= ASSET_ISSUER_PERMISSION_MASK );
+
+   if( permissions )
+   {
+      if( flags )
+         FC_ASSERT( !(*flags & ~*permissions ) );
+      FC_ASSERT( *permissions <= ASSET_ISSUER_PERMISSION_MASK );
+   }
+   if( flags )
+      FC_ASSERT( *flags <= ASSET_ISSUER_PERMISSION_MASK );
+
+   FC_ASSERT( !(core_exchange_rate.valid() && new_price_feed.valid()) );
+
    if( core_exchange_rate )
    {
       core_exchange_rate->validate();
       FC_ASSERT(core_exchange_rate->quote.asset_id == asset_to_update);
-      FC_ASSERT(core_exchange_rate->base.asset_id < asset_to_update);
+      FC_ASSERT(core_exchange_rate->base.asset_id == asset_id_type());
    }
    if( new_price_feed )
    {

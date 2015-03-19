@@ -50,6 +50,7 @@ namespace bts { namespace chain {
          object_id_type do_apply( const asset_update_operation& o );
 
          share_type bts_fee_required;
+         const asset_object* asset_to_update;
    };
 
    class asset_fund_fee_pool_evaluator : public evaluator<asset_fund_fee_pool_evaluator>
