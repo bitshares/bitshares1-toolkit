@@ -51,9 +51,6 @@ object_id_type account_create_evaluator::do_apply( const account_create_operatio
    const auto& bal_obj = db().create<account_balance_object>( [&]( account_balance_object& obj ){
             /* no balances right now */
    });
-   const auto& dbt_obj = db().create<account_debt_object>( [&]( account_debt_object& obj ){
-            /* no debts now */
-   });
 
    const auto& new_acnt_object = db().create<account_object>( [&]( account_object& obj ){
          obj.name       = o.name;
@@ -62,7 +59,6 @@ object_id_type account_create_evaluator::do_apply( const account_create_operatio
          obj.memo_key   = get_relative_id(o.memo_key);
          obj.voting_key = get_relative_id(o.voting_key);
          obj.balances   = bal_obj.id;
-         obj.debts      = dbt_obj.id;
    });
 
    return new_acnt_object.id;

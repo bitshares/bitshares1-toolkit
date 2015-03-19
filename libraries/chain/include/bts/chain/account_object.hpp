@@ -47,21 +47,6 @@ namespace bts { namespace chain {
          vector<pair<asset_id_type,share_type> > balances;
    };
 
-   class account_debt_object : public abstract_object<account_debt_object>
-   {
-      public:
-         static const uint8_t space_id = implementation_ids;
-         static const uint8_t type_id  = impl_account_debt_object_type;
-
-         optional<call_order_id_type> get_call_order(asset_id_type aid )const
-         {
-            auto itr = call_orders.find(aid);
-            if( itr != call_orders.end() ) return itr->second;
-            return optional<call_order_id_type>();
-         }
-
-         flat_map<asset_id_type, call_order_id_type> call_orders;
-   };
 
    class account_object : public annotated_object<account_object>
    {
@@ -83,7 +68,6 @@ namespace bts { namespace chain {
          vector<delegate_id_type> delegate_votes;
 
          account_balance_id_type         balances;
-         account_debt_id_type            debts;
          flat_set<asset_id_type>         authorized_assets;
    };
 
@@ -115,11 +99,10 @@ namespace bts { namespace chain {
 }}
 FC_REFLECT_DERIVED( bts::chain::account_object,
                     (bts::chain::annotated_object<bts::chain::account_object>),
-                    (name)(owner)(active)(memo_key)(voting_key)(delegate_votes)(balances)(debts)(authorized_assets) )
+                    (name)(owner)(active)(memo_key)(voting_key)(delegate_votes)(balances)(authorized_assets) )
 
 FC_REFLECT_DERIVED( bts::chain::meta_account_object,
                     (bts::chain::object),
                     (memo_key)(delegate_id) )
 
 FC_REFLECT_DERIVED( bts::chain::account_balance_object, (bts::chain::object), (total_core_in_orders)(balances) )
-FC_REFLECT_DERIVED( bts::chain::account_debt_object, (bts::chain::object), (call_orders) );
