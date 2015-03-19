@@ -1311,6 +1311,10 @@ BOOST_AUTO_TEST_CASE( margin_call_limit_test )
       const asset_object& bitusd      = create_bitasset( "BITUSD" );
       const asset_object& bts         = get_asset( BTS_SYMBOL );
 
+      db.modify( bitusd, [&]( asset_object& usd ){
+                 usd.current_feed.call_limit = bts.amount(1) / bitusd.amount(1);
+                 });
+
       const account_object& shorter1  = create_account( "shorter1" );
       const account_object& shorter2  = create_account( "shorter2" );
       const account_object& buyer1    = create_account( "buyer1" );
@@ -1342,6 +1346,10 @@ BOOST_AUTO_TEST_CASE( dont_margin_call_limit_test )
       const asset_object& bitusd      = create_bitasset( "BITUSD" );
       const asset_object& bts         = get_asset( BTS_SYMBOL );
 
+      db.modify( bitusd, [&]( asset_object& usd ){
+                 usd.current_feed.call_limit = bts.amount(1) / bitusd.amount(1);
+                 });
+
       const account_object& shorter1  = create_account( "shorter1" );
       const account_object& shorter2  = create_account( "shorter2" );
       const account_object& buyer1    = create_account( "buyer1" );
@@ -1372,6 +1380,10 @@ BOOST_AUTO_TEST_CASE( margin_call_short_test )
 { try {
       const asset_object& bitusd      = create_bitasset( "BITUSD" );
       const asset_object& bts         = get_asset( BTS_SYMBOL );
+
+      db.modify( bitusd, [&]( asset_object& usd ){
+                 usd.current_feed.call_limit = bts.amount(1) / bitusd.amount(1);
+                 });
 
       const account_object& shorter1  = create_account( "shorter1" );
       const account_object& shorter2  = create_account( "shorter2" );

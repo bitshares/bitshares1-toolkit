@@ -215,6 +215,7 @@ int generic_evaluator::match( const limit_order_object& bid, const short_order_o
 bool generic_evaluator::check_call_orders( const asset_object& mia )
 {
     if( !mia.is_market_issued() ) return false;
+    if( mia.current_feed.call_limit.is_null() ) return false;
 
     const call_order_index& call_index = db().get_index_type<call_order_index>();
     const auto& call_price_index = call_index.indices().get<by_price>();
@@ -251,7 +252,7 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
        return false;
     }
     bool filled_short_or_limit = false;
-    return false;
+
 
     while( call_itr != call_end )
     {
@@ -399,6 +400,16 @@ void generic_evaluator::pay_order( const account_object& receiver, const asset& 
 }
 
 
+/**
+ *  For Market Issued assets Managed by Delegates, any fees collected in the MIA need
+ *  to be sold and converted into CORE by accepting the best offer on the table.
+ */
+bool generic_evaluator::convert_fees( const asset_object& mia )
+{
+   if( mia.issuer != account_id_type() ) return false;
+   return false;
+}
+
 bool generic_evaluator::fill_order( const limit_order_object& order, const asset& pays, const asset& receives )
 {
    wdump( (order)(pays)(receives) );
@@ -492,16 +503,6 @@ bool generic_evaluator::fill_order( const call_order_object& order, const asset&
    return collateral_freed.valid();
 }
 
-/**
- *  For Market Issued assets Managed by Delegates, any fees collected in the MIA need
- *  to be sold and converted into CORE by accepting the best offer on the table.
- */
-bool generic_evaluator::convert_fees( const asset_object& mia )
-{
-   if( mia.issuer != account_id_type() ) return false;
-   return false;
-}
-
 
 bool generic_evaluator::fill_order( const short_order_object& order, const asset& pays, const asset& receives )
 { try {
@@ -541,8 +542,6 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
              c.borrower    = seller.id;
              c.collateral  = seller_to_collateral.amount + buyer_to_collateral.amount;
              c.debt        = pays.amount;
-//             wdump( (pays.amount)(seller_to_collateral)(buyer_to_collateral) );
-//             wdump( (c.collateral)(c.debt) );
 
              c.call_price  = order.call_price;
              fc::uint128 tmp( c.collateral.value );
@@ -564,8 +563,6 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
       db().modify( call_order, [&]( call_order_object& c ){
             c.debt       += pays.amount;
             c.collateral += seller_to_collateral.amount + buyer_to_collateral.amount;
-            //wdump( (pays.amount)(seller_to_collateral)(buyer_to_collateral) );
-            //wdump( (c.collateral)(c.debt) );
 
             fc::uint128 tmp( c.collateral.value );
             tmp *= order.maintenance_collateral_ratio - 1000;

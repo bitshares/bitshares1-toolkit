@@ -48,6 +48,14 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
    });
    short_order_id_type new_id = new_order_object.id;
 
+   if( op.collateral.asset_id == asset_id_type() )
+   {
+      auto& bal_obj = fee_paying_account->balances(db());
+      db().modify( bal_obj, [&]( account_balance_object& obj ){
+          obj.total_core_in_orders += op.collateral.amount;
+      });
+   }
+
    check_call_orders(*_sell_asset);
 
    if( !db().find(new_id) ) // then we were filled by call order
@@ -57,13 +65,6 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
       return new_id;
    }
    
-   if( op.collateral.asset_id == asset_id_type() )
-   {
-      auto& bal_obj = fee_paying_account->balances(db());
-      db().modify( bal_obj, [&]( account_balance_object& obj ){
-          obj.total_core_in_orders += op.collateral.amount;
-      });
-   }
 
    const auto& limit_order_idx = db().get_index_type<limit_order_index>();
    const auto& limit_price_idx = limit_order_idx.indices().get<by_price>();
