@@ -95,7 +95,8 @@ namespace bts { namespace chain {
            composite_key< call_order_object,
               member< call_order_object, price, &call_order_object::call_price>,
               member< object, object_id_type, &object::id>
-           >
+           >,
+           composite_key_compare< std::less<price>, std::less<object_id_type> >
         >
      >
   > call_order_multi_index_type;

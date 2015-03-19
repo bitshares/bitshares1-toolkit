@@ -21,7 +21,7 @@ object_id_type limit_order_create_evaluator::do_evaluate( const limit_order_crea
    if( _sell_asset->flags & white_list ) FC_ASSERT( _seller->is_authorized_asset( _sell_asset->id ) );
    if( _receive_asset->flags & white_list ) FC_ASSERT( _seller->is_authorized_asset( _receive_asset->id ) );
 
-   FC_ASSERT( get_balance( _seller, _sell_asset ) >= op.amount_to_sell );
+   FC_ASSERT( get_balance( _seller, _sell_asset ) >= op.amount_to_sell, "insufficient balance", ("balance",get_balance(_seller,_sell_asset))("amount_to_sell",op.amount_to_sell) );
 
    // adjust_balance( _seller, _sell_asset, -op.amount_to_sell.amount );
 

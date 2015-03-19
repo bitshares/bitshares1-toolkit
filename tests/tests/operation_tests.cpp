@@ -1163,16 +1163,25 @@ BOOST_AUTO_TEST_CASE( big_short )
 
       create_sell_order(buyer1, bts.amount(500), bitusd.amount(500));
       create_sell_order(buyer2, bts.amount(500), bitusd.amount(600));
-      create_sell_order(buyer3, bts.amount(500), bitusd.amount(700));
+      auto unmatched_buy3 = create_sell_order(buyer3, bts.amount(500), bitusd.amount(700));
 
       print_joint_market("","");
 
-      create_short(shorter1, bitusd.amount(1300), bts.amount(800));
+      auto unmatched = create_short(shorter1, bitusd.amount(1300), bts.amount(800));
+      if( unmatched ) wdump((*unmatched));
+
 
       print_joint_market("","");
 
       elog("TODO: Assert postconditions are correct programmatically.");
       idump((shorter1.debts(db).call_orders.begin()->second(db)));
+      idump((shorter1.balances(db).total_core_in_orders));
+      idump((buyer1.balances(db).total_core_in_orders));
+      idump((buyer2.balances(db).total_core_in_orders));
+      idump((buyer3.balances(db).total_core_in_orders));
+      idump((*unmatched_buy3));
+
+      BOOST_REQUIRE( !unmatched );
       idump((buyer1.balances(db)));
       idump((buyer2.balances(db)));
       idump((buyer3.balances(db)));
@@ -1180,6 +1189,14 @@ BOOST_AUTO_TEST_CASE( big_short )
       edump((e.to_detail_string()));
       throw;
    }
+}
+
+/**
+ *  Create an order such that when the trade executes at the
+ *  requested price the resulting payout to one party is 0
+ */
+BOOST_AUTO_TEST_CASE( trade_amount_equals_zero )
+{
 }
 
 BOOST_AUTO_TEST_CASE( margin_call_limit_test )
@@ -1203,7 +1220,7 @@ BOOST_AUTO_TEST_CASE( margin_call_limit_test )
 
       // this should cause the highest bid to below the margin call threshold
       // which means it should be filled by the cover
-      auto unmatched = create_sell_order( buyer2, bitusd.amount(1000), bts.amount(1500) );
+      auto unmatched = create_sell_order( buyer1, bitusd.amount(990), bts.amount(1500) );
       if( unmatched ) edump((*unmatched));
       BOOST_REQUIRE( !unmatched );
    } catch( const fc::exception& e) {

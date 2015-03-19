@@ -16,21 +16,20 @@ namespace bts { namespace chain {
          if( a.base.asset_id > b.base.asset_id ) return false;
          if( a.quote.asset_id < b.quote.asset_id ) return true;
          if( a.quote.asset_id > b.quote.asset_id ) return false;
-         auto bmult = fc::uint128(a.quote.amount.value) * b.base.amount.value;
          auto amult = fc::uint128(b.quote.amount.value) * a.base.amount.value;
+         auto bmult = fc::uint128(a.quote.amount.value) * b.base.amount.value;
+         assert( (a.to_real() < b.to_real()) == (amult < bmult) );
          return amult < bmult;
       }
       bool operator <= ( const price& a, const price& b )
       {
-         //wdump((a)(b));
          if( a.base.asset_id < b.base.asset_id ) return true;
          if( a.base.asset_id > b.base.asset_id ) return false;
          if( a.quote.asset_id < b.quote.asset_id ) return true;
          if( a.quote.asset_id > b.quote.asset_id ) return false;
-         auto bmult = fc::uint128(a.quote.amount.value) * b.base.amount.value;
          auto amult = fc::uint128(b.quote.amount.value) * a.base.amount.value;
-         //wdump( (a.to_real())(b.to_real()));
-         //wdump( (amult)(bmult) );
+         auto bmult = fc::uint128(a.quote.amount.value) * b.base.amount.value;
+         assert( (a.to_real() <= b.to_real()) == (amult <= bmult) );
          return amult <= bmult;
       }
       bool operator == ( const price& a, const price& b )
@@ -78,6 +77,7 @@ namespace bts { namespace chain {
 
       price operator / ( const asset& base, const asset& quote )
       {
+         assert( base.asset_id != quote.asset_id );
          return price{base,quote};
       }
       price price::max( asset_id_type a, asset_id_type b ) { return asset( share_type(BTS_MAX_SHARE_SUPPLY), a ) / asset( share_type(1), b); }

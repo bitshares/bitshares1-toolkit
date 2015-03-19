@@ -161,46 +161,41 @@ namespace bts { namespace chain {
     *  3 - both were filled
     */
    template<typename OrderType>
-   int generic_evaluator::match( const limit_order_object& bid, const OrderType& ask, const price& match_price )
+   int generic_evaluator::match( const limit_order_object& usd, const OrderType& core, const price& match_price )
    {
-      //wdump( (bid)(ask)(match_price) );
-      //wdump( (ask.sell_price.to_real())((~bid.sell_price).to_real()) );
-      //wdump( ((~ask.sell_price).to_real())((bid.sell_price).to_real()) );
-      //assert( ~ask.sell_price  <= bid.sell_price );
-      assert( bid.sell_price.quote.asset_id == ask.sell_price.base.asset_id );
-      assert( bid.sell_price.base.asset_id  == ask.sell_price.quote.asset_id );
-      assert( bid.for_sale > 0 && ask.for_sale > 0 );
+      // wdump( (usd)(core)(match_price) );
+      assert( usd.sell_price.quote.asset_id == core.sell_price.base.asset_id );
+      assert( usd.sell_price.base.asset_id  == core.sell_price.quote.asset_id );
+      assert( usd.for_sale > 0 && core.for_sale > 0 );
 
-      //auto match_price  = ask.sell_price;
-      auto bid_for_sale = bid.amount_for_sale();
-      auto ask_for_sale = ask.amount_for_sale();
-   //   wdump( (bid_for_sale)(ask_for_sale) );
+      //auto match_price  = core.sell_price;
+      auto usd_for_sale = usd.amount_for_sale();
+      auto core_for_sale = core.amount_for_sale();
 
-      auto max_bid_pays = ask_for_sale * match_price; // USD * PRICE => BTS
-   //   wdump( (bid_for_sale)(ask_for_sale)(max_bid_pays) );
-      assert( max_bid_pays.asset_id != ask_for_sale.asset_id );
+      asset usd_pays, usd_receives, core_pays, core_receives;
 
-      auto bid_trade_amount = max_bid_pays;
-      if( bid_trade_amount > bid_for_sale ) bid_trade_amount = bid_for_sale;
+      if( usd_for_sale <= core_for_sale * match_price )
+      {
+         core_receives = usd_for_sale;
+         usd_receives  = usd_for_sale * match_price;
+      }
+      else if( core_for_sale < usd_for_sale * match_price )
+      {
+         usd_receives = core_for_sale;
+         core_receives = core_for_sale * match_price;
+      }
+      else assert( !"unable to fill either order" );
 
-      auto bid_pays     = bid_trade_amount;
-      auto bid_receives = bid_trade_amount * match_price;
-      auto ask_receives = bid_pays;
-      auto ask_pays     = bid_receives;
-   //   wdump( (bid_pays)(bid_receives) );
-   //   wdump( (ask_pays)(ask_receives) );
+      core_pays = usd_receives;
+      usd_pays  = core_receives;
 
-      ask_pays = std::min(ask_pays, ask_for_sale);
-      bid_receives = ask_pays;
-
-   //   wdump( (bid_pays)(bid_receives) );
-   //   wdump( (ask_pays)(ask_receives) );
-
-      // TODO: test a case where the order price is so wacky that trade_amount == 0 or pays/receives amount == 0
+      assert( usd_pays == usd.amount_for_sale() ||
+              core_pays == core.amount_for_sale() );
 
       int result = 0;
-      result |= fill_order( bid, bid_pays, bid_receives );
-      result |= fill_order( ask, ask_pays, ask_receives ) << 1;
+      result |= fill_order( usd, usd_pays, usd_receives );
+      result |= fill_order( core, core_pays, core_receives ) << 1;
+      assert( result != 0 );
       return result;
    }
 
@@ -233,26 +228,78 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
 
     auto max_short = short_price_index.lower_bound( price::max( mia.id, mia.short_backing_asset ) );
     auto end_short = short_price_index.upper_bound( price::min( mia.id, mia.short_backing_asset ) );
+    for( auto s = max_short; s != end_short; ++s )
+       wdump((*s));
 
     auto max_limit = limit_price_index.lower_bound( price::max( mia.id, mia.short_backing_asset ) );
     auto end_limit = limit_price_index.upper_bound( price::min( mia.id, mia.short_backing_asset ) );
+    for( auto l = max_limit; l != end_limit; ++l )
+       wdump((*l));
 
-    wdump( (max_short->sell_price.to_real()) );
-    wdump( (end_short->sell_price.to_real()) );
-    wdump( (max_limit->sell_price.to_real()) );
-    wdump( (end_limit->sell_price.to_real()) );
+    optional<price> highest_bid;
+    if( max_short != end_short ) 
+    {
+       highest_bid = max_short->sell_price;
+       wdump( (max_short->sell_price.to_real()) );
+    }
+    if( max_limit != end_limit )
+    { 
+       if( !highest_bid )
+          highest_bid = max_limit->sell_price;
+       else if( *highest_bid < max_limit->sell_price )
+          highest_bid = max_limit->sell_price;
+    }
 
-    auto call_itr = call_price_index.lower_bound( price::min( mia.id, mia.short_backing_asset ) );
-    auto call_end = call_price_index.upper_bound( price::max( mia.id, mia.short_backing_asset ) );
+    wdump( (highest_bid) );
+    if( !highest_bid ) return false;
+    wdump((highest_bid->to_real()));
+
+    bool result = false;
+
+    auto call_itr = call_price_index.lower_bound( ~price::max( mia.id, mia.short_backing_asset ) );
+    auto call_end = call_price_index.upper_bound( *highest_bid );
+    //auto call_end = call_price_index.upper_bound( ~price::max( mia.id, mia.short_backing_asset ) );
+    if( call_itr == call_end )
+    {
+       elog( "      UNABLE TO FIND CALL ORDERS        " );
+       return false;
+    }
+
+    while( call_itr != call_end )
+    {
+       assert( call_itr != call_price_index.end() );
+       wlog( "FOUND CALL ORDER ===============" );
+       wdump((*call_itr));
+       ++call_itr;
+    }
+
 
     for( auto itr = call_price_index.begin(); itr != call_price_index.end(); ++itr )
     {
        idump((*itr));
+       idump((itr->call_price.to_real()));
+       idump(((~itr->call_price).to_real()));
+       wdump((*highest_bid));
+       wdump((~itr->call_price));
+       wlog("0-00000000000000000000000000000000000000000000000000000000--" );
+       if( *highest_bid <= ~itr->call_price )
+       //if( ~call_itr->call_price > *highest_bid ) 
+       {
+          result = true;
+          wlog("CALL IT-------------");
+       }
+       else
+       {
+          wdump( (~itr->call_price)(*highest_bid) );
+          wlog( "${a} < ${b}",  ("a",(~itr->call_price).to_real())("b",highest_bid->to_real()) ); 
+          assert( ~itr->call_price <= *highest_bid ); 
+          ilog("DONT CALL IT-------------");
+       }
        if( call_itr == itr ) wdump((*call_itr));
        if( call_end == itr ) edump((*call_end));
     }
 
-    return false;
+    return result;
 }
 
 
@@ -366,7 +413,7 @@ bool generic_evaluator::convert_fees( const asset_object& mia )
 
 bool generic_evaluator::fill_order( const short_order_object& order, const asset& pays, const asset& receives )
 { try {
-   idump( (order)(pays)(receives) );
+   //idump( (order)(pays)(receives) );
    assert( order.amount_for_sale().asset_id == pays.asset_id );
    assert( pays.asset_id != receives.asset_id );
 
@@ -377,19 +424,18 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
 
    auto issuer_fees = pay_market_fees( recv_asset, receives );
 
-   auto seller_to_collateral = pays * order.sell_price;
+   bool filled               = pays == order.amount_for_sale();
+   auto seller_to_collateral = filled ? order.get_collateral() : pays * order.sell_price;
    auto buyer_to_collateral  = receives - issuer_fees;
 
    if( receives.asset_id == asset_id_type() ) 
    {
       const auto& balances = seller.balances(db());
       db().modify( balances, [&]( account_balance_object& b ){
-             b.total_core_in_orders += receives.amount;
+             b.total_core_in_orders += buyer_to_collateral.amount; //receives.amount;
       });
       adjust_votes( seller.delegate_votes, buyer_to_collateral.amount );
    }
-
-   bool filled = pays == order.amount_for_sale();
 
    db().modify( pays_asset.dynamic_asset_data_id(db()), [&]( asset_dynamic_data_object& obj ){
                   obj.current_supply += pays.amount;
@@ -403,8 +449,8 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
              c.borrower    = seller.id;
              c.collateral  = seller_to_collateral.amount + buyer_to_collateral.amount;
              c.debt        = pays.amount;
-             //wdump( (pays.amount)(seller_to_collateral)(buyer_to_collateral) );
-             //wdump( (c.collateral)(c.debt) );
+//             wdump( (pays.amount)(seller_to_collateral)(buyer_to_collateral) );
+//             wdump( (c.collateral)(c.debt) );
 
              c.call_price  = order.call_price;
              fc::uint128 tmp( c.collateral.value );
@@ -413,24 +459,21 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
              FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
 
              c.call_price = (asset( tmp.to_uint64(), c.get_collateral().asset_id)) / c.get_debt(); 
-             // wdump( (c.debt)(c.collateral) );
-             // wlog( "required collateral at call price: ${c}",( "c",(c.get_debt()*c.call_price).amount ) );
-             /*
-             auto tmp_price = (c.get_debt() / asset( tmp.to_uint64(), c.get_collateral().asset_id)); 
-             wdump((tmp_price)(c.call_price));
-             wdump((tmp_price.to_real())(c.call_price.to_real()));
-             c.call_price = tmp_price;
-             */
         });
       db().modify( debts, [&]( account_debt_object& d ) {
                    d.call_orders[pays.asset_id] = call_obj.id;
                   });
+      call_id = call_obj.id;
    }
    else
    {
-      db().modify( (*call_id)(db()), [&]( call_order_object& c ){
+      const auto& call_order = (*call_id)(db());
+      //wdump( (order.available_collateral)(call_order.collateral)(receives.amount) );
+      db().modify( call_order, [&]( call_order_object& c ){
             c.debt       += pays.amount;
             c.collateral += seller_to_collateral.amount + buyer_to_collateral.amount;
+            //wdump( (pays.amount)(seller_to_collateral)(buyer_to_collateral) );
+            //wdump( (c.collateral)(c.debt) );
 
             fc::uint128 tmp( c.collateral.value );
             tmp *= order.maintenance_collateral_ratio - 1000;
@@ -438,13 +481,12 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
             FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
 
             c.call_price = (asset( tmp.to_uint64(), c.get_collateral().asset_id)) / c.get_debt(); 
-            //wdump( (c.debt)(c.collateral) );
-            wlog( "required collateral at call price: ${c}",( "c",(c.get_debt()*c.call_price).amount ) );
       });
    }
 
    if( filled )
    {
+      //wdump((order.available_collateral)(seller_to_collateral));
       db().remove( order );
    }
    else
@@ -472,11 +514,14 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
                  b.total_core_in_orders -= order.available_collateral;
             });
          }
+         //wdump((order.available_collateral)(seller_to_collateral));
 
          db().remove( order );
          filled = true;
       }
    }
+   const auto& call_order = (*call_id)(db());
+   //wdump( (order.available_collateral)(call_order.collateral)(receives.amount) );
    return filled;
 } FC_CAPTURE_AND_RETHROW( (order)(pays)(receives) ) }
 
