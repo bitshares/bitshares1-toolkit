@@ -202,8 +202,8 @@ set_target_properties(leveldb PROPERTIES COMPILE_DEFINITIONS "${LEVELDB_BUILD_DE
 
 find_package( BerkeleyDB )
 
-# Enable code coverage
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build Graphene for code coverage analysis")
+if(ENABLE_COVERAGE_TESTING)
    SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
 endif()
 
