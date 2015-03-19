@@ -212,10 +212,7 @@ object_id_type asset_update_evaluator::do_apply(const asset_update_operation& o)
       if( o.new_issuer )
          a.issuer = *o.new_issuer;
       if( o.permissions )
-      {
-         elog("Setting permissions on ${id} to ${p}", ("id", a.id)("p", *o.permissions));
          a.issuer_permissions = *o.permissions;
-      }
       if( o.flags )
          a.flags = *o.flags;
       if( o.core_exchange_rate )

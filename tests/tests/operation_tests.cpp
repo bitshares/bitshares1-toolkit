@@ -75,7 +75,7 @@ BOOST_AUTO_TEST_CASE( create_account_test )
       BOOST_CHECK(debts.id.space() == implementation_ids);
       BOOST_CHECK(debts.id.type() == impl_account_debt_object_type);
       BOOST_CHECK(debts.call_orders.empty());
-      */ 
+      */
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
@@ -544,8 +544,8 @@ BOOST_AUTO_TEST_CASE( update_uia )
 {
    try {
       INVOKE(create_uia);
-      auto test = get_asset("TEST");
-      auto nathan = create_account("nathan");
+      const auto& test = get_asset("TEST");
+      const auto& nathan = create_account("nathan");
 
       asset_update_operation op;
       op.permissions.reset();
@@ -579,10 +579,7 @@ BOOST_AUTO_TEST_CASE( update_uia )
       op.permissions = test.issuer_permissions & ~white_list;
       op.flags = 0;
       trx.operations.back() = op;
-      wdump((test.id)(test.issuer_permissions));
       db.push_transaction(trx, ~0);
-      wdump((test.id)(test.issuer_permissions));
-      elog("Wat?");
       op.permissions.reset();
       op.flags.reset();
       BOOST_CHECK(!(test.issuer_permissions & white_list));
