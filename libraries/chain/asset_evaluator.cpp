@@ -193,7 +193,7 @@ object_id_type asset_update_evaluator::do_evaluate(const asset_update_operation&
    if( o.core_exchange_rate )
    {
       FC_ASSERT(!a.is_market_issued());
-      FC_ASSERT(*o.core_exchange_rate != a.core_exchange_rate);
+      FC_ASSERT(*o.core_exchange_rate != a.core_exchange_rate, "", ("e", a.core_exchange_rate));
    }
    if( o.new_price_feed )
    {
