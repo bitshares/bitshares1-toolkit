@@ -125,9 +125,12 @@ namespace bts { namespace chain {
       asset_id_type   asset_to_update;
       asset           fee; ///< paid by asset_to_update->issuer
 
-      uint16_t         flags = 0;
-      uint16_t         permissions = 0;
-      optional<price>  core_exchange_rate;
+      uint16_t                   flags = 0;
+      uint16_t                   permissions = 0;
+      optional<account_id_type>  new_issuer;
+      optional<price>            core_exchange_rate;
+      // If price limits are null, shorts and margin calls are disabled.
+      optional<price_feed>       new_price_feed;
 
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -225,7 +228,7 @@ namespace bts { namespace chain {
       }
 
       /** convention: amount_to_sell / amount_to_receive means we are
-       * selling collateral to receive debt 
+       * selling collateral to receive debt
        **/
       price call_price() const
       {
@@ -499,7 +502,7 @@ FC_REFLECT( bts::chain::asset_create_operation,
           )
 
 FC_REFLECT( bts::chain::asset_update_operation,
-            (asset_to_update)(fee)(flags)(permissions)(core_exchange_rate)
+            (asset_to_update)(fee)(flags)(permissions)(core_exchange_rate)(new_price_feed)
           )
 
 FC_REFLECT( bts::chain::asset_whitelist_operation,

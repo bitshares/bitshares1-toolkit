@@ -41,6 +41,17 @@ namespace bts { namespace chain {
          const account_object*            to_account = nullptr;
    };
 
+   class asset_update_evaluator : public evaluator<asset_update_evaluator>
+   {
+      public:
+         typedef asset_update_operation operation_type;
+
+         object_id_type do_evaluate( const asset_update_operation& o );
+         object_id_type do_apply( const asset_update_operation& o );
+
+         share_type bts_fee_required;
+   };
+
    class asset_fund_fee_pool_evaluator : public evaluator<asset_fund_fee_pool_evaluator>
    {
       public:

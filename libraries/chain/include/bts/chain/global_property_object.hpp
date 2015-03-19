@@ -23,7 +23,7 @@ namespace bts { namespace chain {
          vector<delegate_id_type>              active_delegates; // updated once per round
          fee_schedule_type                     current_fees; // indexed by fee_type, median of active delegate fee schedules
          uint8_t                               block_interval                = BTS_DEFAULT_BLOCK_INTERVAL; // seconds
-         uint32_t                              maintenance_interval          = BTS_DEFAULT_maintenance_INTERVAL;
+         uint32_t                              maintenance_interval          = BTS_DEFAULT_MAINTENANCE_INTERVAL;
          uint32_t                              maximum_transaction_size      = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
          uint32_t                              maximum_block_size            = BTS_DEFAULT_MAX_BLOCK_SIZE;
          uint32_t                              maximum_undo_history          = BTS_DEFAULT_MAX_UNDO_HISTORY;

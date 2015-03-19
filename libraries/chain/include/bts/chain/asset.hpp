@@ -74,6 +74,9 @@ namespace bts { namespace chain {
       price min()const { return price::min( base.asset_id, quote.asset_id ); }
 
       double to_real()const { return double(base.amount.value)/double(quote.amount.value); }
+
+      bool is_null()const;
+      void validate()const;
    };
 
    price operator / ( const asset& base, const asset& quote );
@@ -108,7 +111,7 @@ namespace bts { namespace chain {
       /**
        * Maximum number of seconds margin positions should be able to remain open.
        */
-      uint32_t max_margin_period_sec;
+      uint32_t max_margin_period_sec = BTS_DEFAULT_MARGIN_PERIOD_SEC;
 
       /**
        *  Required maintenance collateral is defined
@@ -149,6 +152,8 @@ namespace bts { namespace chain {
          return std::tie( a.call_limit.base.asset_id, a.call_limit.quote.asset_id ) ==
                 std::tie( b.call_limit.base.asset_id, b.call_limit.quote.asset_id );
       }
+
+      void validate() const;
    };
 
 } }

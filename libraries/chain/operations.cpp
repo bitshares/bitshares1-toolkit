@@ -165,12 +165,7 @@ void delegate_publish_feeds_operation::validate()const
    optional<price_feed> prev;
    for( const price_feed& item : feeds )
    {
-      FC_ASSERT( item.call_limit.base.amount > share_type(0) ); // prevent divide by 0
-      FC_ASSERT( item.call_limit.quote.amount > share_type(0) ); // prevent divide by 0
-      FC_ASSERT( item.call_limit.base.asset_id == item.short_limit.quote.asset_id );
-      FC_ASSERT( item.call_limit.quote.asset_id == item.short_limit.base.asset_id );
-      FC_ASSERT( item.required_maintenance_collateral < item.required_initial_collateral );
-      FC_ASSERT( item.required_maintenance_collateral >= 1000 );
+      item.validate();
       if( prev )
          //Verify uniqueness and sortedness.
          FC_ASSERT( std::tie(prev->call_limit.base.asset_id, prev->call_limit.quote.asset_id) <
@@ -211,14 +206,19 @@ void  asset_create_operation::validate()const
 void asset_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( permissions <= market_issued );
-   FC_ASSERT( flags <= market_issued );
+   FC_ASSERT( permissions <= ASSET_ISSUER_PERMISSION_MASK );
+   FC_ASSERT( flags <= ASSET_ISSUER_PERMISSION_MASK );
    if( core_exchange_rate )
    {
-      FC_ASSERT( core_exchange_rate->base.amount >= share_type(0) );
-      FC_ASSERT( core_exchange_rate->base.asset_id == asset_id_type() );
-      FC_ASSERT( core_exchange_rate->quote.amount >= share_type(0) );
-      FC_ASSERT( core_exchange_rate->quote.asset_id == asset_to_update );
+      core_exchange_rate->validate();
+      FC_ASSERT(core_exchange_rate->quote.asset_id == asset_to_update);
+      FC_ASSERT(core_exchange_rate->base.asset_id < asset_to_update);
+   }
+   if( new_price_feed )
+   {
+      new_price_feed->validate();
+      FC_ASSERT(new_price_feed->call_limit.quote.asset_id == asset_to_update);
+      FC_ASSERT(new_price_feed->call_limit.base.asset_id < asset_to_update);
    }
 }
 
