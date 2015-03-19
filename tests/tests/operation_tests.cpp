@@ -1199,6 +1199,107 @@ BOOST_AUTO_TEST_CASE( big_short )
    }
 }
 
+BOOST_AUTO_TEST_CASE( big_short2 )
+{
+   try {
+      const asset_object& bitusd      = create_bitasset( "BITUSD" );
+      const asset_object& bts         = get_asset( BTS_SYMBOL );
+      const account_object& shorter1  = create_account( "shorter1" );
+      const account_object& buyer1    = create_account( "buyer1" );
+      const account_object& buyer2    = create_account( "buyer2" );
+      const account_object& buyer3    = create_account( "buyer3" );
+
+      transfer( genesis_account(db), shorter1, asset( 10000 ) );
+      transfer( genesis_account(db), buyer1, asset( 10000 ) );
+      transfer( genesis_account(db), buyer2, asset( 10000 ) );
+      transfer( genesis_account(db), buyer3, asset( 10000 ) );
+
+      create_sell_order(buyer1, bts.amount(500), bitusd.amount(500));
+      create_sell_order(buyer2, bts.amount(500), bitusd.amount(600));
+      auto unmatched_buy3 = create_sell_order(buyer3, bts.amount(500), bitusd.amount(700));
+
+      //We want to perfectly match the first two orders, so that's 1100 USD at 500/600 = 916
+      auto unmatched = create_short(shorter1, bitusd.amount(1100), bts.amount(916));
+      if( unmatched ) wdump((*unmatched));
+
+      BOOST_CHECK( !unmatched );
+      BOOST_CHECK( unmatched_buy3 );
+      BOOST_CHECK_EQUAL( unmatched_buy3->amount_for_sale().amount.value, 500);
+      // The extra 1 is rounding leftovers; it has to go somewhere.
+      BOOST_CHECK_EQUAL( unmatched_buy3->amount_to_receive().amount.value, 700);
+      // All three buyers offered 500 BTS for varying numbers of dollars.
+      BOOST_CHECK_EQUAL(get_balance(buyer1, bts), 9500);
+      BOOST_CHECK_EQUAL(get_balance(buyer2, bts), 9500);
+      BOOST_CHECK_EQUAL(get_balance(buyer3, bts), 9500);
+      // Sans the 1% market fee, buyer1 got 500 USD, buyer2 got 600 USD
+      BOOST_CHECK_EQUAL(get_balance(buyer1, bitusd), 495);
+      BOOST_CHECK_EQUAL(get_balance(buyer2, bitusd), 594);
+      // Buyer3's order wasn't matched. He should have no USD.
+      BOOST_CHECK_EQUAL(get_balance(buyer3, bitusd), 0);
+      // Shorter1 never had any USD, so he shouldn't have any now. He paid 916 BTS, so he should have 9084 left.
+      BOOST_CHECK_EQUAL(get_balance(shorter1, bitusd), 0);
+      BOOST_CHECK_EQUAL(get_balance(shorter1, bts), 9084);
+      BOOST_CHECK_EQUAL(shorter1.debts(db).call_orders.size(), 1);
+      BOOST_CHECK(shorter1.debts(db).call_orders.begin()->second(db).borrower == shorter1.id);
+      // 916 from shorter1, 500 from buyer1 and buyer2 each adds to 1916
+      BOOST_CHECK_EQUAL(shorter1.debts(db).call_orders.begin()->second(db).collateral.value, 1916);
+      // Shorter1 sold 1100 USD. Make sure that's recorded accurately.
+      BOOST_CHECK_EQUAL(shorter1.debts(db).call_orders.begin()->second(db).debt.value, 1100);
+      // 11 USD was paid in market fees.
+      BOOST_CHECK_EQUAL(bitusd.dynamic_asset_data_id(db).accumulated_fees.value, 11);
+   } catch( const fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
+BOOST_AUTO_TEST_CASE( big_short3 )
+{
+   try {
+      const asset_object& bitusd      = create_bitasset( "BITUSD" );
+      const asset_object& bts         = get_asset( BTS_SYMBOL );
+      const account_object& shorter1  = create_account( "shorter1" );
+      const account_object& buyer1    = create_account( "buyer1" );
+      const account_object& buyer2    = create_account( "buyer2" );
+      const account_object& buyer3    = create_account( "buyer3" );
+
+      transfer( genesis_account(db), shorter1, asset( 10000 ) );
+      transfer( genesis_account(db), buyer1, asset( 10000 ) );
+      transfer( genesis_account(db), buyer2, asset( 10000 ) );
+      transfer( genesis_account(db), buyer3, asset( 10000 ) );
+
+      create_short(shorter1, bitusd.amount(1300), bts.amount(800));
+
+      print_joint_market("","");
+
+      create_sell_order(buyer1, bts.amount(500), bitusd.amount(500));
+      create_sell_order(buyer2, bts.amount(500), bitusd.amount(600));
+      auto unmatched_buy3 = create_sell_order(buyer3, bts.amount(500), bitusd.amount(700));
+
+      print_joint_market("","");
+
+      BOOST_CHECK( unmatched_buy3 );
+      BOOST_CHECK_EQUAL( unmatched_buy3->amount_for_sale().amount.value, 500);
+      BOOST_CHECK_EQUAL( unmatched_buy3->amount_to_receive().amount.value, 700);
+      BOOST_CHECK_EQUAL(get_balance(buyer1, bts), 9500);
+      BOOST_CHECK_EQUAL(get_balance(buyer2, bts), 9500);
+      BOOST_CHECK_EQUAL(get_balance(buyer3, bts), 9500);
+      BOOST_CHECK_EQUAL(get_balance(buyer1, bitusd), 804);
+      BOOST_CHECK_EQUAL(get_balance(buyer2, bitusd), 484);
+      BOOST_CHECK_EQUAL(get_balance(buyer3, bitusd), 0);
+      BOOST_CHECK_EQUAL(get_balance(shorter1, bitusd), 0);
+      BOOST_CHECK_EQUAL(get_balance(shorter1, bts), 9200);
+      BOOST_CHECK_EQUAL(shorter1.debts(db).call_orders.size(), 1);
+      BOOST_CHECK(shorter1.debts(db).call_orders.begin()->second(db).borrower == shorter1.id);
+      BOOST_CHECK_EQUAL(shorter1.debts(db).call_orders.begin()->second(db).collateral.value, 1600);
+      BOOST_CHECK_EQUAL(shorter1.debts(db).call_orders.begin()->second(db).debt.value, 1300);
+      BOOST_CHECK_EQUAL(bitusd.dynamic_asset_data_id(db).accumulated_fees.value, 12);
+   } catch( const fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
 /**
  *  Create an order such that when the trade executes at the
  *  requested price the resulting payout to one party is 0
