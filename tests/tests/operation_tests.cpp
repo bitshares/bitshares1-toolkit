@@ -1443,6 +1443,7 @@ BOOST_AUTO_TEST_CASE( margin_call_limit_test )
       BOOST_REQUIRE( !create_short( shorter1, bitusd.amount(1000), asset(1000) )   );
       BOOST_REQUIRE_EQUAL( get_balance(buyer1, bitusd), 990 ); // 1000 - 1% fee
 
+      ilog( "=================================== START===================================\n\n");
       // this should cause the highest bid to below the margin call threshold
       // which means it should be filled by the cover
       auto unmatched = create_sell_order( buyer1, bitusd.amount(990), bts.amount(1500) );
@@ -1512,6 +1513,7 @@ BOOST_AUTO_TEST_CASE( margin_call_short_test )
       BOOST_REQUIRE( create_sell_order( buyer1, asset(1000), bitusd.amount(1000) ) );
       BOOST_REQUIRE( !create_short( shorter1, bitusd.amount(1000), asset(1000) )   );
       BOOST_REQUIRE_EQUAL( get_balance(buyer1, bitusd), 990 ); // 1000 - 1% fee
+      ilog( "=================================== START===================================\n\n");
 
       // this should cause the highest bid to below the margin call threshold
       // which means it should be filled by the cover

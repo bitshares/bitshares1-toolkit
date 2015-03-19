@@ -213,7 +213,7 @@ int generic_evaluator::match( const limit_order_object& bid, const short_order_o
  *  
  */
 bool generic_evaluator::check_call_orders( const asset_object& mia )
-{
+{ try {
     if( !mia.is_market_issued() ) return false;
     if( mia.current_feed.call_limit.is_null() ) return false;
 
@@ -239,7 +239,6 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
 
 
     auto call_itr = call_price_index.lower_bound( ~price::max( mia.id, mia.short_backing_asset ) );
-    //auto call_end = call_price_index.upper_bound( *highest_bid );
     auto call_end = call_price_index.upper_bound( ~price::min( mia.id, mia.short_backing_asset ) );
 
     for( auto c = call_itr; c != call_end; ++c )
@@ -263,8 +262,10 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
        asset usd_for_sale;
        if( limit_itr != limit_end )
        {
+          assert( limit_itr != limit_price_index.end() );
           if( short_itr != short_end && limit_itr->sell_price < short_itr->sell_price )
           {
+             assert( short_itr != limit_price_index.end() );
              wdump((*short_itr));
              current_is_limit = false;
              match_price      = short_itr->sell_price;
@@ -280,21 +281,33 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
        }
        else if( short_itr != short_end )
        {
-          if( short_itr != short_end && limit_itr->sell_price < short_itr->sell_price )
+          wdump((*short_itr));
+          assert( short_itr != short_price_index.end() );
+          if( true  ) // check limit price
           {
-             wdump((*short_itr));
              current_is_limit = false;
              match_price      = short_itr->sell_price;
              usd_for_sale     = short_itr->amount_for_sale();
           }
-          else break;
+          else
+          {
+             elog("break");
+             return filled_short_or_limit; 
+          }
        }
-       else break;
+       else 
+       {
+             elog("break");
+          return filled_short_or_limit; 
+       }
+       match_price.validate();
+       idump((match_price));
 
        if( match_price > ~call_itr->call_price )
        {
           wdump((match_price)(~call_itr->call_price));
           edump((match_price.to_real())(">")((~call_itr->call_price).to_real()));
+          return filled_short_or_limit; 
           break;
        }
        else
@@ -332,7 +345,8 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
           filled_call    = true;
        }
 
-       auto old_call_itr = filled_call ? call_itr++  : call_itr;
+       auto old_call_itr = call_itr;
+       if( filled_call ) ++call_itr;
        fill_order( *old_call_itr, call_pays, call_receives );
        if( current_is_limit )
        {
@@ -347,7 +361,7 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
     } // whlie call_itr != call_end
 
     return filled_short_or_limit;
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 
 
@@ -458,6 +472,7 @@ bool generic_evaluator::fill_order( const limit_order_object& order, const asset
 }
 bool generic_evaluator::fill_order( const call_order_object& order, const asset& pays, const asset& receives )
 {
+   edump( (order)(pays)(receives) );
    assert( order.get_debt().asset_id == receives.asset_id );
    assert( order.get_collateral().asset_id == pays.asset_id );
    assert( order.get_collateral() >= pays );
