@@ -209,7 +209,6 @@ void database::initialize_indexes()
    add_index< primary_index< simple_index< global_property_object         >> >();
    add_index< primary_index< simple_index< dynamic_global_property_object >> >();
    add_index< primary_index< simple_index< account_balance_object         >> >();
-   add_index< primary_index< simple_index< account_debt_object            >> >();
    add_index< primary_index< simple_index< asset_dynamic_data_object      >> >();
    add_index< primary_index< flat_index<   delegate_vote_object           >> >();
    add_index< primary_index< flat_index<   delegate_feeds_object           >> >();

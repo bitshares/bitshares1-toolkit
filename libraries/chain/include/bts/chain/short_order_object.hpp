@@ -1,4 +1,6 @@
 #pragma once
+#include <bts/chain/object_id.hpp>
+#include <bts/chain/types.hpp>
 #include <bts/chain/object.hpp>
 #include <bts/chain/authority.hpp>
 #include <bts/chain/asset.hpp>
@@ -59,8 +61,12 @@ namespace bts { namespace chain {
         static const uint8_t type_id  = call_order_object_type;
 
         asset get_collateral()const { return asset( collateral, call_price.base.asset_id ); }
-        asset get_debt()const { return asset( debt, call_price.quote.asset_id ); }
+        asset get_debt()const { return asset( debt, debt_type() ); }
         asset amount_to_receive()const { return get_debt(); }
+        asset_id_type debt_type()const { return call_price.quote.asset_id; }
+
+        std::pair<account_id_type,asset_id_type> debt_index()const 
+               { return std::make_pair(borrower,call_price.quote.asset_id); }
 
         account_id_type  borrower;
         share_type       collateral;  ///< call_price.base.asset_id, access via get_collateral
@@ -68,9 +74,13 @@ namespace bts { namespace chain {
         price            call_price;
   };
 
+  typedef std::less<account_id_type> account_id_less_type;
+  typedef std::less<asset_id_type> asset_id_less_type;
+  typedef std::less<object_id_type>  object_id_type_less_type;
 
   struct by_id;
   struct by_price;
+  struct by_account;
   typedef multi_index_container<
      short_order_object,
      indexed_by<
@@ -97,6 +107,16 @@ namespace bts { namespace chain {
               member< object, object_id_type, &object::id>
            >,
            composite_key_compare< std::less<price>, std::less<object_id_type> >
+        >,
+        ordered_unique< tag<by_account>,
+              const_mem_fun< call_order_object, std::pair<account_id_type,asset_id_type>, &call_order_object::debt_index>
+        /*
+           composite_key< call_order_object,
+              member< call_order_object, account_id_type, &call_order_object::borrower>,
+              const_mem_fun< call_order_object, asset_id_type, &call_order_object::debt_type>
+           >
+           */
+           //, composite_key_compare< account_id_less_type, asset_id_less_type >
         >
      >
   > call_order_multi_index_type;

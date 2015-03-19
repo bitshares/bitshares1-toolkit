@@ -500,6 +500,11 @@ bool generic_evaluator::fill_order( const call_order_object& order, const asset&
    if( pays.asset_id == asset_id_type() ) 
       adjust_votes( borrower.delegate_votes, -pays.amount );
 
+   if( collateral_freed )
+   {
+      db().remove( order );
+   }
+
    return collateral_freed.valid();
 }
 
@@ -509,6 +514,8 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
    //idump( (order)(pays)(receives) );
    assert( order.amount_for_sale().asset_id == pays.asset_id );
    assert( pays.asset_id != receives.asset_id );
+
+   const call_order_index& call_index = db().get_index_type<call_order_index>();
 
    const account_object& seller = order.seller(db());
    const asset_object& recv_asset = receives.asset_id(db());
@@ -534,10 +541,12 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
                   obj.current_supply += pays.amount;
                 });
 
-   const auto& debts = seller.debts(db());
-   auto call_id = debts.get_call_order(pays.asset_id);
-   if( !call_id )
+   const auto& call_account_index = call_index.indices().get<by_account>();
+   auto call_itr = call_account_index.find(  std::make_pair(order.seller, pays.asset_id) );
+   //auto call_id = debts.get_call_order(pays.asset_id);
+   if( call_itr == call_account_index.end() )
    {
+      wlog( "." );
       const auto& call_obj = db().create<call_order_object>( [&]( call_order_object& c ){
              c.borrower    = seller.id;
              c.collateral  = seller_to_collateral.amount + buyer_to_collateral.amount;
@@ -551,16 +560,11 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
 
              c.call_price = (asset( tmp.to_uint64(), c.get_collateral().asset_id)) / c.get_debt(); 
         });
-      db().modify( debts, [&]( account_debt_object& d ) {
-                   d.call_orders[pays.asset_id] = call_obj.id;
-                  });
-      call_id = call_obj.id;
    }
    else
    {
-      const auto& call_order = (*call_id)(db());
-      //wdump( (order.available_collateral)(call_order.collateral)(receives.amount) );
-      db().modify( call_order, [&]( call_order_object& c ){
+      wdump( (order.available_collateral)(call_itr->collateral)(receives.amount) );
+      db().modify( *call_itr, [&]( call_order_object& c ){
             c.debt       += pays.amount;
             c.collateral += seller_to_collateral.amount + buyer_to_collateral.amount;
 
@@ -609,7 +613,7 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
          filled = true;
       }
    }
-   const auto& call_order = (*call_id)(db());
+   // const auto& call_order = (*call_id)(db());
    //wdump( (order.available_collateral)(call_order.collateral)(receives.amount) );
    return filled;
 } FC_CAPTURE_AND_RETHROW( (order)(pays)(receives) ) }
