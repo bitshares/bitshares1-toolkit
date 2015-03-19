@@ -170,26 +170,36 @@ object_id_type asset_update_evaluator::do_evaluate(const asset_update_operation&
    if( o.new_issuer )
    {
       auto new_issuer = (*o.new_issuer)(d);
-      //Simply asserting that new_issuer exists; I don't actually need him for anything.
-      (void)new_issuer;
+      FC_ASSERT(new_issuer.id != a.issuer);
    }
 
    if( o.permissions )
    {
+      FC_ASSERT( *o.permissions != a.issuer_permissions );
+      if( !o.flags )
+         FC_ASSERT( (a.flags & *o.permissions) == a.flags );
       if( a.is_market_issued() ) FC_ASSERT(*o.permissions == market_issued);
       //There must be no bits set in o.permissions which are unset in a.issuer_permissions.
       FC_ASSERT(!(~a.issuer_permissions & *o.permissions));
    }
    if( o.flags )
    {
+      FC_ASSERT( *o.flags != a.flags, "", ("a", a.flags) );
+      FC_ASSERT( (*o.flags & a.issuer_permissions) == *o.flags );
       //Cannot change an asset to/from market_issued
       if( a.is_market_issued() ) FC_ASSERT(*o.flags == market_issued);
       else                       FC_ASSERT(~*o.flags & market_issued);
    }
    if( o.core_exchange_rate )
+   {
       FC_ASSERT(!a.is_market_issued());
+      FC_ASSERT(*o.core_exchange_rate != a.core_exchange_rate);
+   }
    if( o.new_price_feed )
+   {
+      FC_ASSERT(a.is_market_issued());
       FC_ASSERT(o.new_price_feed->call_limit.base.asset_id == a.short_backing_asset);
+   }
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW((o)) }
 
@@ -202,7 +212,10 @@ object_id_type asset_update_evaluator::do_apply(const asset_update_operation& o)
       if( o.new_issuer )
          a.issuer = *o.new_issuer;
       if( o.permissions )
+      {
+         elog("Setting permissions on ${id} to ${p}", ("id", a.id)("p", *o.permissions));
          a.issuer_permissions = *o.permissions;
+      }
       if( o.flags )
          a.flags = *o.flags;
       if( o.core_exchange_rate )

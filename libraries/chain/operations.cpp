@@ -206,6 +206,7 @@ void  asset_create_operation::validate()const
 void asset_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( new_issuer || permissions || flags || core_exchange_rate || new_price_feed );
 
    if( permissions )
    {
@@ -227,8 +228,11 @@ void asset_update_operation::validate()const
    if( new_price_feed )
    {
       new_price_feed->validate();
-      FC_ASSERT(new_price_feed->call_limit.quote.asset_id == asset_to_update);
-      FC_ASSERT(new_price_feed->call_limit.base.asset_id < asset_to_update);
+      if( !new_price_feed->call_limit.is_null() )
+      {
+         FC_ASSERT(new_price_feed->call_limit.quote.asset_id == asset_to_update);
+         FC_ASSERT(new_price_feed->call_limit.base.asset_id < asset_to_update);
+      }
    }
 }
 

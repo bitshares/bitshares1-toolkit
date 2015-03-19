@@ -125,8 +125,8 @@ namespace bts { namespace chain {
       asset_id_type   asset_to_update;
       asset           fee; ///< paid by asset_to_update->issuer
 
-      optional<uint16_t>         flags = 0;
-      optional<uint16_t>         permissions = 0;
+      optional<uint16_t>         flags;
+      optional<uint16_t>         permissions;
       optional<account_id_type>  new_issuer;
       optional<price>            core_exchange_rate;
       // If price limits are null, shorts and margin calls are disabled.
