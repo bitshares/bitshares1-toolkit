@@ -101,6 +101,7 @@ namespace bts { namespace chain {
          FC_ASSERT( call_limit.is_null() == short_limit.is_null() );
          FC_ASSERT( call_limit.base.asset_id == short_limit.quote.asset_id );
          FC_ASSERT( call_limit.quote.asset_id == short_limit.base.asset_id );
+         FC_ASSERT( max_margin_period_sec > 0 );
          FC_ASSERT( required_maintenance_collateral < required_initial_collateral );
          FC_ASSERT( required_maintenance_collateral >= 1000 );
          FC_ASSERT( call_limit.is_null() || call_limit < ~short_limit );

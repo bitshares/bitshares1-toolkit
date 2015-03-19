@@ -302,8 +302,59 @@ BOOST_AUTO_TEST_CASE( create_mia )
       BOOST_CHECK(bitusd.short_backing_asset == asset_id_type());
       BOOST_CHECK(bitusd.dynamic_asset_data_id(db).current_supply == 0);
       BOOST_REQUIRE_THROW( create_bitasset("BITUSD"), fc::exception);
-   }catch ( const fc::exception& e )
-   {
+   } catch ( const fc::exception& e ) {
+      elog( "${e}", ("e", e.to_detail_string() ) );
+      throw;
+   }
+}
+
+BOOST_AUTO_TEST_CASE( update_mia )
+{
+   try {
+      INVOKE(create_mia);
+      const asset_object bit_usd = get_asset("BITUSD");
+
+      asset_update_operation op;
+      op.asset_to_update = bit_usd.id;
+      trx.operations.emplace_back(op);
+
+      //Cannot set core_exchange_rate on an MIA
+      REQUIRE_THROW_WITH_VALUE(op, core_exchange_rate, price(asset(5), bit_usd.amount(5)));
+      //Cannot convert an MIA to UIA
+      REQUIRE_THROW_WITH_VALUE(op, flags, 0);
+      REQUIRE_THROW_WITH_VALUE(op, permissions, 0);
+
+      price_feed feed;
+      feed.call_limit = price(bit_usd.amount(5), bit_usd.amount(5));
+      feed.short_limit = feed.call_limit;
+      REQUIRE_THROW_WITH_VALUE(op, new_price_feed, feed);
+      feed.call_limit = price(bit_usd.amount(5), asset(5));
+      feed.short_limit = ~feed.call_limit;
+      REQUIRE_THROW_WITH_VALUE(op, new_price_feed, feed);
+      feed.short_limit = price(asset(4), bit_usd.amount(5));
+      REQUIRE_THROW_WITH_VALUE(op, new_price_feed, feed);
+      std::swap(feed.call_limit, feed.short_limit);
+      op.new_price_feed = feed;
+      REQUIRE_THROW_WITH_VALUE(op, new_price_feed->max_margin_period_sec, 0);
+      REQUIRE_THROW_WITH_VALUE(op, new_price_feed->required_maintenance_collateral, 0);
+      REQUIRE_THROW_WITH_VALUE(op, new_price_feed->required_initial_collateral, 500);
+      REQUIRE_THROW_WITH_VALUE(op, new_issuer, account_id_type());
+
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+      std::swap(op.flags, op.permissions);
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+
+      trx.operations.clear();
+      op.new_issuer = create_account("nathan").id;
+      trx.operations.emplace_back(op);
+      db.push_transaction(trx, ~0);
+
+      op.new_issuer = account_id_type();
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+   } catch ( const fc::exception& e ) {
       elog( "${e}", ("e", e.to_detail_string() ) );
       throw;
    }
@@ -446,7 +497,7 @@ BOOST_AUTO_TEST_CASE( create_uia )
       creator.max_supply = 100000000;
       creator.precision = 2;
       creator.market_fee_percent = BTS_MAX_MARKET_FEE_PERCENT/100; /*1%*/
-      creator.permissions = 0;
+      creator.permissions = ASSET_ISSUER_PERMISSION_MASK & ~market_issued;
       creator.flags = 0;
       creator.core_exchange_rate = price({asset(2),asset(1)});
       creator.short_backing_asset = asset_id_type();
@@ -483,6 +534,63 @@ BOOST_AUTO_TEST_CASE( create_uia )
       REQUIRE_THROW_WITH_VALUE(op, core_exchange_rate, price({asset(100),asset(-1)}));
       REQUIRE_THROW_WITH_VALUE(op, short_backing_asset, db.get_index<asset_object>().get_next_id());
       REQUIRE_THROW_WITH_VALUE(op, short_backing_asset, asset_id_type(1000000));
+   } catch(fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
+BOOST_AUTO_TEST_CASE( update_uia )
+{
+   try {
+      INVOKE(create_uia);
+      auto test = get_asset("TEST");
+      auto nathan = create_account("nathan");
+
+      asset_update_operation op;
+      op.permissions.reset();
+      op.flags.reset();
+      op.asset_to_update = test.id;
+
+      trx.operations.push_back(op);
+      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
+
+      //Cannot set issuer to same value as before
+      REQUIRE_THROW_WITH_VALUE(op, new_issuer, account_id_type());
+      //Cannot convert to an MIA
+      REQUIRE_THROW_WITH_VALUE(op, flags, market_issued);
+      //Cannot set flags to same value as before
+      REQUIRE_THROW_WITH_VALUE(op, flags, 0);
+      //Cannot convert to an MIA
+      REQUIRE_THROW_WITH_VALUE(op, permissions, ASSET_ISSUER_PERMISSION_MASK);
+      //Cannot set permissions to same value as before
+      REQUIRE_THROW_WITH_VALUE(op, permissions, ASSET_ISSUER_PERMISSION_MASK & ~market_issued);
+      //Cannot set a price feed on a UIA
+      REQUIRE_THROW_WITH_VALUE(op, new_price_feed, price_feed());
+
+      op.new_issuer = nathan.id;
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+      op.new_issuer.reset();
+      op.flags = halt_transfer | white_list;
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+      REQUIRE_THROW_WITH_VALUE(op, permissions, test.issuer_permissions & ~white_list);
+      op.permissions = test.issuer_permissions & ~white_list;
+      op.flags = 0;
+      trx.operations.back() = op;
+      wdump((test.id)(test.issuer_permissions));
+      db.push_transaction(trx, ~0);
+      wdump((test.id)(test.issuer_permissions));
+      elog("Wat?");
+      op.permissions.reset();
+      op.flags.reset();
+      BOOST_CHECK(!(test.issuer_permissions & white_list));
+      op.new_issuer = account_id_type();
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
+      op.new_issuer.reset();
    } catch(fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
