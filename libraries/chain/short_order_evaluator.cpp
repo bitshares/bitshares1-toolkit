@@ -37,7 +37,7 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
    db().modify( seller_balance, [&]( account_balance_object& bal ){
          bal.sub_balance( op.collateral );
    });
-   
+
    const auto& new_order_object = db().create<short_order_object>( [&]( short_order_object& obj ){
        obj.seller                       = _seller->id;
        obj.for_sale                     = op.amount_to_sell.amount;
@@ -65,7 +65,7 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
       apply_delta_fee_pools();
       return new_id;
    }
-   
+
 
    const auto& limit_order_idx = db().get_index_type<limit_order_index>();
    const auto& limit_price_idx = limit_order_idx.indices().get<by_price>();
@@ -129,6 +129,9 @@ asset short_order_cancel_evaluator::do_apply( const short_order_cancel_operation
      d.modify( bal_obj, [&]( account_balance_object& obj ){
          obj.total_core_in_orders -= refunded.amount;
      });
+     //do_evaluate adjusted balance by refunded.amount, which adds votes. This is undesirable, as the account
+     //did not gain or lose any voting stake. Counteract that adjustment here.
+     adjust_votes(fee_paying_account->delegate_votes, -refunded.amount);
   }
   return refunded;
 }

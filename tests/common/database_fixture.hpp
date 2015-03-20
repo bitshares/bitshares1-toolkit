@@ -6,7 +6,10 @@
 #include <bts/chain/short_order_object.hpp>
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
+#include <bts/chain/delegate_object.hpp>
 #include <bts/chain/time.hpp>
+
+#include <fc/crypto/digest.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -101,6 +104,19 @@ struct database_fixture {
       BOOST_CHECK_EQUAL( total_balances[asset_id_type()].value , core_asset_data.current_supply.value );
    }
 
+   void verify_vote_totals() {
+      const account_index& account_idx = db.get_index_type<account_index>();
+      map<delegate_id_type, share_type> vote_sums;
+
+      for( const account_object& account : account_idx.indices() )
+         for( delegate_id_type del : account.delegate_votes )
+            vote_sums[del] += account.balances(db).total_core_in_orders
+                  + account.balances(db).get_balance(asset_id_type()).amount;
+
+      for( const auto& sum : vote_sums )
+         BOOST_CHECK_EQUAL(sum.second.value, sum.first(db).vote(db).total_votes.value);
+   }
+
    database_fixture()
    {
       db.init_genesis();
@@ -109,6 +125,7 @@ struct database_fixture {
    }
    ~database_fixture(){
       verify_asset_supplies();
+      verify_vote_totals();
       shutdown_ntp_time();
    }
 
@@ -117,10 +134,22 @@ struct database_fixture {
       create_account.fee_paying_account = account_id_type();
 
       create_account.name = name;
-      create_account.owner.add_authority(key, 123);
-      create_account.active.add_authority(key, 321);
+      create_account.owner = authority(123, key, 123);
+      create_account.active = authority(321, key, 321);
       create_account.memo_key = key;
       create_account.voting_key = key;
+
+      auto& active_delegates = db.get_global_properties().active_delegates;
+      if( active_delegates.size() > 0 )
+      {
+         set<delegate_id_type> votes;
+         votes.insert(active_delegates[rand() % active_delegates.size()]);
+         votes.insert(active_delegates[rand() % active_delegates.size()]);
+         votes.insert(active_delegates[rand() % active_delegates.size()]);
+         votes.insert(active_delegates[rand() % active_delegates.size()]);
+         votes.insert(active_delegates[rand() % active_delegates.size()]);
+         create_account.vote = vector<delegate_id_type>(votes.begin(), votes.end());
+      }
 
       create_account.fee = create_account.calculate_fee(db.current_fee_schedule());
       return create_account;
@@ -177,13 +206,31 @@ struct database_fixture {
       return db.find<short_order_object>(r.operation_results[0].get<object_id_type>());
    }
 
-   const account_object& create_account( const string& name )
+   const account_object& create_account( const string& name, const key_id_type& key = key_id_type() )
    {
-      trx.operations.push_back(make_account(name));
+      trx.operations.push_back(make_account(name, key));
       trx.validate();
       auto r = db.push_transaction(trx, ~0);
       trx.operations.clear();
       return db.get<account_object>(r.operation_results[0].get<object_id_type>());
+   }
+
+   const key_object& register_key( const public_key_type& key )
+   {
+      trx.operations.push_back(key_create_operation({account_id_type(), asset(), key}));
+      key_id_type new_key = db.push_transaction(trx, ~0).operation_results[0].get<object_id_type>();
+      trx.operations.clear();
+      return new_key(db);
+   }
+
+   uint64_t fund(const account_object& account, const asset& amount = asset(500000))
+   {
+      transfer(account_id_type()(db), account, amount);
+      return get_balance(account, amount.asset_id(db));
+   }
+   void sign(signed_transaction& trx, const fc::ecc::private_key& key)
+   {
+      trx.signatures.push_back(key.sign_compact(fc::digest((transaction&)trx)));
    }
 
    const limit_order_object* create_sell_order( const account_object& user, const asset& amount, const asset& recv )
@@ -349,7 +396,7 @@ struct database_fixture {
          if( limit_itr != limit_price_idx.end() )
          {
             if( short_itr != sell_price_idx.rend() && limit_itr->sell_price > ~short_itr->sell_price )
-            { 
+            {
                print_short_order( *short_itr );
                ++short_itr;
             }
@@ -360,7 +407,7 @@ struct database_fixture {
             }
          }
          else if( short_itr != sell_price_idx.rend() )
-         { 
+         {
             print_short_order( *short_itr );
             ++short_itr;
          }

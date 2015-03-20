@@ -1,5 +1,6 @@
 #pragma once
 #include <bts/db/object.hpp>
+#include <deque>
 #include <fc/exception/exception.hpp>
 
 namespace bts { namespace db {

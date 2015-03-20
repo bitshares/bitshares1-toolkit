@@ -34,6 +34,9 @@ namespace bts { namespace chain {
       key_id_type     voting_key;
       key_id_type     memo_key;
 
+      /// Delegate IDs must be in sorted order
+      vector<delegate_id_type> vote;
+
 
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
