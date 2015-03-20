@@ -151,10 +151,10 @@ namespace bts { namespace chain {
    }
 
 /**
- *  Matches the two orders,
- *
- *  @return a bit field indicating which orders were filled (and thus removed)
- *
+ *  Matches the two orders, 
+ *  
+ *  @return a bit field indicating which orders were filled (and thus removed) 
+ *  
  *  0 - no orders were matched
  *  1 - bid was filled
  *  2 - ask was filled
@@ -210,7 +210,7 @@ int generic_evaluator::match( const limit_order_object& bid, const short_order_o
 }
 
 /**
- *
+ *  
  */
 bool generic_evaluator::check_call_orders( const asset_object& mia )
 { try {
@@ -226,36 +226,25 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
     const short_order_index& short_index = db().get_index_type<short_order_index>();
     const auto& short_price_index = short_index.indices().get<by_price>();
 
-
     auto short_itr = short_price_index.lower_bound( price::max( mia.id, mia.short_backing_asset ) );
     auto short_end = short_price_index.upper_bound( price::min( mia.id, mia.short_backing_asset ) );
-    for( auto s = short_itr; s != short_end; ++s )
-       wdump((*s));
+    //for( auto s = short_itr; s != short_end; ++s ) wdump((*s));
 
     auto limit_itr = limit_price_index.lower_bound( price::max( mia.id, mia.short_backing_asset ) );
     auto limit_end = limit_price_index.upper_bound( price::min( mia.id, mia.short_backing_asset ) );
-    for( auto l = limit_itr; l != limit_end; ++l )
-       wdump((*l));
+    //for( auto l = limit_itr; l != limit_end; ++l ) wdump((*l));
 
 
-    auto call_itr = call_price_index.lower_bound( ~price::max( mia.id, mia.short_backing_asset ) );
-    auto call_end = call_price_index.upper_bound( ~price::min( mia.id, mia.short_backing_asset ) );
-
-    for( auto c = call_itr; c != call_end; ++c )
-       wdump((*c));
-
+    auto call_itr = call_price_index.lower_bound( price::min( mia.short_backing_asset, mia.id ) );
+    auto call_end = call_price_index.upper_bound( price::max( mia.short_backing_asset, mia.id ) );
+    //for( auto c = call_itr; c != call_end; ++c ) wdump((*c));
     //auto call_end = call_price_index.upper_bound( ~price::max( mia.id, mia.short_backing_asset ) );
-    if( call_itr == call_end )
-    {
-       elog( "      UNABLE TO FIND CALL ORDERS        " );
-       return false;
-    }
-    bool filled_short_or_limit = false;
 
+    bool filled_short_or_limit = false;
 
     while( call_itr != call_end )
     {
-       wdump((*call_itr));
+       // wdump((*call_itr));
        bool  current_is_limit = true;
        bool  filled_call      = false;
        price match_price;
@@ -265,15 +254,15 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
           assert( limit_itr != limit_price_index.end() );
           if( short_itr != short_end && limit_itr->sell_price < short_itr->sell_price )
           {
-//             assert( short_itr != limit_price_index.end() );
-             wdump((*short_itr));
+             assert( short_itr != short_price_index.end() );
+             //wdump((*short_itr));
              current_is_limit = false;
              match_price      = short_itr->sell_price;
              usd_for_sale     = short_itr->amount_for_sale();
           }
           else
           {
-             wdump((*limit_itr));
+             //wdump((*limit_itr));
              current_is_limit = true;
              match_price      = limit_itr->sell_price;
              usd_for_sale     = limit_itr->amount_for_sale();
@@ -281,39 +270,25 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
        }
        else if( short_itr != short_end )
        {
-          wdump((*short_itr));
+          // wdump((*short_itr));
           assert( short_itr != short_price_index.end() );
-          if( true  ) // check limit price
-          {
-             current_is_limit = false;
-             match_price      = short_itr->sell_price;
-             usd_for_sale     = short_itr->amount_for_sale();
-          }
-          else
-          {
-             elog("break");
-             return filled_short_or_limit;
-          }
+          current_is_limit = false;
+          match_price      = short_itr->sell_price;
+          usd_for_sale     = short_itr->amount_for_sale();
        }
-       else
-       {
-             elog("break");
-          return filled_short_or_limit;
-       }
+       else return filled_short_or_limit; 
+
+
        match_price.validate();
        idump((match_price));
 
        if( match_price > ~call_itr->call_price )
        {
-          wdump((match_price)(~call_itr->call_price));
-          edump((match_price.to_real())(">")((~call_itr->call_price).to_real()));
-          return filled_short_or_limit;
-          break;
+          //wdump((match_price)(~call_itr->call_price));
+          //edump((match_price.to_real())(">")((~call_itr->call_price).to_real()));
+          return filled_short_or_limit; 
        }
-       else
-       {
-          elog( "CALL IT!" );
-       }
+
        wdump( (match_price)(usd_for_sale) );
 
        auto usd_to_buy   = call_itr->get_debt();
@@ -352,7 +327,7 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
        {
           auto old_limit_itr = !filled_call ? limit_itr++ : limit_itr;
           fill_order( *old_limit_itr, order_pays, order_receives );
-       }
+       }               
        else
        {
           auto old_short_itr = !filled_call ? short_itr++ : short_itr;
@@ -406,10 +381,10 @@ void generic_evaluator::pay_order( const account_object& receiver, const asset& 
          b.add_balance( receives );
    });
 
-   if( receives.asset_id == asset_id_type() )
+   if( receives.asset_id == asset_id_type() ) 
       adjust_votes( receiver.delegate_votes, receives.amount );
 
-   if( pays.asset_id == asset_id_type() )
+   if( pays.asset_id == asset_id_type() ) 
       adjust_votes( receiver.delegate_votes, -pays.amount );
 }
 
@@ -501,7 +476,7 @@ bool generic_evaluator::fill_order( const call_order_object& order, const asset&
    {
       const account_balance_object& borrower_balances = borrower.balances(db());
       db().modify( borrower_balances, [&]( account_balance_object& b ){
-              if( collateral_freed )
+              if( collateral_freed ) 
               {
                 b.add_balance( *collateral_freed );
                 b.total_core_in_orders -= collateral_freed->amount;
@@ -512,7 +487,7 @@ bool generic_evaluator::fill_order( const call_order_object& order, const asset&
            });
    }
 
-   if( pays.asset_id == asset_id_type() )
+   if( pays.asset_id == asset_id_type() ) 
       adjust_votes( borrower.delegate_votes, -pays.amount );
 
    if( collateral_freed )
@@ -543,7 +518,7 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
    auto seller_to_collateral = filled ? order.get_collateral() : pays * order.sell_price;
    auto buyer_to_collateral  = receives - issuer_fees;
 
-   if( receives.asset_id == asset_id_type() )
+   if( receives.asset_id == asset_id_type() ) 
    {
       const auto& balances = seller.balances(db());
       db().modify( balances, [&]( account_balance_object& b ){
@@ -561,7 +536,6 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
    //auto call_id = debts.get_call_order(pays.asset_id);
    if( call_itr == call_account_index.end() )
    {
-      wlog( "." );
       const auto& call_obj = db().create<call_order_object>( [&]( call_order_object& c ){
              c.borrower    = seller.id;
              c.collateral  = seller_to_collateral.amount + buyer_to_collateral.amount;
@@ -573,7 +547,7 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
              tmp /= 1000;
              FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
 
-             c.call_price = (asset( tmp.to_uint64(), c.get_collateral().asset_id)) / c.get_debt();
+             c.call_price = (asset( tmp.to_uint64(), c.get_collateral().asset_id)) / c.get_debt(); 
         });
    }
    else
@@ -588,13 +562,12 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
             tmp /= 1000;
             FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
 
-            c.call_price = (asset( tmp.to_uint64(), c.get_collateral().asset_id)) / c.get_debt();
+            c.call_price = (asset( tmp.to_uint64(), c.get_collateral().asset_id)) / c.get_debt(); 
       });
    }
 
    if( filled )
    {
-      //wdump((order.available_collateral)(seller_to_collateral));
       db().remove( order );
    }
    else
