@@ -587,37 +587,57 @@ void database::update_active_delegates()
 
 void database::update_global_properties()
 {
-   global_property_object tmp;
-   vector<delegate_id_type> ids = get_global_properties().active_delegates;
+   wlog("Updating global properties...");
+   global_property_object tmp = get_global_properties();
+   vector<const delegate_object*> ids;
+   std::transform(tmp.active_delegates.begin(), tmp.active_delegates.end(), std::back_inserter(ids),
+                  [this](delegate_id_type id){
+                     return &id(*this);
+                  });
+
    std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
-                     [&]( delegate_id_type a, delegate_id_type b )->bool {
-                          return a(*this).block_interval_sec < b(*this).block_interval_sec;
+                     [&]( const delegate_object* a, const delegate_object* b )->bool {
+                          return a->block_interval_sec < b->block_interval_sec;
                      });
-   tmp.block_interval = ids[ids.size()/2](*this).block_interval_sec;
+   tmp.block_interval = ids[ids.size()/2]->block_interval_sec;
    std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
-                     [&]( delegate_id_type a, delegate_id_type b )->bool {
-                          return a(*this).max_block_size < b(*this).max_block_size;
+                     [&]( const delegate_object* a, const delegate_object* b )->bool {
+                          return a->maintenance_interval_sec < b->maintenance_interval_sec;
                      });
-   tmp.maximum_block_size = ids[ids.size()/2](*this).max_block_size;
+   tmp.maintenance_interval = ids[ids.size()/2]->maintenance_interval_sec;
    std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
-                     [&]( delegate_id_type a, delegate_id_type b )->bool {
-                          return a(*this).max_transaction_size < b(*this).max_transaction_size;
+                     [&]( const delegate_object* a, const delegate_object* b )->bool {
+                          return a->max_transaction_size < b->max_transaction_size;
                      });
-   tmp.maximum_transaction_size = ids[ids.size()/2](*this).max_transaction_size;
+   tmp.maximum_transaction_size = ids[ids.size()/2]->max_transaction_size;
    std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
-                     [&]( delegate_id_type a, delegate_id_type b )->bool {
-                          return a(*this).max_sec_until_expiration < b(*this).max_sec_until_expiration;
+                     [&]( const delegate_object* a, const delegate_object* b )->bool {
+                          return a->max_block_size < b->max_block_size;
                      });
-   tmp.maximum_time_until_expiration = ids[ids.size()/2](*this).max_sec_until_expiration;
+   tmp.maximum_block_size = ids[ids.size()/2]->max_block_size;
+   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
+                     [&]( const delegate_object* a, const delegate_object* b )->bool {
+                          return a->max_undo_history_size < b->max_undo_history_size;
+                     });
+   tmp.maximum_undo_history = ids[ids.size()/2]->max_undo_history_size;
+   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
+                     [&]( const delegate_object* a, const delegate_object* b )->bool {
+                          return a->max_sec_until_expiration < b->max_sec_until_expiration;
+                     });
+   tmp.maximum_time_until_expiration = ids[ids.size()/2]->max_sec_until_expiration;
 
    for( uint32_t f = 0; f < tmp.current_fees.size(); ++f )
    {
       std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
-                        [&]( delegate_id_type a, delegate_id_type b )->bool {
-                             return a(*this).fee_schedule.at(f) < b(*this).fee_schedule.at(f);
+                        [&]( const delegate_object* a, const delegate_object* b )->bool {
+                             return a->fee_schedule.at(f) < b->fee_schedule.at(f);
                         });
-      tmp.current_fees.at(f)  = ids[ids.size()/2](*this).fee_schedule.at(f);
+      tmp.current_fees.at(f)  = ids[ids.size()/2]->fee_schedule.at(f);
    }
+
+   modify( global_property_id_type()(*this), [&]( global_property_object& gpo ){
+      gpo = std::move(tmp);
+   });
 }
 
 void database::update_global_dynamic_data( const signed_block& b )

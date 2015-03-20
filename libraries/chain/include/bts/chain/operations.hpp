@@ -340,10 +340,12 @@ namespace bts { namespace chain {
       asset                                           fee; ///< paid by delegate_id->delegate_account
       optional<fc::array<share_type,FEE_TYPE_COUNT>>  fee_schedule;
       optional<relative_key_id_type>                  signing_key;
-      uint8_t                                         pay_rate; ///< 255 for unchanged
+      uint8_t                                         pay_rate = 255; ///< 255 for unchanged
       uint8_t                                         block_interval_sec = BTS_DEFAULT_BLOCK_INTERVAL;
-      uint32_t                                        max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE;
+      uint32_t                                        maintenance_interval_sec = BTS_DEFAULT_MAINTENANCE_INTERVAL;
       uint32_t                                        max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
+      uint32_t                                        max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE;
+      uint16_t                                        max_undo_history_size = BTS_DEFAULT_MAX_UNDO_HISTORY;
       uint32_t                                        max_sec_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
 
       void       validate()const;
@@ -477,6 +479,12 @@ FC_REFLECT( bts::chain::account_update_operation,
             (account)(fee)(owner)(active)(voting_key)(memo_key)(vote)
           )
 
+FC_REFLECT( bts::chain::delegate_update_operation,
+            (delegate_id)(fee)(fee_schedule)(signing_key)(pay_rate)
+            (block_interval_sec)(maintenance_interval_sec)(max_transaction_size)
+            (max_block_size)(max_undo_history_size)(max_sec_until_expiration)
+          )
+
 FC_REFLECT( bts::chain::delegate_publish_feeds_operation,
             (delegate)(fee)(feeds) )
 
@@ -519,10 +527,6 @@ FC_REFLECT( bts::chain::delegate_create_operation,
             (block_interval_sec)(max_block_size)
             (max_transaction_size)(max_sec_until_expiration)
             (fee_schedule)
-          )
-
-FC_REFLECT( bts::chain::delegate_update_operation,
-            (delegate_id)(fee)(fee_schedule)(signing_key)(pay_rate)
           )
 
 FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(proposed_ops) )

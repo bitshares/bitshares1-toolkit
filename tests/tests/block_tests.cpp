@@ -325,3 +325,55 @@ BOOST_AUTO_TEST_CASE( tapos )
       throw;
    }
 }
+
+BOOST_AUTO_TEST_CASE( maintenance_interval )
+{
+   try {
+      fc::temp_directory data_dir;
+      auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
+      {
+         database db;
+         db.open(data_dir.path(), genesis_allocation() );
+
+         start_simulated_time( bts::chain::now() );
+         auto ad = db.get_global_properties().active_delegates;
+         advance_simulated_time_to( db.get_next_generation_time(  ad[db.head_block_num()%ad.size()] ) );
+         auto b =  db.generate_block( delegate_priv_key, ad[db.head_block_num()%ad.size()] );
+
+         fc::time_point_sec maintanence_time = db.head_block_time() + fc::seconds(db.get_global_properties().maintenance_interval);
+         auto initial_properties = db.get_global_properties();
+
+         for( auto del : initial_properties.active_delegates )
+         {
+            signed_transaction trx;
+            trx.ref_block_prefix = db.head_block_id()._hash[1];
+            trx.ref_block_num = 1;
+            trx.relative_expiration = 1;
+            delegate_update_operation op;
+            op.delegate_id = del;
+            op.max_transaction_size = 3005;
+            trx.operations.push_back(op);
+            trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+            db.push_transaction(trx);
+         }
+
+         while( maintanence_time >= db.head_block_time() )
+         {
+            ad = db.get_global_properties().active_delegates;
+            advance_simulated_time_to( db.get_next_generation_time(  ad[db.head_block_num()%ad.size()] ) );
+            b =  db.generate_block( delegate_priv_key, ad[db.head_block_num()%ad.size()],
+                  database::skip_delegate_signature | database::skip_tapos_check );
+         }
+
+         ad = db.get_global_properties().active_delegates;
+         advance_simulated_time_to( db.get_next_generation_time(  ad[db.head_block_num()%ad.size()] ) );
+         b =  db.generate_block( delegate_priv_key, ad[db.head_block_num()%ad.size()] );
+
+         BOOST_CHECK_EQUAL( db.get_global_properties().maximum_transaction_size, 3005 );
+         db.close();
+      }
+   } catch (fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
