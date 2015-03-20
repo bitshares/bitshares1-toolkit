@@ -8,6 +8,8 @@
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/time.hpp>
 
+#include <fc/crypto/digest.hpp>
+
 #include <boost/test/unit_test.hpp>
 
 #include <iostream>
@@ -116,8 +118,8 @@ struct database_fixture {
       create_account.fee_paying_account = account_id_type();
 
       create_account.name = name;
-      create_account.owner.add_authority(key, 123);
-      create_account.active.add_authority(key, 321);
+      create_account.owner = authority(123, key, 123);
+      create_account.active = authority(321, key, 321);
       create_account.memo_key = key;
       create_account.voting_key = key;
 
@@ -176,13 +178,31 @@ struct database_fixture {
       return db.find<short_order_object>(r.operation_results[0].get<object_id_type>());
    }
 
-   const account_object& create_account( const string& name )
+   const account_object& create_account( const string& name, const key_id_type& key = key_id_type() )
    {
-      trx.operations.push_back(make_account(name));
+      trx.operations.push_back(make_account(name, key));
       trx.validate();
       auto r = db.push_transaction(trx, ~0);
       trx.operations.clear();
       return db.get<account_object>(r.operation_results[0].get<object_id_type>());
+   }
+
+   const key_object& register_key( const public_key_type& key )
+   {
+      trx.operations.push_back(key_create_operation({account_id_type(), asset(), key}));
+      key_id_type new_key = db.push_transaction(trx, ~0).operation_results[0].get<object_id_type>();
+      trx.operations.clear();
+      return new_key(db);
+   }
+
+   uint64_t fund(const account_object& account, const asset& amount = asset(500000))
+   {
+      transfer(account_id_type()(db), account, amount);
+      return get_balance(account, amount.asset_id(db));
+   }
+   void sign(signed_transaction& trx, const fc::ecc::private_key& key)
+   {
+      trx.signatures.push_back(key.sign_compact(fc::digest((transaction&)trx)));
    }
 
    const limit_order_object* create_sell_order( const account_object& user, const asset& amount, const asset& recv )
@@ -348,7 +368,7 @@ struct database_fixture {
          if( limit_itr != limit_price_idx.end() )
          {
             if( short_itr != sell_price_idx.rend() && limit_itr->sell_price > ~short_itr->sell_price )
-            { 
+            {
                print_short_order( *short_itr );
                ++short_itr;
             }
@@ -359,7 +379,7 @@ struct database_fixture {
             }
          }
          else if( short_itr != sell_price_idx.rend() )
-         { 
+         {
             print_short_order( *short_itr );
             ++short_itr;
          }

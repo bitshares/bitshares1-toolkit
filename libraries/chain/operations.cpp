@@ -99,6 +99,7 @@ share_type account_update_operation::calculate_fee( const fee_schedule_type& sch
 void account_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( account != account_id_type() );
    FC_ASSERT( owner || active || voting_key || memo_key || vote );
 
    if( vote && vote->size() > 1 )

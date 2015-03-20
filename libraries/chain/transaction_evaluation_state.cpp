@@ -37,7 +37,10 @@ namespace bts { namespace chain {
                case account_object_type:
                {
                   if( depth == BTS_MAX_SIG_CHECK_DEPTH )
+                  {
+                     elog("Failing authority verification due to recursion depth.");
                      return false;
+                  }
                   if( check_authority( dynamic_cast<const account_object*>( &auth_item ), auth_class, depth + 1 ) )
                   {
                      approved_by.insert( std::make_pair(auth_item.id,auth_class) );
