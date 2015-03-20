@@ -567,7 +567,14 @@ BOOST_AUTO_TEST_CASE( update_uia )
       REQUIRE_THROW_WITH_VALUE(op, permissions, ASSET_ISSUER_PERMISSION_MASK & ~market_issued);
       //Cannot set a price feed on a UIA
       REQUIRE_THROW_WITH_VALUE(op, new_price_feed, price_feed());
+      REQUIRE_THROW_WITH_VALUE(op, core_exchange_rate, price(asset(5), asset(5)));
 
+      op.core_exchange_rate = price(asset(3), test.amount(5));
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+      REQUIRE_THROW_WITH_VALUE(op, core_exchange_rate, ~*op.core_exchange_rate);
+      REQUIRE_THROW_WITH_VALUE(op, core_exchange_rate, price());
+      op.core_exchange_rate.reset();
       op.new_issuer = nathan.id;
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
@@ -583,6 +590,8 @@ BOOST_AUTO_TEST_CASE( update_uia )
       op.permissions.reset();
       op.flags.reset();
       BOOST_CHECK(!(test.issuer_permissions & white_list));
+      REQUIRE_THROW_WITH_VALUE(op, permissions, ASSET_ISSUER_PERMISSION_MASK & ~market_issued);
+      REQUIRE_THROW_WITH_VALUE(op, flags, white_list);
       op.new_issuer = account_id_type();
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
