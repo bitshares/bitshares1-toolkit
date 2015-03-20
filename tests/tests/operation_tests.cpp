@@ -82,6 +82,44 @@ BOOST_AUTO_TEST_CASE( create_account_test )
    }
 }
 
+BOOST_AUTO_TEST_CASE( child_account )
+{
+   try {
+      INVOKE(create_account_test);
+      fc::ecc::private_key child_private_key = fc::ecc::private_key::generate();
+      fc::ecc::private_key nathan_private_key = fc::ecc::private_key::generate();
+      const auto& child_key = register_key(child_private_key.get_public_key());
+      const auto& nathan_key = register_key(nathan_private_key.get_public_key());
+      const account_object& nathan = get_account("nathan");
+
+      db.modify(nathan, [nathan_key](account_object& a) {
+         a.owner = authority(1, nathan_key.get_id(), 1);
+         a.active = authority(1, nathan_key.get_id(), 1);
+      });
+
+      auto op = make_account("nathan/child");
+      op.owner = authority(1, child_key.get_id(), 1);
+      op.active = authority(1, child_key.get_id(), 1);
+      trx.operations.emplace_back(op);
+      sign(trx, fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis"))));
+
+      BOOST_REQUIRE_THROW(db.push_transaction(trx), fc::exception);
+      sign(trx, nathan_private_key);
+      BOOST_REQUIRE_THROW(db.push_transaction(trx), fc::exception);
+      trx.signatures.clear();
+      op.owner = authority(1, account_id_type(nathan.id), 1);
+      trx.operations.back() = op;
+      sign(trx, fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis"))));
+      sign(trx, nathan_private_key);
+      db.push_transaction(trx);
+
+      BOOST_CHECK( get_account("nathan/child").active.auths == op.active.auths );
+   } catch (fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
 BOOST_AUTO_TEST_CASE( update_account )
 {
    try {
