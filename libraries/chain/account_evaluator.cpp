@@ -1,3 +1,4 @@
+#include <bts/chain/database.hpp>
 #include <bts/chain/account_evaluator.hpp>
 #include <bts/chain/key_object.hpp>
 #include <algorithm>
@@ -10,13 +11,13 @@ object_id_type account_create_evaluator::do_evaluate( const account_create_opera
    auto bts_fee_required = op.calculate_fee( db().current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
 
-   FC_ASSERT( op.voting_key.is_relative() || db().find(op.voting_key) );
-   FC_ASSERT( op.memo_key.is_relative() || db().find(op.memo_key) );
+   FC_ASSERT( is_relative(op.voting_key) || db().find(op.voting_key) );
+   FC_ASSERT( is_relative(op.memo_key) || db().find(op.memo_key) );
 
    for( auto id : op.owner.auths )
-      FC_ASSERT( id.first.is_relative() || db().find<object>(id.first) );
+      FC_ASSERT( is_relative(id.first) || db().find<object>(id.first) );
    for( auto id : op.active.auths )
-      FC_ASSERT( id.first.is_relative() || db().find<object>(id.first) );
+      FC_ASSERT( is_relative(id.first) || db().find<object>(id.first) );
    for( auto id : op.vote )
       FC_ASSERT( db().find<object>(id) );
 
@@ -75,15 +76,15 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
    auto bts_fee_paid = pay_fee( o.account, o.fee );
    FC_ASSERT( bts_fee_paid == o.calculate_fee( d.current_fee_schedule() ) );
 
-   FC_ASSERT( !o.voting_key || o.voting_key->is_relative() || db().find(*o.voting_key) );
-   FC_ASSERT( !o.memo_key || o.memo_key->is_relative() || db().find(*o.memo_key) );
+   FC_ASSERT( !o.voting_key || is_relative(*o.voting_key) || db().find(*o.voting_key) );
+   FC_ASSERT( !o.memo_key || is_relative(*o.memo_key) || db().find(*o.memo_key) );
 
    if( o.owner )
       for( auto id : o.owner->auths )
-         FC_ASSERT( id.first.is_relative() || db().find<object>(id.first) );
+         FC_ASSERT( is_relative(id.first) || db().find<object>(id.first) );
    if( o.active )
       for( auto id : o.active->auths )
-         FC_ASSERT( id.first.is_relative() || db().find<object>(id.first) );
+         FC_ASSERT( is_relative(id.first) || db().find<object>(id.first) );
 
    acnt = &o.account(d);
    if( o.owner ) FC_ASSERT( verify_authority( acnt, authority::owner ) );

@@ -4,6 +4,7 @@
 
 namespace bts { namespace chain {
 
+   class database;
    class generic_evaluator;
    class transaction_evaluation_state;
 

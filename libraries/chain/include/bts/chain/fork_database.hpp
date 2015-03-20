@@ -74,7 +74,7 @@ namespace bts { namespace chain {
          > fork_multi_index_type;
 
       private:
-         fork_multi_index_type _index;
-         shared_ptr<fork_item>                                 _head;
+         fork_multi_index_type    _index;
+         shared_ptr<fork_item>    _head;
    };
 } } // bts::chain

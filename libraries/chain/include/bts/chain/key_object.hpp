@@ -1,10 +1,11 @@
 #pragma once
-#include <bts/chain/object.hpp>
+#include <bts/db/object.hpp>
 #include <bts/chain/address.hpp>
 #include <fc/static_variant.hpp>
+#include <bts/chain/types.hpp>
 
 namespace bts { namespace chain {
-   class key_object : public abstract_object<key_object>
+   class key_object : public bts::db::abstract_object<key_object>
    {
       public:
          static const uint8_t space_id = protocol_ids;
@@ -18,4 +19,4 @@ namespace bts { namespace chain {
    };
 } }
 
-FC_REFLECT_DERIVED( bts::chain::key_object, (bts::chain::object), (key_data) )
+FC_REFLECT_DERIVED( bts::chain::key_object, (bts::db::object), (key_data) )

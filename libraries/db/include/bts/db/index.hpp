@@ -151,7 +151,7 @@ namespace bts { namespace db {
 
          virtual object_id_type get_next_id()const               { return _next_id;    }
          virtual void           use_next_id()                    { ++_next_id.number;  }
-         virtual void           set_next_id( object_id_type id ) { _next_id = id;      }
+         virtual void           set_next_id( object_id_type id ) { wdump((id)); _next_id = id;      }
 
          virtual const object&  load( const std::vector<char>& data )
          {

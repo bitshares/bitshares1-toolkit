@@ -139,7 +139,7 @@ BOOST_AUTO_TEST_CASE( undo_pending )
 
          start_simulated_time( bts::chain::now() );
          auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
-         const bts::chain::index& account_idx = db.get_index(protocol_ids, account_object_type);
+         const bts::db::index& account_idx = db.get_index(protocol_ids, account_object_type);
 
          signed_transaction trx;
          trx.relative_expiration = 1000;
@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
 
       start_simulated_time(bts::chain::now());
       auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
-      const bts::chain::index& account_idx = db1.get_index(protocol_ids, account_object_type);
+      const bts::db::index& account_idx = db1.get_index(protocol_ids, account_object_type);
 
       signed_transaction trx;
       trx.relative_expiration = 1000;
@@ -240,7 +240,7 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
 
       start_simulated_time(bts::chain::now());
       auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
-      const bts::chain::index& account_idx = db1.get_index(protocol_ids, account_object_type);
+      const bts::db::index& account_idx = db1.get_index(protocol_ids, account_object_type);
 
       signed_transaction trx;
       trx.relative_expiration = 1000;
@@ -284,7 +284,7 @@ BOOST_AUTO_TEST_CASE( tapos )
 
       start_simulated_time(bts::chain::now());
       auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
-      const bts::chain::index& account_idx = db1.get_index(protocol_ids, account_object_type);
+      const bts::db::index& account_idx = db1.get_index(protocol_ids, account_object_type);
 
       auto ad = db1.get_global_properties().active_delegates;
       advance_simulated_time_to( db1.get_next_generation_time(  ad[db1.head_block_num()%ad.size()] ) );

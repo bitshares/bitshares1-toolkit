@@ -2,6 +2,7 @@
 #include <bts/chain/database.hpp>
 #include <bts/chain/authority.hpp>
 #include <bts/chain/asset.hpp>
+#include <bts/db/object.hpp>
 
 namespace bts { namespace chain {
 
@@ -14,7 +15,7 @@ namespace bts { namespace chain {
     *  limited basis.  Active delegates are updated once per round and the
     *  other properties are updated once per day.
     */
-   class global_property_object : public abstract_object<global_property_object>
+   class global_property_object : public bts::db::abstract_object<global_property_object>
    {
       public:
          static const uint8_t space_id = implementation_ids;
@@ -54,10 +55,10 @@ namespace bts { namespace chain {
 }}
 
 
-FC_REFLECT_DERIVED( bts::chain::dynamic_global_property_object, (bts::chain::object),
+FC_REFLECT_DERIVED( bts::chain::dynamic_global_property_object, (bts::db::object),
                     (random)(head_block_number)(head_block_id)(time)(current_delegate) )
 
-FC_REFLECT_DERIVED( bts::chain::global_property_object, (bts::chain::object),
+FC_REFLECT_DERIVED( bts::chain::global_property_object, (bts::db::object),
                     (active_delegates)
                     (current_fees)
                     (block_interval)

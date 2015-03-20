@@ -1,12 +1,12 @@
 #pragma once 
-#include <bts/chain/object.hpp>
-#include <bts/chain/database.hpp>
+#include <bts/db/object.hpp>
 #include <bts/chain/authority.hpp>
 #include <bts/chain/asset.hpp>
-#include <bts/chain/generic_index.hpp>
+#include <bts/db/generic_index.hpp>
 #include <boost/multi_index/composite_key.hpp>
 
 namespace bts { namespace chain {
+  using namespace bts::db;
 
   class limit_order_object : public abstract_object<limit_order_object>
   {
@@ -44,7 +44,7 @@ namespace bts { namespace chain {
 } }
 
 FC_REFLECT_DERIVED( bts::chain::limit_order_object, 
-                    (bts::chain::object), 
+                    (bts::db::object), 
                     (seller)(for_sale)(sell_price) 
                   )
                     

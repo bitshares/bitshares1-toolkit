@@ -15,9 +15,11 @@
 #include <vector>
 #include <deque>
 #include <bts/chain/address.hpp>
-#include <bts/chain/object_id.hpp>
+#include <bts/db/object_id.hpp>
 
 namespace bts { namespace chain {
+   using namespace bts::db;
+
    using                               std::map;
    using                               std::vector;
    using                               std::unordered_map;
@@ -58,7 +60,14 @@ namespace bts { namespace chain {
    };
    const static uint32_t ASSET_ISSUER_PERMISSION_MASK = 0x1f;
 
+   enum reserved_spaces
+   {
+      relative_protocol_ids = 0,
+      protocol_ids          = 1,
+      implementation_ids    = 2
+   };
 
+   inline bool is_relative( object_id_type o ){ return o.space() == 0; }
    /**
     *  There are many types of fees charged by the network
     *  for different operations. These fees are published by
@@ -137,6 +146,7 @@ namespace bts { namespace chain {
    class short_order_object;
    class call_order_object;
    class custom_object;
+
 
    typedef object_id< protocol_ids, key_object_type,          key_object>           key_id_type;
    typedef object_id< protocol_ids, account_object_type,      account_object>       account_id_type;

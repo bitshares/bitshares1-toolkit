@@ -1,4 +1,6 @@
 #include <bts/chain/key_object.hpp>
+#include <bts/chain/types.hpp>
+
 namespace bts { namespace chain {
    address key_object::key_address()const 
    { 

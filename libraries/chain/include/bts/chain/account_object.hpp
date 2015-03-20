@@ -1,8 +1,7 @@
 #pragma once
-#include <bts/chain/database.hpp>
 #include <bts/chain/authority.hpp>
 #include <bts/chain/asset.hpp>
-#include <bts/chain/generic_index.hpp>
+#include <bts/db/generic_index.hpp>
 
 namespace bts { namespace chain {
    /**
@@ -20,7 +19,7 @@ namespace bts { namespace chain {
     *  object for each asset type or at the very least group assets into
     *  smaller numbers.
     */
-   class account_balance_object : public abstract_object<account_balance_object>
+   class account_balance_object : public bts::db::abstract_object<account_balance_object>
    {
       public:
          static const uint8_t space_id = implementation_ids;
@@ -48,7 +47,7 @@ namespace bts { namespace chain {
    };
 
 
-   class account_object : public annotated_object<account_object>
+   class account_object : public bts::db::annotated_object<account_object>
    {
       public:
          static const uint8_t space_id = protocol_ids;
@@ -75,7 +74,7 @@ namespace bts { namespace chain {
     *  This object is attacked as the meta annotation on the account object, this
     *  information is not relevant to validation.
     */
-   class meta_account_object : public abstract_object<meta_account_object>
+   class meta_account_object : public bts::db::abstract_object<meta_account_object>
    {
       public:
          static const uint8_t space_id = implementation_ids;
@@ -98,11 +97,11 @@ namespace bts { namespace chain {
 
 }}
 FC_REFLECT_DERIVED( bts::chain::account_object,
-                    (bts::chain::annotated_object<bts::chain::account_object>),
+                    (bts::db::annotated_object<bts::chain::account_object>),
                     (name)(owner)(active)(memo_key)(voting_key)(delegate_votes)(balances)(authorized_assets) )
 
 FC_REFLECT_DERIVED( bts::chain::meta_account_object,
-                    (bts::chain::object),
+                    (bts::db::object),
                     (memo_key)(delegate_id) )
 
 FC_REFLECT_DERIVED( bts::chain::account_balance_object, (bts::chain::object), (total_core_in_orders)(balances) )

@@ -2,7 +2,7 @@
 #include <fc/exception/exception.hpp>
 #include <fc/io/varint.hpp>
 #include <memory>
-#define BTS_DB_MAX_INSTANCE_ID ((~0)>>16)
+#define BTS_DB_MAX_INSTANCE_ID  (uint64_t(-1)>>16)
 
 namespace bts { namespace db {
    using  std::shared_ptr;
@@ -48,7 +48,7 @@ namespace bts { namespace db {
    };
 
    class object;
-   class database;
+   class object_database;
 
    template<uint8_t SpaceID, uint8_t TypeID, typename T = object>
    struct object_id
@@ -58,6 +58,7 @@ namespace bts { namespace db {
       static const uint8_t type_id = TypeID;
 
       object_id(){}
+      object_id( unsigned_int i ):instance(i){}
       object_id( uint64_t i ):instance(i)
       {
          FC_ASSERT( (i >> 48) == 0 );

@@ -4,7 +4,7 @@
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/key_object.hpp>
 #include <bts/chain/delegate_object.hpp>
-#include <bts/chain/simple_index.hpp>
+#include <bts/db/simple_index.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include "database_fixture.hpp"
