@@ -216,6 +216,7 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
 { try {
     if( !mia.is_market_issued() ) return false;
     if( mia.current_feed.call_limit.is_null() ) return false;
+    wdump( (mia.current_feed.call_limit.to_real()) );
 
     const call_order_index& call_index = db().get_index_type<call_order_index>();
     const auto& call_price_index = call_index.indices().get<by_price>();
@@ -227,11 +228,14 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
     const auto& short_price_index = short_index.indices().get<by_price>();
 
     auto short_itr = short_price_index.lower_bound( price::max( mia.id, mia.short_backing_asset ) );
-    auto short_end = short_price_index.upper_bound( price::min( mia.id, mia.short_backing_asset ) );
-    //for( auto s = short_itr; s != short_end; ++s ) wdump((*s));
+    //auto short_itr = short_price_index.lower_bound( mia.current_feed.call_limit );
+    auto short_end = short_price_index.upper_bound( ~mia.current_feed.call_limit );
+    //auto short_end = short_price_index.upper_bound( price::min( mia.id, mia.short_backing_asset ) );
+    for( auto s = short_itr; s != short_end; ++s ) wdump((s->sell_price.to_real())(s->sell_price)(mia.current_feed.call_limit));
 
     auto limit_itr = limit_price_index.lower_bound( price::max( mia.id, mia.short_backing_asset ) );
-    auto limit_end = limit_price_index.upper_bound( price::min( mia.id, mia.short_backing_asset ) );
+    auto limit_end = limit_price_index.upper_bound( ~mia.current_feed.call_limit );
+    //auto limit_end = limit_price_index.upper_bound( price::min( mia.id, mia.short_backing_asset ) );
     //for( auto l = limit_itr; l != limit_end; ++l ) wdump((*l));
 
 
