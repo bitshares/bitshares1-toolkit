@@ -54,7 +54,7 @@ object_id_type delegate_update_evaluator::do_evaluate( const delegate_update_ope
 
    if( op.fee_schedule ) FC_ASSERT( del.fee_schedule != *op.fee_schedule );
    if( op.pay_rate <= 255 ) FC_ASSERT( op.pay_rate != del.pay_rate );
-   if( op.signing_key && !op.signing_key->is_relative() )
+   if( op.signing_key && !is_relative(*op.signing_key) )
    {
       FC_ASSERT( *op.signing_key != del.signing_key );
       FC_ASSERT( d.find(key_id_type(op.signing_key->instance)) );

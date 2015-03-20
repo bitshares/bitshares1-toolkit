@@ -1,14 +1,13 @@
 #pragma once
-#include <bts/chain/object_id.hpp>
+#include <bts/db/generic_index.hpp>
 #include <bts/chain/types.hpp>
-#include <bts/chain/object.hpp>
 #include <bts/chain/authority.hpp>
 #include <bts/chain/asset.hpp>
-#include <bts/chain/generic_index.hpp>
 #include <boost/multi_index/composite_key.hpp>
 #include <fc/uint128.hpp>
 
 namespace bts { namespace chain {
+   using namespace bts::db;
 
   /**
    * @class short_order_object
@@ -128,10 +127,10 @@ namespace bts { namespace chain {
 
 } } // bts::chain
 
-FC_REFLECT_DERIVED( bts::chain::short_order_object, (bts::chain::object),
+FC_REFLECT_DERIVED( bts::chain::short_order_object, (bts::db::object),
                     (seller)(for_sale)(available_collateral)(sell_price)
                     (call_price)(initial_collateral_ratio)(maintenance_collateral_ratio)
                   )
 
-FC_REFLECT_DERIVED( bts::chain::call_order_object, (bts::chain::object),
+FC_REFLECT_DERIVED( bts::chain::call_order_object, (bts::db::object),
                     (borrower)(collateral)(debt)(call_price) )

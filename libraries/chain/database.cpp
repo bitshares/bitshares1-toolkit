@@ -9,8 +9,8 @@
 #include <bts/chain/limit_order_object.hpp>
 #include <bts/chain/short_order_object.hpp>
 #include <bts/chain/block_summary_object.hpp>
-#include <bts/chain/simple_index.hpp>
-#include <bts/chain/flat_index.hpp>
+#include <bts/db/simple_index.hpp>
+#include <bts/db/flat_index.hpp>
 
 #include <bts/chain/transaction_evaluation_state.hpp>
 #include <bts/chain/key_evaluator.hpp>
@@ -29,6 +29,7 @@
 #include <fc/uint128.hpp>
 
 namespace bts { namespace chain {
+   /*
 template<typename T>
 struct restore_on_scope_exit
 {
@@ -39,20 +40,14 @@ struct restore_on_scope_exit
    T&  value;
 };
 
-template<typename T>
-restore_on_scope_exit<T> make_restore_on_exit( T& v ) { return restore_on_scope_exit<T>(v); }
+//template<typename T>
+//restore_on_scope_exit<T> make_restore_on_exit( T& v ) { return restore_on_scope_exit<T>(v); }
+*/
 
 database::database()
-:_undo_db(*this)
 {
-   _index.resize(255);
-
-   _undo_db.enable();
-
-   _object_id_to_object = std::make_shared<db::level_map<object_id_type,vector<char>>>();
-
-   initialize_evaluators();
    initialize_indexes();
+   initialize_evaluators();
 }
 
 database::~database(){
@@ -63,38 +58,12 @@ database::~database(){
 void database::close()
 {
    _pending_block_session.reset();
-   flush();
+   object_database::close();
 
    if( _block_id_to_block.is_open() )
       _block_id_to_block.close();
-   if( _object_id_to_object->is_open() )
-      _object_id_to_object->close();
+
    _fork_db.reset();
-}
-
-const object* database::find_object( object_id_type id )const
-{
-   return get_index(id.space(),id.type()).find( id );
-}
-const object& database::get_object( object_id_type id )const
-{
-   return get_index(id.space(),id.type()).get( id );
-}
-
-const index& database::get_index(uint8_t space_id, uint8_t type_id)const
-{
-   FC_ASSERT( _index.size() > space_id, "", ("space_id",space_id)("type_id",type_id)("index.size",_index.size()) );
-   const auto& tmp = _index[space_id][type_id];
-   FC_ASSERT( tmp );
-   return *tmp;
-}
-index& database::get_mutable_index(uint8_t space_id, uint8_t type_id)
-{
-   FC_ASSERT( _index.size() > space_id, "", ("space_id",space_id)("type_id",type_id)("index.size",_index.size()) );
-   FC_ASSERT( _index[space_id].size() > type_id , "", ("space_id",space_id)("type_id",type_id)("index[space_id].size",_index[space_id].size()) );
-   const auto& idx = _index[space_id][type_id];
-   FC_ASSERT( idx, "", ("space",space_id)("type",type_id) );
-   return *idx;
 }
 
 const asset_object& database::get_core_asset() const
@@ -102,58 +71,20 @@ const asset_object& database::get_core_asset() const
    return get(asset_id_type());
 }
 
-void database::flush()
-{
-   if( !_object_id_to_object->is_open() )
-      return;
-
-   vector<object_id_type> next_ids;
-   for( auto& space : _index )
-      for( const unique_ptr<index>& type_index : space )
-         if( type_index )
-         {
-            type_index->inspect_all_objects([&] (const object& obj) {
-               _object_id_to_object->store(obj.id, obj.pack());
-            });
-            next_ids.push_back( type_index->get_next_id() );
-         }
-   _object_id_to_object->store( object_id_type(), fc::raw::pack(next_ids) );
-}
-
 void database::wipe(bool include_blocks)
 {
    close();
-   fc::remove_all(_data_dir / "database" / "objects");
+   object_database::wipe();
    if( include_blocks )
-      fc::remove_all(_data_dir / "database" / "block_id_to_block" );
+      fc::remove_all( get_data_dir() / "database" / "block_id_to_block" );
 }
 
 void database::open( const fc::path& data_dir, const genesis_allocation& initial_allocation )
 { try {
    ilog("Open database in ${d}", ("d", data_dir));
+   object_database::open( data_dir );
 
    _block_id_to_block.open( data_dir / "database" / "block_num_to_block" );
-   _object_id_to_object->open( data_dir / "database" / "objects" );
-
-   for( auto& space : _index )
-   {
-      for( auto& type_index : space )
-      {
-         if( type_index )
-         {
-            type_index->open( _object_id_to_object );
-         }
-      }
-   }
-   try {
-   auto next_ids = fc::raw::unpack<vector<object_id_type>>( _object_id_to_object->fetch( object_id_type() ) );
-   for( auto id : next_ids )
-      get_mutable_index( id ).set_next_id( id );
-   }
-   catch ( const fc::exception& )
-   {
-      wlog( "unable to fetch next ids, must be new database" );
-   }
 
    if( !find(global_property_id_type()) )
       init_genesis(initial_allocation);
@@ -165,7 +96,6 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
    if( last_block_itr.valid() )
       _fork_db.start_block( last_block_itr.value() );
 
-   _data_dir = data_dir;
 } FC_CAPTURE_AND_RETHROW( (data_dir) ) }
 
 void database::initialize_evaluators()
@@ -191,12 +121,6 @@ void database::initialize_evaluators()
 
 void database::initialize_indexes()
 {
-   _index.clear();
-   _index.resize(255);
-   _index[protocol_ids].resize( 10 );
-   _index[implementation_ids].resize( 10 );
-   _index[meta_info_ids].resize( 10 );
-
    add_index< primary_index< asset_index> >();
    add_index< primary_index< account_index> >();
    add_index< primary_index< transaction_index> >();
@@ -634,7 +558,11 @@ void database::update_global_dynamic_data( const signed_block& b )
    });
 }
 
-void database::pop_undo()
+/**
+ *  Removes the most recent block from the database and
+ *  undoes any changes it made.
+ */
+void database::pop_block()
 { try {
    _pending_block_session.reset();
    _block_id_to_block.remove( _pending_block.previous );
@@ -850,20 +778,6 @@ optional<signed_block> database::fetch_block_by_number( uint32_t num )const
          return itr.value();
    }
    return optional<signed_block>();
-}
-void database::save_undo( const object& obj )
-{
-   _undo_db.on_modify( obj );
-}
-
-void database::save_undo_add( const object& obj )
-{
-   _undo_db.on_create( obj );
-}
-
-void database::save_undo_remove(const object& obj)
-{
-   _undo_db.on_remove( obj );
 }
 
 } } // namespace bts::chain

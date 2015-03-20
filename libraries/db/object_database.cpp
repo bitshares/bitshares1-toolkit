@@ -5,18 +5,6 @@
 #include <fc/uint128.hpp>
 
 namespace bts { namespace db {
-template<typename T>
-struct restore_on_scope_exit
-{
-   restore_on_scope_exit( T& v)
-   :original_copy(v),value(v){}
-   ~restore_on_scope_exit(){ value = original_copy; }
-   T   original_copy;
-   T&  value;
-};
-
-template<typename T>
-restore_on_scope_exit<T> make_restore_on_exit( T& v ) { return restore_on_scope_exit<T>(v); }
 
 object_database::object_database()
 :_undo_db(*this)

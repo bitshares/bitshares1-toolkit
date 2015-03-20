@@ -1,7 +1,9 @@
 #pragma once
-#include <bts/chain/object.hpp>
+#include <bts/db/object.hpp>
 
 namespace bts { namespace chain {
+   using namespace bts::db;
+
    class block_summary_object : public abstract_object<block_summary_object>
    {
       public:
@@ -14,4 +16,4 @@ namespace bts { namespace chain {
 
 } }
 
-FC_REFLECT_DERIVED( bts::chain::block_summary_object, (bts::chain::object), (block_id) )
+FC_REFLECT_DERIVED( bts::chain::block_summary_object, (bts::db::object), (block_id) )

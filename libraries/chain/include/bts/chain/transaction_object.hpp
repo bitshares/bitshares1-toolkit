@@ -1,7 +1,7 @@
 #pragma once
 #include <fc/io/raw.hpp>
-#include <bts/chain/index.hpp>
-#include <bts/chain/generic_index.hpp>
+#include <bts/db/index.hpp>
+#include <bts/db/generic_index.hpp>
 #include <fc/uint128.hpp>
 
 #include <boost/multi_index_container.hpp>
@@ -11,6 +11,7 @@
 #include <boost/multi_index/mem_fun.hpp>
 
 namespace bts { namespace chain {
+   using namespace bts::db;
    using boost::multi_index_container;
    using namespace boost::multi_index;
    /**
@@ -55,4 +56,4 @@ namespace bts { namespace chain {
 
 } }
 
-FC_REFLECT_DERIVED( bts::chain::transaction_object, (bts::chain::object), (transaction_id)(expiration) )
+FC_REFLECT_DERIVED( bts::chain::transaction_object, (bts::db::object), (transaction_id)(expiration) )

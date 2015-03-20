@@ -1,7 +1,7 @@
 #pragma once
 
 #include <bts/chain/database.hpp>
-#include <bts/chain/simple_index.hpp>
+#include <bts/db/simple_index.hpp>
 #include <bts/chain/limit_order_object.hpp>
 #include <bts/chain/short_order_object.hpp>
 #include <bts/chain/account_object.hpp>
@@ -15,6 +15,7 @@
 #include <sstream>
 
 using std::cout;
+using namespace bts::db;
 
 ///Shortcut to require an exception when processing a transaction with an operation containing an expected bad value
 /// Uses require insteach of check, because these transactions are expected to fail. If they don't, subsequent tests

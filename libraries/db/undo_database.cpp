@@ -1,7 +1,7 @@
-#include <bts/chain/database.hpp>
-#include <bts/chain/undo_database.hpp>
+#include <bts/db/object_database.hpp>
+#include <bts/db/undo_database.hpp>
 
-namespace bts { namespace chain {
+namespace bts { namespace db {
 
 void undo_database::enable()  { _disabled = false; }
 void undo_database::disable() { _disabled = true; }
@@ -151,4 +151,4 @@ void undo_database::pop_commit()
 }
 
 
-} } // bts::chain
+} } // bts::db

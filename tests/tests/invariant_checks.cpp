@@ -4,7 +4,6 @@
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/short_order_object.hpp>
 #include <bts/chain/limit_order_object.hpp>
-#include <bts/chain/simple_index.hpp>
 
 #include <fc/crypto/digest.hpp>
 

@@ -4,12 +4,13 @@
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/key_object.hpp>
 #include <bts/chain/delegate_object.hpp>
-#include <bts/chain/simple_index.hpp>
+#include <bts/db/simple_index.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include "database_fixture.hpp"
 
 using namespace bts::chain;
+using namespace bts::db;
 
 BOOST_FIXTURE_TEST_SUITE( basic_unit_tests, database_fixture )
 

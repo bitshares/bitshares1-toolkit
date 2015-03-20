@@ -1,3 +1,4 @@
+#include <bts/chain/database.hpp>
 #include<bts/chain/evaluator.hpp>
 #include<bts/chain/transaction_evaluation_state.hpp>
 #include <bts/chain/key_object.hpp>

@@ -1,9 +1,10 @@
 #pragma once
-#include "asset.hpp"
-
-#include <bts/chain/object.hpp>
+#include <bts/chain/asset.hpp>
+#include <bts/db/object.hpp>
 
 namespace bts { namespace chain {
+   using namespace bts::db;
+
    class account_object;
 
    class delegate_object : public abstract_object<delegate_object>
@@ -70,7 +71,7 @@ namespace bts { namespace chain {
 
 } } // bts::chain
 
-FC_REFLECT_DERIVED( bts::chain::delegate_object, (bts::chain::object),
+FC_REFLECT_DERIVED( bts::chain::delegate_object, (bts::db::object),
                     (delegate_account)
                     (signing_key)
                     (next_secret)
@@ -84,6 +85,5 @@ FC_REFLECT_DERIVED( bts::chain::delegate_object, (bts::chain::object),
                     (feeds)
                     (vote) )
 
-FC_REFLECT_DERIVED( bts::chain::delegate_vote_object, (bts::chain::object), (total_votes) )
-
-FC_REFLECT_DERIVED( bts::chain::delegate_feeds_object, (bts::chain::object), (feeds) )
+FC_REFLECT_DERIVED( bts::chain::delegate_vote_object, (bts::db::object), (total_votes) )
+FC_REFLECT_DERIVED( bts::chain::delegate_feeds_object, (bts::db::object), (feeds) )

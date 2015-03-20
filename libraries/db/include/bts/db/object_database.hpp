@@ -96,25 +96,21 @@ namespace bts { namespace db {
          const IndexType* add_index()
          {
             typedef typename IndexType::object_type ObjectType;
-            unique_ptr<index> indexptr( new IndexType(*this) );
+            if( _index[ObjectType::space_id].size() <= ObjectType::type_id  )
+                _index[ObjectType::space_id].resize( 255 );
             assert(!_index[ObjectType::space_id][ObjectType::type_id]);
+            unique_ptr<index> indexptr( new IndexType(*this) );
             _index[ObjectType::space_id][ObjectType::type_id] = std::move(indexptr);
             return static_cast<const IndexType*>(_index[ObjectType::space_id][ObjectType::type_id].get());
          }
 
          void pop_undo();
-         void clear_pending();
 
-     private:
+         fc::path get_data_dir()const { return _data_dir; }
+
          /** public for testing purposes only... should be private in practice. */
          undo_database                          _undo_db;
-
-         friend class base_primary_index;
-         friend class undo_database;
-         void save_undo( const object& obj );
-         void save_undo_add( const object& obj );
-         void save_undo_remove( const object& obj );
-
+     protected:
          template<typename IndexType>
          IndexType&    get_mutable_index_type() {
             static_assert( std::is_base_of<index,IndexType>::value, "Type must be an index type" );
@@ -125,10 +121,19 @@ namespace bts { namespace db {
          index& get_mutable_index(object_id_type id)  { return get_mutable_index(id.space(),id.type());   }
          index& get_mutable_index(uint8_t space_id, uint8_t type_id);
 
+     private:
+
+         friend class base_primary_index;
+         friend class undo_database;
+         void save_undo( const object& obj );
+         void save_undo_add( const object& obj );
+         void save_undo_remove( const object& obj );
+
          fc::path                                                  _data_dir;
          vector< vector< unique_ptr<index> > >                     _index;
          shared_ptr<db::level_map<object_id_type, vector<char> >>  _object_id_to_object;
    };
 
 } } // bts::db
+
 
