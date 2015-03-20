@@ -149,6 +149,11 @@ void account_create_operation::validate()const
       FC_ASSERT( owner.weight_threshold == 1 );
       FC_ASSERT( owner.auths.size() == 1 );
    }
+   if( vote.size() > 1 )
+   {
+      for( int i = 1; i < vote.size(); ++i )
+         FC_ASSERT( vote.at(i-1) < vote.at(i) );
+   }
 }
 
 

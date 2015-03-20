@@ -17,6 +17,8 @@ object_id_type account_create_evaluator::do_evaluate( const account_create_opera
       FC_ASSERT( id.first.is_relative() || db().find<object>(id.first) );
    for( auto id : op.active.auths )
       FC_ASSERT( id.first.is_relative() || db().find<object>(id.first) );
+   for( auto id : op.vote )
+      FC_ASSERT( db().find<object>(id) );
 
    auto& acnt_indx = db().get_index_type<account_index>();
    if( op.name.size() )
@@ -53,12 +55,13 @@ object_id_type account_create_evaluator::do_apply( const account_create_operatio
    });
 
    const auto& new_acnt_object = db().create<account_object>( [&]( account_object& obj ){
-         obj.name       = o.name;
-         obj.owner      = owner;
-         obj.active     = active;
-         obj.memo_key   = get_relative_id(o.memo_key);
-         obj.voting_key = get_relative_id(o.voting_key);
-         obj.balances   = bal_obj.id;
+         obj.name           = o.name;
+         obj.owner          = owner;
+         obj.active         = active;
+         obj.balances       = bal_obj.id;
+         obj.memo_key       = get_relative_id(o.memo_key);
+         obj.voting_key     = get_relative_id(o.voting_key);
+         obj.delegate_votes = o.vote;
    });
 
    return new_acnt_object.id;

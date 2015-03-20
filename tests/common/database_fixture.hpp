@@ -6,6 +6,7 @@
 #include <bts/chain/short_order_object.hpp>
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
+#include <bts/chain/delegate_object.hpp>
 #include <bts/chain/time.hpp>
 
 #include <fc/crypto/digest.hpp>
@@ -102,6 +103,19 @@ struct database_fixture {
       BOOST_CHECK_EQUAL( total_balances[asset_id_type()].value , core_asset_data.current_supply.value );
    }
 
+   void verify_vote_totals() {
+      const account_index& account_idx = db.get_index_type<account_index>();
+      map<delegate_id_type, share_type> vote_sums;
+
+      for( const account_object& account : account_idx.indices() )
+         for( delegate_id_type del : account.delegate_votes )
+            vote_sums[del] += account.balances(db).total_core_in_orders
+                  + account.balances(db).get_balance(asset_id_type()).amount;
+
+      for( const auto& sum : vote_sums )
+         BOOST_CHECK_EQUAL(sum.second.value, sum.first(db).vote(db).total_votes.value);
+   }
+
    database_fixture()
    {
       db.init_genesis();
@@ -110,6 +124,7 @@ struct database_fixture {
    }
    ~database_fixture(){
       verify_asset_supplies();
+      verify_vote_totals();
       shutdown_ntp_time();
    }
 
@@ -122,6 +137,18 @@ struct database_fixture {
       create_account.active = authority(321, key, 321);
       create_account.memo_key = key;
       create_account.voting_key = key;
+
+      auto& active_delegates = db.get_global_properties().active_delegates;
+      if( active_delegates.size() > 0 )
+      {
+         set<delegate_id_type> votes;
+         votes.insert(active_delegates[rand() % active_delegates.size()]);
+         votes.insert(active_delegates[rand() % active_delegates.size()]);
+         votes.insert(active_delegates[rand() % active_delegates.size()]);
+         votes.insert(active_delegates[rand() % active_delegates.size()]);
+         votes.insert(active_delegates[rand() % active_delegates.size()]);
+         create_account.vote = vector<delegate_id_type>(votes.begin(), votes.end());
+      }
 
       create_account.fee = create_account.calculate_fee(db.current_fee_schedule());
       return create_account;

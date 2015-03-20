@@ -56,7 +56,6 @@ BOOST_AUTO_TEST_CASE( create_account_test )
       BOOST_CHECK(nathan_account.id.type() == account_object_type);
       BOOST_CHECK(nathan_account.name == "nathan");
       BOOST_CHECK(nathan_account.authorized_assets.empty());
-      BOOST_CHECK(nathan_account.delegate_votes.empty());
 
       BOOST_REQUIRE(nathan_account.owner.auths.size() == 1);
       BOOST_CHECK(nathan_account.owner.auths.at(genesis_key) == 123);

@@ -123,14 +123,14 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
                ++short_itr;
                filled = (2 != match( new_order_object, *old_short_itr, old_short_itr->sell_price ) );
             }
-            else 
+            else
             {
                ilog( "next limit" );
                auto old_limit_itr = limit_itr;
                ++limit_itr;
                filled = (2 != match( new_order_object, *old_limit_itr, old_limit_itr->sell_price ) );
             }
-         } 
+         }
          else if( short_itr != short_end  )
          {
             wlog( "next short no limits left" );
@@ -187,6 +187,9 @@ asset limit_order_cancel_evaluator::do_apply( const limit_order_cancel_operation
      d.modify( bal_obj, [&]( account_balance_object& obj ){
          obj.total_core_in_orders -= refunded.amount;
      });
+     //do_evaluate adjusted balance by refunded.amount, which adds votes. This is undesirable, as the account
+     //did not gain or lose any voting stake. Counteract that adjustment here.
+     adjust_votes(fee_paying_account->delegate_votes, -refunded.amount);
   }
   return refunded;
 }
