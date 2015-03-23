@@ -630,14 +630,15 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
             {
                 optional<fc::exception> except;
                 try {
-                  apply_block( (*ritr)->data, skip );
-                  _block_id_to_block.store( new_block.id(), (*ritr)->data );
+                   auto session = _undo_db.start_undo_session();
+                   apply_block( (*ritr)->data, skip );
+                   _block_id_to_block.store( new_block.id(), (*ritr)->data );
+                   session.commit();
                 }
                 catch ( const fc::exception& e ) { except = e; }
                 if( except )
                 {
                    edump( ("oops!")((*ritr)->id) );
-                   // undo();
                    // remove the rest of branches.first from the fork_db, those blocks are invalid
                    while( ritr != branches.first.rend() )
                    {
@@ -653,9 +654,10 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
                    // restore all blocks from the good fork
                    for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr )
                    {
-                      //push_undo_state();
+                      auto session = _undo_db.start_undo_session();
                       apply_block( (*ritr)->data, skip );
                       _block_id_to_block.store( new_block.id(), (*ritr)->data );
+                      session.commit();
                    }
                    throw *except;
                 }

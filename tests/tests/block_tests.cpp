@@ -116,13 +116,33 @@ BOOST_AUTO_TEST_CASE( fork_blocks )
          advance_simulated_time_to( db1.get_next_generation_time(  ad1[i%ad1.size()] ) );
          auto b =  db1.generate_block( delegate_priv_key, ad1[i%ad1.size()] );
       }
-      for( uint32_t i = 23; i < 29; ++i )
+      for( uint32_t i = 23; i < 26; ++i )
       {
          auto ad2 = db2.get_global_properties().active_delegates;
          advance_simulated_time_to( db2.get_next_generation_time(  ad2[i%ad2.size()] ) );
          auto b =  db2.generate_block( delegate_priv_key, ad2[i%ad2.size()] );
          db1.push_block(b);
       }
+
+      //The two databases are on distinct forks now, but at the same height. Make a block on db1, make it invalid, then
+      //pass it to db2 and assert that db2 doesn't switch to the new fork.
+      signed_block good_block;
+      BOOST_CHECK_EQUAL(db1.head_block_num(), 23);
+      {
+         auto ad2 = db2.get_global_properties().active_delegates;
+         advance_simulated_time_to( db2.get_next_generation_time(  ad2[db2.head_block_num()%ad2.size()] ) );
+         auto b =  db2.generate_block( delegate_priv_key, ad2[db2.head_block_num()%ad2.size()] );
+         good_block = b;
+         b.transactions.emplace_back(signed_transaction());
+         b.transactions.back().operations.emplace_back(transfer_operation());
+         b.sign(delegate_priv_key);
+         BOOST_CHECK_EQUAL(b.block_num(), 24);
+         BOOST_CHECK_THROW(db1.push_block(b), fc::exception);
+      }
+      BOOST_CHECK_EQUAL(db1.head_block_num(), 23);
+
+      db1.push_block(good_block);
+      BOOST_CHECK_EQUAL(db1.head_block_id().str(), db2.head_block_id().str());
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
