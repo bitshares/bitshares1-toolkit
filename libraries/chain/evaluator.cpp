@@ -152,10 +152,10 @@ namespace bts { namespace chain {
    }
 
 /**
- *  Matches the two orders, 
- *  
- *  @return a bit field indicating which orders were filled (and thus removed) 
- *  
+ *  Matches the two orders,
+ *
+ *  @return a bit field indicating which orders were filled (and thus removed)
+ *
  *  0 - no orders were matched
  *  1 - bid was filled
  *  2 - ask was filled
@@ -180,12 +180,12 @@ int generic_evaluator::match( const limit_order_object& usd, const OrderType& co
       core_receives = usd_for_sale;
       usd_receives  = usd_for_sale * match_price;
    }
-   else if( core_for_sale < usd_for_sale * match_price )
+   else
    {
+      assert( core_for_sale < usd_for_sale * match_price );
       usd_receives = core_for_sale;
       core_receives = core_for_sale * match_price;
    }
-   else assert( !"unable to fill either order" );
 
    core_pays = usd_receives;
    usd_pays  = core_receives;
@@ -211,7 +211,7 @@ int generic_evaluator::match( const limit_order_object& bid, const short_order_o
 }
 
 /**
- *  
+ *
  */
 bool generic_evaluator::check_call_orders( const asset_object& mia )
 { try {
@@ -281,7 +281,7 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
           match_price      = short_itr->sell_price;
           usd_for_sale     = short_itr->amount_for_sale();
        }
-       else return filled_short_or_limit; 
+       else return filled_short_or_limit;
 
 
        match_price.validate();
@@ -291,7 +291,7 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
        {
           //wdump((match_price)(~call_itr->call_price));
           //edump((match_price.to_real())(">")((~call_itr->call_price).to_real()));
-          return filled_short_or_limit; 
+          return filled_short_or_limit;
        }
 
        wdump( (match_price)(usd_for_sale) );
@@ -332,7 +332,7 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
        {
           auto old_limit_itr = !filled_call ? limit_itr++ : limit_itr;
           fill_order( *old_limit_itr, order_pays, order_receives );
-       }               
+       }
        else
        {
           auto old_short_itr = !filled_call ? short_itr++ : short_itr;
@@ -386,10 +386,10 @@ void generic_evaluator::pay_order( const account_object& receiver, const asset& 
          b.add_balance( receives );
    });
 
-   if( receives.asset_id == asset_id_type() ) 
+   if( receives.asset_id == asset_id_type() )
       adjust_votes( receiver.delegate_votes, receives.amount );
 
-   if( pays.asset_id == asset_id_type() ) 
+   if( pays.asset_id == asset_id_type() )
       adjust_votes( receiver.delegate_votes, -pays.amount );
 }
 
@@ -481,7 +481,7 @@ bool generic_evaluator::fill_order( const call_order_object& order, const asset&
    {
       const account_balance_object& borrower_balances = borrower.balances(db());
       db().modify( borrower_balances, [&]( account_balance_object& b ){
-              if( collateral_freed ) 
+              if( collateral_freed )
               {
                 b.add_balance( *collateral_freed );
                 b.total_core_in_orders -= collateral_freed->amount;
@@ -492,7 +492,7 @@ bool generic_evaluator::fill_order( const call_order_object& order, const asset&
            });
    }
 
-   if( pays.asset_id == asset_id_type() ) 
+   if( pays.asset_id == asset_id_type() )
       adjust_votes( borrower.delegate_votes, -pays.amount );
 
    if( collateral_freed )
@@ -523,7 +523,7 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
    auto seller_to_collateral = filled ? order.get_collateral() : pays * order.sell_price;
    auto buyer_to_collateral  = receives - issuer_fees;
 
-   if( receives.asset_id == asset_id_type() ) 
+   if( receives.asset_id == asset_id_type() )
    {
       const auto& balances = seller.balances(db());
       db().modify( balances, [&]( account_balance_object& b ){
@@ -552,7 +552,7 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
              tmp /= 1000;
              FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
 
-             c.call_price = (asset( tmp.to_uint64(), c.get_collateral().asset_id)) / c.get_debt(); 
+             c.call_price = (asset( tmp.to_uint64(), c.get_collateral().asset_id)) / c.get_debt();
         });
    }
    else
@@ -567,7 +567,7 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
             tmp /= 1000;
             FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
 
-            c.call_price = (asset( tmp.to_uint64(), c.get_collateral().asset_id)) / c.get_debt(); 
+            c.call_price = (asset( tmp.to_uint64(), c.get_collateral().asset_id)) / c.get_debt();
       });
    }
 

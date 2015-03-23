@@ -77,8 +77,7 @@ namespace bts { namespace chain {
     */
    struct processed_transaction : public signed_transaction
    {
-      processed_transaction(){}
-      processed_transaction( const signed_transaction& trx )
+      processed_transaction( const signed_transaction& trx = signed_transaction() )
       :signed_transaction(trx){}
 
       vector<operation_result> operation_results;
