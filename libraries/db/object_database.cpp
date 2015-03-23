@@ -15,7 +15,7 @@ object_database::object_database()
    _object_id_to_object = std::make_shared<db::level_map<object_id_type,vector<char>>>();
 }
 
-object_database::~object_database(){} 
+object_database::~object_database(){}
 
 void object_database::close()
 {

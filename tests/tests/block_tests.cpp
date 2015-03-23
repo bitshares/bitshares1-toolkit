@@ -62,19 +62,24 @@ BOOST_AUTO_TEST_CASE( undo_block )
          auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
          for( uint32_t i = 0; i < 5; ++i )
          {
+            ilog("Push");
             auto ad = db.get_global_properties().active_delegates;
             advance_simulated_time_to( db.get_next_generation_time(  ad[i%ad.size()] ) );
             auto b =  db.generate_block( delegate_priv_key, ad[i%ad.size()] );
          }
          BOOST_CHECK( db.head_block_num() == 5 );
-         db.pop_undo();
+         ilog("Pop");
+         db.pop_block();
          BOOST_CHECK( db.head_block_num() == 4 );
-         db.pop_undo();
+         ilog("Pop");
+         db.pop_block();
          BOOST_CHECK( db.head_block_num() == 3 );
-         db.pop_undo();
+         ilog("Pop");
+         db.pop_block();
          BOOST_CHECK( db.head_block_num() == 2 );
          for( uint32_t i = 0; i < 5; ++i )
          {
+            ilog("Push");
             auto ad = db.get_global_properties().active_delegates;
             advance_simulated_time_to( db.get_next_generation_time(  ad[i%ad.size()] ) );
             auto b =  db.generate_block( delegate_priv_key, ad[i%ad.size()] );
@@ -196,25 +201,32 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
       db1.push_transaction(trx);
 
+      wlog("Block 1");
       auto ad = db1.get_global_properties().active_delegates;
       advance_simulated_time_to( db1.get_next_generation_time(  ad[db1.head_block_num()%ad.size()] ) );
       auto b =  db1.generate_block( delegate_priv_key, ad[db1.head_block_num()%ad.size()] );
 
       BOOST_CHECK(nathan_id(db1).name == "nathan");
 
+      wlog("Block 1, db2");
       ad = db2.get_global_properties().active_delegates;
       advance_simulated_time_to( db2.get_next_generation_time(  ad[db2.head_block_num()%ad.size()] ) );
       b =  db2.generate_block( delegate_priv_key, ad[db2.head_block_num()%ad.size()] );
+      wlog("Block 1, db1");
       db1.push_block(b);
+      wlog("Block 2, db2");
       ad = db2.get_global_properties().active_delegates;
       advance_simulated_time_to( db2.get_next_generation_time(  ad[db2.head_block_num()%ad.size()] ) );
       b =  db2.generate_block( delegate_priv_key, ad[db2.head_block_num()%ad.size()] );
+      wlog("Block 2, db1");
       db1.push_block(b);
+      ilog("Post");
 
       BOOST_CHECK_THROW(nathan_id(db1), fc::exception);
 
       db2.push_transaction(trx);
 
+      wlog("Block 3, db2");
       ad = db2.get_global_properties().active_delegates;
       advance_simulated_time_to( db2.get_next_generation_time(  ad[db2.head_block_num()%ad.size()] ) );
       b =  db2.generate_block( delegate_priv_key, ad[db2.head_block_num()%ad.size()] );

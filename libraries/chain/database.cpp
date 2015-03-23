@@ -611,7 +611,8 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
       //If the head block from the longest chain does not build off of the current head, we need to switch forks.
       if( new_head->data.previous != head_block_id() )
       {
-         wlog( "head on new fork: block ${b} prev ${p}  ", ("b",new_block.id())("p",new_block.previous) );
+         wlog( "head on new fork: block ${b} prev ${p} head ${h} pending prev ${pp}",
+               ("b",new_block.id())("p",new_block.previous)("h", head_block_id())("pp", _pending_block.previous) );
          if( new_head->data.block_num() >= _pending_block.block_num() )
          {
             auto branches = _fork_db.fetch_branch_from( new_head->data.id(), _pending_block.previous );
@@ -622,7 +623,7 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
 
             // pop blocks until we hit the forked block
             while( head_block_id() != branches.second.back()->data.previous )
-               pop_undo();
+               pop_block();
 
             // push all blocks on the new fork
             for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr )
@@ -647,7 +648,7 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
 
                    // pop all blocks from the bad fork
                    while( head_block_id() != branches.second.back()->data.previous )
-                      pop_undo();
+                      pop_block();
 
                    // restore all blocks from the good fork
                    for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr )
