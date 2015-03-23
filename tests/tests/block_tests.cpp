@@ -201,32 +201,25 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
       db1.push_transaction(trx);
 
-      wlog("Block 1");
       auto ad = db1.get_global_properties().active_delegates;
       advance_simulated_time_to( db1.get_next_generation_time(  ad[db1.head_block_num()%ad.size()] ) );
       auto b =  db1.generate_block( delegate_priv_key, ad[db1.head_block_num()%ad.size()] );
 
       BOOST_CHECK(nathan_id(db1).name == "nathan");
 
-      wlog("Block 1, db2");
       ad = db2.get_global_properties().active_delegates;
       advance_simulated_time_to( db2.get_next_generation_time(  ad[db2.head_block_num()%ad.size()] ) );
       b =  db2.generate_block( delegate_priv_key, ad[db2.head_block_num()%ad.size()] );
-      wlog("Block 1, db1");
       db1.push_block(b);
-      wlog("Block 2, db2");
       ad = db2.get_global_properties().active_delegates;
       advance_simulated_time_to( db2.get_next_generation_time(  ad[db2.head_block_num()%ad.size()] ) );
       b =  db2.generate_block( delegate_priv_key, ad[db2.head_block_num()%ad.size()] );
-      wlog("Block 2, db1");
       db1.push_block(b);
-      ilog("Post");
 
       BOOST_CHECK_THROW(nathan_id(db1), fc::exception);
 
       db2.push_transaction(trx);
 
-      wlog("Block 3, db2");
       ad = db2.get_global_properties().active_delegates;
       advance_simulated_time_to( db2.get_next_generation_time(  ad[db2.head_block_num()%ad.size()] ) );
       b =  db2.generate_block( delegate_priv_key, ad[db2.head_block_num()%ad.size()] );

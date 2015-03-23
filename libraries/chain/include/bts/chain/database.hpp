@@ -97,7 +97,7 @@ namespace bts { namespace chain {
 
       protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
-         void pop_undo();
+         void pop_undo() { object_database::pop_undo(); }
 
       private:
          optional<undo_database::session>       _pending_block_session;

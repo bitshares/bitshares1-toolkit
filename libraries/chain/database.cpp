@@ -586,7 +586,7 @@ void database::pop_block()
 { try {
    _pending_block_session.reset();
    _block_id_to_block.remove( _pending_block.previous );
-   _undo_db.pop_commit();
+   pop_undo();
    _pending_block.previous  = head_block_id();
    _pending_block.timestamp = head_block_time();
    _fork_db.pop_block();
