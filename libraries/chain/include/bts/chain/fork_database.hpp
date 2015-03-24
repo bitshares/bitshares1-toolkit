@@ -49,6 +49,7 @@ namespace bts { namespace chain {
          void                             start_block( signed_block b );
          void                             remove( block_id_type b );
          void                             set_head( shared_ptr<fork_item> h );
+         bool                             is_known_block( const block_id_type& id )const;
          shared_ptr<fork_item>            fetch_block( const block_id_type& id )const;
          vector<item_ptr>                 fetch_block_by_number( uint32_t n )const;
          shared_ptr<fork_item>            push_block( signed_block b );

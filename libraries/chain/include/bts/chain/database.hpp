@@ -60,10 +60,18 @@ namespace bts { namespace chain {
          void wipe(bool include_blocks);
          void close();
 
-         optional<signed_block> fetch_block_by_id( const block_id_type& id )const;
-         optional<signed_block> fetch_block_by_number( uint32_t num )const;
+         /**
+          *  @return true if the block is in our fork DB or saved to disk as 
+          *  part of the official chain, otherwise return false
+          */
+         bool                       is_known_block( const block_id_type& id )const;
+         bool                       is_known_transaction( const transaction_id_type& id )const;
+         block_id_type              get_block_id_for_num( uint32_t block_num )const;
+         optional<signed_block>     fetch_block_by_id( const block_id_type& id )const;
+         optional<signed_block>     fetch_block_by_number( uint32_t num )const;
+         const signed_transaction&  get_recent_transaction( const transaction_id_type& trx_id )const;
 
-         void push_block( const signed_block& b, uint32_t skip = skip_nothing );
+         bool push_block( const signed_block& b, uint32_t skip = skip_nothing );
          processed_transaction push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
 
          time_point   get_next_generation_time( delegate_id_type del_id )const;

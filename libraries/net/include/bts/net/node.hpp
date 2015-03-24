@@ -54,7 +54,21 @@ namespace bts { namespace net {
           *  @throws exception if error validating the item, otherwise the item is
           *          safe to broadcast on.
           */
-         virtual bool handle_message( const message&, bool sync_mode ) = 0;
+         virtual bool handle_block( const bts::net::block_message& blk_msg, bool syncmode ) = 0;
+         virtual bool handle_transaction( const bts::net::trx_message& trx_msg, bool syncmode  ) = 0;
+
+         virtual bool handle_message( const message& message_to_process, bool sync_mode )
+         {
+             switch( message_to_process.msg_type )
+             {
+                case block_message_type:
+                   return handle_block(message_to_process.as<block_message>(), sync_mode);
+                case trx_message_type:
+                   return handle_transaction(message_to_process.as<trx_message>(), sync_mode);
+                default:
+                   FC_ASSERT( !"Invalid Message Type" );
+             };
+         }
 
          /**
           *  Assuming all data elements are ordered in some way, this method should

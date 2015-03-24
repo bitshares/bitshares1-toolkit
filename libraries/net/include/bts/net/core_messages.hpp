@@ -1,6 +1,7 @@
 #pragma once
 
 #include <bts/net/config.hpp>
+#include <bts/chain/block.hpp>
 
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/crypto/elliptic.hpp>
@@ -16,6 +17,10 @@
 #include <vector>
 
 namespace bts { namespace net {
+  using bts::chain::signed_transaction;
+  using bts::chain::block_id_type;
+  using bts::chain::transaction_id_type;
+  using bts::chain::signed_block;
 
   typedef fc::ecc::public_key_data node_id_t;
   typedef fc::ripemd160 item_hash_t;
@@ -62,6 +67,30 @@ namespace bts { namespace net {
   };
 
   const uint32_t core_protocol_version = BTS_NET_PROTOCOL_VERSION;
+
+   struct trx_message
+   {
+      static const core_message_type_enum type;
+
+      signed_transaction trx;
+      trx_message() {}
+      trx_message(signed_transaction transaction) :
+        trx(std::move(transaction))
+      {}
+   };
+
+   struct block_message
+   {
+      static const core_message_type_enum type;
+
+      block_message(){}
+      block_message(const signed_block& blk )
+      :block(blk),block_id(blk.id()){}
+
+      signed_block    block;
+      block_id_type   block_id;
+
+   };
 
   struct item_ids_inventory_message
   {
@@ -373,6 +402,10 @@ FC_REFLECT_ENUM( bts::net::core_message_type_enum,
                  (get_current_connections_request_message_type)
                  (get_current_connections_reply_message_type)
                  (core_message_type_last) )
+
+FC_REFLECT( bts::net::trx_message, (trx) )
+FC_REFLECT( bts::net::block_message, (block)(block_id) )
+
 FC_REFLECT( bts::net::item_id, (item_type)
                                (item_hash) )
 FC_REFLECT( bts::net::item_ids_inventory_message, (item_type)

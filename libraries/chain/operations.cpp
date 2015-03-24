@@ -370,4 +370,36 @@ share_type asset_whitelist_operation::calculate_fee(const fee_schedule_type& k) 
    return k.at( asset_issue_fee_type );
 }
 
+void account_set_script_operation::validate()const
+{
+}
+
+share_type account_set_script_operation::calculate_fee( const fee_schedule_type& k )const
+{
+   return k.at( data_fee_type ).value * (1+script.size()/1024);
+}
+share_type account_set_data_operation::calculate_fee( const fee_schedule_type& k )const
+{
+   return k.at( data_fee_type ).value * (1+data.size()/1024);
+}
+
+void account_set_data_operation::validate()const
+{
+   FC_ASSERT( data.size() <= BTS_MAX_DATA_SIZE - offset );
+}
+share_type account_execute_script_operation::calculate_fee( const fee_schedule_type& k )const
+{
+   return k.at( data_fee_type ).value * (1+(args.size()+8*initial_authority.size()+16*deposits.size()+8*id_transfers.size())/1024);
+}
+
+void account_execute_script_operation::validate()const
+{
+   for( uint32_t i = 1; i < deposits.size(); ++i )
+      FC_ASSERT( deposits[i-1].asset_id < deposits[i].asset_id );
+   for( uint32_t i = 1; i < deposits.size(); ++i )
+      FC_ASSERT( deposits[i-1].asset_id < deposits[i].asset_id );
+   FC_ASSERT( script_account != account_id_type() );
+   FC_ASSERT( gas_payer != account_id_type() );
+   FC_ASSERT( args.size() <= BTS_MAX_SCRIPT_ARGS_SIZE );
+}
 } } // namespace bts::chain

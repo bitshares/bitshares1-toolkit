@@ -44,6 +44,7 @@
 #include <fc/io/enum_type.hpp>
 #include <fc/crypto/rand.hpp>
 #include <fc/network/rate_limiting.hpp>
+#include <fc/network/ip.hpp>
 
 #include <bts/net/node.hpp>
 #include <bts/net/peer_database.hpp>
@@ -52,7 +53,6 @@
 #include <bts/net/config.hpp>
 #include <bts/net/exceptions.hpp>
 
-#include <bts/chain/messages.hpp>
 #include <bts/chain/config.hpp>
 
 #include <fc/git_revision.hpp>
@@ -236,7 +236,7 @@ namespace bts { namespace net { namespace detail {
       {}
       bool operator<(const prioritized_item_id& rhs) const
       {
-        static_assert(bts::chain::block_message_type > bts::chain::trx_message_type,
+        static_assert(bts::net::block_message_type > bts::net::trx_message_type,
                       "block_message_type must be greater than trx_message_type for prioritized_item_ids to sort correctly");
         if (item.item_type != rhs.item.item_type)
           return item.item_type > rhs.item.item_type;
@@ -350,6 +350,8 @@ namespace bts { namespace net { namespace detail {
 
       bool has_item( const net::item_id& id ) override;
       bool handle_message( const message&, bool sync_mode ) override;
+      bool handle_block( const bts::net::block_message& blk_msg, bool syncmode ) { return false; }
+      bool handle_transaction( const bts::net::trx_message& trx_msg, bool syncmode  ) { return false; }
       std::vector<item_hash_t> get_item_ids(uint32_t item_type,
                                             const std::vector<item_hash_t>& blockchain_synopsis,
                                             uint32_t& remaining_item_count,
@@ -412,11 +414,11 @@ namespace bts { namespace net { namespace detail {
       bool                      _sync_items_to_fetch_updated;
       fc::future<void>          _fetch_sync_items_loop_done;
 
-      typedef std::unordered_map<bts::chain::block_id_type, fc::time_point> active_sync_requests_map;
+      typedef std::unordered_map<bts::net::block_id_type, fc::time_point> active_sync_requests_map;
 
       active_sync_requests_map              _active_sync_requests; /// list of sync blocks we've asked for from peers but have not yet received
-      std::list<bts::chain::block_message> _new_received_sync_items; /// list of sync blocks we've just received but haven't yet tried to process
-      std::list<bts::chain::block_message> _received_sync_items; /// list of sync blocks we've received, but can't yet process because we are still missing blocks that come earlier in the chain
+      std::list<bts::net::block_message> _new_received_sync_items; /// list of sync blocks we've just received but haven't yet tried to process
+      std::list<bts::net::block_message> _received_sync_items; /// list of sync blocks we've received, but can't yet process because we are still missing blocks that come earlier in the chain
       // @}
 
       fc::future<void> _process_backlog_of_sync_blocks_done;
@@ -642,11 +644,11 @@ namespace bts { namespace net { namespace detail {
 
       void on_connection_closed(peer_connection* originating_peer) override;
 
-      void send_sync_block_to_node_delegate(const bts::chain::block_message& block_message_to_send);
+      void send_sync_block_to_node_delegate(const bts::net::block_message& block_message_to_send);
       void process_backlog_of_sync_blocks();
       void trigger_process_backlog_of_sync_blocks();
-      void process_block_during_sync(peer_connection* originating_peer, const bts::chain::block_message& block_message, const message_hash_type& message_hash);
-      void process_block_during_normal_operation(peer_connection* originating_peer, const bts::chain::block_message& block_message, const message_hash_type& message_hash);
+      void process_block_during_sync(peer_connection* originating_peer, const bts::net::block_message& block_message, const message_hash_type& message_hash);
+      void process_block_during_normal_operation(peer_connection* originating_peer, const bts::net::block_message& block_message, const message_hash_type& message_hash);
       void process_block_message(peer_connection* originating_peer, const message& message_to_process, const message_hash_type& message_hash);
 
       void process_ordinary_message(peer_connection* originating_peer, const message& message_to_process, const message_hash_type& message_hash);
@@ -704,8 +706,8 @@ namespace bts { namespace net { namespace detail {
       void set_advanced_node_parameters( const fc::variant_object& params );
 
       fc::variant_object         get_advanced_node_parameters();
-      message_propagation_data   get_transaction_propagation_data( const bts::chain::transaction_id_type& transaction_id );
-      message_propagation_data   get_block_propagation_data( const bts::chain::block_id_type& block_id );
+      message_propagation_data   get_transaction_propagation_data( const bts::net::transaction_id_type& transaction_id );
+      message_propagation_data   get_block_propagation_data( const bts::net::block_id_type& block_id );
 
       node_id_t                  get_node_id() const;
       void                       set_allowed_peers( const std::vector<node_id_t>& allowed_peers );
@@ -956,16 +958,16 @@ namespace bts { namespace net { namespace detail {
     {
       VERIFY_CORRECT_THREAD();
       return std::find_if(_received_sync_items.begin(), _received_sync_items.end(),
-                          [&item_hash]( const bts::chain::block_message& message ) { return message.block_id == item_hash; } ) != _received_sync_items.end() ||
+                          [&item_hash]( const bts::net::block_message& message ) { return message.block_id == item_hash; } ) != _received_sync_items.end() ||
              std::find_if(_new_received_sync_items.begin(), _new_received_sync_items.end(),
-                          [&item_hash]( const bts::chain::block_message& message ) { return message.block_id == item_hash; } ) != _new_received_sync_items.end();                          ;
+                          [&item_hash]( const bts::net::block_message& message ) { return message.block_id == item_hash; } ) != _new_received_sync_items.end();                          ;
     }
 
     void node_impl::request_sync_item_from_peer( const peer_connection_ptr& peer, const item_hash_t& item_to_request )
     {
       VERIFY_CORRECT_THREAD();
       dlog( "requesting item ${item_hash} from peer ${endpoint}", ("item_hash", item_to_request )("endpoint", peer->get_remote_endpoint() ) );
-      item_id item_id_to_request( bts::chain::block_message_type, item_to_request );
+      item_id item_id_to_request( bts::net::block_message_type, item_to_request );
       _active_sync_requests.insert( active_sync_requests_map::value_type(item_to_request, fc::time_point::now() ) );
       peer->sync_items_requested_from_peer.insert( peer_connection::item_to_time_map_type::value_type(item_id_to_request, fc::time_point::now() ) );
       std::vector<item_hash_t> items_to_fetch;
@@ -980,10 +982,10 @@ namespace bts { namespace net { namespace detail {
       for (const item_hash_t& item_to_request : items_to_request)
       {
         _active_sync_requests.insert( active_sync_requests_map::value_type(item_to_request, fc::time_point::now() ) );
-        item_id item_id_to_request( bts::chain::block_message_type, item_to_request );
+        item_id item_id_to_request( bts::net::block_message_type, item_to_request );
         peer->sync_items_requested_from_peer.insert( peer_connection::item_to_time_map_type::value_type(item_id_to_request, fc::time_point::now() ) );
       }
-      peer->send_message(fetch_items_message(bts::chain::block_message_type, items_to_request));
+      peer->send_message(fetch_items_message(bts::net::block_message_type, items_to_request));
     }
 
     void node_impl::fetch_sync_items_loop()
@@ -1090,7 +1092,7 @@ namespace bts { namespace net { namespace detail {
             if (peer->idle() &&
                 peer->inventory_peer_advertised_to_us.find(iter->item) != peer->inventory_peer_advertised_to_us.end())
             {
-              if (peer->is_transaction_fetching_inhibited() && iter->item.item_type == bts::chain::trx_message_type)
+              if (peer->is_transaction_fetching_inhibited() && iter->item.item_type == bts::net::trx_message_type)
                 next_peer_unblocked_time = std::min(peer->transaction_fetching_inhibited_until, next_peer_unblocked_time);
               else
               {
@@ -1650,7 +1652,7 @@ namespace bts { namespace net { namespace detail {
       case core_message_type_enum::closing_connection_message_type:
         on_closing_connection_message(originating_peer, received_message.as<closing_connection_message>());
         break;
-      case bts::chain::message_type_enum::block_message_type:
+      case core_message_type_enum::block_message_type:
         process_block_message(originating_peer, received_message, message_hash);
         break;
       case core_message_type_enum::current_time_request_message_type:
@@ -2514,7 +2516,7 @@ namespace bts { namespace net { namespace detail {
       // if we sent them a block, update our record of the last block they've seen accordingly
       if (last_block_message_sent)
       {
-        bts::chain::block_message block = last_block_message_sent->as<bts::chain::block_message>();
+        bts::net::block_message block = last_block_message_sent->as<bts::net::block_message>();
         originating_peer->last_block_delegate_has_seen = block.block_id;
         originating_peer->last_block_number_delegate_has_seen = _delegate->get_block_number(block.block_id);
         originating_peer->last_block_time_delegate_has_seen = _delegate->get_block_time(block.block_id);
@@ -2523,7 +2525,7 @@ namespace bts { namespace net { namespace detail {
       for (const message& reply : reply_messages)
       {
         if (reply.msg_type == block_message_type)
-          originating_peer->send_item(item_id(block_message_type, reply.as<bts::chain::block_message>().block_id));
+          originating_peer->send_item(item_id(block_message_type, reply.as<bts::net::block_message>().block_id));
         else
           originating_peer->send_message(reply);
       }
@@ -2596,7 +2598,7 @@ namespace bts { namespace net { namespace detail {
           // if the peer has flooded us with transactions, don't add these to the inventory to prevent our
           // inventory list from growing without bound.  We try to allow fetching blocks even when
           // we've stopped fetching transactions.
-          if ((item_ids_inventory_message_received.item_type == bts::chain::trx_message_type &&
+          if ((item_ids_inventory_message_received.item_type == bts::net::trx_message_type &&
                originating_peer->is_inventory_advertised_to_us_list_full_for_transactions()) ||
               originating_peer->is_inventory_advertised_to_us_list_full())
             break;
@@ -2735,7 +2737,7 @@ namespace bts { namespace net { namespace detail {
       schedule_peer_for_deletion(originating_peer_ptr);
     }
 
-    void node_impl::send_sync_block_to_node_delegate(const bts::chain::block_message& block_message_to_send)
+    void node_impl::send_sync_block_to_node_delegate(const bts::net::block_message& block_message_to_send)
     {
       dlog("in send_sync_block_to_node_delegate()");
       bool client_accepted_block = false;
@@ -2745,7 +2747,7 @@ namespace bts { namespace net { namespace detail {
 
       try
       {
-        _delegate->handle_message(block_message_to_send, true);
+        _delegate->handle_block(block_message_to_send, true);
         ilog("Successfully pushed sync block ${num} (id:${id})",
              ("num", block_message_to_send.block.block_num())
              ("id", block_message_to_send.block_id));
@@ -2988,7 +2990,7 @@ namespace bts { namespace net { namespace detail {
             if (std::find(_most_recent_blocks_accepted.begin(), _most_recent_blocks_accepted.end(),
                           received_block_iter->block_id) == _most_recent_blocks_accepted.end())
             {
-              bts::chain::block_message block_message_to_process = *received_block_iter;
+              bts::net::block_message block_message_to_process = *received_block_iter;
               _received_sync_items.erase(received_block_iter);
               _handle_message_calls_in_progress.emplace_back(fc::async([this, block_message_to_process](){
                 send_sync_block_to_node_delegate(block_message_to_process);
@@ -3029,7 +3031,7 @@ namespace bts { namespace net { namespace detail {
     }
 
     void node_impl::process_block_during_sync( peer_connection* originating_peer,
-                                               const bts::chain::block_message& block_message_to_process, const message_hash_type& message_hash )
+                                               const bts::net::block_message& block_message_to_process, const message_hash_type& message_hash )
     {
       VERIFY_CORRECT_THREAD();
       dlog( "received a sync block from peer ${endpoint}", ("endpoint", originating_peer->get_remote_endpoint() ) );
@@ -3041,7 +3043,7 @@ namespace bts { namespace net { namespace detail {
     }
 
     void node_impl::process_block_during_normal_operation( peer_connection* originating_peer,
-                                                           const bts::chain::block_message& block_message_to_process,
+                                                           const bts::net::block_message& block_message_to_process,
                                                            const message_hash_type& message_hash )
     {
       fc::time_point message_receive_time = fc::time_point::now();
@@ -3063,7 +3065,7 @@ namespace bts { namespace net { namespace detail {
         if (std::find(_most_recent_blocks_accepted.begin(), _most_recent_blocks_accepted.end(),
                       block_message_to_process.block_id) == _most_recent_blocks_accepted.end())
         {
-          _delegate->handle_message(block_message_to_process, false);
+          _delegate->handle_block(block_message_to_process, false);
           message_validated_time = fc::time_point::now();
           ilog("Successfully pushed block ${num} (id:${id})",
                ("num", block_message_to_process.block.block_num())
@@ -3075,7 +3077,7 @@ namespace bts { namespace net { namespace detail {
 
         dlog( "client validated the block, advertising it to other peers" );
 
-        item_id block_message_item_id(bts::chain::message_type_enum::block_message_type, message_hash);
+        item_id block_message_item_id(core_message_type_enum::block_message_type, message_hash);
         uint32_t block_number = block_message_to_process.block.block_num();
         fc::time_point_sec block_time = block_message_to_process.block.timestamp;
 
@@ -3162,8 +3164,8 @@ namespace bts { namespace net { namespace detail {
       // (it's possible that we request an item during normal operation and then get kicked into sync
       // mode before we receive and process the item.  In that case, we should process the item as a normal
       // item to avoid confusing the sync code)
-      bts::chain::block_message block_message_to_process(message_to_process.as<bts::chain::block_message>());
-      auto item_iter = originating_peer->items_requested_from_peer.find(item_id(bts::chain::block_message_type, message_hash));
+      bts::net::block_message block_message_to_process(message_to_process.as<bts::net::block_message>());
+      auto item_iter = originating_peer->items_requested_from_peer.find(item_id(bts::net::block_message_type, message_hash));
       if (item_iter != originating_peer->items_requested_from_peer.end())
       {
         originating_peer->items_requested_from_peer.erase(item_iter);
@@ -3175,7 +3177,7 @@ namespace bts { namespace net { namespace detail {
       else
       {
         // not during normal operation.  see if we requested it during sync
-        auto sync_item_iter = originating_peer->sync_items_requested_from_peer.find(item_id(bts::chain::block_message_type,
+        auto sync_item_iter = originating_peer->sync_items_requested_from_peer.find(item_id(bts::net::block_message_type,
                                                                                             block_message_to_process.block_id));
         if (sync_item_iter != originating_peer->sync_items_requested_from_peer.end())
         {
@@ -3501,14 +3503,14 @@ namespace bts { namespace net { namespace detail {
         fc::time_point message_validated_time;
         try
         {
-          _delegate->handle_message(message_to_process, false);
+           _delegate->handle_message( message_to_process, false );
           message_validated_time = fc::time_point::now();
         }
         catch ( const insufficient_relay_fee& )
         {
           // flooding control.  The message was valid but we can't handle it now.
-          assert(message_to_process.msg_type == bts::chain::trx_message_type); // we only support throttling transactions.
-          if (message_to_process.msg_type == bts::chain::trx_message_type)
+          assert(message_to_process.msg_type == bts::net::trx_message_type); // we only support throttling transactions.
+          if (message_to_process.msg_type == bts::net::trx_message_type)
             originating_peer->transaction_fetching_inhibited_until = fc::time_point::now() + fc::seconds(BTS_NET_INSUFFICIENT_RELAY_FEE_PENALTY_SEC);
           return;
         }
@@ -4531,15 +4533,15 @@ namespace bts { namespace net { namespace detail {
     {
       VERIFY_CORRECT_THREAD();
       fc::uint160_t hash_of_message_contents;
-      if( item_to_broadcast.msg_type == bts::chain::block_message_type )
+      if( item_to_broadcast.msg_type == bts::net::block_message_type )
       {
-        bts::chain::block_message block_message_to_broadcast = item_to_broadcast.as<bts::chain::block_message>();
+        bts::net::block_message block_message_to_broadcast = item_to_broadcast.as<bts::net::block_message>();
         hash_of_message_contents = block_message_to_broadcast.block_id; // for debugging
         _most_recent_blocks_accepted.push_back( block_message_to_broadcast.block_id );
       }
-      else if( item_to_broadcast.msg_type == bts::chain::trx_message_type )
+      else if( item_to_broadcast.msg_type == bts::net::trx_message_type )
       {
-        bts::chain::trx_message transaction_message_to_broadcast = item_to_broadcast.as<bts::chain::trx_message>();
+        bts::net::trx_message transaction_message_to_broadcast = item_to_broadcast.as<bts::net::trx_message>();
         hash_of_message_contents = transaction_message_to_broadcast.trx.id(); // for debugging
         dlog( "broadcasting trx: ${trx}", ("trx", transaction_message_to_broadcast) );
       }
@@ -4620,13 +4622,13 @@ namespace bts { namespace net { namespace detail {
       return result;
     }
 
-    message_propagation_data node_impl::get_transaction_propagation_data( const bts::chain::transaction_id_type& transaction_id )
+    message_propagation_data node_impl::get_transaction_propagation_data( const bts::net::transaction_id_type& transaction_id )
     {
       VERIFY_CORRECT_THREAD();
       return _message_cache.get_message_propagation_data( transaction_id );
     }
 
-    message_propagation_data node_impl::get_block_propagation_data( const bts::chain::block_id_type& block_id )
+    message_propagation_data node_impl::get_block_propagation_data( const bts::net::block_id_type& block_id )
     {
       VERIFY_CORRECT_THREAD();
       return _message_cache.get_message_propagation_data( block_id );
@@ -4844,12 +4846,12 @@ namespace bts { namespace net { namespace detail {
     INVOKE_IN_IMPL(get_advanced_node_parameters);
   }
 
-  message_propagation_data node::get_transaction_propagation_data( const bts::chain::transaction_id_type& transaction_id )
+  message_propagation_data node::get_transaction_propagation_data( const bts::net::transaction_id_type& transaction_id )
   {
     INVOKE_IN_IMPL(get_transaction_propagation_data, transaction_id);
   }
 
-  message_propagation_data node::get_block_propagation_data( const bts::chain::block_id_type& block_id )
+  message_propagation_data node::get_block_propagation_data( const bts::net::block_id_type& block_id )
   {
     INVOKE_IN_IMPL(get_block_propagation_data, block_id);
   }

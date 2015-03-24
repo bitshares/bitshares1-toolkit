@@ -83,7 +83,7 @@ namespace bts { namespace db {
           _cache.reset();
         }
 
-        fc::optional<Value> fetch_optional( const Key& k )
+        fc::optional<Value> fetch_optional( const Key& k )const
         { try {
            FC_ASSERT( is_open(), "Database is not open!" );
 
@@ -173,7 +173,7 @@ namespace bts { namespace db {
            return iterator();
         } FC_RETHROW_EXCEPTIONS( warn, "error seeking to first" ) }
 
-        iterator find( const Key& key )
+        iterator find( const Key& key )const
         { try {
            FC_ASSERT( is_open(), "Database is not open!" );
 

@@ -436,17 +436,17 @@ namespace bts { namespace chain {
     */
    struct account_execute_script_operation
    {
-      account_id_type         gas_payer; // who pays for gas
-      asset                   fee; ///< becomes gas
-      account_id_type         script_account; ///< account_object->code with account_object->data
-      vector<char>            args;
-      vector<object_id_type>  initial_authority; // may be keys or accounts
+      account_id_type           gas_payer; // who pays for gas
+      asset                     fee; ///< becomes gas
+      account_id_type           script_account; ///< account_object->code with account_object->data
+      vector<char>              args;
+      flat_set<object_id_type>  initial_authority; // may be keys or accounts
       /** 
        * this information must be checked against prior operations in the same transaction.
        */
       ///@{
-      vector<asset>           deposits; // from gas_payer account
-      vector<object_id_type>  id_transfers; /// IDs being transferred to the script
+      vector<asset>             deposits; // from gas_payer account
+      flat_set<object_id_type>  id_transfers; /// IDs being transferred to the script
       ///@}
 
       void       validate()const;

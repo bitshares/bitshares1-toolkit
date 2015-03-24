@@ -54,8 +54,6 @@ namespace bts { namespace net {
         return fc::ripemd160::hash( data.data(), (uint32_t)data.size() );
      }
 
-
-    
      /**
       *  Automatically checks the type and deserializes T in the
       *  opposite process from the constructor.
@@ -87,8 +85,10 @@ namespace bts { namespace net {
      }
   };
 
-} } // bts::net
 
+
+
+} } // bts::net
 
 FC_REFLECT( bts::net::message_header, (size)(msg_type) )
 FC_REFLECT_DERIVED( bts::net::message, (bts::net::message_header), (data) )

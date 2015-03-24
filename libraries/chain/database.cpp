@@ -598,11 +598,28 @@ void database::clear_pending()
    _pending_block_session.reset();
 } FC_CAPTURE_AND_RETHROW() }
 
+bool database::is_known_block( const block_id_type& id )const
+{
+   return _fork_db.is_known_block(id) || _block_id_to_block.find(id).valid();
+}
+/**
+ *  Only return true *if* the transaction has not expired or been invalidated. If this
+ *  method is called with a VERY old transaction we will return false, they should
+ *  query things by blocks if they are that old.  
+ */
+bool database::is_known_transaction( const transaction_id_type& id )const
+{
+  const auto& trx_idx = get_index_type<transaction_index>().indices().get<by_trx_id>();
+  return trx_idx.find( id ) != trx_idx.end();
+}
+
 /**
  *  Push block "may fail" in which case every partial change is unwound.  After
  *  push block is successful the block is appended to the chain database on disk.
+ *
+ *  @return true if we switched forks as a result of this push.
  */
-void database::push_block( const signed_block& new_block, uint32_t skip )
+bool database::push_block( const signed_block& new_block, uint32_t skip )
 { try {
    // wdump( (new_block.id())(new_block.previous) );
    if( !(skip&skip_fork_db) )
@@ -613,7 +630,8 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
       {
          wlog( "head on new fork: block ${b} prev ${p} head ${h} pending prev ${pp}",
                ("b",new_block.id())("p",new_block.previous)("h", head_block_id())("pp", _pending_block.previous) );
-         if( new_head->data.block_num() >= _pending_block.block_num() )
+         assert( new_head->data.block_num() >= _pending_block.block_num() );
+         // if( new_head->data.block_num() >= _pending_block.block_num() )
          {
             auto branches = _fork_db.fetch_branch_from( new_head->data.id(), _pending_block.previous );
             for( auto item : branches.first )
@@ -663,7 +681,7 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
                 }
             }
          }
-         return;
+         return true;
       }
    }
 
@@ -676,6 +694,7 @@ void database::push_block( const signed_block& new_block, uint32_t skip )
    apply_block( new_block, skip );
    _block_id_to_block.store( new_block.id(), new_block );
    session.commit();
+   return false;
 } FC_CAPTURE_AND_RETHROW( (new_block) ) }
 
 /**
@@ -779,6 +798,14 @@ block_id_type       database::head_block_id()const
 {
    return get( dynamic_global_property_id_type() ).head_block_id;
 }
+
+block_id_type  database::get_block_id_for_num( uint32_t block_num )const
+{ try {
+   block_id_type lb; lb._hash[0] = htonl(block_num);
+   auto itr = _block_id_to_block.lower_bound( lb );
+   FC_ASSERT( itr.valid() && itr.key()._hash[0] == lb._hash[0] );
+   return itr.key();
+} FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 optional<signed_block> database::fetch_block_by_id( const block_id_type& id )const
 {

@@ -45,6 +45,12 @@ shared_ptr<fork_item>  fork_database::push_block( signed_block b )
    }
    return _head;
 }
+bool fork_database::is_known_block( const block_id_type& id )const
+{
+   auto& index = _index.get<block_id>();
+   auto itr = index.find(id);
+   return itr != index.end();
+}
 item_ptr fork_database::fetch_block( const block_id_type& id )const
 {
    auto itr = _index.get<block_id>().find(id);
