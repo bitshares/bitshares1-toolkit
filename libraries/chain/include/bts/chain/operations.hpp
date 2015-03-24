@@ -2,6 +2,7 @@
 #include <bts/chain/types.hpp>
 #include <bts/chain/asset.hpp>
 #include <bts/chain/authority.hpp>
+#include <bts/chain/vm.hpp>
 #include <fc/static_variant.hpp>
 #include <fc/uint128.hpp>
 
@@ -381,6 +382,78 @@ namespace bts { namespace chain {
    };
 
 
+   /** @return code_object_id 
+    *
+    *  Sets the code to be associated with an account, it will
+    *  create a new script ID if necessary or update an existing
+    *  script ID if no other accounts are using the same script.
+    **/
+   struct account_set_script_operation
+   {
+      account_id_type          account_id; // fee paying account
+      asset                    fee;
+      optional<script_id_type> existing_script_id;
+      vector<script_op>        script;
+
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /** @return data_object_id 
+    * 
+    *  Writes to the data segment associated with account_id,
+    *  requires permissions of account_id.  If the account
+    *  has no data associated, it will be allocated and
+    *  initlaized to all 0's.   The maximum length of the
+    *  data.size()+offset is 0xffff+8.  The offset is useful
+    *  for only updating a small segment of the account
+    *  data.
+    */
+   struct account_set_data_operation
+   {
+      account_id_type   account_id; // fee paying account
+      asset             fee;
+      uint16_t          offset = 0;
+      vector<char>      data;
+
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+
+   /**
+    *  This operation will execute a script, the return value of the
+    *  script will be ignored.  The fee paid by the script is converted
+    *  into gas which will be consumed whether or not the script throws
+    *  an error or completes.   If the script fails to complete then
+    *  no changes will be made to the database except the payment of the
+    *  gas.
+    *
+    *  The script will be run with the active permision of all accounts
+    *  or keys specified in the initial_authority and therefore the
+    *  transaction including this operation must include all of the
+    *  necessary signatures.
+    */
+   struct account_execute_script_operation
+   {
+      account_id_type         gas_payer; // who pays for gas
+      asset                   fee; ///< becomes gas
+      account_id_type         script_account; ///< account_object->code with account_object->data
+      vector<char>            args;
+      vector<object_id_type>  initial_authority; // may be keys or accounts
+      /** 
+       * this information must be checked against prior operations in the same transaction.
+       */
+      ///@{
+      vector<asset>           deposits; // from gas_payer account
+      vector<object_id_type>  id_transfers; /// IDs being transferred to the script
+      ///@}
+
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+
    /** op_wrapper is used to get around the circular
     * definition of operation and proposals that contain
     * them.
@@ -400,22 +473,25 @@ namespace bts { namespace chain {
    typedef fc::static_variant<
             transfer_operation,
             limit_order_create_operation,
-            limit_order_cancel_operation,
             short_order_create_operation,
+            limit_order_cancel_operation,
             short_order_cancel_operation,
             call_order_update_operation,
             key_create_operation,
             account_create_operation,
             account_update_operation,
-            delegate_publish_feeds_operation,
-            delegate_create_operation,
-            delegate_update_operation,
+            account_execute_script_operation,
+            account_set_script_operation,
+            account_set_data_operation,
             asset_create_operation,
             asset_update_operation,
             asset_whitelist_operation,
             asset_issue_operation,
             asset_fund_fee_pool_operation,
-            proposal_create_operation
+            proposal_create_operation,
+            delegate_publish_feeds_operation,
+            delegate_create_operation,
+            delegate_update_operation
          > operation;
 
    /**
@@ -531,5 +607,10 @@ FC_REFLECT( bts::chain::delegate_create_operation,
 
 FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(proposed_ops) )
 FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (from_account)(asset_id)(amount)(fee) );
+
+FC_REFLECT( bts::chain::account_set_script_operation, (account_id)(fee)(script) );
+FC_REFLECT( bts::chain::account_set_data_operation, (account_id)(fee)(offset)(data) );
+FC_REFLECT( bts::chain::account_execute_script_operation, (gas_payer)(fee)(script_account)(args)(initial_authority)(deposits)(id_transfers) )
+
 
 
