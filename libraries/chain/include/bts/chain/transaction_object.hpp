@@ -47,7 +47,7 @@ namespace bts { namespace chain {
       transaction_object,
       indexed_by<
          hashed_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
-         hashed_unique< tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER( transaction_object, transaction_id_type, transaction_id )>,
+         hashed_unique< tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER( transaction_object, transaction_id_type, transaction_id ), std::hash<transaction_id_type> >,
          ordered_non_unique< tag<by_expiration>, BOOST_MULTI_INDEX_MEMBER( transaction_object, time_point_sec, expiration)>
       >
    > transaction_multi_index_type;

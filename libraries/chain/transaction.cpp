@@ -15,4 +15,12 @@ namespace bts { namespace chain {
          op.visit(operation_validator());
    }
 
+   bts::chain::transaction_id_type bts::chain::transaction::id() const
+   {
+      auto hash = digest();
+      transaction_id_type result;
+      memcpy(result._hash, hash._hash, std::min(sizeof(result), sizeof(hash)));
+      return result;
+   }
+
 } } // bts::chain

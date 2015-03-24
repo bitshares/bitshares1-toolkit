@@ -56,6 +56,7 @@ namespace bts { namespace chain {
       vector<operation>  operations;
 
       digest_type digest()const;
+      transaction_id_type id()const;
       void validate() const;
    };
 
