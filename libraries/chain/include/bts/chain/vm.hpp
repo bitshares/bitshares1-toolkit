@@ -22,13 +22,15 @@ namespace bts { namespace chain {
    };
    static_assert( sizeof(script_op) == 8, "verify ops are packed to 8 bytes" );
 
-   struct script_object  : public bts::db::abstract_object<script_object>
+   class script_object  : public bts::db::abstract_object<script_object>
    {
+      public:
       vector<script_op> code;
    };
 
-   struct data_object : public bts::db::abstract_object<data_object>
+   class data_object : public bts::db::abstract_object<data_object>
    {
+      public:
       account_id_type          owner;
       fc::time_point_sec       last_access;
       vector<char>             data;

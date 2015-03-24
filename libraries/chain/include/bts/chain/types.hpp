@@ -83,6 +83,8 @@ namespace bts { namespace chain {
       limit_order_fee_type,
       short_order_fee_type,
       publish_feed_fee_type,
+      gas_fee_type, /// defines the exchange rate between CORE and GAS
+      max_gas_fee_type, /// defines the maximum GAS that can be provided
       asset_create_fee_type, ///< the cost to register the cheapest asset
       asset_update_fee_type, ///< the cost to modify a registered asset
       asset_issue_fee_type, ///< the cost to modify a registered asset
@@ -113,6 +115,8 @@ namespace bts { namespace chain {
       short_order_object_type,
       call_order_object_type,
       custom_object_type,
+      script_object_type,
+      data_object_type
    };
 
    enum impl_object_type
@@ -146,6 +150,8 @@ namespace bts { namespace chain {
    class short_order_object;
    class call_order_object;
    class custom_object;
+   class script_object;
+   class data_object;
 
 
    typedef object_id< protocol_ids, key_object_type,          key_object>           key_id_type;
@@ -156,6 +162,8 @@ namespace bts { namespace chain {
    typedef object_id< protocol_ids, short_order_object_type,  short_order_object>   short_order_id_type;
    typedef object_id< protocol_ids, call_order_object_type,   call_order_object>    call_order_id_type;
    typedef object_id< protocol_ids, custom_object_type,       custom_object>        custom_id_type;
+   typedef object_id< protocol_ids, script_object_type,       script_object>        script_id_type;
+   typedef object_id< protocol_ids, data_object_type,       data_object>            data_id_type;
 
    typedef object_id< relative_protocol_ids, key_object_type, key_object>           relative_key_id_type;
    typedef object_id< relative_protocol_ids, account_object_type, account_object>   relative_account_id_type;
@@ -174,13 +182,13 @@ namespace bts { namespace chain {
 
    typedef object_id< implementation_ids, impl_global_property_object_type,  global_property_object>                    global_property_id_type;
    typedef object_id< implementation_ids, impl_dynamic_global_property_object_type,  dynamic_global_property_object>    dynamic_global_property_id_type;
-   typedef object_id< implementation_ids, impl_asset_dynamic_data_type,      asset_dynamic_data_object>         dynamic_asset_data_id_type;
-   typedef object_id< implementation_ids, impl_account_balance_object_type,  account_balance_object>            account_balance_id_type;
-   typedef object_id< implementation_ids, impl_delegate_feeds_object_type,    delegate_feeds_object>              delegate_feeds_id_type;
-   typedef object_id< implementation_ids, impl_account_debt_object_type,     account_debt_object>               account_debt_id_type;
-   typedef object_id< implementation_ids, impl_delegate_vote_object_type,    delegate_vote_object>              delegate_vote_id_type;
-   typedef object_id< implementation_ids, impl_transaction_object_type,      transaction_object>                transaction_obj_id_type;
-   typedef object_id< implementation_ids, impl_block_summary_object_type,    block_summary_object>              block_summary_id_type;
+   typedef object_id< implementation_ids, impl_asset_dynamic_data_type,      asset_dynamic_data_object>                 dynamic_asset_data_id_type;
+   typedef object_id< implementation_ids, impl_account_balance_object_type,  account_balance_object>                    account_balance_id_type;
+   typedef object_id< implementation_ids, impl_delegate_feeds_object_type,    delegate_feeds_object>                    delegate_feeds_id_type;
+   typedef object_id< implementation_ids, impl_account_debt_object_type,     account_debt_object>                       account_debt_id_type;
+   typedef object_id< implementation_ids, impl_delegate_vote_object_type,    delegate_vote_object>                      delegate_vote_id_type;
+   typedef object_id< implementation_ids, impl_transaction_object_type,      transaction_object>                        transaction_obj_id_type;
+   typedef object_id< implementation_ids, impl_block_summary_object_type,    block_summary_object>                      block_summary_id_type;
 
 
    typedef fc::array<char,BTS_MAX_SYMBOL_NAME_LENGTH>   symbol_type;
@@ -239,6 +247,8 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (short_order_object_type)
                  (call_order_object_type)
                  (custom_object_type)
+                 (script_object_type)
+                 (data_object_type)
                )
 FC_REFLECT_ENUM( bts::chain::impl_object_type,
                  (impl_global_property_object_type)
