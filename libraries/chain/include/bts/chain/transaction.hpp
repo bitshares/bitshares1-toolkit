@@ -4,8 +4,6 @@
 
 namespace bts { namespace chain {
 
-
-
    /**
     *  All transactions are sets of operations that must be
     *  applied atomically.  Transactions must refer to a recent
@@ -52,12 +50,19 @@ namespace bts { namespace chain {
       /** first 32 bits of the ref_block hash */
       uint32_t           ref_block_prefix = 0;
       /** block intervals since ref_block.time_stamp */
-      unsigned_int       relative_expiration = 0;
+      unsigned_int       relative_expiration = 1;
       vector<operation>  operations;
 
       digest_type digest()const;
       transaction_id_type id()const;
       void validate() const;
+
+      void set_expiration( const block_id_type& reference_block, unsigned_int lifetime_intervals = 3 )
+      {
+         ref_block_num = ntohl(reference_block._hash[0]);
+         ref_block_prefix = reference_block._hash[1];
+         relative_expiration = lifetime_intervals;
+      }
    };
 
    struct signed_transaction : public transaction

@@ -443,7 +443,7 @@ time_point database::get_next_generation_time( delegate_id_type del_id )const
 
 signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
                                        delegate_id_type del_id, uint32_t  skip )
-{
+{ try {
    const auto& del_obj = del_id(*this);
 
    if( !(skip & skip_delegate_signature) )
@@ -471,8 +471,7 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
    _pending_block.transactions.clear();
    push_block( tmp, skip );
    return tmp;
-}
-
+} FC_CAPTURE_AND_RETHROW( (del_id) ) }
 
 void database::update_active_delegates()
 {
@@ -605,7 +604,7 @@ bool database::is_known_block( const block_id_type& id )const
 /**
  *  Only return true *if* the transaction has not expired or been invalidated. If this
  *  method is called with a VERY old transaction we will return false, they should
- *  query things by blocks if they are that old.  
+ *  query things by blocks if they are that old.
  */
 bool database::is_known_transaction( const transaction_id_type& id )const
 {
@@ -726,6 +725,10 @@ processed_transaction database::push_transaction( const signed_transaction& trx,
 processed_transaction database::apply_transaction( const signed_transaction& trx, uint32_t skip )
 { try {
    trx.validate();
+   auto& trx_idx = get_mutable_index_type<transaction_index>();
+   auto trx_id = trx.id();
+   FC_ASSERT( (skip & skip_transaction_dupe_check) ||
+              trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end() );
    transaction_evaluation_state eval_state(this, skip&skip_transaction_signatures );
    if( !(skip & skip_transaction_signatures) )
    {
@@ -760,7 +763,9 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
       //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
       FC_ASSERT( trx.ref_block_prefix == tapos_block_summary.block_id._hash[1] );
       trx_expiration = tapos_block_summary.timestamp + global_properties.block_interval*trx.relative_expiration.value;
-      FC_ASSERT( _pending_block.timestamp <= trx_expiration, "", ("exp", trx_expiration) );
+      FC_ASSERT( _pending_block.timestamp <= trx_expiration ||
+                 (trx.ref_block_prefix == 0 && trx.ref_block_num == 0 && head_block_num() < trx.relative_expiration)
+                 , "", ("exp", trx_expiration) );
       FC_ASSERT( trx_expiration <= head_block_time() + global_properties.maximum_time_until_expiration
                  //Allow transactions through on block 1
                  || head_block_num() == 0 );
@@ -769,11 +774,14 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    //Insert transaction into unique transactions database.
    if( !(skip & skip_transaction_dupe_check) )
       get_mutable_index(implementation_ids, impl_transaction_object_type).create([this,
-                                                                                 trx,
-                                                                                 trx_expiration](object& transaction_obj) {
+                                                                                 &trx,
+                                                                                 &trx_id,
+                                                                                 &trx_expiration](object& transaction_obj) {
          transaction_object* transaction = static_cast<transaction_object*>(&transaction_obj);
-         transaction->expiration = trx_expiration;
-         transaction->transaction_id = transaction_id_type::hash(trx);
+         transaction->expiration = std::move(trx_expiration);
+         transaction->trx_id = std::move(trx.id());
+         transaction->trx = std::move(trx);
+         idump((transaction->trx_id));
       });
    return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
@@ -828,6 +836,14 @@ optional<signed_block> database::fetch_block_by_number( uint32_t num )const
          return itr.value();
    }
    return optional<signed_block>();
+}
+
+const signed_transaction& database::get_recent_transaction(const transaction_id_type& trx_id) const
+{
+   auto& index = get_index_type<transaction_index>().indices().get<by_trx_id>();
+   auto itr = index.find(trx_id);
+   FC_ASSERT(itr != index.end());
+   return itr->trx;
 }
 
 } } // namespace bts::chain

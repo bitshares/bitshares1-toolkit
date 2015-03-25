@@ -350,8 +350,8 @@ namespace bts { namespace net { namespace detail {
 
       bool has_item( const net::item_id& id ) override;
       bool handle_message( const message&, bool sync_mode ) override;
-      bool handle_block( const bts::net::block_message& blk_msg, bool syncmode ) { return false; }
-      bool handle_transaction( const bts::net::trx_message& trx_msg, bool syncmode  ) { return false; }
+      bool handle_block( const bts::net::block_message& blk_msg, bool syncmode ) { return _node_delegate->handle_block(blk_msg, syncmode); }
+      bool handle_transaction( const bts::net::trx_message& trx_msg, bool syncmode  ) { return _node_delegate->handle_transaction(trx_msg, syncmode); }
       std::vector<item_hash_t> get_item_ids(uint32_t item_type,
                                             const std::vector<item_hash_t>& blockchain_synopsis,
                                             uint32_t& remaining_item_count,

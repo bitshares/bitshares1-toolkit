@@ -180,7 +180,7 @@ BOOST_AUTO_TEST_CASE( undo_pending )
          trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
          db.push_transaction(trx);
          trx = decltype(trx)();
-         trx.relative_expiration = 1000;
+         trx.relative_expiration = 1001;
          trx.operations.push_back(transfer_operation({account_id_type(), nathan_id, asset(5000), asset(1)}));
          trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
          db.push_transaction(trx);

@@ -59,15 +59,15 @@ namespace bts { namespace net {
 
          virtual bool handle_message( const message& message_to_process, bool sync_mode )
          {
-             switch( message_to_process.msg_type )
-             {
-                case block_message_type:
-                   return handle_block(message_to_process.as<block_message>(), sync_mode);
-                case trx_message_type:
-                   return handle_transaction(message_to_process.as<trx_message>(), sync_mode);
-                default:
-                   FC_ASSERT( !"Invalid Message Type" );
-             };
+            switch( message_to_process.msg_type )
+            {
+               case block_message_type:
+                  return handle_block(message_to_process.as<block_message>(), sync_mode);
+               case trx_message_type:
+                  return handle_transaction(message_to_process.as<trx_message>(), sync_mode);
+               default:
+                  FC_ASSERT( !"Invalid Message Type" );
+            };
          }
 
          /**

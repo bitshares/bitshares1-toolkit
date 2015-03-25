@@ -230,7 +230,7 @@ struct database_fixture {
    }
    void sign(signed_transaction& trx, const fc::ecc::private_key& key)
    {
-      trx.signatures.push_back(key.sign_compact(fc::digest((transaction&)trx)));
+      trx.signatures.push_back(key.sign_compact(trx.digest()));
    }
 
    const limit_order_object* create_sell_order( const account_object& user, const asset& amount, const asset& recv )

@@ -8,12 +8,14 @@ namespace bts { namespace chain {
    {
       digest_type                   digest()const;
       block_id_type                 previous;
-      uint32_t                      block_num()const { return htonl(previous._hash[0]) + 1; }
+      uint32_t                      block_num()const { return num_from_id(previous) + 1; }
       fc::time_point_sec            timestamp;
       delegate_id_type              delegate_id;
       secret_hash_type              next_secret_hash;
       secret_hash_type              previous_secret;
       vector<processed_transaction> transactions;
+
+      static uint32_t num_from_id(const block_id_type& id) { return htonl(id._hash[0]); }
    };
 
    struct signed_block : public block
