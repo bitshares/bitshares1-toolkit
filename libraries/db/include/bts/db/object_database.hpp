@@ -22,6 +22,8 @@ namespace bts { namespace db {
          object_database();
          ~object_database();
 
+         void reset_indexes() { _index.clear(); _index.resize(255); }
+
          void open(const fc::path& data_dir );
 
          /**

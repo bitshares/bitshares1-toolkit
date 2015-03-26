@@ -122,6 +122,7 @@ void database::initialize_evaluators()
 
 void database::initialize_indexes()
 {
+   reset_indexes();
    add_index< primary_index< asset_index> >();
    add_index< primary_index< account_index> >();
    add_index< primary_index< transaction_index> >();
