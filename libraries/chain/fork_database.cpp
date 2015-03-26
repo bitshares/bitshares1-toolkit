@@ -26,19 +26,19 @@ void     fork_database::start_block( signed_block b )
 shared_ptr<fork_item>  fork_database::push_block( signed_block b )
 {
    auto item = std::make_shared<fork_item>( std::move(b) );
+   //wdump((item->num)(_head?_head->num:0));
 
-   if( item->num > 1 )
+   if( _head && b.previous != block_id_type() )
    {
       auto itr = _index.get<block_id>().find( b.previous );
       FC_ASSERT( itr != _index.get<block_id>().end() );
       FC_ASSERT( !(*itr)->invalid );
       item->prev = *itr;
-      _head = item;
    }
-   else _head = item;
 
    _index.insert( item );
-   if( item->num > _head->num )
+   if( !_head ) _head = item;
+   else if( item->num > _head->num )
    {
       _head = item;
       _index.get<block_num>().erase( _head->num - 1024 );

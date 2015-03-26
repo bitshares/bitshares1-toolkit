@@ -620,17 +620,16 @@ bool database::is_known_transaction( const transaction_id_type& id )const
  */
 bool database::push_block( const signed_block& new_block, uint32_t skip )
 { try {
-   // wdump( (new_block.id())(new_block.previous) );
+   //wdump( (new_block.id())(new_block.previous) );
    if( !(skip&skip_fork_db) )
    {
       auto new_head = _fork_db.push_block( new_block );
       //If the head block from the longest chain does not build off of the current head, we need to switch forks.
       if( new_head->data.previous != head_block_id() )
       {
-         wlog( "head on new fork: block ${b} prev ${p} head ${h} pending prev ${pp}",
-               ("b",new_block.id())("p",new_block.previous)("h", head_block_id())("pp", _pending_block.previous) );
-         assert( new_head->data.block_num() >= _pending_block.block_num() );
-         // if( new_head->data.block_num() >= _pending_block.block_num() )
+         wdump( (new_head->data.id())(_pending_block.previous)(head_block_id()) ); 
+         wdump( (new_head->data.block_num() )(head_block_num())(_pending_block.block_num()) ); 
+         if( new_head->data.block_num() > head_block_num() )
          {
             auto branches = _fork_db.fetch_branch_from( new_head->data.id(), _pending_block.previous );
             for( auto item : branches.first )
@@ -679,8 +678,9 @@ bool database::push_block( const signed_block& new_block, uint32_t skip )
                    throw *except;
                 }
             }
+            return true;
          }
-         return true;
+         else return false;
       }
    }
 
