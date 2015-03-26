@@ -44,6 +44,11 @@ namespace bts { namespace chain {
          FC_ASSERT( a.asset_id == b.asset_id );
          return asset( a.amount - b.amount, a.asset_id );
       }
+      friend asset operator + ( const asset& a, const asset& b )
+      {
+         FC_ASSERT( a.asset_id == b.asset_id );
+         return asset( a.amount + b.amount, a.asset_id );
+      }
 
    };
 

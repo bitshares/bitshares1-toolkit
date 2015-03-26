@@ -11,7 +11,7 @@
 
 using namespace bts::chain;
 
-BOOST_FIXTURE_TEST_SUITE( operation_unit_tests, database_fixture )
+BOOST_FIXTURE_TEST_SUITE( operation_tests, database_fixture )
 
 BOOST_AUTO_TEST_CASE( create_account_test )
 {
@@ -67,13 +67,6 @@ BOOST_AUTO_TEST_CASE( create_account_test )
       BOOST_CHECK(balances.id.space() == implementation_ids);
       BOOST_CHECK(balances.id.type() == impl_account_balance_object_type);
       BOOST_CHECK(balances.balances.empty());
-
-      /* TODO: check this with new index
-      const account_debt_object& debts = nathan_account.debts(db);
-      BOOST_CHECK(debts.id.space() == implementation_ids);
-      BOOST_CHECK(debts.id.type() == impl_account_debt_object_type);
-      BOOST_CHECK(debts.call_orders.empty());
-      */
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
@@ -1239,11 +1232,123 @@ BOOST_AUTO_TEST_CASE( multiple_shorts_matching_multiple_bids_in_order )
    BOOST_REQUIRE( !create_short( shorter3_account, bitusd.amount(100), asset( 125 ) ) );
    print_call_orders();
 
+   auto& index = db.get_index_type<call_order_index>().indices().get<by_account>();
+   BOOST_CHECK(index.find(boost::make_tuple(buyer_account.id, bitusd.id)) == index.end());
+   BOOST_CHECK(index.find(boost::make_tuple(shorter1_account.id, bitusd.id)) != index.end());
+   BOOST_CHECK(index.find(boost::make_tuple(shorter1_account.id, bitusd.id))->get_debt() == bitusd.amount(100) );
+   BOOST_CHECK(index.find(boost::make_tuple(shorter1_account.id, bitusd.id))->call_price == price(asset(300), bitusd.amount(100)) );
+   BOOST_CHECK(index.find(boost::make_tuple(shorter2_account.id, bitusd.id)) != index.end());
+   BOOST_CHECK(index.find(boost::make_tuple(shorter2_account.id, bitusd.id))->get_debt() == bitusd.amount(100) );
+   BOOST_CHECK(index.find(boost::make_tuple(shorter3_account.id, bitusd.id)) != index.end());
+   BOOST_CHECK(index.find(boost::make_tuple(shorter3_account.id, bitusd.id))->get_debt() == bitusd.amount(100) );
 }catch ( const fc::exception& e )
 {
   elog( "${e}", ("e", e.to_detail_string() ) );
   throw;
 } }
+
+BOOST_AUTO_TEST_CASE( full_cover_test )
+{
+   try {
+      INVOKE(multiple_shorts_matching_multiple_bids_in_order);
+      const asset_object& bit_usd = get_asset("BITUSD");
+      const asset_object& core = asset_id_type()(db);
+      const account_object& debt_holder = get_account("shorter1");
+      const account_object& usd_holder = get_account("buyer");
+      auto& index = db.get_index_type<call_order_index>().indices().get<by_account>();
+
+      BOOST_CHECK(index.find(boost::make_tuple(debt_holder.id, bit_usd.id)) != index.end());
+
+      transfer(usd_holder, debt_holder, bit_usd.amount(100));
+
+      call_order_update_operation op;
+      op.funding_account = debt_holder.id;
+      op.collateral_to_add = core.amount(0);
+      op.amount_to_cover = bit_usd.amount(100);
+
+      trx.operations.push_back(op);
+      REQUIRE_THROW_WITH_VALUE(op, funding_account, usd_holder.id);
+      REQUIRE_THROW_WITH_VALUE(op, amount_to_cover, bit_usd.amount(-20));
+      REQUIRE_THROW_WITH_VALUE(op, amount_to_cover, bit_usd.amount(200));
+      REQUIRE_THROW_WITH_VALUE(op, collateral_to_add, core.amount(BTS_INITIAL_SUPPLY));
+      REQUIRE_THROW_WITH_VALUE(op, collateral_to_add, bit_usd.amount(20));
+      REQUIRE_THROW_WITH_VALUE(op, maintenance_collateral_ratio, 2);
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+
+      BOOST_CHECK_EQUAL(get_balance(debt_holder, bit_usd), 0);
+      BOOST_CHECK(index.find(boost::make_tuple(debt_holder.id, bit_usd.id)) == index.end());
+   } catch( fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
+BOOST_AUTO_TEST_CASE( partial_cover_test )
+{
+   try {
+      INVOKE(multiple_shorts_matching_multiple_bids_in_order);
+      const asset_object& bit_usd = get_asset("BITUSD");
+      const asset_object& core = asset_id_type()(db);
+      const account_object& debt_holder = get_account("shorter1");
+      const account_object& usd_holder = get_account("buyer");
+      auto& index = db.get_index_type<call_order_index>().indices().get<by_account>();
+      const call_order_object& debt = *index.find(boost::make_tuple(debt_holder.id, bit_usd.id));
+
+      BOOST_CHECK(index.find(boost::make_tuple(debt_holder.id, bit_usd.id)) != index.end());
+
+      transfer(usd_holder, debt_holder, bit_usd.amount(50));
+      BOOST_CHECK_EQUAL(get_balance(debt_holder, bit_usd), 50);
+
+      trx.operations.clear();
+      call_order_update_operation op;
+      op.funding_account = debt_holder.id;
+      op.collateral_to_add = core.amount(0);
+      op.amount_to_cover = bit_usd.amount(50);
+      trx.operations.push_back(op);
+      db.push_transaction(trx, ~0);
+
+      BOOST_CHECK_EQUAL(get_balance(debt_holder, bit_usd), 0);
+      BOOST_CHECK(index.find(boost::make_tuple(debt_holder.id, bit_usd.id)) != index.end());
+      BOOST_CHECK_EQUAL(debt.debt.value, 50);
+      BOOST_CHECK_EQUAL(debt.collateral.value, 400);
+      BOOST_CHECK(debt.call_price == price(core.amount(300), bit_usd.amount(50)));
+
+      op.collateral_to_add = core.amount(52);
+      op.amount_to_cover = bit_usd.amount(0);
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+
+      BOOST_CHECK(debt.call_price == price(core.amount(339), bit_usd.amount(50)));
+
+      op.collateral_to_add = core.amount(0);
+      op.amount_to_cover = bit_usd.amount(0);
+      op.maintenance_collateral_ratio = 1800;
+      REQUIRE_THROW_WITH_VALUE(op, maintenance_collateral_ratio, 1300);
+      REQUIRE_THROW_WITH_VALUE(op, maintenance_collateral_ratio, 2500);
+      op.collateral_to_add = core.amount(8);
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+
+      BOOST_CHECK(debt.call_price == price(core.amount(368), bit_usd.amount(50)));
+
+      op.amount_to_cover = bit_usd.amount(50);
+      op.collateral_to_add.amount = 0;
+      trx.operations.back() = op;
+      BOOST_CHECK_EQUAL(get_balance(debt_holder, bit_usd), 0);
+      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
+
+      trx.operations.clear();
+      transfer(usd_holder, debt_holder, bit_usd.amount(50));
+      trx.operations.push_back(op);
+      db.push_transaction(trx, ~0);
+
+      BOOST_CHECK(index.find(boost::make_tuple(debt_holder.id, bit_usd.id)) == index.end());
+   } catch( fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
 
 BOOST_AUTO_TEST_CASE( limit_order_matching_mix_of_shorts_and_limits )
 { try {

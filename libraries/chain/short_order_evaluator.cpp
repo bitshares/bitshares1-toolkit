@@ -148,21 +148,37 @@ asset call_order_update_evaluator::do_evaluate(const call_order_update_operation
    _paying_account = &o.funding_account(d);
 
    _debt_asset = &o.amount_to_cover.asset_id(d);
-   FC_ASSERT( _debt_asset->is_market_issued() );
+   FC_ASSERT( _debt_asset->is_market_issued(), "Unable to cover ${sym} as it is not a market-issued asset.",
+              ("sym", _debt_asset->symbol) );
    FC_ASSERT( o.collateral_to_add.asset_id == _debt_asset->short_backing_asset );
    FC_ASSERT( o.maintenance_collateral_ratio == 0 ||
               o.maintenance_collateral_ratio > _debt_asset->current_feed.required_maintenance_collateral );
+   FC_ASSERT( get_balance(_paying_account, _debt_asset) >= o.amount_to_cover,
+              "Cannot cover by ${c} when payer has ${b}",
+              ("c", o.amount_to_cover.amount)("b", get_balance(_paying_account, _debt_asset).amount) );
+   FC_ASSERT( get_balance(_paying_account, &_debt_asset->short_backing_asset(d)) >= o.collateral_to_add,
+              "Cannot increase collateral by ${c} when payer has ${b}", ("c", o.amount_to_cover.amount)
+              ("b", get_balance(_paying_account, &_debt_asset->short_backing_asset(d)).amount) );
 
    auto& call_idx = d.get_index_type<call_order_index>().indices().get<by_account>();
    auto itr = call_idx.find( boost::make_tuple(o.funding_account, o.amount_to_cover.asset_id) );
-   FC_ASSERT( itr != call_idx.end() );
+   FC_ASSERT( itr != call_idx.end(), "Could not find call order for ${sym} belonging to ${acct}.",
+              ("sym", _debt_asset->symbol)("acct", _paying_account->name) );
    _order = &*itr;
 
-   adjust_balance(_paying_account, _debt_asset, o.amount_to_cover.amount);
+   FC_ASSERT( o.amount_to_cover.asset_id == _order->debt_type() );
+   adjust_balance(_paying_account, _debt_asset, -o.amount_to_cover.amount);
 
-   if( o.amount_to_cover != _order->get_debt() )
+   if( o.amount_to_cover.amount != _order->get_debt().amount )
    {
-      FC_ASSERT( o.amount_to_cover < _order->get_debt() );
+      FC_ASSERT( (_order->get_debt() - o.amount_to_cover) *
+                 price::call_price(_order->get_debt() - o.amount_to_cover,
+                                   _order->get_collateral() + o.collateral_to_add,
+                                   o.maintenance_collateral_ratio? o.maintenance_collateral_ratio
+                                                                 : _order->maintenance_collateral_ratio)
+                 < _order->get_collateral(),
+                 "Order would be called immediately following this update. Refusing to apply update." );
+      FC_ASSERT( o.amount_to_cover < _order->get_debt(), "Cover amount is greater than debt." );
    } else {
       _closing_order = true;
       FC_ASSERT( o.collateral_to_add.amount == 0 );
@@ -205,12 +221,13 @@ asset call_order_update_evaluator::do_apply(const call_order_update_operation& o
             call.maintenance_collateral_ratio = o.maintenance_collateral_ratio;
          call.update_call_price();
       });
-      // Deduct the added collateral from the account.
-      d.modify(_paying_account->balances(d), [&](account_balance_object& bals) {
-         bals.sub_balance(o.collateral_to_add);
-         if( o.collateral_to_add.asset_id == asset_id_type() )
-            bals.total_core_in_orders += o.collateral_to_add.amount;
-      });
+      if( o.collateral_to_add.amount > 0 )
+         // Deduct the added collateral from the account.
+         d.modify(_paying_account->balances(d), [&](account_balance_object& bals) {
+            bals.sub_balance(o.collateral_to_add);
+            if( o.collateral_to_add.asset_id == asset_id_type() )
+               bals.total_core_in_orders += o.collateral_to_add.amount;
+         });
    }
 
    return collateral_returned;

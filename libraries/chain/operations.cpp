@@ -353,6 +353,7 @@ share_type short_order_cancel_operation::calculate_fee(const fee_schedule_type& 
 void call_order_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( collateral_to_add.amount > 0 || amount_to_cover.amount > 0 || maintenance_collateral_ratio > 0 );
    FC_ASSERT( collateral_to_add.amount >= 0 );
    FC_ASSERT( amount_to_cover.amount >= 0 );
    FC_ASSERT( amount_to_cover.asset_id != collateral_to_add.asset_id );
