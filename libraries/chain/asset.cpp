@@ -83,6 +83,15 @@ namespace bts { namespace chain {
       price price::max( asset_id_type a, asset_id_type b ) { return asset( share_type(BTS_MAX_SHARE_SUPPLY), a ) / asset( share_type(1), b); }
       price price::min( asset_id_type a, asset_id_type b ) { return asset( 1, a ) / asset( BTS_MAX_SHARE_SUPPLY, b); }
 
+      price price::call_price(const asset& debt, const asset& collateral, uint16_t collateral_ratio)
+      {
+         fc::uint128 tmp( collateral.amount.value );
+         tmp *= collateral_ratio - 1000;
+         tmp /= 1000;
+         FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
+         return asset( tmp.to_uint64(), collateral.asset_id) / debt;
+      }
+
       bool price::is_null() const { return *this == price(); }
 
       void price::validate() const

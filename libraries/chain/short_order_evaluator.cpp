@@ -131,11 +131,89 @@ asset short_order_cancel_evaluator::do_apply( const short_order_cancel_operation
      });
      //do_evaluate adjusted balance by refunded.amount, which adds votes. This is undesirable, as the account
      //did not gain or lose any voting stake. Counteract that adjustment here.
+     //Future optimization: don't change the votes in the first place; it's expensive to change it twice for no reason
      adjust_votes(fee_paying_account->delegate_votes, -refunded.amount);
   }
   return refunded;
 }
 
+asset call_order_update_evaluator::do_evaluate(const call_order_update_operation& o)
+{ try {
+   database& d = db();
 
+   auto fee_paid = pay_fee( o.funding_account, o.fee );
+   auto fee_required = o.calculate_fee( d.current_fee_schedule() );
+   FC_ASSERT( fee_paid >= fee_required );
+
+   _paying_account = &o.funding_account(d);
+
+   _debt_asset = &o.amount_to_cover.asset_id(d);
+   FC_ASSERT( _debt_asset->is_market_issued() );
+   FC_ASSERT( o.collateral_to_add.asset_id == _debt_asset->short_backing_asset );
+   FC_ASSERT( o.maintenance_collateral_ratio == 0 ||
+              o.maintenance_collateral_ratio > _debt_asset->current_feed.required_maintenance_collateral );
+
+   auto& call_idx = d.get_index_type<call_order_index>().indices().get<by_account>();
+   auto itr = call_idx.find( boost::make_tuple(o.funding_account, o.amount_to_cover.asset_id) );
+   FC_ASSERT( itr != call_idx.end() );
+   _order = &*itr;
+
+   adjust_balance(_paying_account, _debt_asset, o.amount_to_cover.amount);
+
+   if( o.amount_to_cover != _order->get_debt() )
+   {
+      FC_ASSERT( o.amount_to_cover < _order->get_debt() );
+   } else {
+      _closing_order = true;
+      FC_ASSERT( o.collateral_to_add.amount == 0 );
+      return _order->get_collateral();
+   }
+   return asset();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+asset call_order_update_evaluator::do_apply(const call_order_update_operation& o)
+{
+   database& d = db();
+
+   apply_delta_balances();
+   apply_delta_fee_pools();
+
+   // Deduct the debt paid from the total supply of the debt asset.
+   d.modify(_debt_asset->dynamic_asset_data_id(d), [&](asset_dynamic_data_object& dynamic_asset) {
+      dynamic_asset.current_supply -= o.amount_to_cover.amount;
+      assert(dynamic_asset.current_supply >= 0);
+   });
+
+   asset collateral_returned;
+   if( _closing_order )
+   {
+      collateral_returned = _order->get_collateral();
+      // Credit the account's balances for his returned collateral.
+      d.modify(_paying_account->balances(d), [&](account_balance_object& bals) {
+         bals.add_balance(collateral_returned);
+         if( _order->get_collateral().asset_id == asset_id_type() )
+            bals.total_core_in_orders -= collateral_returned.amount;
+      });
+      // Remove the call order.
+      d.remove(*_order);
+   } else {
+      // Update the call order.
+      d.modify(*_order, [&o](call_order_object& call) {
+         call.debt -= o.amount_to_cover.amount;
+         call.collateral += o.collateral_to_add.amount;
+         if( o.maintenance_collateral_ratio )
+            call.maintenance_collateral_ratio = o.maintenance_collateral_ratio;
+         call.update_call_price();
+      });
+      // Deduct the added collateral from the account.
+      d.modify(_paying_account->balances(d), [&](account_balance_object& bals) {
+         bals.sub_balance(o.collateral_to_add);
+         if( o.collateral_to_add.asset_id == asset_id_type() )
+            bals.total_core_in_orders += o.collateral_to_add.amount;
+      });
+   }
+
+   return collateral_returned;
+}
 
 } } // bts::chain

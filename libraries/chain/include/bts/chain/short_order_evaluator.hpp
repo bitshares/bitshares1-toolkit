@@ -31,4 +31,18 @@ namespace bts { namespace chain {
          const short_order_object* _order;
    };
 
+   class call_order_update_evaluator : public evaluator<call_order_update_evaluator>
+   {
+      public:
+         typedef call_order_update_operation operation_type;
+
+         asset do_evaluate( const call_order_update_operation& o );
+         asset do_apply( const call_order_update_operation& o );
+
+         bool _closing_order = false;
+         const asset_object* _debt_asset = nullptr;
+         const account_object* _paying_account = nullptr;
+         const call_order_object* _order = nullptr;
+   };
+
 } } // bts::chain

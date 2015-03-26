@@ -537,37 +537,26 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
                 });
 
    const auto& call_account_index = call_index.indices().get<by_account>();
-   auto call_itr = call_account_index.find(  std::make_pair(order.seller, pays.asset_id) );
-   //auto call_id = debts.get_call_order(pays.asset_id);
+   auto call_itr = call_account_index.find(  boost::make_tuple(order.seller, pays.asset_id) );
    if( call_itr == call_account_index.end() )
    {
-      const auto& call_obj = db().create<call_order_object>( [&]( call_order_object& c ){
-             c.borrower    = seller.id;
-             c.collateral  = seller_to_collateral.amount + buyer_to_collateral.amount;
-             c.debt        = pays.amount;
-
-             c.call_price  = order.call_price;
-             fc::uint128 tmp( c.collateral.value );
-             tmp *= order.maintenance_collateral_ratio - 1000;
-             tmp /= 1000;
-             FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
-
-             c.call_price = (asset( tmp.to_uint64(), c.get_collateral().asset_id)) / c.get_debt();
-        });
+      db().create<call_order_object>( [&]( call_order_object& c ){
+         c.borrower    = seller.id;
+         c.collateral  = seller_to_collateral.amount + buyer_to_collateral.amount;
+         c.debt        = pays.amount;
+         c.maintenance_collateral_ratio = order.maintenance_collateral_ratio;
+         c.call_price  = price::max(seller_to_collateral.asset_id, pays.asset_id);
+         c.update_call_price();
+      });
    }
    else
    {
       wdump( (order.available_collateral)(call_itr->collateral)(receives.amount) );
       db().modify( *call_itr, [&]( call_order_object& c ){
-            c.debt       += pays.amount;
-            c.collateral += seller_to_collateral.amount + buyer_to_collateral.amount;
-
-            fc::uint128 tmp( c.collateral.value );
-            tmp *= order.maintenance_collateral_ratio - 1000;
-            tmp /= 1000;
-            FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
-
-            c.call_price = (asset( tmp.to_uint64(), c.get_collateral().asset_id)) / c.get_debt();
+         c.debt       += pays.amount;
+         c.collateral += seller_to_collateral.amount + buyer_to_collateral.amount;
+         c.maintenance_collateral_ratio = order.maintenance_collateral_ratio;
+         c.update_call_price();
       });
    }
 

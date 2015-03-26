@@ -64,18 +64,14 @@ namespace bts { namespace chain {
         asset amount_to_receive()const { return get_debt(); }
         asset_id_type debt_type()const { return call_price.quote.asset_id; }
 
-        std::pair<account_id_type,asset_id_type> debt_index()const 
-               { return std::make_pair(borrower,call_price.quote.asset_id); }
+        void update_call_price() { call_price = price::call_price(get_debt(), get_collateral(), maintenance_collateral_ratio); }
 
         account_id_type  borrower;
         share_type       collateral;  ///< call_price.base.asset_id, access via get_collateral
         share_type       debt;        ///< call_price.quote.asset_id, access via get_collateral
         price            call_price;
+        uint16_t         maintenance_collateral_ratio;
   };
-
-  typedef std::less<account_id_type> account_id_less_type;
-  typedef std::less<asset_id_type> asset_id_less_type;
-  typedef std::less<object_id_type>  object_id_type_less_type;
 
   struct by_id;
   struct by_price;
@@ -95,35 +91,30 @@ namespace bts { namespace chain {
      >
   > short_order_multi_index_type;
 
-  typedef multi_index_container<
-     call_order_object,
-     indexed_by<
-        hashed_unique< tag<by_id>,
-           member< object, object_id_type, &object::id > >,
-        ordered_unique< tag<by_price>,
-           composite_key< call_order_object,
-              member< call_order_object, price, &call_order_object::call_price>,
-              member< object, object_id_type, &object::id>
-           >,
-           composite_key_compare< std::less<price>, std::less<object_id_type> >
-        >,
-        ordered_unique< tag<by_account>,
-              const_mem_fun< call_order_object, std::pair<account_id_type,asset_id_type>, &call_order_object::debt_index>
-        /*
-           composite_key< call_order_object,
-              member< call_order_object, account_id_type, &call_order_object::borrower>,
-              const_mem_fun< call_order_object, asset_id_type, &call_order_object::debt_type>
-           >
-           */
-           //, composite_key_compare< account_id_less_type, asset_id_less_type >
-        >
-     >
-  > call_order_multi_index_type;
+   typedef multi_index_container<
+      call_order_object,
+      indexed_by<
+         hashed_unique< tag<by_id>,
+            member< object, object_id_type, &object::id > >,
+         ordered_unique< tag<by_price>,
+            composite_key< call_order_object,
+               member< call_order_object, price, &call_order_object::call_price>,
+               member< object, object_id_type, &object::id>
+            >,
+            composite_key_compare< std::less<price>, std::less<object_id_type> >
+         >,
+         ordered_unique< tag<by_account>,
+            composite_key< call_order_object,
+               member< call_order_object, account_id_type, &call_order_object::borrower >,
+               const_mem_fun< call_order_object, asset_id_type, &call_order_object::debt_type>
+            >
+         >
+      >
+   > call_order_multi_index_type;
 
 
   typedef generic_index<short_order_object, short_order_multi_index_type> short_order_index;
   typedef generic_index<call_order_object, call_order_multi_index_type>   call_order_index;
-
 
 } } // bts::chain
 
@@ -133,4 +124,4 @@ FC_REFLECT_DERIVED( bts::chain::short_order_object, (bts::db::object),
                   )
 
 FC_REFLECT_DERIVED( bts::chain::call_order_object, (bts::db::object),
-                    (borrower)(collateral)(debt)(call_price) )
+                    (borrower)(collateral)(debt)(call_price)(maintenance_collateral_ratio) )

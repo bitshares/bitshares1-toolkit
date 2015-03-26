@@ -222,26 +222,12 @@ namespace bts { namespace chain {
       share_type calculate_fee( const fee_schedule_type& k )const;
 
       /** convention: amount_to_sell / amount_to_receive */
-      price      sell_price()const
-      {
-         fc::uint128 tmp(collateral.amount.value);
-         tmp *= (initial_collateral_ratio - 1000);
-         tmp /= 1000;
-         FC_ASSERT( tmp  <= BTS_MAX_SHARE_SUPPLY );
-         return  amount_to_sell / asset( tmp.to_uint64(), collateral.asset_id);
-      }
+      price      sell_price()const { return ~price::call_price(amount_to_sell, collateral, initial_collateral_ratio); }
 
       /** convention: amount_to_sell / amount_to_receive means we are
        * selling collateral to receive debt
        **/
-      price call_price() const
-      {
-         fc::uint128 tmp( collateral.amount.value );
-         tmp *= maintenance_collateral_ratio - 1000;
-         tmp /= 1000;
-         FC_ASSERT( tmp <= BTS_MAX_SHARE_SUPPLY );
-         return asset( tmp.to_uint64(), collateral.asset_id) / amount_to_sell;
-      }
+      price call_price() const { return price::call_price(amount_to_sell, collateral, maintenance_collateral_ratio); }
    };
 
    /**
@@ -260,22 +246,20 @@ namespace bts { namespace chain {
 
 
    /**
-    *  This operation can be used to add collateral, cover, and
-    *  adjust the margin call price with a new maintenance collateral
-    *  ratio.
+    *  This operation can be used to add collateral, cover, and adjust the margin call price with a new maintenance
+    *  collateral ratio.
     *
-    *  The only way to "cancel" a call order is to pay off the
-    *  balance due.   The order is invalid if the payoff amount
+    *  The only way to "cancel" a call order is to pay off the balance due. The order is invalid if the payoff amount
     *  is greater than the amount due.
     *
-    *  @note the call_order_id is implied by the funding_account and
-    *  assets involved.
+    *  @note the call_order_id is implied by the funding_account and assets involved. This implies that the assets must
+    *  have appropriate asset_ids, even if the amount is zero.
     */
    struct call_order_update_operation
    {
       account_id_type     funding_account; ///< pays fee, collateral, and cover
-      asset               fee; //</ paid by funding_account
-      asset               collateral_to_add; ///< may be negative if amount_to_cover pays off the debt
+      asset               fee; ///< paid by funding_account
+      asset               collateral_to_add; ///< the amount of collateral to add to the margin position
       asset               amount_to_cover; ///< the amount of the debt to be paid off
       uint16_t            maintenance_collateral_ratio = 0; ///< 0 means don't change, 1000 means feed
 
@@ -382,7 +366,7 @@ namespace bts { namespace chain {
    };
 
 
-   /** @return code_object_id 
+   /** @return code_object_id
     *
     *  Sets the code to be associated with an account, it will
     *  create a new script ID if necessary or update an existing
@@ -399,8 +383,8 @@ namespace bts { namespace chain {
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
-   /** @return data_object_id 
-    * 
+   /** @return data_object_id
+    *
     *  Writes to the data segment associated with account_id,
     *  requires permissions of account_id.  If the account
     *  has no data associated, it will be allocated and
@@ -441,7 +425,7 @@ namespace bts { namespace chain {
       account_id_type           script_account; ///< account_object->code with account_object->data
       vector<char>              args;
       flat_set<object_id_type>  initial_authority; // may be keys or accounts
-      /** 
+      /**
        * this information must be checked against prior operations in the same transaction.
        */
       ///@{
