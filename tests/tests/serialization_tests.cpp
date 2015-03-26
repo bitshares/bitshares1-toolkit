@@ -5,7 +5,7 @@
 #include <fc/crypto/digest.hpp>
 #include <fc/reflect/variant.hpp>
 
-#include "database_fixture.hpp"
+#include "../common/database_fixture.hpp"
 
 using namespace bts::chain;
 

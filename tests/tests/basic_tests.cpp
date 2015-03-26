@@ -7,7 +7,7 @@
 #include <bts/db/simple_index.hpp>
 
 #include <fc/crypto/digest.hpp>
-#include "database_fixture.hpp"
+#include "../common/database_fixture.hpp"
 
 using namespace bts::chain;
 using namespace bts::db;
