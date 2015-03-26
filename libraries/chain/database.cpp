@@ -620,15 +620,14 @@ bool database::is_known_transaction( const transaction_id_type& id )const
  */
 bool database::push_block( const signed_block& new_block, uint32_t skip )
 { try {
-   //wdump( (new_block.id())(new_block.previous) );
    if( !(skip&skip_fork_db) )
    {
       auto new_head = _fork_db.push_block( new_block );
       //If the head block from the longest chain does not build off of the current head, we need to switch forks.
       if( new_head->data.previous != head_block_id() )
       {
-         wdump( (new_head->data.id())(_pending_block.previous)(head_block_id()) ); 
-         wdump( (new_head->data.block_num() )(head_block_num())(_pending_block.block_num()) ); 
+         //If the newly pushed block is the same height as head, we get head back in new_head
+         //Only switch forks if new_head is actually higher than head
          if( new_head->data.block_num() > head_block_num() )
          {
             auto branches = _fork_db.fetch_branch_from( new_head->data.id(), _pending_block.previous );
@@ -654,7 +653,7 @@ bool database::push_block( const signed_block& new_block, uint32_t skip )
                 catch ( const fc::exception& e ) { except = e; }
                 if( except )
                 {
-                   edump( ("oops!")((*ritr)->id) );
+                   edump( ("Encountered error when switching to a longer fork. Going back.")((*ritr)->id) );
                    // remove the rest of branches.first from the fork_db, those blocks are invalid
                    while( ritr != branches.first.rend() )
                    {
