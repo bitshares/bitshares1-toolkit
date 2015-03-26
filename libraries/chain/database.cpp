@@ -780,7 +780,6 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
          transaction->expiration = std::move(trx_expiration);
          transaction->trx_id = std::move(trx.id());
          transaction->trx = std::move(trx);
-         idump((transaction->trx_id));
       });
    return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
