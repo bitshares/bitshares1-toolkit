@@ -77,6 +77,9 @@ namespace bts { namespace chain {
 
       static price call_price(const asset& debt, const asset& collateral, uint16_t collateral_ratio);
 
+      /// The unit price for an asset type A is defined to be a price such that for any asset m, m*A=m
+      static price unit_price(asset_id_type a = asset_id_type()) { return price(asset(1, a), asset(1, a)); }
+
       price max()const { return price::max( base.asset_id, quote.asset_id ); }
       price min()const { return price::min( base.asset_id, quote.asset_id ); }
 

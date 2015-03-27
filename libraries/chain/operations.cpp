@@ -407,4 +407,11 @@ void account_execute_script_operation::validate()const
    FC_ASSERT( gas_payer != account_id_type() );
    FC_ASSERT( args.size() <= BTS_MAX_SCRIPT_ARGS_SIZE );
 }
+
+void proposal_create_operation::validate() const
+{
+   FC_ASSERT( !proposed_ops.empty() );
+   for( const auto& op : proposed_ops ) op.validate();
+}
+
 } } // namespace bts::chain

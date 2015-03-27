@@ -426,7 +426,8 @@ namespace bts { namespace chain {
       vector<char>              args;
       flat_set<object_id_type>  initial_authority; // may be keys or accounts
       /**
-       * this information must be checked against prior operations in the same transaction.
+       * These values are only a manifest to the script; they do not directly affect the chain state. The deposits and
+       * object transfers listed here must be effected by other operations in the same transaction.
        */
       ///@{
       vector<asset>             deposits; // from gas_payer account
@@ -449,7 +450,7 @@ namespace bts { namespace chain {
        asset              fee;
        vector<op_wrapper> proposed_ops;
 
-      void       validate()const {}
+      void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
    };
 
@@ -479,7 +480,7 @@ namespace bts { namespace chain {
          > operation;
 
    /**
-    * @brief Performs default validation / sanity checks on operations that do not depend upon blockchain state.
+    * @brief Used to validate operations in a polymorphic manner
     */
    struct operation_validator
    {
@@ -490,25 +491,43 @@ namespace bts { namespace chain {
 
    /**
     * @brief Used to calculate fees in a polymorphic manner
+    *
+    * If you wish to pay fees in an asset other than CORE, use the core_exchange_rate argument to specify the rate of
+    * conversion you wish to use. The operation's fee will be calculated by multiplying the CORE fee by the provided
+    * exchange rate. It is up to the caller to ensure that the core_exchange_rate converts to an asset accepted by the
+    * delegates at a rate which they will accept.
     */
    struct operation_calculate_fee
    {
       const fee_schedule_type& fees;
-      operation_calculate_fee( const fee_schedule_type& f ):fees(f){}
+      const price& core_exchange_rate;
+      operation_calculate_fee( const fee_schedule_type& f, const price& core_exchange_rate = price::unit_price() )
+         : fees(f),
+           core_exchange_rate(core_exchange_rate)
+      {}
       typedef share_type result_type;
       template<typename T>
-      share_type operator()( const T& v )const { return v.calculate_fee(fees); }
+      share_type operator()( const T& v )const { return (v.calculate_fee(fees) * core_exchange_rate).amount; }
    };
    /**
     * @brief Used to set fees in a polymorphic manner
+    *
+    * If you wish to pay fees in an asset other than CORE, use the core_exchange_rate argument to specify the rate of
+    * conversion you wish to use. The operation's fee will be set by multiplying the CORE fee by the provided exchange
+    * rate. It is up to the caller to ensure that the core_exchange_rate converts to an asset accepted by the delegates
+    * at a rate which they will accept.
     */
    struct operation_set_fee
    {
       const fee_schedule_type& fees;
-      operation_set_fee( const fee_schedule_type& f ):fees(f){}
+      const price& core_exchange_rate;
+      operation_set_fee( const fee_schedule_type& f, const price& core_exchange_rate = price::unit_price() )
+         : fees(f),
+           core_exchange_rate(core_exchange_rate)
+      {}
       typedef asset result_type;
       template<typename T>
-      asset operator()( T& v )const { return v.fee = asset(v.calculate_fee(fees)); }
+      asset operator()( T& v )const { return v.fee = asset(v.calculate_fee(fees)) * core_exchange_rate; }
    };
 
    struct op_wrapper
