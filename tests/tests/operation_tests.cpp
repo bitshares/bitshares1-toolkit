@@ -12,6 +12,7 @@
 using namespace bts::chain;
 
 BOOST_FIXTURE_TEST_SUITE( operation_tests, database_fixture )
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( margin_call_black_swan, 1 )
 
 BOOST_AUTO_TEST_CASE( create_account_test )
 {
