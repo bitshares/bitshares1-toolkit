@@ -7,6 +7,7 @@ add_library( bts_chain
              account_evaluator.cpp
              delegate_evaluator.cpp
              transfer_evaluator.cpp
+             proposal_evaluator.cpp
              evaluator.cpp
              fork_database.cpp
              database.cpp
@@ -14,6 +15,7 @@ add_library( bts_chain
              asset_evaluator.cpp
              account_object.cpp
              delegate_object.cpp
+             proposal_object.cpp
              key_object.cpp
              types.cpp
              block.cpp 

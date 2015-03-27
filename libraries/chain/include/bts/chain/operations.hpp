@@ -21,6 +21,7 @@ namespace bts { namespace chain {
       asset            fee;
       static_variant<address,public_key_type> key_data;
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       share_type calculate_fee( const fee_schedule_type& k )const{ return k.at( key_create_fee_type ); }
       void       validate()const;
    };
@@ -39,6 +40,7 @@ namespace bts { namespace chain {
       vector<delegate_id_type> vote;
 
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -57,6 +59,7 @@ namespace bts { namespace chain {
        */
       optional<vector<delegate_id_type>>  vote;
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -80,6 +83,7 @@ namespace bts { namespace chain {
       asset                  fee; ///< paid for by delegate->delegate_account
       flat_set<price_feed>   feeds; ///< must be sorted with no duplicates
 
+      void       get_required_auth( flat_set<account_id_type>& )const {}
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -92,6 +96,7 @@ namespace bts { namespace chain {
       asset           fee; ///< same asset_id as amount.asset_id
       vector<char>    memo;
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -109,6 +114,7 @@ namespace bts { namespace chain {
       price                   core_exchange_rate; // used for the fee pool
       asset_id_type           short_backing_asset; // for bitassets, specifies what may be used as collateral.
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -120,14 +126,16 @@ namespace bts { namespace chain {
       share_type      amount; ///< core asset
       asset           fee; ///< core asset
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct asset_update_operation
    {
+      account_id_type issuer; ///< must be asset_to_update->issuer
       asset_id_type   asset_to_update;
-      asset           fee; ///< paid by asset_to_update->issuer
+      asset           fee;
 
       optional<uint16_t>         flags;
       optional<uint16_t>         permissions;
@@ -136,6 +144,7 @@ namespace bts { namespace chain {
       // If price limits are null, shorts and margin calls are disabled.
       optional<price_feed>       new_price_feed;
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -169,6 +178,7 @@ namespace bts { namespace chain {
        */
       bool            fill_or_kill = false;
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
       price           get_price()const { return amount_to_sell / min_to_receive; }
@@ -186,6 +196,7 @@ namespace bts { namespace chain {
       account_id_type     fee_paying_account;
       asset               fee;
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -218,6 +229,7 @@ namespace bts { namespace chain {
       /// Must be greater than or equal to the minimum specified by price feed
       uint16_t        maintenance_collateral_ratio = BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO;
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
 
@@ -237,9 +249,10 @@ namespace bts { namespace chain {
    struct short_order_cancel_operation
    {
       short_order_id_type order;
-      account_id_type     fee_paying_account;
-      asset               fee; // paid by order->seller
+      account_id_type     fee_paying_account; ///< Must be order->seller
+      asset               fee; ///< paid by order->seller
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -263,6 +276,7 @@ namespace bts { namespace chain {
       asset               amount_to_cover; ///< the amount of the debt to be paid off
       uint16_t            maintenance_collateral_ratio = 0; ///< 0 means don't change, 1000 means feed
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -283,21 +297,25 @@ namespace bts { namespace chain {
     */
    struct asset_whitelist_operation
    {
+      account_id_type  issuer; ///< Must be asset_id->issuer
       asset_id_type    asset_id; ///< ID of the whitelist asset in question
-      asset            fee; ///< paid by asset_id->issuer
+      asset            fee;
       account_id_type  whitelist_account; ///< ID of the account to allow or disallow to hold the asset
       bool             authorize_account; ///< True if whitelist_account may hold and transact the asset; false otherwise
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct asset_issue_operation
    {
+      account_id_type  issuer; ///< Must be asset_to_issue->asset_id->issuer
       asset            asset_to_issue;
-      asset            fee; ///< paid by asset_to_issue->asset_id->issuer
+      asset            fee;
       account_id_type  issue_to_account;
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -315,12 +333,14 @@ namespace bts { namespace chain {
       uint32_t                              max_sec_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
       fc::array<share_type,FEE_TYPE_COUNT>  fee_schedule;
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct delegate_update_operation
    {
+      account_id_type                                 delegate_account; ///< must match delegate_id->delegate_account
       delegate_id_type                                delegate_id;
       asset                                           fee; ///< paid by delegate_id->delegate_account
       optional<fc::array<share_type,FEE_TYPE_COUNT>>  fee_schedule;
@@ -333,38 +353,10 @@ namespace bts { namespace chain {
       uint16_t                                        max_undo_history_size = BTS_DEFAULT_MAX_UNDO_HISTORY;
       uint32_t                                        max_sec_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
-
-   struct custom_id_create_operation
-   {
-      account_id_type  owner;
-
-      void       validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-   };
-
-   struct custom_id_transfer_operation
-   {
-      custom_id_type   custom_id;
-      account_id_type  new_owner;
-
-      void       validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-   };
-
-   struct custom_operation
-   {
-      account_id_type fee_paying_account;
-      asset           fee;
-      uint16_t        type = 0;
-      vector<char>    data;
-
-      void       validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-   };
-
 
    /** @return code_object_id
     *
@@ -379,6 +371,7 @@ namespace bts { namespace chain {
       optional<script_id_type> existing_script_id;
       vector<script_op>        script;
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -400,6 +393,7 @@ namespace bts { namespace chain {
       uint16_t          offset = 0;
       vector<char>      data;
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -424,35 +418,116 @@ namespace bts { namespace chain {
       asset                     fee; ///< becomes gas
       account_id_type           script_account; ///< account_object->code with account_object->data
       vector<char>              args;
-      flat_set<object_id_type>  initial_authority; // may be keys or accounts
+      flat_set<account_id_type> initial_authority;
       /**
-       * These values are only a manifest to the script; they do not directly affect the chain state. The deposits and
-       * object transfers listed here must be effected by other operations in the same transaction.
+       * These deposits are only a manifest to the script; they do not directly affect the chain state. The deposits
+       * listed here must be effected by other operations in the same transaction.
        */
       ///@{
       vector<asset>             deposits; // from gas_payer account
-      flat_set<object_id_type>  id_transfers; /// IDs being transferred to the script
       ///@}
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
-
-   /** op_wrapper is used to get around the circular
-    * definition of operation and proposals that contain
-    * them.
+   /**
+     * The Graphene Transaction Proposal Protocol
+     *
+     * Graphene allows users to propose a transaction which requires approval of multiple accounts in order to execute.
+     * The user proposes a transaction using proposal_create_operation, then signatory accounts use
+     * proposal_update_operations to add or remove their approvals from this operation. When a sufficient number of
+     * approvals have been granted, the operations in the proposal are used to create a virtual transaction which is
+     * subsequently evaluated. Even if the transaction fails, the proposal will be kept until the expiration time, at
+     * which point, if sufficient approval is granted, the transaction will be evaluated a final time. This allows
+     * transactions which will not execute successfully until a given time to still be executed through the proposal
+     * mechanism. The first time the proposed transaction succeeds, the proposal will be regarded as resolved, and all
+     * future updates will be invalid.
+     *
+     * The proposal system allows for arbitrarily complex or recursively nested authorities. If a recursive authority
+     * (i.e. an authority which requires approval of 'nested' authorities on other accounts) is required for a
+     * proposal, then a second proposal can be used to grant the nested authority's approval. That is, a second
+     * proposal can be created which, when sufficiently approved, adds the approval of a nested authority to the first
+     * proposal. This multiple-proposal scheme can be used to acquire approval for an arbitrarily deep authority tree.
+     *
+     * Note that at any time, a proposal can be approved in a single transaction if sufficient signatures are available
+     * on the proposal_update_operation, as long as the authority tree to approve the proposal does not exceed the
+     * maximum recursion depth. In practice, however, it is easier to use proposals to acquire all approvals, as this
+     * leverages on-chain notification of all relevant parties that their approval is required. Off-chain
+     * multi-signature approval requires some off-chain mechanism for acquiring several signatures on a single
+     * transaction. This off-chain syncrhonization can be avoided using proposals.
+     * @{
+     */
+   /**
+    * op_wrapper is used to get around the circular definition of operation and proposals that contain them.
     */
    struct op_wrapper;
+   /**
+    * @brief The proposal_create_operation creates a transaction proposal, for use in multi-sig scenarios
+    *
+    * Creates a transaction proposal. The operations which compose the transaction are listed in order in proposed_ops,
+    * and expiration_time specifies the time by which the proposal must be accepted or it will fail permanently. The
+    * expiration_time cannot be farther in the future than the maximum expiration time set in the global properties
+    * object.
+    */
    struct proposal_create_operation
    {
        account_id_type    fee_paying_account;
        asset              fee;
        vector<op_wrapper> proposed_ops;
+       time_point_sec     expiration_time;
 
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
    };
+
+   /**
+    * @brief The proposal_update_operation updates an existing transaction proposal
+    *
+    * This operation allows accounts to add or revoke approval of a proposed transaction. Signatures sufficient to
+    * satisfy the authority of each account in approvals are required on the transaction containing this operation.
+    *
+    * If an account with a multi-signature authority is listed in approvals, either all required signatures must be
+    * provided in the transaction containing this operation, or a secondary proposal must be created which contains
+    * this operation and requires the signatures to satisfy the account's authority.
+    */
+   struct proposal_update_operation
+   {
+      account_id_type            fee_paying_account;
+      asset                      fee;
+      proposal_id_type           proposal;
+      flat_set<account_id_type>  approvals_to_add;
+      flat_set<account_id_type>  approvals_to_remove;
+
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
+   };
+
+   /**
+    * @brief The proposal_delete_operation deletes an existing transaction proposal
+    *
+    * This operation allows the early veto of a proposed transaction. It may be used by any account which is a required
+    * authority on the proposed transaction if that account's holder feels the proposal is ill-advised and he decides
+    * he will never approve of it and wishes to put an end to all discussion of the issue. Because he is a required
+    * authority, he could simply refuse to add his approval, but this would leave the topic open for debate until the
+    * proposal expires. Using this operation, he can prevent any further breath from being wasted on such an absurd
+    * proposal.
+    */
+   struct proposal_delete_operation
+   {
+      account_id_type   fee_paying_account;
+      asset             fee;
+      proposal_id_type  proposal;
+
+      void       get_required_auth( flat_set<account_id_type>& account_set )const;
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
+   };
+
+   ///@}
 
 
    typedef fc::static_variant<
@@ -478,6 +553,18 @@ namespace bts { namespace chain {
             delegate_create_operation,
             delegate_update_operation
          > operation;
+
+   /**
+     * @brief Used to find accounts which must sign off on operations in a polymorphic manner
+     */
+   struct operation_get_required_auths
+   {
+      flat_set<account_id_type>& account_set;
+      operation_get_required_auths(flat_set<account_id_type>& account_set) : account_set(account_set){}
+      typedef void result_type;
+      template<typename T>
+      void operator()(const T& v)const { v.get_required_auth(account_set); }
+   };
 
    /**
     * @brief Used to validate operations in a polymorphic manner
@@ -559,7 +646,7 @@ FC_REFLECT( bts::chain::account_update_operation,
           )
 
 FC_REFLECT( bts::chain::delegate_update_operation,
-            (delegate_id)(fee)(fee_schedule)(signing_key)(pay_rate)
+            (delegate_account)(delegate_id)(fee)(fee_schedule)(signing_key)(pay_rate)
             (block_interval_sec)(maintenance_interval_sec)(max_transaction_size)
             (max_block_size)(max_undo_history_size)(max_sec_until_expiration)
           )
@@ -592,14 +679,14 @@ FC_REFLECT( bts::chain::asset_create_operation,
           )
 
 FC_REFLECT( bts::chain::asset_update_operation,
-            (asset_to_update)(fee)(flags)(permissions)(core_exchange_rate)(new_price_feed)
+            (issuer)(asset_to_update)(fee)(flags)(permissions)(core_exchange_rate)(new_price_feed)
           )
 
 FC_REFLECT( bts::chain::asset_whitelist_operation,
-            (asset_id)(fee)(whitelist_account)(authorize_account)
+            (issuer)(asset_id)(fee)(whitelist_account)(authorize_account)
           )
 FC_REFLECT( bts::chain::asset_issue_operation,
-            (asset_to_issue)(fee)(issue_to_account) )
+            (issuer)(asset_to_issue)(fee)(issue_to_account) )
 FC_REFLECT( bts::chain::delegate_create_operation,
             (delegate_account)(fee)(pay_rate)
             (first_secret_hash)(signing_key)
@@ -613,7 +700,7 @@ FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (from_account)(asset_id)(
 
 FC_REFLECT( bts::chain::account_set_script_operation, (account_id)(fee)(script) );
 FC_REFLECT( bts::chain::account_set_data_operation, (account_id)(fee)(offset)(data) );
-FC_REFLECT( bts::chain::account_execute_script_operation, (gas_payer)(fee)(script_account)(args)(initial_authority)(deposits)(id_transfers) )
+FC_REFLECT( bts::chain::account_execute_script_operation, (gas_payer)(fee)(script_account)(args)(initial_authority)(deposits) )
 
 
 

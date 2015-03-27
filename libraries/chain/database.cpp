@@ -9,6 +9,7 @@
 #include <bts/chain/limit_order_object.hpp>
 #include <bts/chain/short_order_object.hpp>
 #include <bts/chain/block_summary_object.hpp>
+#include <bts/chain/proposal_object.hpp>
 #include <bts/db/simple_index.hpp>
 #include <bts/db/flat_index.hpp>
 
@@ -123,21 +124,25 @@ void database::initialize_evaluators()
 void database::initialize_indexes()
 {
    reset_indexes();
+
+   //Protocol object indexes
    add_index< primary_index< asset_index> >();
    add_index< primary_index< account_index> >();
-   add_index< primary_index< transaction_index> >();
    add_index< primary_index< simple_index<key_object>> >();
    add_index< primary_index< simple_index<delegate_object>> >();
    add_index< primary_index< limit_order_index > >();
    add_index< primary_index< short_order_index > >();
    add_index< primary_index< call_order_index > >();
+   add_index< primary_index< proposal_index > >();
 
+   //Implementation object indexes
+   add_index< primary_index< transaction_index                             > >();
    add_index< primary_index< simple_index< global_property_object         >> >();
    add_index< primary_index< simple_index< dynamic_global_property_object >> >();
    add_index< primary_index< simple_index< account_balance_object         >> >();
    add_index< primary_index< simple_index< asset_dynamic_data_object      >> >();
    add_index< primary_index< flat_index<   delegate_vote_object           >> >();
-   add_index< primary_index< flat_index<   delegate_feeds_object           >> >();
+   add_index< primary_index< flat_index<   delegate_feeds_object          >> >();
    add_index< primary_index< flat_index<   block_summary_object           >> >();
 }
 

@@ -96,6 +96,11 @@ share_type account_update_operation::calculate_fee( const fee_schedule_type& sch
 {
    return schedule.at(account_create_fee_type);
 }
+void account_update_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert( account );
+}
+
 void account_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
@@ -133,10 +138,20 @@ struct key_data_validate
    void operator()( const address& a )const { FC_ASSERT( a != address() ); }
    void operator()( const public_key_type& a )const { FC_ASSERT( a != public_key_type() ); }
 };
+void key_create_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(fee_paying_account);
+}
+
 void key_create_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
    key_data.visit( key_data_validate() );
+}
+
+void account_create_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(fee_paying_account);
 }
 
 void account_create_operation::validate()const
@@ -180,11 +195,21 @@ void delegate_publish_feeds_operation::validate()const
    }
 }
 
+void transfer_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert( from );
+}
+
 void transfer_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( from != to );
    FC_ASSERT( amount.amount > 0 );
+}
+
+void asset_create_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(issuer);
 }
 
 void  asset_create_operation::validate()const
@@ -207,6 +232,11 @@ void  asset_create_operation::validate()const
       FC_ASSERT( (permissions == market_issued) );
       FC_ASSERT( (flags == market_issued) );
    }
+}
+
+void asset_update_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(issuer);
 }
 
 void asset_update_operation::validate()const
@@ -247,6 +277,11 @@ share_type asset_update_operation::calculate_fee( const fee_schedule_type& k )co
    return k.at( asset_update_fee_type );
 }
 
+void asset_issue_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(issuer);
+}
+
 void asset_issue_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
@@ -271,6 +306,11 @@ share_type delegate_update_operation::calculate_fee( const fee_schedule_type& k 
 }
 
 
+void delegate_create_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(delegate_account);
+}
+
 void delegate_create_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
@@ -281,6 +321,11 @@ void delegate_create_operation::validate()const
    FC_ASSERT( block_interval_sec > 0 && block_interval_sec <= BTS_MAX_BLOCK_INTERVAL );
    FC_ASSERT( max_sec_until_expiration > block_interval_sec );
 }
+void delegate_update_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(delegate_account);
+}
+
 void delegate_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
@@ -293,6 +338,11 @@ void delegate_update_operation::validate()const
    FC_ASSERT( max_sec_until_expiration > block_interval_sec );
 }
 
+void asset_fund_fee_pool_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(from_account);
+}
+
 void asset_fund_fee_pool_operation::validate() const
 {
    FC_ASSERT( fee.amount >= 0 );
@@ -303,6 +353,11 @@ void asset_fund_fee_pool_operation::validate() const
 share_type asset_fund_fee_pool_operation::calculate_fee(const fee_schedule_type& k) const
 {
    return k.at( asset_fund_fee_pool_fee_type );
+}
+
+void limit_order_create_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(seller);
 }
 
 void limit_order_create_operation::validate()const
@@ -318,6 +373,11 @@ share_type limit_order_create_operation::calculate_fee(const fee_schedule_type& 
    return k.at( limit_order_fee_type );
 }
 
+void limit_order_cancel_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(fee_paying_account);
+}
+
 void limit_order_cancel_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
@@ -326,6 +386,11 @@ void limit_order_cancel_operation::validate()const
 share_type limit_order_cancel_operation::calculate_fee(const fee_schedule_type& k) const
 {
    return k.at( limit_order_fee_type );
+}
+
+void short_order_create_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(seller);
 }
 
 void short_order_create_operation::validate()const
@@ -340,6 +405,11 @@ share_type short_order_create_operation::calculate_fee(const fee_schedule_type& 
 {
    return k.at( short_order_fee_type );
 }
+void short_order_cancel_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(fee_paying_account);
+}
+
 void short_order_cancel_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
@@ -348,6 +418,11 @@ void short_order_cancel_operation::validate()const
 share_type short_order_cancel_operation::calculate_fee(const fee_schedule_type& k) const
 {
    return k.at( short_order_fee_type );
+}
+
+void call_order_update_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(funding_account);
 }
 
 void call_order_update_operation::validate()const
@@ -365,6 +440,11 @@ share_type call_order_update_operation::calculate_fee(const fee_schedule_type& k
    return k.at( short_order_fee_type );
 }
 
+void asset_whitelist_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(issuer);
+}
+
 void asset_whitelist_operation::validate() const
 {
    FC_ASSERT( fee.amount >= 0 );
@@ -373,6 +453,11 @@ void asset_whitelist_operation::validate() const
 share_type asset_whitelist_operation::calculate_fee(const fee_schedule_type& k) const
 {
    return k.at( asset_issue_fee_type );
+}
+
+void account_set_script_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(account_id);
 }
 
 void account_set_script_operation::validate()const
@@ -388,13 +473,25 @@ share_type account_set_data_operation::calculate_fee( const fee_schedule_type& k
    return k.at( data_fee_type ).value * (1+data.size()/1024);
 }
 
+void account_set_data_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(account_id);
+}
+
 void account_set_data_operation::validate()const
 {
    FC_ASSERT( data.size() <= BTS_MAX_DATA_SIZE - offset );
 }
 share_type account_execute_script_operation::calculate_fee( const fee_schedule_type& k )const
 {
-   return k.at( data_fee_type ).value * (1+(args.size()+8*initial_authority.size()+16*deposits.size()+8*id_transfers.size())/1024);
+   return k.at( data_fee_type ).value * (1+(args.size()+8*initial_authority.size()+16*deposits.size())/1024);
+}
+
+void account_execute_script_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(gas_payer);
+   for( auto id : initial_authority )
+      account_set.insert(id);
 }
 
 void account_execute_script_operation::validate()const
@@ -408,10 +505,34 @@ void account_execute_script_operation::validate()const
    FC_ASSERT( args.size() <= BTS_MAX_SCRIPT_ARGS_SIZE );
 }
 
+void proposal_create_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(fee_paying_account);
+}
+
 void proposal_create_operation::validate() const
 {
    FC_ASSERT( !proposed_ops.empty() );
    for( const auto& op : proposed_ops ) op.validate();
+}
+
+void proposal_update_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(fee_paying_account);
+   for( auto id : approvals_to_add )
+      account_set.insert(id);
+   for( auto id : approvals_to_remove )
+      account_set.insert(id);
+}
+
+void proposal_delete_operation::get_required_auth(flat_set<account_id_type>& account_set) const
+{
+   account_set.insert(fee_paying_account);
+}
+
+void proposal_delete_operation::validate() const
+{
+   FC_ASSERT( fee.amount >= 0 );
 }
 
 } } // namespace bts::chain

@@ -62,6 +62,7 @@ object_id_type asset_issue_evaluator::do_evaluate( const asset_issue_operation& 
    database& d   = db();
 
    const asset_object& a = o.asset_to_issue.asset_id(d);
+   FC_ASSERT( o.issuer == a.issuer );
    FC_ASSERT( !(a.issuer_permissions & market_issued) );
 
    auto bts_fee_paid = pay_fee( a.issuer, o.fee );
@@ -129,6 +130,7 @@ object_id_type asset_whitelist_evaluator::do_evaluate(const asset_whitelist_oper
    database& d = db();
 
    const asset_object& a = o.asset_id(d);
+   FC_ASSERT( o.issuer == a.issuer );
 
    auto bts_fee_paid = pay_fee( a.issuer, o.fee );
    bts_fee_required = o.calculate_fee( d.current_fee_schedule() );
@@ -162,6 +164,7 @@ object_id_type asset_update_evaluator::do_evaluate(const asset_update_operation&
 
    const asset_object& a = o.asset_to_update(d);
    asset_to_update = &a;
+   FC_ASSERT( o.issuer == a.issuer );
 
    auto bts_fee_paid = pay_fee( a.issuer, o.fee );
    bts_fee_required = o.calculate_fee( d.current_fee_schedule() );

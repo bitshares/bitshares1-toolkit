@@ -642,7 +642,7 @@ BOOST_AUTO_TEST_CASE( issue_uia )
       const asset_object& test_asset = *db.get_index_type<asset_index>().indices().get<by_symbol>().find("TEST");
       const account_object& nathan_account = *db.get_index_type<account_index>().indices().get<by_name>().find("nathan");
 
-      asset_issue_operation op({test_asset.amount(5000000), asset(), nathan_account.id});
+      asset_issue_operation op({test_asset.issuer, test_asset.amount(5000000), asset(), nathan_account.id});
       trx.operations.push_back(op);
 
       REQUIRE_THROW_WITH_VALUE(op, asset_to_issue, asset(200));

@@ -116,7 +116,8 @@ namespace bts { namespace chain {
       call_order_object_type,
       custom_object_type,
       script_object_type,
-      data_object_type
+      data_object_type,
+      proposal_object_type
    };
 
    enum impl_object_type
@@ -152,6 +153,7 @@ namespace bts { namespace chain {
    class custom_object;
    class script_object;
    class data_object;
+   class proposal_object;
 
 
    typedef object_id< protocol_ids, key_object_type,          key_object>           key_id_type;
@@ -163,7 +165,8 @@ namespace bts { namespace chain {
    typedef object_id< protocol_ids, call_order_object_type,   call_order_object>    call_order_id_type;
    typedef object_id< protocol_ids, custom_object_type,       custom_object>        custom_id_type;
    typedef object_id< protocol_ids, script_object_type,       script_object>        script_id_type;
-   typedef object_id< protocol_ids, data_object_type,       data_object>            data_id_type;
+   typedef object_id< protocol_ids, data_object_type,         data_object>          data_id_type;
+   typedef object_id< protocol_ids, proposal_object_type,     proposal_object>      proposal_id_type;
 
    typedef object_id< relative_protocol_ids, key_object_type, key_object>           relative_key_id_type;
    typedef object_id< relative_protocol_ids, account_object_type, account_object>   relative_account_id_type;
@@ -249,6 +252,7 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (custom_object_type)
                  (script_object_type)
                  (data_object_type)
+                 (proposal_object_type)
                )
 FC_REFLECT_ENUM( bts::chain::impl_object_type,
                  (impl_global_property_object_type)

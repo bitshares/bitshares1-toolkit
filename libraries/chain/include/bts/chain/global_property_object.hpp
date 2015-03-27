@@ -29,6 +29,7 @@ namespace bts { namespace chain {
          uint32_t                              maximum_block_size            = BTS_DEFAULT_MAX_BLOCK_SIZE;
          uint32_t                              maximum_undo_history          = BTS_DEFAULT_MAX_UNDO_HISTORY;
          uint32_t                              maximum_time_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
+         uint32_t                              maximum_proposal_lifetime     = BTS_DEFAULT_MAX_PROPOSAL_LIFETIME_SEC;
    };
 
    /**

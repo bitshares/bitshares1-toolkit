@@ -52,4 +52,5 @@ namespace bts { namespace chain {
 } } // namespace bts::chain
 
 FC_REFLECT( bts::chain::authority, (weight_threshold)(auths) )
+FC_REFLECT_TYPENAME( bts::chain::authority::classification )
 FC_REFLECT_ENUM( bts::chain::authority::classification, (owner)(active)(key) )

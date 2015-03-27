@@ -14,11 +14,11 @@ namespace bts { namespace db {
       public:
          virtual ~index_observer(){}
          /** called just after the object is added */
-         virtual void on_add( const object& obj ){};
+         virtual void on_add( const object& obj ){}
          /** called just before obj is removed */
-         virtual void on_remove( const object& obj ){};
+         virtual void on_remove( const object& obj ){}
          /** called just after obj is modified with new value*/
-         virtual void on_modify( const object& obj ){};
+         virtual void on_modify( const object& obj ){}
    };
 
    /**

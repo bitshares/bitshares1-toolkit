@@ -42,3 +42,5 @@
 
 #define BTS_MAX_DATA_SIZE                          (~uint16_t(0))
 #define BTS_MAX_SCRIPT_ARGS_SIZE                   (0xffff+8)
+
+#define BTS_DEFAULT_MAX_PROPOSAL_LIFETIME_SEC      (60*60*24*7) // One week

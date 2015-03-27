@@ -18,13 +18,13 @@ namespace bts { namespace chain {
     *  to work with arbitrary boost multi_index containers on the same type.
     */
    template<typename ObjectType, typename MultiIndexType>
-   class generic_index : public index 
+   class generic_index : public index
    {
       public:
          typedef MultiIndexType index_type;
          typedef ObjectType     object_type;
 
-         virtual const object& insert( object&& obj ) 
+         virtual const object& insert( object&& obj )
          {
             assert( nullptr != dynamic_cast<ObjectType*>(&obj) );
             auto insert_result = _indices.insert( std::move( static_cast<ObjectType&>(obj) ) );
@@ -46,7 +46,7 @@ namespace bts { namespace chain {
          virtual void modify( const object& obj, const std::function<void(object&)>& m )override
          {
             assert( nullptr != dynamic_cast<const ObjectType*>(&obj) );
-            auto ok = _indices.modify( _indices.iterator_to( static_cast<const ObjectType&>(obj) ), 
+            auto ok = _indices.modify( _indices.iterator_to( static_cast<const ObjectType&>(obj) ),
                                        [&m]( ObjectType& o ){ m(o); } );
             FC_ASSERT( ok, "Could not modify object, most likely a index constraint was violated" );
          }
@@ -76,5 +76,21 @@ namespace bts { namespace chain {
       private:
          index_type _indices;
    };
+
+   /**
+    * @brief An index type for objects which may be deleted
+    *
+    * This is the preferred index type for objects which need only be referenced by ID, but may be deleted.
+    */
+   template< class T >
+   struct sparse_index : public generic_index<T, boost::multi_index_container<
+      T,
+      indexed_by<
+         hashed_unique<
+            tag<by_id>,
+            member<object, object_id_type, &object::id>
+         >
+      >
+   >>{};
 
 } }

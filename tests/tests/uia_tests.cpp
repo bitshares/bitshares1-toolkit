@@ -56,12 +56,12 @@ BOOST_AUTO_TEST_CASE( issue_whitelist_uia )
       const asset_object& advanced = get_asset("ADVANCED");
       const account_object& nathan = create_account("nathan");
 
-      asset_issue_operation op({advanced.amount(1000), asset(0), nathan.id});
+      asset_issue_operation op({advanced.issuer, advanced.amount(1000), asset(0), nathan.id});
       trx.operations.emplace_back(op);
       //Fail because nathan is not whitelisted.
       BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
 
-      asset_whitelist_operation wop({advanced.id, asset(), nathan.id, true});
+      asset_whitelist_operation wop({advanced.issuer, advanced.id, asset(), nathan.id, true});
 
       //Fail because attempting to unlist nathan who is already unlisted.
       REQUIRE_THROW_WITH_VALUE(wop, authorize_account, false);
@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE( transfer_whitelist_uia )
       //Fail because dan is not whitelisted.
       BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
 
-      asset_whitelist_operation wop({advanced.id, asset(), dan.id, true});
+      asset_whitelist_operation wop({advanced.issuer, advanced.id, asset(), dan.id, true});
       trx.operations.back() = wop;
       db.push_transaction(trx, ~0);
       trx.operations.back() = op;

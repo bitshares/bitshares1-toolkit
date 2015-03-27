@@ -1,4 +1,5 @@
 #include <bts/chain/account_object.hpp>
+
 namespace bts { namespace chain {
 void account_object::authorize_asset(asset_id_type asset_id, bool state)
 {
