@@ -342,9 +342,10 @@ BOOST_AUTO_TEST_CASE( update_mia )
 {
    try {
       INVOKE(create_mia);
-      const asset_object bit_usd = get_asset("BITUSD");
+      const asset_object& bit_usd = get_asset("BITUSD");
 
       asset_update_operation op;
+      op.issuer = bit_usd.issuer;
       op.asset_to_update = bit_usd.id;
       trx.operations.emplace_back(op);
 
@@ -377,10 +378,13 @@ BOOST_AUTO_TEST_CASE( update_mia )
       db.push_transaction(trx, ~0);
 
       trx.operations.clear();
-      op.new_issuer = create_account("nathan").id;
+      auto nathan = create_account("nathan");
+      op.new_issuer = nathan.id;
       trx.operations.emplace_back(op);
       db.push_transaction(trx, ~0);
+      BOOST_CHECK(bit_usd.issuer == nathan.id);
 
+      op.issuer = nathan.id;
       op.new_issuer = account_id_type();
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
@@ -578,6 +582,7 @@ BOOST_AUTO_TEST_CASE( update_uia )
       const auto& nathan = create_account("nathan");
 
       asset_update_operation op;
+      op.issuer = test.issuer;
       op.permissions.reset();
       op.flags.reset();
       op.asset_to_update = test.id;
@@ -608,6 +613,7 @@ BOOST_AUTO_TEST_CASE( update_uia )
       op.new_issuer = nathan.id;
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
+      op.issuer = nathan.id;
       op.new_issuer.reset();
       op.flags = halt_transfer | white_list;
       trx.operations.back() = op;
@@ -625,6 +631,7 @@ BOOST_AUTO_TEST_CASE( update_uia )
       op.new_issuer = account_id_type();
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
+      op.issuer = account_id_type();
       BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
       op.new_issuer.reset();
    } catch(fc::exception& e) {
