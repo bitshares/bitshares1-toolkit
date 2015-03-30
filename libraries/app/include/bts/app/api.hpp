@@ -34,6 +34,7 @@ namespace bts { namespace app {
          login_api( application& a ):_app(a){}
 
          fc::api<database_api> login( const string& user, const string& password );
+         fc::api<network_api>  network()const;
 
          application&                      _app;
          optional< fc::api<database_api> > _database_api;

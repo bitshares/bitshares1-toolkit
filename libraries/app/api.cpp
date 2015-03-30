@@ -30,7 +30,22 @@ namespace bts { namespace app {
     {
        auto db_api = std::make_shared<database_api>( std::ref(*_app.chain_database()) );
        _database_api = db_api;
+       auto net_api = std::make_shared<network_api>( std::ref(_app) );
+       _database_api = db_api;
+       _network_api  = net_api;
        return *_database_api;
+    }
+
+    void network_api::broadcast_transaction( const signed_transaction& trx )
+    {
+       _app.chain_database()->push_transaction(trx);
+       _app.p2p_node()->broadcast_transaction(trx);
+    }
+
+    fc::api<network_api>  login_api::network()const
+    {
+       FC_ASSERT( _network_api );
+       return *_network_api;
     }
 
 } } // bts::app
