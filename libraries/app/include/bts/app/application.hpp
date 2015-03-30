@@ -13,13 +13,15 @@ namespace bts { namespace app {
 
          struct config
          {
-            fc::ip::endpoint p2p_endpoint;
+            fc::ip::endpoint              p2p_endpoint;
             std::vector<fc::ip::endpoint> seed_nodes;
+            fc::ip::endpoint              websocket_endpoint;
          };
 
-         void configure( const config& cfg );
+         void  configure( const config& cfg );
+         const config& get_config()const;
 
-         net::node_ptr p2p_node();
+         net::node_ptr                    p2p_node();
          std::shared_ptr<chain::database> chain_database()const;
 
       private:
@@ -28,4 +30,4 @@ namespace bts { namespace app {
 
 } }
 
-FC_REFLECT( bts::app::application::config, (p2p_endpoint)(seed_nodes) )
+FC_REFLECT( bts::app::application::config, (p2p_endpoint)(websocket_endpoint)(seed_nodes) )

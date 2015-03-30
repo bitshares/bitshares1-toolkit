@@ -228,6 +228,10 @@ namespace bts { namespace net {
          *  I have a message ready.
          */
         virtual void  broadcast( const message& item_to_broadcast );
+        virtual void  broadcast_transaction( const signed_transaction& trx )
+        {
+           broadcast( trx_message(trx) );
+        }
 
         /**
          *  Node starts the process of fetching all items after item_id of the
