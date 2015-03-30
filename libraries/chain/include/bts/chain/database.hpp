@@ -61,7 +61,7 @@ namespace bts { namespace chain {
          void close();
 
          /**
-          *  @return true if the block is in our fork DB or saved to disk as 
+          *  @return true if the block is in our fork DB or saved to disk as
           *  part of the official chain, otherwise return false
           */
          bool                       is_known_block( const block_id_type& id )const;
@@ -117,6 +117,10 @@ namespace bts { namespace chain {
 
          void                  apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
          processed_transaction apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+         operation_result      apply_operation( transaction_evaluation_state& eval_state, const operation& op );
+
+         // proposal_update_evaluator needs to call apply_operation to apply proposed transactions.
+         friend class proposal_update_evaluator;
 
          signed_block                           _pending_block;
          fork_database                          _fork_db;

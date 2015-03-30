@@ -457,6 +457,8 @@ namespace bts { namespace chain {
      * leverages on-chain notification of all relevant parties that their approval is required. Off-chain
      * multi-signature approval requires some off-chain mechanism for acquiring several signatures on a single
      * transaction. This off-chain syncrhonization can be avoided using proposals.
+     *
+     * TODO: Support owner authorities, not just active
      * @{
      */
    /**
@@ -489,9 +491,9 @@ namespace bts { namespace chain {
     * This operation allows accounts to add or revoke approval of a proposed transaction. Signatures sufficient to
     * satisfy the authority of each account in approvals are required on the transaction containing this operation.
     *
-    * If an account with a multi-signature authority is listed in approvals, either all required signatures must be
-    * provided in the transaction containing this operation, or a secondary proposal must be created which contains
-    * this operation and requires the signatures to satisfy the account's authority.
+    * If an account with a multi-signature authority is listed in approvals_to_add or approvals_to_remove, either all
+    * required signatures to satisfy that account's authority must be provided in the transaction containing this
+    * operation, or a secondary proposal must be created which contains this operation.
     */
    struct proposal_update_operation
    {
@@ -679,7 +681,7 @@ FC_REFLECT( bts::chain::asset_create_operation,
           )
 
 FC_REFLECT( bts::chain::asset_update_operation,
-            (issuer)(asset_to_update)(fee)(flags)(permissions)(core_exchange_rate)(new_price_feed)
+            (issuer)(asset_to_update)(fee)(flags)(permissions)(new_issuer)(core_exchange_rate)(new_price_feed)
           )
 
 FC_REFLECT( bts::chain::asset_whitelist_operation,

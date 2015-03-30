@@ -747,11 +747,7 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
 
    processed_transaction ptrx(trx);
    for( auto op : ptrx.operations )
-   {
-      assert("No registered evaluator for this operation." && _operation_evaluators[op.which()]);
-      auto r = _operation_evaluators[op.which()]->evaluate( eval_state, op, true );
-      eval_state.operation_results.push_back(r);
-   }
+      eval_state.operation_results.emplace_back(apply_operation(eval_state, op));
    ptrx.operation_results = std::move( eval_state.operation_results );
 
    //If we're skipping tapos check, but not expiration check, assume all transactions have maximum expiration time.
@@ -790,6 +786,13 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
       });
    return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
+
+operation_result database::apply_operation(transaction_evaluation_state& eval_state, const operation& op)
+{
+   assert("No registered evaluator for this operation." &&
+          _operation_evaluators.size() > op.which() && _operation_evaluators[op.which()]);
+   return _operation_evaluators[op.which()]->evaluate( eval_state, op, true );
+}
 
 const global_property_object& database::get_global_properties()const
 {
