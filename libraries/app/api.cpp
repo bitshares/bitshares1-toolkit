@@ -36,10 +36,20 @@ namespace bts { namespace app {
        return *_database_api;
     }
 
+    void network_api::add_node( const fc::ip::endpoint& ep )
+    {
+       _app.p2p_node()->add_node( ep );
+    }
+
     void network_api::broadcast_transaction( const signed_transaction& trx )
     {
        _app.chain_database()->push_transaction(trx);
        _app.p2p_node()->broadcast_transaction(trx);
+    }
+   
+    std::vector<net::peer_status>  network_api::get_connected_peers() const
+    {
+      return _app.p2p_node()->get_connected_peers();
     }
 
     fc::api<network_api>  login_api::network()const

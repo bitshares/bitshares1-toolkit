@@ -1,6 +1,7 @@
 #pragma once
 #include <bts/chain/types.hpp>
 #include <bts/chain/database.hpp>
+#include <bts/net/node.hpp>
 #include <fc/api.hpp>
 
 namespace bts { namespace app {
@@ -23,9 +24,11 @@ namespace bts { namespace app {
       public:
          network_api( application& a ):_app(a){}
 
-         void broadcast_transaction( const signed_transaction& trx );
+         void                           broadcast_transaction( const signed_transaction& trx );
+         void                           add_node( const fc::ip::endpoint& ep );
+         std::vector<net::peer_status>  get_connected_peers() const;
 
-         application&                      _app;
+         application&              _app;
    };
 
    class login_api
@@ -44,5 +47,5 @@ namespace bts { namespace app {
 }}  // bts::app
 
 FC_API( bts::app::database_api, (get_objects)(get_block) )
-FC_API( bts::app::network_api, (broadcast_transaction) )
+FC_API( bts::app::network_api, (broadcast_transaction)(add_node)(get_connected_peers) )
 FC_API( bts::app::login_api, (login) )
