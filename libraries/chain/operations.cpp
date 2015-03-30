@@ -535,9 +535,13 @@ void proposal_update_operation::get_required_auth(flat_set<account_id_type>& act
       owner_auth_set.insert(id);
 }
 
-void proposal_delete_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
+void proposal_delete_operation::get_required_auth(flat_set<account_id_type>& active_auth_set,
+                                                  flat_set<account_id_type>& owner_auth_set) const
 {
-   active_auth_set.insert(fee_paying_account);
+   if( using_owner_authority )
+      owner_auth_set.insert(fee_paying_account);
+   else
+      active_auth_set.insert(fee_paying_account);
 }
 
 void proposal_delete_operation::validate() const

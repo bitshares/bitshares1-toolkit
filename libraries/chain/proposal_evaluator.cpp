@@ -128,12 +128,15 @@ object_id_type proposal_delete_evaluator::do_evaluate(const proposal_delete_oper
 
    _proposal = &o.proposal(d);
 
-   FC_ASSERT( _proposal->required_active_approvals.find(o.fee_paying_account) != _proposal->required_active_approvals.end() ||
-              _proposal->available_active_approvals.find(o.fee_paying_account) != _proposal->available_active_approvals.end() ||
-              (trx_state->check_authority(&o.fee_paying_account(d), authority::owner) &&
-               (_proposal->required_owner_approvals.find(o.fee_paying_account) != _proposal->required_owner_approvals.end() ||
-                _proposal->available_owner_approvals.find(o.fee_paying_account) != _proposal->available_owner_approvals.end())),
-              "Unable to authorize removal of proposed transaction." );
+   if( o.using_owner_authority )
+      FC_ASSERT( (trx_state->check_authority(&o.fee_paying_account(d), authority::owner) &&
+                  (_proposal->required_owner_approvals.find(o.fee_paying_account) != _proposal->required_owner_approvals.end() ||
+                   _proposal->available_owner_approvals.find(o.fee_paying_account) != _proposal->available_owner_approvals.end())),
+                 "Unable to authorize removal of proposed transaction." );
+   else
+      FC_ASSERT( _proposal->required_active_approvals.find(o.fee_paying_account) != _proposal->required_active_approvals.end() ||
+                 _proposal->available_active_approvals.find(o.fee_paying_account) != _proposal->available_active_approvals.end(),
+                 "Unable to authorize removal of proposed transaction." );
 
    return object_id_type();
 }
