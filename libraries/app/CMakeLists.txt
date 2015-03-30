@@ -1,6 +1,7 @@
 file(GLOB HEADERS "include/bts/app/*.hpp")
 
 add_library( bts_app 
+             api.cpp
              application.cpp
            )
 

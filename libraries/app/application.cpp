@@ -1,8 +1,12 @@
 #include <bts/app/application.hpp>
+#include <bts/app/api.hpp>
 
 #include <bts/net/core_messages.hpp>
 
 #include <bts/chain/time.hpp>
+
+#include <fc/rpc/api_connection.hpp>
+#include <fc/rpc/websocket_api.hpp>
 
 namespace bts { namespace app {
 using net::item_hash_t;
@@ -22,15 +26,23 @@ namespace detail {
    {
       public:
 
-      application_impl(fc::path data_dir)
+      application_impl(application* self, fc::path data_dir)
          : _data_dir(data_dir),
            _chain_db(std::make_shared<chain::database>()),
-           _p2p_network(std::make_shared<net::node>("Graphene Reference Implementation"))
+           _p2p_network(std::make_shared<net::node>("Graphene Reference Implementation")),
+           _websocket_server( std::make_shared<fc::http::websocket_server>() )
       {
          _chain_db->open(data_dir / "blockchain");
          _p2p_network->load_configuration(data_dir / "p2p");
-
          _p2p_network->set_node_delegate(this);
+
+
+         _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
+                  auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(c);
+                  auto login = std::make_shared<bts::app::login_api>( std::ref(*self) );
+                  wsc->register_api(fc::api<bts::app::login_api>(login));
+                  c->set_session_data( wsc );
+             });
       }
 
       void configure(const application::config& cfg)
@@ -50,6 +62,9 @@ namespace detail {
          _p2p_network->sync_from(net::item_id(net::core_message_type_enum::block_message_type,
                                               _chain_db->head_block_id()),
                                  std::vector<uint32_t>());
+
+         _websocket_server->listen( cfg.websocket_endpoint );
+         _websocket_server->start_accept();
       } FC_CAPTURE_AND_RETHROW( (cfg) ) }
 
       /**
@@ -245,14 +260,15 @@ namespace detail {
 
       fc::path _data_dir;
 
-      std::shared_ptr<bts::chain::database> _chain_db;
-      std::shared_ptr<bts::net::node>       _p2p_network;
+      std::shared_ptr<bts::chain::database>         _chain_db;
+      std::shared_ptr<bts::net::node>               _p2p_network;
+      std::shared_ptr<fc::http::websocket_server>   _websocket_server;
    };
 
 }
 
 application::application(fc::path data_dir)
-   : my(new detail::application_impl(data_dir))
+   : my(new detail::application_impl(this,data_dir))
 {}
 
 void application::configure(const application::config& cfg)
