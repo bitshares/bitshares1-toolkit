@@ -733,12 +733,18 @@ processed_transaction database::push_proposal(const proposal_object& proposal)
    transaction_evaluation_state eval_state;
 
    //Inject the approving authorities into the transaction eval state
-   std::transform(proposal.available_approvals.begin(),
-                  proposal.available_approvals.end(),
+   std::transform(proposal.available_active_approvals.begin(),
+                  proposal.available_active_approvals.end(),
                   std::inserter(eval_state.approved_by, eval_state.approved_by.begin()),
                   []( account_id_type id ) {
-      return std::make_pair(id, authority::active);
-   });
+                     return std::make_pair(id, authority::active);
+                  });
+   std::transform(proposal.available_owner_approvals.begin(),
+                  proposal.available_owner_approvals.end(),
+                  std::inserter(eval_state.approved_by, eval_state.approved_by.begin()),
+                  []( account_id_type id ) {
+                     return std::make_pair(id, authority::owner);
+                  });
 
    eval_state.operation_results.reserve(proposal.proposed_transaction.operations.size());
    processed_transaction ptrx(proposal.proposed_transaction);
