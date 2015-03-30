@@ -71,22 +71,8 @@ object_id_type proposal_update_evaluator::do_apply(const proposal_update_operati
 
    if( _executed_proposal )
    {
-      //Inject the approving authorities into the transaction eval state
-      std::transform(_proposal->available_approvals.begin(),
-                     _proposal->available_approvals.end(),
-                     std::inserter(_eval_state.approved_by, _eval_state.approved_by.begin()),
-                     []( account_id_type id ) {
-                        return std::make_pair(id, authority::active);
-                     });
-
-      _eval_state.operation_results.reserve(_proposal->proposed_transaction.operations.size());
-
       try {
-         auto session = d._undo_db.start_undo_session();
-         for( auto& op : _proposal->proposed_transaction.operations )
-            _eval_state.operation_results.emplace_back(d.apply_operation(_eval_state, op));
-         d.remove(*_proposal);
-         session.merge();
+          _processed_transaction = d.push_proposal(*_proposal);
       } catch(fc::exception& e) {
          wlog("Proposed transaction ${id} failed to apply once approved because ${reason}. Will try again when it expires.",
               ("id", o.proposal)("reason", e.to_detail_string()));

@@ -728,6 +728,31 @@ processed_transaction database::push_transaction( const signed_transaction& trx,
    return processed_trx;
 }
 
+processed_transaction database::push_proposal(const proposal_object& proposal)
+{
+   transaction_evaluation_state eval_state;
+
+   //Inject the approving authorities into the transaction eval state
+   std::transform(proposal.available_approvals.begin(),
+                  proposal.available_approvals.end(),
+                  std::inserter(eval_state.approved_by, eval_state.approved_by.begin()),
+                  []( account_id_type id ) {
+      return std::make_pair(id, authority::active);
+   });
+
+   eval_state.operation_results.reserve(proposal.proposed_transaction.operations.size());
+   processed_transaction ptrx(proposal.proposed_transaction);
+
+   auto session = _undo_db.start_undo_session();
+   for( auto& op : proposal.proposed_transaction.operations )
+      eval_state.operation_results.emplace_back(apply_operation(eval_state, op));
+   remove(proposal);
+   session.merge();
+
+   ptrx.operation_results = std::move(eval_state.operation_results);
+   return ptrx;
+}
+
 processed_transaction database::apply_transaction( const signed_transaction& trx, uint32_t skip )
 { try {
    trx.validate();
