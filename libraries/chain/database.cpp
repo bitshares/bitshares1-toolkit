@@ -334,22 +334,8 @@ asset database::current_delegate_registration_fee()const
 
 void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
-   auto now = bts::chain::now();
-   FC_ASSERT( _pending_block.timestamp <= (now  + fc::seconds(1)), "", ("now",now)("pending",_pending_block.timestamp) );
-   FC_ASSERT( _pending_block.previous == next_block.previous, "", ("pending.prev",_pending_block.previous)("next.prev",next_block.previous) );
-   FC_ASSERT( _pending_block.timestamp <= next_block.timestamp, "", ("_pending_block.timestamp",_pending_block.timestamp)("next",next_block.timestamp)("blocknum",next_block.block_num()) );
-   FC_ASSERT( _pending_block.timestamp.sec_since_epoch() % get_global_properties().block_interval == 0 );
-   const delegate_object& del = next_block.delegate_id(*this);
-   FC_ASSERT( secret_hash_type::hash(next_block.previous_secret) == del.next_secret, "",
-              ("previous_secret", next_block.previous_secret)("next_secret", del.next_secret));
-
+   const delegate_object& signing_delegate = validate_block_header(skip, next_block);
    const auto& global_props = get_global_properties();
-
-   auto expected_delegate_num = (next_block.timestamp.sec_since_epoch() / global_props.block_interval)%global_props.active_delegates.size();
-
-   if( !(skip&skip_delegate_signature) ) FC_ASSERT( next_block.validate_signee( del.signing_key(*this).key() ) );
-
-   FC_ASSERT( next_block.delegate_id == global_props.active_delegates[expected_delegate_num] );
 
    for( const auto& trx : next_block.transactions )
    {
@@ -361,75 +347,24 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
        */
       apply_transaction( trx, skip );
    }
+
    update_global_dynamic_data( next_block );
-
-   const auto& core_asset = get( asset_id_type() );
-   const auto& asset_data = core_asset.dynamic_asset_data_id(*this);
-
-   // Slowly pay out income averaged over 1M blocks
-   uint64_t pay = asset_data.accumulated_fees.value / (1024*1024); // close enough to 1M but more effecient
-   pay *= del.pay_rate;
-   pay /= 100;
-   modify( asset_data, [&]( asset_dynamic_data_object& o ){ o.accumulated_fees -= pay; } );
-
-   modify( del, [&]( delegate_object& obj ){
-           obj.last_secret = next_block.previous_secret;
-           obj.next_secret = next_block.next_secret_hash;
-           obj.accumulated_income += pay;
-           });
-
+   update_signing_delegate(signing_delegate, next_block);
 
    if( (next_block.block_num() % global_props.active_delegates.size()) == 0 )
-   {
       update_active_delegates();
-   }
 
    auto current_block_interval = global_props.block_interval;
+
+   update_pending_block(next_block, current_block_interval);
+
    // Are we at the maintenance interval?
    if( next_block.block_num() % (global_props.maintenance_interval / current_block_interval) == 0 )
-   {
-      update_global_properties();
+      // This will update _pending_block.timestamp if the block interval has changed
+      perform_chain_maintenance(next_block, global_props);
 
-      auto new_block_interval = global_props.block_interval;
-     // wdump( (current_block_interval)(new_block_interval) );
-
-      // if block interval CHANGED during this block *THEN* we cannot simply
-      // add the interval if we want to maintain the invariant that all timestamps are a multiple
-      // of the interval.
-      _pending_block.timestamp = next_block.timestamp + fc::seconds(new_block_interval);
-      uint32_t r = _pending_block.timestamp.sec_since_epoch()%new_block_interval;
-      if( !r )
-      {
-         _pending_block.timestamp -=  r;
-         assert( (_pending_block.timestamp.sec_since_epoch() % new_block_interval)  == 0 );
-      }
-   }
-   else
-   {
-      _pending_block.timestamp = next_block.timestamp + current_block_interval;
-   }
-
-   _pending_block.previous = next_block.id();
-
-   const auto& sum = create<block_summary_object>( [&](block_summary_object& p) {
-         p.block_id = next_block.id();
-         p.timestamp = next_block.timestamp;
-   });
-   FC_ASSERT( sum.id.instance() == next_block.block_num(), "", ("summary.id",sum.id)("next.block_num",next_block.block_num()) );
-
-   auto old_pending_trx = std::move(_pending_block.transactions);
-   _pending_block.transactions.clear();
-   for( auto old_trx : old_pending_trx )
-      push_transaction( old_trx );
-
-   //Look for expired transactions in the deduplication list, and remove them.
-   //Transactions must have expired by at least two forking windows in order to be removed.
-   auto& transaction_idx = static_cast<transaction_index&>(get_mutable_index(implementation_ids, impl_transaction_object_type));
-   const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
-   auto forking_window_time = get_global_properties().maximum_undo_history * get_global_properties().block_interval;
-   while( !dedupe_index.empty()
-          && head_block_time() - dedupe_index.rbegin()->expiration >= fc::seconds(forking_window_time) )
-      transaction_idx.remove(*dedupe_index.rbegin());
+   create_block_summary(next_block);
+   clear_expired_transactions();
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num())(skip) )  }
 
 time_point database::get_next_generation_time( delegate_id_type del_id )const
@@ -883,6 +818,92 @@ const signed_transaction& database::get_recent_transaction(const transaction_id_
    auto itr = index.find(trx_id);
    FC_ASSERT(itr != index.end());
    return itr->trx;
+}
+
+const delegate_object& database::validate_block_header(uint32_t skip, const signed_block& next_block)
+{
+   auto now = bts::chain::now();
+   const auto& global_props = get_global_properties();
+   FC_ASSERT( _pending_block.timestamp <= (now  + fc::seconds(1)), "", ("now",now)("pending",_pending_block.timestamp) );
+   FC_ASSERT( _pending_block.previous == next_block.previous, "", ("pending.prev",_pending_block.previous)("next.prev",next_block.previous) );
+   FC_ASSERT( _pending_block.timestamp <= next_block.timestamp, "", ("_pending_block.timestamp",_pending_block.timestamp)("next",next_block.timestamp)("blocknum",next_block.block_num()) );
+   FC_ASSERT( _pending_block.timestamp.sec_since_epoch() % get_global_properties().block_interval == 0 );
+   const delegate_object& del = next_block.delegate_id(*this);
+   FC_ASSERT( secret_hash_type::hash(next_block.previous_secret) == del.next_secret, "",
+              ("previous_secret", next_block.previous_secret)("next_secret", del.next_secret));
+   if( !(skip&skip_delegate_signature) ) FC_ASSERT( next_block.validate_signee( del.signing_key(*this).key() ) );
+   auto expected_delegate_num = (next_block.timestamp.sec_since_epoch() / global_props.block_interval)%global_props.active_delegates.size();
+   FC_ASSERT( next_block.delegate_id == global_props.active_delegates[expected_delegate_num] );
+
+   return del;
+}
+
+void database::update_signing_delegate(const delegate_object& signing_delegate, const signed_block& new_block)
+{
+   const auto& core_asset = get( asset_id_type() );
+   const auto& asset_data = core_asset.dynamic_asset_data_id(*this);
+
+   // Slowly pay out income averaged over 1M blocks
+   uint64_t pay = asset_data.accumulated_fees.value / (1024*1024); // close enough to 1M but more effecient
+   pay *= signing_delegate.pay_rate;
+   pay /= 100;
+   modify( asset_data, [&]( asset_dynamic_data_object& o ){ o.accumulated_fees -= pay; } );
+
+   modify( signing_delegate, [&]( delegate_object& obj ){
+           obj.last_secret = new_block.previous_secret;
+           obj.next_secret = new_block.next_secret_hash;
+           obj.accumulated_income += pay;
+           });
+}
+
+void database::update_pending_block(const signed_block& next_block, uint8_t current_block_interval)
+{
+   _pending_block.timestamp = next_block.timestamp + current_block_interval;
+   _pending_block.previous = next_block.id();
+   auto old_pending_trx = std::move(_pending_block.transactions);
+   _pending_block.transactions.clear();
+   for( auto old_trx : old_pending_trx )
+      push_transaction( old_trx );
+}
+
+void database::perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props)
+{
+   update_global_properties();
+
+   auto new_block_interval = global_props.block_interval;
+  // wdump( (current_block_interval)(new_block_interval) );
+
+   // if block interval CHANGED during this block *THEN* we cannot simply
+   // add the interval if we want to maintain the invariant that all timestamps are a multiple
+   // of the interval.
+   _pending_block.timestamp = next_block.timestamp + fc::seconds(new_block_interval);
+   uint32_t r = _pending_block.timestamp.sec_since_epoch()%new_block_interval;
+   if( !r )
+   {
+      _pending_block.timestamp -=  r;
+      assert( (_pending_block.timestamp.sec_since_epoch() % new_block_interval)  == 0 );
+   }
+}
+
+void database::create_block_summary(const signed_block& next_block)
+{
+   const auto& sum = create<block_summary_object>( [&](block_summary_object& p) {
+         p.block_id = next_block.id();
+         p.timestamp = next_block.timestamp;
+   });
+   FC_ASSERT( sum.id.instance() == next_block.block_num(), "", ("summary.id",sum.id)("next.block_num",next_block.block_num()) );
+}
+
+void database::clear_expired_transactions()
+{
+   //Look for expired transactions in the deduplication list, and remove them.
+   //Transactions must have expired by at least two forking windows in order to be removed.
+   auto& transaction_idx = static_cast<transaction_index&>(get_mutable_index(implementation_ids, impl_transaction_object_type));
+   const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
+   auto forking_window_time = get_global_properties().maximum_undo_history * get_global_properties().block_interval;
+   while( !dedupe_index.empty()
+          && head_block_time() - dedupe_index.rbegin()->expiration >= fc::seconds(forking_window_time) )
+      transaction_idx.remove(*dedupe_index.rbegin());
 }
 
 } } // namespace bts::chain

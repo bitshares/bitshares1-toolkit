@@ -505,7 +505,7 @@ namespace bts { namespace chain {
       flat_set<account_id_type>  owner_approvals_to_add;
       flat_set<account_id_type>  owner_approvals_to_remove;
 
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>& owner_auth_set)const;
+      void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& owner_auth_set)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
    };

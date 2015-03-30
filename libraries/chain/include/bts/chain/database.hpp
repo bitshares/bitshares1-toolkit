@@ -120,6 +120,16 @@ namespace bts { namespace chain {
          processed_transaction apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
          operation_result      apply_operation( transaction_evaluation_state& eval_state, const operation& op );
 
+         ///Steps involved in applying a new block
+         ///@{
+         const delegate_object& validate_block_header(uint32_t skip, const signed_block& next_block);
+         void update_signing_delegate(const delegate_object& signing_delegate, const signed_block& new_block);
+         void update_pending_block(const signed_block& next_block, uint8_t current_block_interval);
+         void perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props);
+         void create_block_summary(const signed_block& next_block);
+         void clear_expired_transactions();
+         ///@}
+
          signed_block                           _pending_block;
          fork_database                          _fork_db;
 
