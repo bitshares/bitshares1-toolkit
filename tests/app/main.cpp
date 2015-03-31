@@ -1,4 +1,5 @@
 #include <bts/app/application.hpp>
+#include <bts/app/plugin.hpp>
 
 #include <bts/chain/key_object.hpp>
 #include <bts/chain/time.hpp>

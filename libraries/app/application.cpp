@@ -76,7 +76,7 @@ namespace detail {
          _chain_db->open(data_dir / "blockchain");
          if( fc::exists(data_dir / "config.json") ) {
             try {
-               _configuration = fc::json::from_file(data_dir / "config.json").as<application::graphene_configuration>();
+               _configuration = fc::json::from_file(data_dir / "config.json").as<application::config>();
             } catch( fc::exception& e ) {
                elog("Failed to read config file:\n${e}", ("e", e.to_detail_string()));
                initialize_configuration();
@@ -297,7 +297,7 @@ namespace detail {
       std::shared_ptr<bts::chain::database>        _chain_db;
       std::shared_ptr<bts::net::node>              _p2p_network;
       std::shared_ptr<fc::http::websocket_server>  _websocket_server;
-      application::graphene_configuration          _configuration;
+      application::config          _configuration;
    };
 
 }
@@ -306,12 +306,12 @@ application::application(fc::path data_dir)
    : my(new detail::application_impl(this,data_dir))
 {}
 
-application::graphene_configuration& application::configuration()
+application::config& application::configuration()
 {
    return my->_configuration;
 }
 
-const application::graphene_configuration& application::configuration() const
+const application::config& application::configuration() const
 {
    return my->_configuration;
 }
