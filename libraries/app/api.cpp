@@ -1,6 +1,7 @@
 #include <bts/app/api.hpp>
 #include <bts/app/application.hpp>
 #include <bts/chain/database.hpp>
+#include <bts/utilities/key_conversion.hpp>
 
 namespace bts { namespace app {
 
@@ -26,14 +27,14 @@ namespace bts { namespace app {
     }
     
 
-    fc::api<database_api> login_api::login( const string& user, const string& password )
+    bool login_api::login( const string& user, const string& password )
     {
        auto db_api = std::make_shared<database_api>( std::ref(*_app.chain_database()) );
        _database_api = db_api;
        auto net_api = std::make_shared<network_api>( std::ref(_app) );
        _database_api = db_api;
        _network_api  = net_api;
-       return *_database_api;
+       return true;
     }
 
     void network_api::add_node( const fc::ip::endpoint& ep )
@@ -56,6 +57,25 @@ namespace bts { namespace app {
     {
        FC_ASSERT( _network_api );
        return *_network_api;
+    }
+
+    fc::api<database_api>  login_api::database()const
+    {
+       FC_ASSERT( _database_api );
+       return *_database_api;
+    }
+    signed_transaction  login_api::sign_transaction( signed_transaction trx, const vector< string >& wif_keys )const
+    {
+        if( trx.ref_block_num == 0 )
+           trx.set_expiration( _app.chain_database()->head_block_id() );
+        for( auto wif_key : wif_keys )
+        {
+            auto key = utilities::wif_to_key( wif_key );
+            FC_ASSERT( key.valid() );
+            trx.sign( *key );
+        }
+
+        return trx;
     }
 
 } } // bts::app

@@ -22,5 +22,9 @@ namespace bts { namespace chain {
       memcpy(result._hash, hash._hash, std::min(sizeof(result), sizeof(hash)));
       return result;
    }
+   void bts::chain::signed_transaction::sign( const private_key_type& key )
+   {
+      signatures.emplace_back( key.sign_compact( digest() ) );
+   }
 
 } } // bts::chain

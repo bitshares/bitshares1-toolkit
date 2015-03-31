@@ -47,6 +47,8 @@ namespace bts { namespace chain {
    using                               fc::flat_set;
    using                               fc::static_variant;
 
+   typedef fc::ecc::private_key        private_key_type;
+
    /**
     *
     */

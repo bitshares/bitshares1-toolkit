@@ -36,8 +36,10 @@ namespace bts { namespace app {
       public:
          login_api( application& a ):_app(a){}
 
-         fc::api<database_api> login( const string& user, const string& password );
-         fc::api<network_api>  network()const;
+         bool                   login( const string& user, const string& password );
+         fc::api<network_api>   network()const;
+         fc::api<database_api>  database()const;
+         signed_transaction     sign_transaction( signed_transaction trx, const vector< string >& wif_keys )const;
 
          application&                      _app;
          optional< fc::api<database_api> > _database_api;

@@ -6,3 +6,5 @@ CMakeCache.txt
 compile_commands.json
 tests/chain_test
 tests/chain_bench
+tests/app_test
+libraries/utilities/git_revision.cpp
