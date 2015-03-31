@@ -388,6 +388,14 @@ time_point database::get_next_generation_time( delegate_id_type del_id )const
    FC_ASSERT( !"Not an Active Delegate" );
 }
 
+fc::time_point bts::chain::database::get_next_generation_time(const set<bts::chain::delegate_id_type>& del_ids) const
+{
+   fc::time_point next_time = fc::time_point::maximum();
+   for( delegate_id_type id : del_ids )
+      next_time = std::min(next_time, get_next_generation_time(id));
+   return next_time;
+}
+
 signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
                                        delegate_id_type del_id, uint32_t  skip )
 { try {

@@ -77,6 +77,7 @@ namespace bts { namespace chain {
          processed_transaction push_proposal( const proposal_object& proposal );
 
          time_point   get_next_generation_time( delegate_id_type del_id )const;
+         time_point   get_next_generation_time(const set<delegate_id_type>& del_ids )const;
          signed_block generate_block( const fc::ecc::private_key& delegate_key,
                                       delegate_id_type del_id, uint32_t skip = 0 );
 

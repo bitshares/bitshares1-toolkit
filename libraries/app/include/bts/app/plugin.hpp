@@ -14,8 +14,9 @@ class abstract_plugin
 template<class P>
 class plugin : public abstract_plugin
 {
-   public:
+   protected:
       application& app()const { return *_app; }
+      chain::database& database() { return *app().chain_database(); }
 
     private:
       friend class application;
