@@ -69,6 +69,7 @@ namespace bts { namespace chain {
    {
       signed_transaction( const transaction& trx = transaction() )
          : transaction(trx){}
+      void sign( const private_key_type& key );
       vector<signature_type> signatures;
    };
 

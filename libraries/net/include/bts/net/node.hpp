@@ -296,3 +296,4 @@ namespace bts { namespace net {
 } } // bts::net
 
 FC_REFLECT(bts::net::message_propagation_data, (received_time)(validated_time)(originating_peer));
+FC_REFLECT( bts::net::peer_status, (version)(host)(info) );
