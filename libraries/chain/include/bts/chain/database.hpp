@@ -73,6 +73,7 @@ namespace bts { namespace chain {
 
          bool push_block( const signed_block& b, uint32_t skip = skip_nothing );
          processed_transaction push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+         ///@throws fc::exception if the proposed transaction fails to apply.
          processed_transaction push_proposal( const proposal_object& proposal );
 
          time_point   get_next_generation_time( delegate_id_type del_id )const;
@@ -104,7 +105,7 @@ namespace bts { namespace chain {
          void pop_block();
          void clear_pending();
 
-      protected:
+   protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
          void pop_undo() { object_database::pop_undo(); }
 
@@ -128,6 +129,7 @@ namespace bts { namespace chain {
          void perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props);
          void create_block_summary(const signed_block& next_block);
          void clear_expired_transactions();
+         void clear_expired_proposals();
          ///@}
 
          signed_block                           _pending_block;

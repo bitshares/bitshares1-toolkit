@@ -365,6 +365,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
    create_block_summary(next_block);
    clear_expired_transactions();
+   clear_expired_proposals();
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num())(skip) )  }
 
 time_point database::get_next_generation_time( delegate_id_type del_id )const
@@ -904,6 +905,28 @@ void database::clear_expired_transactions()
    while( !dedupe_index.empty()
           && head_block_time() - dedupe_index.rbegin()->expiration >= fc::seconds(forking_window_time) )
       transaction_idx.remove(*dedupe_index.rbegin());
+}
+
+void database::clear_expired_proposals()
+{
+   const auto& proposal_expiration_index = get_index_type<proposal_index>().indices().get<by_expiration>();
+   while( proposal_expiration_index.begin()->expiration_time <= head_block_time() )
+   {
+      const proposal_object& proposal = *proposal_expiration_index.begin();
+      processed_transaction result;
+      try {
+         if( proposal.required_active_approvals.empty() && proposal.required_owner_approvals.empty() )
+         {
+            result = push_proposal(proposal);
+            //TODO: Do something with result so plugins can process it.
+            continue;
+         }
+      } catch( const fc::exception& e ) {
+         elog("Failed to apply proposed transaction on its expiration. Deleting it.",
+              ("proposal", proposal));
+      }
+      remove(proposal);
+   }
 }
 
 } } // namespace bts::chain
