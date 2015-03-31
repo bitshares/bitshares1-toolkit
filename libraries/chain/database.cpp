@@ -23,6 +23,7 @@
 #include <bts/chain/asset_evaluator.hpp>
 #include <bts/chain/transaction_object.hpp>
 #include <bts/chain/transfer_evaluator.hpp>
+#include <bts/chain/proposal_evaluator.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/crypto/digest.hpp>
@@ -119,6 +120,9 @@ void database::initialize_evaluators()
    register_evaluator<transfer_evaluator>();
    register_evaluator<asset_fund_fee_pool_evaluator>();
    register_evaluator<delegate_publish_feeds_evaluator>();
+   register_evaluator<proposal_create_evaluator>();
+   register_evaluator<proposal_update_evaluator>();
+   register_evaluator<proposal_delete_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -666,7 +670,7 @@ processed_transaction database::push_transaction( const signed_transaction& trx,
 
 processed_transaction database::push_proposal(const proposal_object& proposal)
 {
-   transaction_evaluation_state eval_state;
+   transaction_evaluation_state eval_state(this);
 
    //Inject the approving authorities into the transaction eval state
    std::transform(proposal.available_active_approvals.begin(),
@@ -681,6 +685,9 @@ processed_transaction database::push_proposal(const proposal_object& proposal)
                   []( account_id_type id ) {
                      return std::make_pair(id, authority::owner);
                   });
+
+   ilog("Attempting to push proposal ${prop}", ("prop", proposal));
+   idump((eval_state.approved_by));
 
    eval_state.operation_results.reserve(proposal.proposed_transaction.operations.size());
    processed_transaction ptrx(proposal.proposed_transaction);
@@ -910,7 +917,7 @@ void database::clear_expired_transactions()
 void database::clear_expired_proposals()
 {
    const auto& proposal_expiration_index = get_index_type<proposal_index>().indices().get<by_expiration>();
-   while( proposal_expiration_index.begin()->expiration_time <= head_block_time() )
+   while( !proposal_expiration_index.empty() && proposal_expiration_index.begin()->expiration_time <= head_block_time() )
    {
       const proposal_object& proposal = *proposal_expiration_index.begin();
       processed_transaction result;

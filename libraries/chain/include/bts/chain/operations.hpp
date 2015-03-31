@@ -494,6 +494,13 @@ namespace bts { namespace chain {
     * If an account with a multi-signature authority is listed in approvals_to_add or approvals_to_remove, either all
     * required signatures to satisfy that account's authority must be provided in the transaction containing this
     * operation, or a secondary proposal must be created which contains this operation.
+    *
+    * NOTE: If the proposal requires only an account's active authority, the account must not update adding its owner
+    * authority's approval. This is considered an error. An owner approval may only be added if the proposal requires
+    * the owner's authority.
+    *
+    * If an account's owner and active authority are both required, only the owner authority may approve. An attempt to
+    * add or remove active authority approval to such a proposal will fail.
     */
    struct proposal_update_operation
    {
@@ -531,7 +538,6 @@ namespace bts { namespace chain {
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
    };
-
    ///@}
 
 
@@ -553,10 +559,12 @@ namespace bts { namespace chain {
             asset_whitelist_operation,
             asset_issue_operation,
             asset_fund_fee_pool_operation,
-            proposal_create_operation,
             delegate_publish_feeds_operation,
             delegate_create_operation,
-            delegate_update_operation
+            delegate_update_operation,
+            proposal_create_operation,
+            proposal_update_operation,
+            proposal_delete_operation
          > operation;
 
    /**
@@ -633,6 +641,9 @@ namespace bts { namespace chain {
       operation op;
 
       void       validate()const { op.visit( operation_validator() ); }
+      void       get_required_auth(flat_set<account_id_type>& active, flat_set<account_id_type>& owner) {
+         op.visit(operation_get_required_auths(active, owner));
+      }
       asset      set_fee( const fee_schedule_type& k ) { return op.visit( operation_set_fee( k ) ); }
       share_type calculate_fee( const fee_schedule_type& k )const { return op.visit( operation_calculate_fee( k ) ); }
    };
@@ -706,6 +717,9 @@ FC_REFLECT( bts::chain::delegate_create_operation,
           )
 
 FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(proposed_ops) )
+FC_REFLECT( bts::chain::proposal_update_operation, (fee_paying_account)(fee)(proposal)
+            (active_approvals_to_add)(active_approvals_to_remove)(owner_approvals_to_add)(owner_approvals_to_remove) )
+FC_REFLECT( bts::chain::proposal_delete_operation, (fee_paying_account)(using_owner_authority)(fee)(proposal) )
 FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (from_account)(asset_id)(amount)(fee) );
 
 FC_REFLECT( bts::chain::account_set_script_operation, (account_id)(fee)(script) );

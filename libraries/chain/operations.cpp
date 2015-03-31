@@ -535,6 +535,13 @@ void proposal_update_operation::get_required_auth(flat_set<account_id_type>& act
       owner_auth_set.insert(id);
 }
 
+void proposal_update_operation::validate() const
+{
+   FC_ASSERT(fee.amount >= 0);
+   FC_ASSERT(!(active_approvals_to_add.empty() && active_approvals_to_remove.empty() &&
+               owner_approvals_to_add.empty() && owner_approvals_to_remove.empty()));
+}
+
 void proposal_delete_operation::get_required_auth(flat_set<account_id_type>& active_auth_set,
                                                   flat_set<account_id_type>& owner_auth_set) const
 {
