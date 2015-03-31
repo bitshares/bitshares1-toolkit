@@ -65,9 +65,15 @@ namespace detail {
       void initialize_configuration()
       {
          _configuration["daemon"] = application::daemon_configuration();
+         save_configuration();
       }
 
    public:
+      void save_configuration()
+      {
+         fc::json::save_to_file(_configuration, _data_dir/"config.json");
+      }
+
       application_impl(application* self, fc::path data_dir)
          : _self(self),
            _data_dir(data_dir),
@@ -92,7 +98,7 @@ namespace detail {
 
       void apply_configuration()
       { try {
-         fc::json::save_to_file(_configuration, _data_dir/"config.json");
+         save_configuration();
 
          auto daemon_config = _configuration["daemon"].as<application::daemon_configuration>();
          reset_p2p_node(_data_dir, daemon_config);
@@ -297,7 +303,9 @@ namespace detail {
       std::shared_ptr<bts::chain::database>        _chain_db;
       std::shared_ptr<bts::net::node>              _p2p_network;
       std::shared_ptr<fc::http::websocket_server>  _websocket_server;
-      application::config          _configuration;
+      application::config                          _configuration;
+
+      std::map<string, std::shared_ptr<abstract_plugin>> _plugins;
    };
 
 }
@@ -305,6 +313,11 @@ namespace detail {
 application::application(fc::path data_dir)
    : my(new detail::application_impl(this,data_dir))
 {}
+
+std::shared_ptr<abstract_plugin> application::get_plugin(const string& name) const
+{
+   return my->_plugins[name];
+}
 
 application::config& application::configuration()
 {
@@ -321,6 +334,11 @@ void application::apply_configuration()
    my->apply_configuration();
 }
 
+void application::save_configuration() const
+{
+   my->save_configuration();
+}
+
 net::node_ptr application::p2p_node()
 {
    return my->_p2p_network;
@@ -329,6 +347,11 @@ net::node_ptr application::p2p_node()
 std::shared_ptr<chain::database> application::chain_database() const
 {
    return my->_chain_db;
+}
+
+void bts::app::application::add_plugin(const string& name, std::shared_ptr<bts::app::abstract_plugin> p)
+{
+   my->_plugins[name] = p;
 }
 
 // namespace detail

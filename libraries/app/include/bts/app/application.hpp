@@ -32,15 +32,18 @@ namespace bts { namespace app {
                cfg = configuration()[plug->plugin_name()].template as<decltype(cfg)>();
             } catch(fc::exception& e) {
                ilog("Initializing new configuration for '${name}' plugin.", ("name", plug->plugin_name()));
+               configuration()[plug->plugin_name()] = cfg;
+               save_configuration();
             }
             plug->initialize( *this, cfg);
             add_plugin( plug->plugin_name(), plug );
          }
          std::shared_ptr<abstract_plugin> get_plugin( const string& name )const;
 
-         config&       configuration();
-         const config& configuration()const;
-         void                          apply_configuration();
+         config&        configuration();
+         const config&  configuration()const;
+         void           apply_configuration();
+         void           save_configuration()const;
 
          net::node_ptr                    p2p_node();
          std::shared_ptr<chain::database> chain_database()const;
