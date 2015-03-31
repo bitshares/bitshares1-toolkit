@@ -38,7 +38,7 @@ class wallet_api
       }
       string  suggest_brain_key()const
       {
-
+        return string("dummy");
       }
 
       signed_transaction create_account( string brain_key,
@@ -76,12 +76,11 @@ int main( int argc, char** argv )
       FC_ASSERT( argc > 1, "usage: ${cmd} WALLET_FILE", ("cmd",argv[0]) );
       wallet_data wallet;
 
-      
-
       fc::path wallet_file(argv[1]);
       if( fc::exists( wallet_file ) )
           wallet = fc::json::from_file( wallet_file ).as<wallet_data>();
 
+      wlog(".");
       fc::http::websocket_client client;
       auto con  = client.connect( wallet.ws_server ); 
       auto apic = std::make_shared<fc::rpc::websocket_api_connection>(*con);
@@ -89,10 +88,16 @@ int main( int argc, char** argv )
       auto remote_api = apic->get_remote_api< login_api >();
       FC_ASSERT( remote_api->login( wallet.ws_user, wallet.ws_password ) );
 
-      fc::api<wallet_api> wapi(std::make_shared<wallet_api>(remote_api));
-      fc::rpc::cli  wallet_cli;
-      wallet_cli.register_api( wapi );
-      wallet_cli.start();
+      auto wapiptr = std::make_shared<wallet_api>(remote_api);
+      fc::api<wallet_api> wapi(wapiptr);
+
+      wlog(".");
+      auto wallet_cli = std::make_shared<fc::rpc::cli>();
+      wlog(".");
+      wallet_cli->register_api( wapi );
+      wlog(".");
+      wallet_cli->start();
+      wallet_cli->wait();
    } 
    catch ( const fc::exception& e )
    {
