@@ -18,11 +18,13 @@ BOOST_AUTO_TEST_CASE( two_node_network )
       start_simulated_time(fc::time_point::now());
 
       bts::app::application app(app_dir.path());
-      app.configure(bts::app::application::config({fc::ip::endpoint::from_string("127.0.0.1:3939")}));
+      app.configuration()["daemon"] = bts::app::application::daemon_configuration({fc::ip::endpoint::from_string("127.0.0.1:3939")});
+      app.apply_configuration();
 
       bts::app::application app2(app2_dir.path());
-      app2.configure(bts::app::application::config({fc::ip::endpoint::from_string("127.0.0.1:4040"),
-                                                    {fc::ip::endpoint::from_string("127.0.0.1:3939")}}));
+      app2.configuration()["daemon"] = bts::app::application::daemon_configuration({fc::ip::endpoint::from_string("127.0.0.1:4040"),
+                                                                                    {fc::ip::endpoint::from_string("127.0.0.1:3939")}});
+      app2.apply_configuration();
       fc::usleep(fc::milliseconds(500));
 
       BOOST_CHECK_EQUAL(app.p2p_node()->get_connection_count(), 1);

@@ -11,15 +11,18 @@ namespace bts { namespace app {
       public:
          application(fc::path data_dir);
 
-         struct config
+         typedef std::map<std::string,fc::variant> graphene_configuration;
+
+         struct daemon_configuration
          {
             fc::ip::endpoint              p2p_endpoint;
             std::vector<fc::ip::endpoint> seed_nodes;
             fc::ip::endpoint              websocket_endpoint;
          };
 
-         void  configure( const config& cfg );
-         const config& get_config()const;
+         graphene_configuration&       configuration();
+         const graphene_configuration& configuration()const;
+         void                          apply_configuration();
 
          net::node_ptr                    p2p_node();
          std::shared_ptr<chain::database> chain_database()const;
@@ -30,4 +33,4 @@ namespace bts { namespace app {
 
 } }
 
-FC_REFLECT( bts::app::application::config, (p2p_endpoint)(websocket_endpoint)(seed_nodes) )
+FC_REFLECT( bts::app::application::daemon_configuration, (p2p_endpoint)(websocket_endpoint)(seed_nodes) )

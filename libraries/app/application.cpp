@@ -24,29 +24,13 @@ namespace detail {
 
    class application_impl : public net::node_delegate
    {
-      public:
-
-      application_impl(application* self, fc::path data_dir)
-         : _data_dir(data_dir),
-           _chain_db(std::make_shared<chain::database>()),
-           _p2p_network(std::make_shared<net::node>("Graphene Reference Implementation")),
-           _websocket_server( std::make_shared<fc::http::websocket_server>() )
+      void reset_p2p_node(const fc::path& data_dir, const application::daemon_configuration& cfg)
       {
-         _chain_db->open(data_dir / "blockchain");
+         _p2p_network = std::make_shared<net::node>("Graphene Reference Implementation");
+
          _p2p_network->load_configuration(data_dir / "p2p");
          _p2p_network->set_node_delegate(this);
 
-
-         _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
-                  auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(c);
-                  auto login = std::make_shared<bts::app::login_api>( std::ref(*self) );
-                  wsc->register_api(fc::api<bts::app::login_api>(login));
-                  c->set_session_data( wsc );
-             });
-      }
-
-      void configure(const application::config& cfg)
-      { try {
          for( const fc::ip::endpoint& node : cfg.seed_nodes )
          {
             ilog("Adding seed node ${ip}", ("ip", node));
@@ -62,10 +46,58 @@ namespace detail {
          _p2p_network->sync_from(net::item_id(net::core_message_type_enum::block_message_type,
                                               _chain_db->head_block_id()),
                                  std::vector<uint32_t>());
+      }
 
+      void reset_websocket_server(const application::daemon_configuration& cfg)
+      {
+         _websocket_server = std::make_shared<fc::http::websocket_server>();
+
+         _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
+            auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(c);
+            auto login = std::make_shared<bts::app::login_api>( std::ref(*_self) );
+            wsc->register_api(fc::api<bts::app::login_api>(login));
+            c->set_session_data( wsc );
+         });
          _websocket_server->listen( cfg.websocket_endpoint );
          _websocket_server->start_accept();
-      } FC_CAPTURE_AND_RETHROW( (cfg) ) }
+      }
+
+      void initialize_configuration()
+      {
+         _configuration["daemon"] = application::daemon_configuration();
+      }
+
+   public:
+      application_impl(application* self, fc::path data_dir)
+         : _self(self),
+           _data_dir(data_dir),
+           _chain_db(std::make_shared<chain::database>())
+      {
+         _chain_db->open(data_dir / "blockchain");
+         if( fc::exists(data_dir / "config.json") ) {
+            try {
+               _configuration = fc::json::from_file(data_dir / "config.json").as<application::graphene_configuration>();
+            } catch( fc::exception& e ) {
+               elog("Failed to read config file:\n${e}", ("e", e.to_detail_string()));
+               initialize_configuration();
+            }
+         } else {
+            initialize_configuration();
+         }
+
+         auto daemon_config = _configuration["daemon"].as<application::daemon_configuration>();
+         reset_p2p_node(data_dir, daemon_config);
+         reset_websocket_server(daemon_config);
+      }
+
+      void apply_configuration()
+      { try {
+         fc::json::save_to_file(_configuration, _data_dir/"config.json");
+
+         auto daemon_config = _configuration["daemon"].as<application::daemon_configuration>();
+         reset_p2p_node(_data_dir, daemon_config);
+         reset_websocket_server(daemon_config);
+      } FC_CAPTURE_AND_RETHROW() }
 
       /**
        *  If delegate has the item, the network has no need to fetch it.
@@ -258,11 +290,14 @@ namespace detail {
          // notify GUI or something cool
       }
 
+      application* _self;
+
       fc::path _data_dir;
 
-      std::shared_ptr<bts::chain::database>         _chain_db;
-      std::shared_ptr<bts::net::node>               _p2p_network;
-      std::shared_ptr<fc::http::websocket_server>   _websocket_server;
+      std::shared_ptr<bts::chain::database>        _chain_db;
+      std::shared_ptr<bts::net::node>              _p2p_network;
+      std::shared_ptr<fc::http::websocket_server>  _websocket_server;
+      application::graphene_configuration          _configuration;
    };
 
 }
@@ -271,9 +306,19 @@ application::application(fc::path data_dir)
    : my(new detail::application_impl(this,data_dir))
 {}
 
-void application::configure(const application::config& cfg)
+application::graphene_configuration& application::configuration()
 {
-   my->configure(cfg);
+   return my->_configuration;
+}
+
+const application::graphene_configuration& application::configuration() const
+{
+   return my->_configuration;
+}
+
+void application::apply_configuration()
+{
+   my->apply_configuration();
 }
 
 net::node_ptr application::p2p_node()
