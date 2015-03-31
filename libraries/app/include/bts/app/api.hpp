@@ -50,4 +50,4 @@ namespace bts { namespace app {
 
 FC_API( bts::app::database_api, (get_objects)(get_block) )
 FC_API( bts::app::network_api, (broadcast_transaction)(add_node)(get_connected_peers) )
-FC_API( bts::app::login_api, (login) )
+FC_API( bts::app::login_api, (login)(network)(database) )
