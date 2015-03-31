@@ -4,6 +4,7 @@
 #include <fc/rpc/websocket_api.hpp>
 #include <fc/io/stdio.hpp>
 #include <iostream>
+#include <fc/rpc/cli.hpp>
 
 
 using namespace bts::app;
@@ -75,6 +76,8 @@ int main( int argc, char** argv )
       FC_ASSERT( argc > 1, "usage: ${cmd} WALLET_FILE", ("cmd",argv[0]) );
       wallet_data wallet;
 
+      
+
       fc::path wallet_file(argv[1]);
       if( fc::exists( wallet_file ) )
           wallet = fc::json::from_file( wallet_file ).as<wallet_data>();
@@ -86,50 +89,10 @@ int main( int argc, char** argv )
       auto remote_api = apic->get_remote_api< login_api >();
       FC_ASSERT( remote_api->login( wallet.ws_user, wallet.ws_password ) );
 
-      auto wapi = std::make_shared<wallet_api>(remote_api);
-      
-      std::string line;
-      while( true )
-      {
-         std::cout << ">>> ";
-         fc::getline( fc::cin, line );
-         std::cout << line <<"\n";
-         try {
-            if( line == "help" )
-            {
-               std::cout << "Commands:\n";
-               std::cout << "\tquit\n";
-               std::cout << "\tcreate account\n";
-               std::cout << "\tdisplay account\n";
-               std::cout << "\ttransfer\n";
-            }
-            else if( line == "quit" )
-            {
-               fc::json::save_to_file( fc::variant( wallet ), wallet_file );
-               return 0;
-            }
-            else if( line == "create account" )
-            {
-
-            }
-            else if( line == "display account" )
-            {
-
-            }
-            else if( line == "transfer" )
-            {
-
-            }
-            else 
-            {
-               std::cout << "Unknown Command: '" << line <<"'\n\n";
-            }
-         } 
-         catch ( const fc::exception& e )
-         {
-            std::cout << e.to_detail_string() << "\n";
-         }
-      }
+      fc::api<wallet_api> wapi(std::make_shared<wallet_api>(remote_api));
+      fc::rpc::cli  wallet_cli;
+      wallet_cli.register_api( wapi );
+      wallet_cli.start();
    } 
    catch ( const fc::exception& e )
    {
