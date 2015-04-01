@@ -13,6 +13,7 @@ namespace bts { namespace app {
    {
       public:
          application(fc::path data_dir);
+         ~application();
 
          typedef std::map<string,fc::variant> config;
 

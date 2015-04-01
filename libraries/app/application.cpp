@@ -314,6 +314,20 @@ application::application(fc::path data_dir)
    : my(new detail::application_impl(this,data_dir))
 {}
 
+application::~application()
+{
+   if( my->_p2p_network )
+   {
+      ilog("Closing p2p node");
+      my->_p2p_network->close();
+   }
+   if( my->_chain_db )
+   {
+      ilog("Closing chain database");
+      my->_chain_db->close();
+   }
+}
+
 std::shared_ptr<abstract_plugin> application::get_plugin(const string& name) const
 {
    return my->_plugins[name];

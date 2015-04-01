@@ -32,7 +32,8 @@ void bts::delegate_plugin::delegate_plugin::block_production_loop()
       ilog("Delegate ${id} production slot has arrived; generating a block now...", ("id", next_production.second));
       try {
          auto block = db.generate_block(_config.delegate_keys[next_production.second], next_production.second);
-         ilog("Generated block #${n} with timestamp ${t}", ("n", block.block_num())("t", block.timestamp));
+         ilog("Generated block #${n} with timestamp ${t} at time ${c}",
+              ("n", block.block_num())("t", block.timestamp)("c", chain::now()));
          p2p_node().broadcast(net::block_message(block));
       } catch( const fc::canceled_exception& ) {
          //We're trying to exit. Go ahead and let this one out.

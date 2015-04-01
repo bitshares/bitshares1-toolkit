@@ -19,6 +19,6 @@ int main() {
    ilog("Started delegate node on a chain with ${h} blocks.", ("h", node.chain_database()->head_block_num()));
 
    int signal = exit_promise->wait();
-   ilog("Exited from signal ${n}", ("n", signal));
+   ilog("Exiting from signal ${n}", ("n", signal));
    return 0;
 }
