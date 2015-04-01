@@ -80,19 +80,16 @@ namespace fc
     }
     void to_variant( const bts::chain::fee_schedule_type& var,  fc::variant& vo )
     {
-       wdump((var.fees));
        vector<pair<bts::chain::fee_type,uint32_t> > fees;
        fees.reserve(var.size());
        for( uint32_t i = 0; i < var.size(); ++i )
           fees.push_back( std::make_pair( bts::chain::fee_type(i), var.fees.at(i) ) );
-       wdump((fees));
        vo = variant( fees );
     }
     void from_variant( const fc::variant& var,  bts::chain::fee_schedule_type& vo )
     {
        vo = bts::chain::fee_schedule_type();
        auto fees = var.as<vector<pair<bts::chain::fee_type,uint32_t>>>();
-       wdump((fees));
        for( auto item :  fees )
           vo.set( item.first, item.second );
     }
