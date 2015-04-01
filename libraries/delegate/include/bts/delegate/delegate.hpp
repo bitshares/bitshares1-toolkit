@@ -27,6 +27,8 @@ public:
 
    struct plugin_config {
       std::map<bts::chain::delegate_id_type, fc::ecc::private_key> delegate_keys;
+      /// Only set to true when starting a new network, or all delegates are offline.
+      bool allow_production_on_stale_chain = false;
    };
 
    void configure( const plugin_config& cfg );
@@ -34,10 +36,15 @@ public:
 private:
    void block_production_loop();
 
+   /// This will be set to false until we see a head block at time now (give or take an interval)
+   /// Suppress this behavior by setting allow_production_on_stale_chain to true in the config file.
+   bool _production_enabled = false;
    plugin_config _config;
    fc::future<void> _block_production_task;
 };
 
 } } //bts::delegate
 
-FC_REFLECT( bts::delegate_plugin::delegate_plugin::plugin_config, (delegate_keys) )
+FC_REFLECT( bts::delegate_plugin::delegate_plugin::plugin_config,
+            (delegate_keys)(allow_production_on_stale_chain)
+           )

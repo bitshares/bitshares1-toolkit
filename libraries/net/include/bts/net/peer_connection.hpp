@@ -316,3 +316,5 @@ FC_REFLECT_ENUM(bts::net::peer_connection::connection_negotiation_status, (disco
                                                                           (negotiation_complete)
                                                                           (closing)
                                                                           (closed) )
+
+FC_REFLECT( bts::net::peer_connection::timestamped_item_id, (item)(timestamp));

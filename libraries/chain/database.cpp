@@ -206,7 +206,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
       init_delegates.push_back(init_delegate.id);
    }
    create<block_summary_object>( [&](block_summary_object& p) {
-      p.timestamp = bts::chain::now();
    });
 
    const global_property_object& properties =
@@ -378,7 +377,7 @@ time_point database::get_next_generation_time( delegate_id_type del_id )const
    auto now = bts::chain::now();
    const auto& active_del = gp.active_delegates;
    const auto& interval   = gp.block_interval;
-   auto delegate_slot = ((now.sec_since_epoch()+1) /interval);
+   auto delegate_slot = ((now.sec_since_epoch()+interval-1) /interval);
    for( uint32_t i = 0; i < active_del.size(); ++i )
    {
       if( active_del[ delegate_slot % active_del.size()] == del_id )
@@ -811,7 +810,7 @@ optional<signed_block> database::fetch_block_by_id( const block_id_type& id )con
 {
    auto b = _fork_db.fetch_block( id );
    if( !b )
-      return optional<signed_block>();
+      return _block_id_to_block.fetch_optional(id);
    return b->data;
 }
 

@@ -150,5 +150,16 @@ void undo_database::pop_commit()
    enable();
 }
 
+void undo_database::open(const fc::path& data_dir)
+{
+//   auto tmp = fc::json::from_file(data_dir / "undo_database.json").as<std::vector<undo_state>>();
+//   _stack.insert(_stack.end(), tmp.begin(), tmp.end());
+   _data_dir = data_dir;
+}
+
+void undo_database::save()
+{
+//   fc::json::save_to_file(std::vector<undo_state>(_stack.begin(), _stack.end()), _data_dir / "undo_database.json");
+}
 
 } } // bts::db
