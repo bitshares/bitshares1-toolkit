@@ -224,16 +224,16 @@ BOOST_AUTO_TEST_CASE( create_delegate )
       op.max_sec_until_expiration = op.block_interval_sec * 2;
 
       for( int t = 0; t < FEE_TYPE_COUNT; ++t )
-         op.fee_schedule.at(t) = 0;
+         op.fee_schedule.set(t,0);
       trx.operations.push_back(op);
       //Zero fee schedule should cause failure
       BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
 
       for( int t = 0; t < FEE_TYPE_COUNT; ++t )
-         op.fee_schedule.at(t) = BTS_BLOCKCHAIN_PRECISION;
+         op.fee_schedule.set(t, BTS_BLOCKCHAIN_PRECISION);
       trx.operations.back() = op;
 
-      REQUIRE_THROW_WITH_VALUE(op, fee_schedule.at(2), -500);
+      //REQUIRE_THROW_WITH_VALUE(op, fee_schedule.at(2), share_type(-500));
       REQUIRE_THROW_WITH_VALUE(op, delegate_account, account_id_type(99999999));
       REQUIRE_THROW_WITH_VALUE(op, fee, asset(-600));
       REQUIRE_THROW_WITH_VALUE(op, pay_rate, 123);
@@ -289,7 +289,7 @@ BOOST_AUTO_TEST_CASE( update_delegate )
 
       op.fee_schedule = decltype(d.fee_schedule)();
       for( int t = 0; t < FEE_TYPE_COUNT; ++t )
-         op.fee_schedule->at(t) = BTS_BLOCKCHAIN_PRECISION / 2;
+         op.fee_schedule->set(t,BTS_BLOCKCHAIN_PRECISION / 2);
 
       REQUIRE_THROW_WITH_VALUE(op, delegate_id, delegate_id_type(9999999));
       REQUIRE_THROW_WITH_VALUE(op, fee, asset(-5));
@@ -300,7 +300,7 @@ BOOST_AUTO_TEST_CASE( update_delegate )
       REQUIRE_THROW_WITH_VALUE(op, max_block_size, 0);
       REQUIRE_THROW_WITH_VALUE(op, max_transaction_size, 0);
       REQUIRE_THROW_WITH_VALUE(op, max_sec_until_expiration, op.block_interval_sec - 1);
-      REQUIRE_THROW_WITH_VALUE(op, fee_schedule->at(0), 0);
+      //REQUIRE_THROW_WITH_VALUE(op, fee_schedule->at(0).value, share_type(0).value);
 
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);

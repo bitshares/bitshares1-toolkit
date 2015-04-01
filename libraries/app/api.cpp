@@ -25,7 +25,71 @@ namespace bts { namespace app {
     {
        return _db.fetch_block_by_number( block_num );
     }
+
+    vector<optional<account_object>>  database_api::lookup_account_names( const vector<string>& account_names )const
+    {
+       const auto& account_idx = _db.get_index_type<account_index>();
+       const auto& accounts_by_name = account_idx.indices().get<by_name>();
+       vector<optional<account_object> > result;
+       result.reserve( account_names.size() );
+       for( const auto& account_name : account_names )
+       {
+          auto itr = accounts_by_name.find( account_name );
+          result.push_back( itr != accounts_by_name.end() ? *itr : optional<account_object>() );
+       }
+       return result;
+    }
+
+    vector<optional<asset_object>>    database_api::lookup_asset_symbols( const vector<string>& symbols )const
+    {
+       const auto& asset_idx = _db.get_index_type<asset_index>();
+       const auto& assets_by_symbol = asset_idx.indices().get<by_symbol>();
+       vector<optional<asset_object> > result;
+       result.reserve( symbols.size() );
+       for( const auto& symbol : symbols )
+       {
+          auto itr = assets_by_symbol.find( symbol );
+          result.push_back( itr != assets_by_symbol.end() ? *itr : optional<asset_object>() );
+       }
+       return result;
+    }
+    global_property_object    database_api::get_global_properties()const
+    {
+       return _db.get( global_property_id_type() );
+    }
     
+    vector<optional<key_object>>      database_api::get_keys( const vector<key_id_type>& key_ids )const
+    {
+       vector<optional<key_object>> result; result.reserve(key_ids.size());
+       for( auto id : key_ids )
+       {
+          const key_object* a = _db.find(id);
+          result.push_back( a ? *a : optional<key_object>() );
+       }
+       return result;
+    }
+
+    vector<optional<account_object>>  database_api::get_accounts( const vector<account_id_type>& account_ids )const
+    {
+       vector<optional<account_object>> result; result.reserve(account_ids.size());
+       for( auto id : account_ids )
+       {
+          const account_object* a = _db.find(id);
+          result.push_back( a ? *a : optional<account_object>() );
+       }
+       return result;
+    }
+
+    vector<optional<asset_object>>    database_api::get_assets( const vector<asset_id_type>& asset_ids )const
+    {
+       vector<optional<asset_object>> result; result.reserve(asset_ids.size());
+       for( auto id : asset_ids )
+       {
+          const asset_object* a = _db.find(id);
+          result.push_back( a ? *a : optional<asset_object>() );
+       }
+       return result;
+    }
 
     bool login_api::login( const string& user, const string& password )
     {

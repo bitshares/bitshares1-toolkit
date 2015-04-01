@@ -331,7 +331,7 @@ namespace bts { namespace chain {
       uint32_t                              max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE;
       uint32_t                              max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
       uint32_t                              max_sec_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
-      fc::array<share_type,FEE_TYPE_COUNT>  fee_schedule;
+      fee_schedule_type                     fee_schedule;
 
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       void validate()const;
@@ -343,7 +343,7 @@ namespace bts { namespace chain {
       account_id_type                                 delegate_account; ///< must match delegate_id->delegate_account
       delegate_id_type                                delegate_id;
       asset                                           fee; ///< paid by delegate_id->delegate_account
-      optional<fc::array<share_type,FEE_TYPE_COUNT>>  fee_schedule;
+      optional<fee_schedule_type>                     fee_schedule;
       optional<relative_key_id_type>                  signing_key;
       uint8_t                                         pay_rate = 255; ///< 255 for unchanged
       uint8_t                                         block_interval_sec = BTS_DEFAULT_BLOCK_INTERVAL;

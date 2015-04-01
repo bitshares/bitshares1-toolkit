@@ -510,7 +510,7 @@ void database::update_global_properties()
                         [&]( const delegate_object* a, const delegate_object* b )->bool {
                              return a->fee_schedule.at(f) < b->fee_schedule.at(f);
                         });
-      tmp.current_fees.at(f)  = ids[ids.size()/2]->fee_schedule.at(f);
+      tmp.current_fees.set(f, ids[ids.size()/2]->fee_schedule.at(f));
    }
 
    modify( global_property_id_type()(*this), [&]( global_property_object& gpo ){

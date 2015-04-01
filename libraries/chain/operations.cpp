@@ -320,7 +320,6 @@ void delegate_create_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( pay_rate <= 100 );
-   for( auto fee : fee_schedule ) FC_ASSERT( fee.value > 0 );
    FC_ASSERT( max_block_size >= BTS_MIN_BLOCK_SIZE_LIMIT );
    FC_ASSERT( max_transaction_size >= BTS_MIN_TRANSACTION_SIZE_LIMIT );
    FC_ASSERT( block_interval_sec > 0 && block_interval_sec <= BTS_MAX_BLOCK_INTERVAL );
@@ -335,8 +334,6 @@ void delegate_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( pay_rate <= 100 || pay_rate == 255 );
-   if( fee_schedule ) for( auto fee : *fee_schedule ) FC_ASSERT( fee.value > 0 );
-
    FC_ASSERT( max_block_size >= BTS_MIN_BLOCK_SIZE_LIMIT );
    FC_ASSERT( max_transaction_size >= BTS_MIN_TRANSACTION_SIZE_LIMIT );
    FC_ASSERT( block_interval_sec > 0 && block_interval_sec <= BTS_MAX_BLOCK_INTERVAL );

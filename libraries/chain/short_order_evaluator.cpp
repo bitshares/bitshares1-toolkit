@@ -12,7 +12,7 @@ object_id_type short_order_create_evaluator::do_evaluate( const short_order_crea
 
    auto bts_fee_paid = pay_fee( op.seller, op.fee );
    auto bts_fee_required = op.calculate_fee( d.current_fee_schedule() );
-   FC_ASSERT( bts_fee_paid >= bts_fee_required );
+   FC_ASSERT( bts_fee_paid >= bts_fee_required, "", ("bts_fee_paid",bts_fee_paid)("bts_fee_required",bts_fee_required) );
    //_priority_fee = bts_fee_paid - bts_fee_required;
 
    const asset_object& base_asset  = op.amount_to_sell.asset_id(d);

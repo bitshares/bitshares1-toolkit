@@ -204,7 +204,25 @@ namespace bts { namespace chain {
    typedef safe<int64_t>                                share_type;
    typedef fc::sha224                                   secret_hash_type;
    typedef uint16_t                                     weight_type;
-   typedef fc::array<share_type,FEE_TYPE_COUNT>         fee_schedule_type;
+
+   struct fee_schedule_type
+   {
+       fee_schedule_type()
+       {
+          memset( (char*)fees.data, 0, sizeof(fees) );
+       }
+       void             set( uint32_t f, share_type v ){ FC_ASSERT( f < FEE_TYPE_COUNT && v.value <= uint32_t(-1) ); fees.at(f) = v.value; }
+       const share_type at( uint32_t f )const { FC_ASSERT( f < FEE_TYPE_COUNT ); return fees.at(f); }
+       size_t           size()const{ return fees.size(); }
+
+
+       friend bool operator != ( const fee_schedule_type& a, const fee_schedule_type& b )
+       {
+          return a.fees != b.fees;
+       }
+
+       fc::array<uint32_t,FEE_TYPE_COUNT>    fees;
+   };
 
 
    struct public_key_type
@@ -236,10 +254,13 @@ namespace fc
 {
     void to_variant( const bts::chain::public_key_type& var,  fc::variant& vo );
     void from_variant( const fc::variant& var,  bts::chain::public_key_type& vo );
+    void to_variant( const bts::chain::fee_schedule_type& var,  fc::variant& vo );
+    void from_variant( const fc::variant& var,  bts::chain::fee_schedule_type& vo );
 
 }
 FC_REFLECT( bts::chain::public_key_type, (key_data) )
 FC_REFLECT( bts::chain::public_key_type::binary_key, (data)(check) );
+FC_REFLECT( bts::chain::fee_schedule_type, (fees) )
 
 FC_REFLECT_ENUM( bts::chain::object_type,
                  (null_object_type)
@@ -270,3 +291,25 @@ FC_REFLECT_ENUM( bts::chain::impl_object_type,
                )
 
 FC_REFLECT_ENUM( bts::chain::meta_info_object_type, (meta_account_object_type)(meta_asset_object_type) )
+
+FC_REFLECT_ENUM( bts::chain::fee_type, 
+(key_create_fee_type)
+(account_create_fee_type)
+(delegate_create_fee_type)
+(delegate_update_fee_type) 
+(transfer_fee_type)
+(limit_order_fee_type)
+(short_order_fee_type)
+(publish_feed_fee_type)
+(gas_fee_type) 
+(max_gas_fee_type)
+(asset_create_fee_type)
+(asset_update_fee_type) 
+(asset_issue_fee_type)
+(asset_fund_fee_pool_fee_type)
+(market_fee_type)
+(transaction_fee_type)
+(data_fee_type)
+(signature_fee_type)
+(FEE_TYPE_COUNT)
+);
