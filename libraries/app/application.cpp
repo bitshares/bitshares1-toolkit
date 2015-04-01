@@ -132,8 +132,13 @@ namespace detail {
        */
       virtual bool handle_block( const bts::net::block_message& blk_msg, bool sync_mode ) override
       { try {
-         ilog("Got block from network");
-         return _chain_db->push_block( blk_msg.block );
+         ilog("Got block #${n} from network", ("n", blk_msg.block.block_num()));
+         try {
+            return _chain_db->push_block( blk_msg.block );
+         } catch( const fc::exception& e ) {
+            elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
+            throw;
+         }
       } FC_CAPTURE_AND_RETHROW( (blk_msg)(sync_mode) ) }
 
       virtual bool handle_transaction( const bts::net::trx_message& trx_msg, bool sync_mode ) override
@@ -159,27 +164,32 @@ namespace detail {
       { try {
          FC_ASSERT( item_type == bts::net::block_message_type );
          vector<block_id_type>  result;
-         result.reserve(limit);
+         remaining_item_count = 0;
+         if( _chain_db->head_block_num() == 0 )
+            return result;
 
-         auto head_block_num = _chain_db->head_block_num();
+         result.reserve(limit);
+         block_id_type last_known_block_id;
          auto itr = blockchain_synopsis.rbegin();
          while( itr != blockchain_synopsis.rend() )
          {
-            if( _chain_db->is_known_block( *itr ) )
+            if( _chain_db->is_known_block( *itr ) || *itr == block_id_type() )
             {
-               result.push_back( *itr );
-               uint32_t block_num = block::num_from_id(*itr);
-               while( result.size() < limit && block_num <= head_block_num )
-               {
-                  result.push_back( _chain_db->get_block_id_for_num( block_num ) );
-                  ++block_num;
-               }
-               remaining_item_count = head_block_num - block_num;
-               return result;
+               last_known_block_id = *itr;
+               break;
             }
             ++itr;
          }
-         remaining_item_count = head_block_num;
+
+         for( auto num = block::num_from_id(last_known_block_id);
+              num <= _chain_db->head_block_num() && result.size() < limit;
+              ++num )
+            if( num > 0 )
+               result.push_back(_chain_db->get_block_id_for_num(num));
+
+         if( block::num_from_id(result.back()) < _chain_db->head_block_num() )
+            remaining_item_count = _chain_db->head_block_num() - block::num_from_id(result.back());
+
          idump((blockchain_synopsis)(limit)(result)(remaining_item_count));
          return result;
       } FC_CAPTURE_AND_RETHROW( (blockchain_synopsis)(remaining_item_count)(limit) ) }
@@ -189,10 +199,15 @@ namespace detail {
        */
       virtual message get_item( const item_id& id ) override
       { try {
+         ilog("Request for item ${id}", ("id", id));
          if( id.item_type == bts::net::block_message_type )
          {
             auto opt_block = _chain_db->fetch_block_by_id( id.item_hash );
+            if( !opt_block )
+               elog("Couldn't find block ${id} -- corresponding ID in our chain is ${id2}",
+                    ("id", id.item_hash)("id2", _chain_db->get_block_id_for_num(block::num_from_id(id.item_hash))));
             FC_ASSERT( opt_block.valid() );
+            ilog("Serving up block #${num}", ("num", opt_block->block_num()));
             return block_message( std::move(*opt_block) );
          }
          return trx_message( _chain_db->get_recent_transaction( id.item_hash ) );
@@ -232,8 +247,6 @@ namespace detail {
             result.push_back( _chain_db->get_block_id_for_num( head_block_num - current ) );
             current = current*2;
          }
-         if( result.empty() || result.back() != block_id_type() )
-            result.push_back(block_id_type());
          std::reverse( result.begin(), result.end() );
          idump((reference_point)(number_of_blocks_after_reference_point)(result));
          return result;
@@ -313,6 +326,20 @@ namespace detail {
 application::application(fc::path data_dir)
    : my(new detail::application_impl(this,data_dir))
 {}
+
+application::~application()
+{
+   if( my->_p2p_network )
+   {
+      ilog("Closing p2p node");
+      my->_p2p_network->close();
+   }
+   if( my->_chain_db )
+   {
+      ilog("Closing chain database");
+      my->_chain_db->close();
+   }
+}
 
 std::shared_ptr<abstract_plugin> application::get_plugin(const string& name) const
 {

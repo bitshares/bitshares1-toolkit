@@ -17,6 +17,7 @@ class plugin : public abstract_plugin
    protected:
       application& app()const { return *_app; }
       chain::database& database() { return *app().chain_database(); }
+      net::node& p2p_node() { return *app().p2p_node(); }
 
     private:
       friend class application;

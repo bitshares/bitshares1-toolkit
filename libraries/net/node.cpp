@@ -59,10 +59,10 @@
 
 //#define ENABLE_DEBUG_ULOGS
 
-#ifdef DEFAULT_LOGGER
-# undef DEFAULT_LOGGER
-#endif
-#define DEFAULT_LOGGER "p2p"
+//#ifdef DEFAULT_LOGGER
+//# undef DEFAULT_LOGGER
+//#endif
+//#define DEFAULT_LOGGER "p2p"
 
 #define P2P_IN_DEDICATED_THREAD 1
 
@@ -350,8 +350,8 @@ namespace bts { namespace net { namespace detail {
 
       bool has_item( const net::item_id& id ) override;
       bool handle_message( const message&, bool sync_mode ) override;
-      bool handle_block( const bts::net::block_message& blk_msg, bool syncmode ) { return _node_delegate->handle_block(blk_msg, syncmode); }
-      bool handle_transaction( const bts::net::trx_message& trx_msg, bool syncmode  ) { return _node_delegate->handle_transaction(trx_msg, syncmode); }
+      bool handle_block( const bts::net::block_message& blk_msg, bool syncmode ) override;
+      bool handle_transaction( const bts::net::trx_message& trx_msg, bool syncmode ) override;
       std::vector<item_hash_t> get_item_ids(uint32_t item_type,
                                             const std::vector<item_hash_t>& blockchain_synopsis,
                                             uint32_t& remaining_item_count,
@@ -1162,6 +1162,7 @@ namespace bts { namespace net { namespace detail {
         for (const peer_connection_ptr& peer : _active_connections)
         {
           // only advertise to peers who are in sync with us
+           wdump((peer->peer_needs_sync_items_from_us));
           if( !peer->peer_needs_sync_items_from_us )
           {
             std::map<uint32_t, std::vector<item_hash_t> > items_to_advertise_by_type;
@@ -1169,7 +1170,14 @@ namespace bts { namespace net { namespace detail {
             // or anything it has advertised to us
             // group the items we need to send by type, because we'll need to send one inventory message per type
             unsigned total_items_to_send_to_this_peer = 0;
+            wdump((inventory_to_advertise));
             for (const item_id& item_to_advertise : inventory_to_advertise)
+            {
+              if (peer->inventory_advertised_to_peer.find(item_to_advertise) == peer->inventory_advertised_to_peer.end() )
+                 wdump((*peer->inventory_advertised_to_peer.find(item_to_advertise)));
+              if (peer->inventory_peer_advertised_to_us.find(item_to_advertise) == peer->inventory_peer_advertised_to_us.end() )
+                 wdump((*peer->inventory_peer_advertised_to_us.find(item_to_advertise)));
+
               if (peer->inventory_advertised_to_peer.find(item_to_advertise) == peer->inventory_advertised_to_peer.end() &&
                   peer->inventory_peer_advertised_to_us.find(item_to_advertise) == peer->inventory_peer_advertised_to_us.end())
               {
@@ -1180,6 +1188,7 @@ namespace bts { namespace net { namespace detail {
                   testnetlog("advertising transaction ${id} to peer ${endpoint}", ("id", item_to_advertise.item_hash)("endpoint", peer->get_remote_endpoint()));
                 dlog("advertising item ${id} to peer ${endpoint}", ("id", item_to_advertise.item_hash)("endpoint", peer->get_remote_endpoint()));
               }
+            }
               dlog("advertising ${count} new item(s) of ${types} type(s) to peer ${endpoint}",
                    ("count", total_items_to_send_to_this_peer)
                    ("types", items_to_advertise_by_type.size())
@@ -2108,6 +2117,7 @@ namespace bts { namespace net { namespace detail {
       bool disconnect_from_inhibited_peer = false;
       // if our client doesn't have any items after the item the peer requested, it will send back
       // a list containing the last item the peer requested
+      wdump((reply_message)(fetch_blockchain_item_ids_message_received.blockchain_synopsis));
       if( reply_message.item_hashes_available.empty() )
         originating_peer->peer_needs_sync_items_from_us = false; /* I have no items in my blockchain */
       else if( !fetch_blockchain_item_ids_message_received.blockchain_synopsis.empty() &&
@@ -5022,6 +5032,18 @@ namespace bts { namespace net { namespace detail {
     bool statistics_gathering_node_delegate_wrapper::handle_message( const message& message_to_handle, bool sync_mode )
     {
       INVOKE_AND_COLLECT_STATISTICS(handle_message, message_to_handle, sync_mode);
+    }
+
+    bool statistics_gathering_node_delegate_wrapper::handle_block( const bts::net::block_message& blk_msg, bool syncmode )
+    {
+       if (_thread->is_current())  {  return _node_delegate->handle_block(blk_msg,syncmode);  }
+       else  return _thread->async([&](){  return _node_delegate->handle_block(blk_msg,syncmode);  }, "invoke handle_block").wait();
+    }
+
+    bool statistics_gathering_node_delegate_wrapper::handle_transaction( const bts::net::trx_message& trx_msg, bool syncmode  )
+    {
+       if (_thread->is_current())  {  return _node_delegate->handle_transaction(trx_msg,syncmode);  }
+       else  return _thread->async([&](){  return _node_delegate->handle_transaction(trx_msg,syncmode);  }, "invoke handle_transaction").wait();
     }
 
     std::vector<item_hash_t> statistics_gathering_node_delegate_wrapper::get_item_ids(uint32_t item_type,

@@ -206,7 +206,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
       init_delegates.push_back(init_delegate.id);
    }
    create<block_summary_object>( [&](block_summary_object& p) {
-      p.timestamp = bts::chain::now();
    });
 
    const global_property_object& properties =
@@ -378,7 +377,7 @@ time_point database::get_next_generation_time( delegate_id_type del_id )const
    auto now = bts::chain::now();
    const auto& active_del = gp.active_delegates;
    const auto& interval   = gp.block_interval;
-   auto delegate_slot = ((now.sec_since_epoch()+1) /interval);
+   auto delegate_slot = ((now.sec_since_epoch()+interval-1) /interval);
    for( uint32_t i = 0; i < active_del.size(); ++i )
    {
       if( active_del[ delegate_slot % active_del.size()] == del_id )
@@ -388,12 +387,13 @@ time_point database::get_next_generation_time( delegate_id_type del_id )const
    FC_ASSERT( !"Not an Active Delegate" );
 }
 
-fc::time_point bts::chain::database::get_next_generation_time(const set<bts::chain::delegate_id_type>& del_ids) const
+std::pair<fc::time_point, delegate_id_type> bts::chain::database::get_next_generation_time(const set<bts::chain::delegate_id_type>& del_ids) const
 {
-   fc::time_point next_time = fc::time_point::maximum();
+   std::pair<fc::time_point, delegate_id_type> result;
+   result.first = fc::time_point::maximum();
    for( delegate_id_type id : del_ids )
-      next_time = std::min(next_time, get_next_generation_time(id));
-   return next_time;
+      result = std::min(result, std::make_pair(get_next_generation_time(id), id));
+   return result;
 }
 
 signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
@@ -581,6 +581,7 @@ bool database::push_block( const signed_block& new_block, uint32_t skip )
       //If the head block from the longest chain does not build off of the current head, we need to switch forks.
       if( new_head->data.previous != head_block_id() )
       {
+         edump((new_head->data.previous));
          //If the newly pushed block is the same height as head, we get head back in new_head
          //Only switch forks if new_head is actually higher than head
          if( new_head->data.block_num() > head_block_num() )
@@ -809,7 +810,7 @@ optional<signed_block> database::fetch_block_by_id( const block_id_type& id )con
 {
    auto b = _fork_db.fetch_block( id );
    if( !b )
-      return optional<signed_block>();
+      return _block_id_to_block.fetch_optional(id);
    return b->data;
 }
 
