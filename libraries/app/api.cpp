@@ -58,6 +58,38 @@ namespace bts { namespace app {
        return _db.get( global_property_id_type() );
     }
     
+    vector<optional<key_object>>      database_api::get_keys( const vector<key_id_type>& key_ids )const
+    {
+       vector<optional<key_object>> result; result.reserve(key_ids.size());
+       for( auto id : key_ids )
+       {
+          const key_object* a = _db.find(id);
+          result.push_back( a ? *a : optional<key_object>() );
+       }
+       return result;
+    }
+
+    vector<optional<account_object>>  database_api::get_accounts( const vector<account_id_type>& account_ids )const
+    {
+       vector<optional<account_object>> result; result.reserve(account_ids.size());
+       for( auto id : account_ids )
+       {
+          const account_object* a = _db.find(id);
+          result.push_back( a ? *a : optional<account_object>() );
+       }
+       return result;
+    }
+
+    vector<optional<asset_object>>    database_api::get_assets( const vector<asset_id_type>& asset_ids )const
+    {
+       vector<optional<asset_object>> result; result.reserve(asset_ids.size());
+       for( auto id : asset_ids )
+       {
+          const asset_object* a = _db.find(id);
+          result.push_back( a ? *a : optional<asset_object>() );
+       }
+       return result;
+    }
 
     bool login_api::login( const string& user, const string& password )
     {

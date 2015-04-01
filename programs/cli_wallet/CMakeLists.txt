@@ -9,4 +9,4 @@ if( GPERFTOOLS_FOUND )
 endif()
 
 target_link_libraries( cli_wallet
-                       PRIVATE bts_app bts_net bts_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+                       PRIVATE bts_app bts_net bts_chain bts_utilities fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )

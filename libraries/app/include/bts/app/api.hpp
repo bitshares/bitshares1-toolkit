@@ -3,6 +3,7 @@
 #include <bts/chain/database.hpp>
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
+#include <bts/chain/key_object.hpp>
 #include <bts/net/node.hpp>
 #include <fc/api.hpp>
 
@@ -17,9 +18,13 @@ namespace bts { namespace app {
          database_api( bts::chain::database& db );
          fc::variants                      get_objects( const vector<object_id_type>& ids )const;
          optional<signed_block>            get_block( uint32_t block_num )const;
+         global_property_object            get_global_properties()const;
+         vector<optional<key_object>>      get_keys( const vector<key_id_type>& key_ids )const;
+         vector<optional<account_object>>  get_accounts( const vector<account_id_type>& account_ids )const;
+         vector<optional<asset_object>>    get_assets( const vector<asset_id_type>& asset_ids )const;
+
          vector<optional<account_object>>  lookup_account_names( const vector<string>& account_name )const;
          vector<optional<asset_object>>    lookup_asset_symbols( const vector<string>& asset_symbols )const;
-         global_property_object            get_global_properties()const;
 
          bts::chain::database& _db;
    };
@@ -56,9 +61,12 @@ namespace bts { namespace app {
 FC_API( bts::app::database_api, 
         (get_objects)
         (get_block)
+        (get_global_properties) 
+        (get_keys)
+        (get_accounts)
+        (get_assets)
         (lookup_account_names)
         (lookup_asset_symbols) 
-        (get_global_properties) 
      )
 FC_API( bts::app::network_api, (broadcast_transaction)(add_node)(get_connected_peers) )
 FC_API( bts::app::login_api, (login)(network)(database) )
