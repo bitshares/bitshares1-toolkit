@@ -5,6 +5,7 @@
 #include <fc/io/stdio.hpp>
 #include <iostream>
 #include <fc/rpc/cli.hpp>
+#include <iomanip>
 
 
 using namespace bts::app;
@@ -36,6 +37,8 @@ class wallet_api
          _remote_db  = _remote_api->database();
          _remote_net = _remote_api->network();
       }
+      string  help()const;
+
       string  suggest_brain_key()const
       {
         return string("dummy");
@@ -69,10 +72,33 @@ class wallet_api
 };
 
 FC_API( wallet_api, 
+        (help)
         (suggest_brain_key)
         (create_account) 
         (transfer)
        )
+
+struct help_visitor
+{
+   help_visitor( std::stringstream& s ):ss(s){}
+   std::stringstream& ss;
+   template<typename R, typename... Args>
+   void operator()( const char* name, std::function<R(Args...)>& memb )const {
+      ss << std::setw(40) << std::left << fc::get_typename<R>::name() << " " << name << "( ";
+      vector<string> args{ fc::get_typename<Args>::name()... };
+      for( uint32_t i = 0; i < args.size(); ++i )
+         ss << args[i] << (i==args.size()-1?" ":", ");
+      ss << ")\n";
+   }
+
+};
+string  wallet_api::help()const
+{
+   fc::api<wallet_api> tmp;
+   std::stringstream ss;
+   tmp->visit( help_visitor(ss) );
+   return ss.str();
+}
 
 int main( int argc, char** argv )
 {
@@ -84,7 +110,6 @@ int main( int argc, char** argv )
       if( fc::exists( wallet_file ) )
           wallet = fc::json::from_file( wallet_file ).as<wallet_data>();
 
-      wlog(".");
       fc::http::websocket_client client;
       auto con  = client.connect( wallet.ws_server ); 
       auto apic = std::make_shared<fc::rpc::websocket_api_connection>(*con);
@@ -96,11 +121,11 @@ int main( int argc, char** argv )
       auto wapiptr = std::make_shared<wallet_api>(remote_api);
       fc::api<wallet_api> wapi(wapiptr);
 
-      wlog(".");
       auto wallet_cli = std::make_shared<fc::rpc::cli>();
-      wlog(".");
+      wallet_cli->format_result( "help", [&]( variant result, const fc::variants& a) {
+                                    return result.get_string();
+                                });
       wallet_cli->register_api( wapi );
-      wlog(".");
       wallet_cli->start();
       wallet_cli->wait();
    } 
