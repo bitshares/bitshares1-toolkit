@@ -662,6 +662,7 @@ bool database::push_block( const signed_block& new_block, uint32_t skip )
  */
 processed_transaction database::push_transaction( const signed_transaction& trx, uint32_t skip )
 {
+   //wdump((trx.digest())(trx.id()));
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
    if( !_pending_block_session ) _pending_block_session = _undo_db.start_undo_session();
@@ -758,15 +759,13 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
 
    //Insert transaction into unique transactions database.
    if( !(skip & skip_transaction_dupe_check) )
-      get_mutable_index(implementation_ids, impl_transaction_object_type).create([this,
-                                                                                 &trx,
-                                                                                 &trx_id,
-                                                                                 &trx_expiration](object& transaction_obj) {
-         transaction_object* transaction = static_cast<transaction_object*>(&transaction_obj);
-         transaction->expiration = std::move(trx_expiration);
-         transaction->trx_id = std::move(trx.id());
-         transaction->trx = std::move(trx);
+   {
+      create<transaction_object>([&](transaction_object& transaction) {
+         transaction.expiration = trx_expiration;
+         transaction.trx_id = trx.id();
+         transaction.trx = trx;
       });
+   }
    return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
