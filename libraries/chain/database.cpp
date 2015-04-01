@@ -388,12 +388,13 @@ time_point database::get_next_generation_time( delegate_id_type del_id )const
    FC_ASSERT( !"Not an Active Delegate" );
 }
 
-fc::time_point bts::chain::database::get_next_generation_time(const set<bts::chain::delegate_id_type>& del_ids) const
+std::pair<fc::time_point, delegate_id_type> bts::chain::database::get_next_generation_time(const set<bts::chain::delegate_id_type>& del_ids) const
 {
-   fc::time_point next_time = fc::time_point::maximum();
+   std::pair<fc::time_point, delegate_id_type> result;
+   result.first = fc::time_point::maximum();
    for( delegate_id_type id : del_ids )
-      next_time = std::min(next_time, get_next_generation_time(id));
-   return next_time;
+      result = std::min(result, std::make_pair(get_next_generation_time(id), id));
+   return result;
 }
 
 signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
@@ -581,6 +582,7 @@ bool database::push_block( const signed_block& new_block, uint32_t skip )
       //If the head block from the longest chain does not build off of the current head, we need to switch forks.
       if( new_head->data.previous != head_block_id() )
       {
+         edump((new_head->data.previous));
          //If the newly pushed block is the same height as head, we get head back in new_head
          //Only switch forks if new_head is actually higher than head
          if( new_head->data.block_num() > head_block_num() )
