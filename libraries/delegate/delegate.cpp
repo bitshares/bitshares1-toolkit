@@ -30,9 +30,16 @@ void bts::delegate_plugin::delegate_plugin::block_production_loop()
    if( llabs((next_production.first - chain::now()).count()) <= fc::seconds(1).count() || db.head_block_num() == 0 )
    {
       ilog("Delegate ${id} production slot has arrived; generating a block now...", ("id", next_production.second));
-      auto block = db.generate_block(_config.delegate_keys[next_production.second], next_production.second);
-      ilog("Generated block #${n} with timestamp ${t}", ("n", block.block_num())("t", block.timestamp));
-      p2p_node().broadcast(net::block_message(block));
+      try {
+         auto block = db.generate_block(_config.delegate_keys[next_production.second], next_production.second);
+         ilog("Generated block #${n} with timestamp ${t}", ("n", block.block_num())("t", block.timestamp));
+         p2p_node().broadcast(net::block_message(block));
+      } catch( const fc::canceled_exception& ) {
+         //We're trying to exit. Go ahead and let this one out.
+         throw;
+      } catch( const fc::exception& e ) {
+         elog("Got exception while generating block:\n${e}", ("e", e.to_detail_string()));
+      }
    }
 
    //Get next production time for *any* delegate

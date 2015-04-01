@@ -10,8 +10,14 @@ namespace bts { namespace delegate_plugin {
 class delegate_plugin : public bts::app::plugin<delegate_plugin> {
 public:
    ~delegate_plugin() {
-      if( _block_production_task.valid() )
-         _block_production_task.cancel_and_wait(__FUNCTION__);
+      try {
+         if( _block_production_task.valid() )
+            _block_production_task.cancel_and_wait(__FUNCTION__);
+      } catch(fc::canceled_exception&) {
+         //Expected exception. Move along.
+      } catch(fc::exception& e) {
+         edump((e.to_detail_string()));
+      }
    }
 
    const std::string& plugin_name()const override {
