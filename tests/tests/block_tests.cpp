@@ -284,8 +284,8 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
 
       BOOST_CHECK_THROW(db1.push_transaction(trx), fc::exception);
       BOOST_CHECK_THROW(db2.push_transaction(trx), fc::exception);
-      BOOST_CHECK(nathan_id(db1).balances(db1).get_balance(asset_id_type()).amount == 500);
-      BOOST_CHECK(nathan_id(db2).balances(db1).get_balance(asset_id_type()).amount == 500);
+      BOOST_CHECK_EQUAL(nathan_id(db1).balances(db1).get_balance(asset_id_type()).amount.value, 500);
+      BOOST_CHECK_EQUAL(nathan_id(db2).balances(db2).get_balance(asset_id_type()).amount.value, 500);
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;

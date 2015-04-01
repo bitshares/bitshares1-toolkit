@@ -749,6 +749,8 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
       //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
       FC_ASSERT( trx.ref_block_prefix == tapos_block_summary.block_id._hash[1] );
       trx_expiration = tapos_block_summary.timestamp + global_properties.block_interval*trx.relative_expiration.value;
+      if( tapos_block_summary.timestamp == time_point_sec() )
+         trx_expiration = now() + global_properties.block_interval*trx.relative_expiration.value;
       FC_ASSERT( _pending_block.timestamp <= trx_expiration ||
                  (trx.ref_block_prefix == 0 && trx.ref_block_num == 0 && head_block_num() < trx.relative_expiration)
                  , "", ("exp", trx_expiration) );

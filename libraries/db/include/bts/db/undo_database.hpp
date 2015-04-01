@@ -19,14 +19,6 @@ namespace bts { namespace db {
       public:
          undo_database( object_database& db ):_db(db){}
 
-         struct undo_state
-         {
-            unordered_map<object_id_type, unique_ptr<object> > old_values;
-            unordered_map<object_id_type, object_id_type>      old_index_next_ids;
-            flat_set<object_id_type>                           new_ids;
-            unordered_map<object_id_type, unique_ptr<object> > removed;
-         };
-
          class session
          {
             public:
@@ -68,9 +60,6 @@ namespace bts { namespace db {
          void    disable();
          void    enable();
 
-         void open(const fc::path& data_dir);
-         void save();
-
          session start_undo_session();
          /**
           * This should be called just after an object is created
@@ -107,13 +96,18 @@ namespace bts { namespace db {
          void merge();
          void commit();
 
+         struct undo_state
+         {
+            unordered_map<object_id_type, unique_ptr<object> > old_values;
+            unordered_map<object_id_type, object_id_type>      old_index_next_ids;
+            flat_set<object_id_type>                           new_ids;
+            unordered_map<object_id_type, unique_ptr<object> > removed;
+         };
+
          uint32_t                _active_sessions = 0;
          bool                    _disabled = true;
          std::deque<undo_state>  _stack;
          object_database&        _db;
-         fc::path                _data_dir;
    };
 
 } } // bts::db
-
-FC_REFLECT(bts::db::undo_database::undo_state, (old_values)(old_index_next_ids)(new_ids)(removed))
