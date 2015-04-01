@@ -45,17 +45,21 @@ class wallet_api
                                          string account_name,
                                          string pay_from_account )
       {
-
+        wdump( (_remote_db->get_global_properties() ) );
+        auto opt_account = _remote_db->lookup_account_names( {account_name} );
+        wdump( (opt_account) );
         return signed_transaction();
       }
 
       signed_transaction transfer( string from, 
                                    string to, 
                                    uint64_t amount,
-                                   string asset,
+                                   string asset_symbol,
                                    string memo,
                                    bool broadcast = false )
       {
+        auto opt_asset = _remote_db->lookup_asset_symbols( {asset_symbol} );
+        wdump( (opt_asset) );
         return signed_transaction();
       }
 
@@ -84,6 +88,7 @@ int main( int argc, char** argv )
       fc::http::websocket_client client;
       auto con  = client.connect( wallet.ws_server ); 
       auto apic = std::make_shared<fc::rpc::websocket_api_connection>(*con);
+      con->closed.connect( [&](){ elog( "connection closed" ); } );
 
       auto remote_api = apic->get_remote_api< login_api >();
       FC_ASSERT( remote_api->login( wallet.ws_user, wallet.ws_password ) );

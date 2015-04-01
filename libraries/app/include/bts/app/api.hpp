@@ -1,6 +1,8 @@
 #pragma once
 #include <bts/chain/types.hpp>
 #include <bts/chain/database.hpp>
+#include <bts/chain/account_object.hpp>
+#include <bts/chain/asset_object.hpp>
 #include <bts/net/node.hpp>
 #include <fc/api.hpp>
 
@@ -13,8 +15,11 @@ namespace bts { namespace app {
    {
       public:
          database_api( bts::chain::database& db );
-         fc::variants           get_objects( const vector<object_id_type>& ids )const;
-         optional<signed_block> get_block( uint32_t block_num )const;
+         fc::variants                      get_objects( const vector<object_id_type>& ids )const;
+         optional<signed_block>            get_block( uint32_t block_num )const;
+         vector<optional<account_object>>  lookup_account_names( const vector<string>& account_name )const;
+         vector<optional<asset_object>>    lookup_asset_symbols( const vector<string>& asset_symbols )const;
+         global_property_object            get_global_properties()const;
 
          bts::chain::database& _db;
    };
@@ -48,6 +53,12 @@ namespace bts { namespace app {
 
 }}  // bts::app
 
-FC_API( bts::app::database_api, (get_objects)(get_block) )
+FC_API( bts::app::database_api, 
+        (get_objects)
+        (get_block)
+        (lookup_account_names)
+        (lookup_asset_symbols) 
+        (get_global_properties) 
+     )
 FC_API( bts::app::network_api, (broadcast_transaction)(add_node)(get_connected_peers) )
 FC_API( bts::app::login_api, (login)(network)(database) )

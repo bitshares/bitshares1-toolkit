@@ -25,6 +25,38 @@ namespace bts { namespace app {
     {
        return _db.fetch_block_by_number( block_num );
     }
+
+    vector<optional<account_object>>  database_api::lookup_account_names( const vector<string>& account_names )const
+    {
+       const auto& account_idx = _db.get_index_type<account_index>();
+       const auto& accounts_by_name = account_idx.indices().get<by_name>();
+       vector<optional<account_object> > result;
+       result.reserve( account_names.size() );
+       for( const auto& account_name : account_names )
+       {
+          auto itr = accounts_by_name.find( account_name );
+          result.push_back( itr != accounts_by_name.end() ? *itr : optional<account_object>() );
+       }
+       return result;
+    }
+
+    vector<optional<asset_object>>    database_api::lookup_asset_symbols( const vector<string>& symbols )const
+    {
+       const auto& asset_idx = _db.get_index_type<asset_index>();
+       const auto& assets_by_symbol = asset_idx.indices().get<by_symbol>();
+       vector<optional<asset_object> > result;
+       result.reserve( symbols.size() );
+       for( const auto& symbol : symbols )
+       {
+          auto itr = assets_by_symbol.find( symbol );
+          result.push_back( itr != assets_by_symbol.end() ? *itr : optional<asset_object>() );
+       }
+       return result;
+    }
+    global_property_object    database_api::get_global_properties()const
+    {
+       return _db.get( global_property_id_type() );
+    }
     
 
     bool login_api::login( const string& user, const string& password )
