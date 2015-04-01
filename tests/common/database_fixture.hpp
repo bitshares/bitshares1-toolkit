@@ -291,7 +291,7 @@ struct database_fixture {
    {
       db.modify(global_property_id_type()(db), [fee](global_property_object& gpo) {
          for( int i=0; i < FEE_TYPE_COUNT; ++i)
-            gpo.current_fees.at(i) = fee;
+            gpo.current_fees.set(i, fee);
       });
 
    }
