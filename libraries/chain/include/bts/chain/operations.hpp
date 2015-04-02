@@ -172,6 +172,10 @@ namespace bts { namespace chain {
       asset           amount_to_sell;
       asset           fee;
       asset           min_to_receive;
+      /**
+       *  This order should expire if not filled by expiration
+       */
+      time_point_sec  expiration;
 
       /** if this flag is set the entire order must be filled or
        * the operation is rejected.
@@ -676,7 +680,7 @@ FC_REFLECT( bts::chain::delegate_publish_feeds_operation,
             (delegate)(fee)(feeds) )
 
 FC_REFLECT( bts::chain::limit_order_create_operation,
-            (seller)(amount_to_sell)(fee)(min_to_receive)(fill_or_kill)
+            (seller)(amount_to_sell)(fee)(min_to_receive)(expiration)(fill_or_kill)
           )
 FC_REFLECT( bts::chain::limit_order_cancel_operation,(fee_paying_account)(fee)(order) )
 FC_REFLECT( bts::chain::short_order_cancel_operation,(fee_paying_account)(fee)(order) )

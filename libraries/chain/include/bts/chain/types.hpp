@@ -133,7 +133,8 @@ namespace bts { namespace chain {
       impl_account_debt_object_type,
       impl_delegate_vote_object_type,
       impl_transaction_object_type,
-      impl_block_summary_object_type
+      impl_block_summary_object_type,
+      impl_account_transaction_history_object_type
    };
 
    enum meta_info_object_type
@@ -184,6 +185,7 @@ namespace bts { namespace chain {
    class transaction_object;
    class delegate_feeds_object;
    class block_summary_object;
+   class account_transaction_history_object;
 
    typedef object_id< implementation_ids, impl_global_property_object_type,  global_property_object>                    global_property_id_type;
    typedef object_id< implementation_ids, impl_dynamic_global_property_object_type,  dynamic_global_property_object>    dynamic_global_property_id_type;
@@ -194,6 +196,10 @@ namespace bts { namespace chain {
    typedef object_id< implementation_ids, impl_delegate_vote_object_type,    delegate_vote_object>                      delegate_vote_id_type;
    typedef object_id< implementation_ids, impl_transaction_object_type,      transaction_object>                        transaction_obj_id_type;
    typedef object_id< implementation_ids, impl_block_summary_object_type,    block_summary_object>                      block_summary_id_type;
+
+   typedef object_id< implementation_ids, 
+                      impl_account_transaction_history_object_type,      
+                      account_transaction_history_object>       account_transaction_history_id_type;
 
 
    typedef fc::array<char,BTS_MAX_SYMBOL_NAME_LENGTH>   symbol_type;
@@ -288,6 +294,7 @@ FC_REFLECT_ENUM( bts::chain::impl_object_type,
                  (impl_delegate_vote_object_type)
                  (impl_transaction_object_type)
                  (impl_block_summary_object_type)
+                 (impl_account_transaction_history_object_type)
                )
 
 FC_REFLECT_ENUM( bts::chain::meta_info_object_type, (meta_account_object_type)(meta_asset_object_type) )

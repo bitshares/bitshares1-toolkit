@@ -33,6 +33,7 @@ namespace bts { namespace chain {
         static const uint8_t space_id = protocol_ids;
         static const uint8_t type_id  = short_order_object_type;
 
+        time_point_sec   expiration;
         account_id_type  seller;
         share_type       for_sale;
         share_type       available_collateral; ///< asset_id == sell_price.quote.asset_id
@@ -76,11 +77,13 @@ namespace bts { namespace chain {
   struct by_id;
   struct by_price;
   struct by_account;
+  struct by_expiration;
   typedef multi_index_container<
      short_order_object,
      indexed_by<
         hashed_unique< tag<by_id>,
            member< object, object_id_type, &object::id > >,
+        ordered_non_unique< tag<by_expiration>, member< short_order_object, time_point_sec, &short_order_object::expiration> >,
         ordered_unique< tag<by_price>,
            composite_key< short_order_object,
               member< short_order_object, price, &short_order_object::sell_price>,
@@ -119,7 +122,7 @@ namespace bts { namespace chain {
 } } // bts::chain
 
 FC_REFLECT_DERIVED( bts::chain::short_order_object, (bts::db::object),
-                    (seller)(for_sale)(available_collateral)(sell_price)
+                    (expiration)(seller)(for_sale)(available_collateral)(sell_price)
                     (call_price)(initial_collateral_ratio)(maintenance_collateral_ratio)
                   )
 
