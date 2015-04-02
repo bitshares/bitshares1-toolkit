@@ -7,6 +7,10 @@
 #include <fc/thread/thread.hpp>
 #include <fc/interprocess/signals.hpp>
 
+#ifndef WIN32
+#include <csignal>
+#endif
+
 using namespace bts;
 
 int main(int argc, char** argv) {
