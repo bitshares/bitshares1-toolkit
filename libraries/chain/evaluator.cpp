@@ -417,6 +417,8 @@ bool generic_evaluator::fill_order( const limit_order_object& order, const asset
    auto issuer_fees = pay_market_fees( recv_asset, receives );
    pay_order( seller, receives - issuer_fees, pays );
 
+   db().push_applied_operation( fill_order_operation{ order.id, order.seller, pays, receives, issuer_fees } );
+
    if( pays == order.amount_for_sale() )
    {
       db().remove( order );

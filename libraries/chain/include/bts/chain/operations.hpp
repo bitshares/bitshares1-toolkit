@@ -549,15 +549,11 @@ namespace bts { namespace chain {
     *  This is a virtual operation that is created while matching orders and
     *  emited for the purpose of accurately tracking account history, acclerating
     *  reindex.  
-    *
-    *  If the order is canceled due to expiration then pays and receives as well as
-    *  paying and recieiving account will be the same.
     */
    struct fill_order_operation
    {
       object_id_type      order_id;
-      account_id_type     paying_account;
-      account_id_type     receiving_account;
+      account_id_type     account_id;
       asset               pays;
       asset               receives;
       asset               fee; // paid by receiving account
@@ -593,6 +589,18 @@ namespace bts { namespace chain {
             proposal_delete_operation,
             fill_order_operation
          > operation;
+
+   /**
+    *  Used to track the result of applying an operation and when it was applied.
+    */
+   struct applied_operation
+   {
+      operation        op;
+      operation_result result;
+      uint32_t         block_num;
+      uint16_t         transaction_num;
+      uint16_t         op_num;
+   };
 
    /**
      * @brief Used to find accounts which must sign off on operations in a polymorphic manner
@@ -705,7 +713,7 @@ FC_REFLECT( bts::chain::delegate_publish_feeds_operation,
 FC_REFLECT( bts::chain::limit_order_create_operation,
             (seller)(amount_to_sell)(fee)(min_to_receive)(expiration)(fill_or_kill)
           )
-FC_REFLECT( bts::chain::fill_order_operation, (order_id)(paying_account)(receiving_account)(pays)(receives)(fee) )
+FC_REFLECT( bts::chain::fill_order_operation, (order_id)(account_id)(pays)(receives)(fee) )
 FC_REFLECT( bts::chain::limit_order_cancel_operation,(fee_paying_account)(fee)(order) )
 FC_REFLECT( bts::chain::short_order_cancel_operation,(fee_paying_account)(fee)(order) )
 FC_REFLECT( bts::chain::short_order_create_operation, (seller)(fee)(amount_to_sell)(collateral)(initial_collateral_ratio)(maintenance_collateral_ratio) )
