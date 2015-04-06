@@ -783,7 +783,7 @@ operation_result database::apply_operation(transaction_evaluation_state& eval_st
    auto result =  _operation_evaluators[op.which()]->evaluate( eval_state, op, true );
    return result;
 }
-void database::push_applied_operation( const operation& op )
+void database::push_applied_operation( const operation& op, const operation_result& r )
 {
    _applied_ops.emplace_back(op);
 }

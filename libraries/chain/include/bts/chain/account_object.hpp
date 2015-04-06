@@ -4,6 +4,7 @@
 #include <bts/db/generic_index.hpp>
 
 namespace bts { namespace chain {
+
    /**
     *  @class account_balance_object
     *  @ingroup implementation
@@ -28,6 +29,17 @@ namespace bts { namespace chain {
          void                  add_balance( const asset& a );
          void                  sub_balance( const asset& a );
          asset                 get_balance( asset_id_type asset_id )const;
+
+         /** keeping the most recent operation as a root pointer to
+          * a linked list of the transaction history. This field is
+          * not required by core validation and could in theory be 
+          * made an annotation on the account object, but because 
+          * transaction history is so common and this object is already
+          * cached in the undo buffer (because it likely affected the
+          * balances of this account) it is convienent to simply
+          * track this data here.   
+          */
+         account_transaction_history_id_type most_recent_op;
 
          /**
           *  When calculating votes it is necessary to know how much is
@@ -104,4 +116,4 @@ FC_REFLECT_DERIVED( bts::chain::meta_account_object,
                     (bts::db::object),
                     (memo_key)(delegate_id) )
 
-FC_REFLECT_DERIVED( bts::chain::account_balance_object, (bts::chain::object), (total_core_in_orders)(balances) )
+FC_REFLECT_DERIVED( bts::chain::account_balance_object, (bts::chain::object), (most_recent_op)(total_core_in_orders)(balances) )
