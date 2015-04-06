@@ -65,6 +65,21 @@ namespace bts { namespace chain {
    };
 
    /**
+    *  Used to move delegate pay from accumulated_income to their account balance.
+    */
+   struct delegate_pay_withdraw
+   {
+      asset            fee;
+      delegate_id_type from_delegate;
+      account_id_type  to_account; ///< must be from_delegate->delegate_account
+      share_type       amount;
+
+      void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>& owner_auth_set)const;
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
     * @brief Publish delegate-specified price feeds for market-issued assets
     *
     * Delegates use this operation to publish their price feeds for market-issued assets which are maintained by the
@@ -584,6 +599,7 @@ namespace bts { namespace chain {
             delegate_publish_feeds_operation,
             delegate_create_operation,
             delegate_update_operation,
+            delegate_pay_withdraw,
             proposal_create_operation,
             proposal_update_operation,
             proposal_delete_operation,
@@ -763,4 +779,5 @@ FC_REFLECT( bts::chain::account_set_data_operation, (account_id)(fee)(offset)(da
 FC_REFLECT( bts::chain::account_execute_script_operation, (gas_payer)(fee)(script_account)(args)(initial_authority)(deposits) )
 
 
+FC_REFLECT( bts::chain::delegate_pay_withdraw, (fee)(from_delegate)(to_account)(amount) )
 
