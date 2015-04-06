@@ -1780,6 +1780,16 @@ BOOST_AUTO_TEST_CASE( limit_order_fill_or_kill )
    assert( !"not implemented" );
 }
 
+BOOST_AUTO_TEST_CASE( delegate_withdraw_pay_test )
+{
+   assert( !"not implemented" );
+}
+
+BOOST_AUTO_TEST_CASE( script_operation )
+{
+   assert( !"not implemented" );
+}
+
 
 BOOST_AUTO_TEST_CASE( margin_call_black_swan )
 { try {

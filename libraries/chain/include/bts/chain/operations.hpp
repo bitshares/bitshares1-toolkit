@@ -453,6 +453,22 @@ namespace bts { namespace chain {
    };
 
    /**
+    *  Runs a transient script with the given permissions.
+    */
+   struct script_operation
+   {
+       asset                     fee; ///< converted to gas after paying a data fee
+       account_id_type           fee_payer;
+       vector<script_op>         code;
+       flat_set<account_id_type> active_auth;
+       flat_set<account_id_type> owner_auth;
+
+       void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
+       void       validate()const;
+       share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
      * The Graphene Transaction Proposal Protocol
      *
      * Graphene allows users to propose a transaction which requires approval of multiple accounts in order to execute.
@@ -591,6 +607,7 @@ namespace bts { namespace chain {
             account_execute_script_operation,
             account_set_script_operation,
             account_set_data_operation,
+            script_operation,
             asset_create_operation,
             asset_update_operation,
             asset_whitelist_operation,
@@ -780,4 +797,5 @@ FC_REFLECT( bts::chain::account_execute_script_operation, (gas_payer)(fee)(scrip
 
 
 FC_REFLECT( bts::chain::delegate_pay_withdraw, (fee)(from_delegate)(to_account)(amount) )
+FC_REFLECT( bts::chain::script_operation, (fee)(fee_payer)(code)(active_auth)(owner_auth) )
 

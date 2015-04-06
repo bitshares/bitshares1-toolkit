@@ -114,7 +114,7 @@ namespace bts { namespace chain {
           *  applied operations is cleared after applying each block and calling the block
           *  observers which may want to index these operations.
           */
-         void push_applied_operation( const operation& op );
+         void  push_applied_operation( const operation& op );
          const vector<operation>& get_applied_operations()const;
 
          /**
