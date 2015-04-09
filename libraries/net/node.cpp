@@ -59,10 +59,10 @@
 
 //#define ENABLE_DEBUG_ULOGS
 
-//#ifdef DEFAULT_LOGGER
-//# undef DEFAULT_LOGGER
-//#endif
-//#define DEFAULT_LOGGER "p2p"
+#ifdef DEFAULT_LOGGER
+# undef DEFAULT_LOGGER
+#endif
+#define DEFAULT_LOGGER "p2p"
 
 #define P2P_IN_DEDICATED_THREAD 1
 
@@ -2122,13 +2122,16 @@ namespace bts { namespace net { namespace detail {
         originating_peer->peer_needs_sync_items_from_us = false; /* I have no items in my blockchain */
       else if( !fetch_blockchain_item_ids_message_received.blockchain_synopsis.empty() &&
                reply_message.item_hashes_available.size() == 1 &&
-               reply_message.item_hashes_available.back() == fetch_blockchain_item_ids_message_received.blockchain_synopsis.back() )
-        {
+               std::find(fetch_blockchain_item_ids_message_received.blockchain_synopsis.begin(),
+                         fetch_blockchain_item_ids_message_received.blockchain_synopsis.end(),
+                         reply_message.item_hashes_available.back() ) != fetch_blockchain_item_ids_message_received.blockchain_synopsis.end()
+             )
+      {
         /* the last item in the peer's list matches the last item in our list */
         originating_peer->peer_needs_sync_items_from_us = false;
         if (originating_peer->inhibit_fetching_sync_blocks)
           disconnect_from_inhibited_peer = true; // delay disconnecting until after we send our reply to this fetch_blockchain_item_ids_message
-        }
+      }
       else
         originating_peer->peer_needs_sync_items_from_us = true;
 
@@ -2657,7 +2660,7 @@ namespace bts { namespace net { namespace detail {
       }
       if( originating_peer->we_have_requested_close )
         originating_peer->close_connection();
-    }
+      }
 
     void node_impl::on_connection_closed(peer_connection* originating_peer)
     {
