@@ -60,6 +60,10 @@ database::~database(){
 void database::close()
 {
    _pending_block_session.reset();
+
+   for(int i = 0; i < 8; ++i)
+      pop_block();
+
    object_database::close();
 
    if( _block_id_to_block.is_open() )
@@ -644,10 +648,17 @@ bool database::push_block( const signed_block& new_block, uint32_t skip )
    // TODO: Preserve pending transactions, and re-apply any which weren't included in the new block.
    clear_pending();
 
-   auto session = _undo_db.start_undo_session();
-   apply_block( new_block, skip );
-   _block_id_to_block.store( new_block.id(), new_block );
-   session.commit();
+   try {
+      auto session = _undo_db.start_undo_session();
+      apply_block( new_block, skip );
+      _block_id_to_block.store( new_block.id(), new_block );
+      session.commit();
+   } catch ( const fc::exception& e ) {
+      elog("Failed to push new block:\n${e}", ("e", e.to_detail_string()));
+      _fork_db.remove(new_block.id());
+      throw;
+   }
+
    return false;
 } FC_CAPTURE_AND_RETHROW( (new_block) ) }
 

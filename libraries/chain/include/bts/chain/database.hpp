@@ -46,10 +46,6 @@ namespace bts { namespace chain {
 
          void open(const fc::path& data_dir, const genesis_allocation& initial_allocation = genesis_allocation());
          void reindex(fc::path data_dir, genesis_allocation initial_allocation = genesis_allocation());
-         /**
-          * Saves the complete state of the database to disk, this could take a while
-          */
-         void flush();
 
          /**
           * @brief wipe Delete database from disk, and potentially the raw chain as well.
