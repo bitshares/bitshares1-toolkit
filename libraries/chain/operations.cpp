@@ -555,4 +555,20 @@ void proposal_delete_operation::validate() const
    FC_ASSERT( fee.amount >= 0 );
 }
 
+ void       script_operation::get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& owner_auth_set )const
+{
+   for( auto item : active_auth ) active_auth_set.insert(item);
+   for( auto item : owner_auth ) owner_auth_set.insert(item);
+}
+
+ void       script_operation::validate()const
+{
+   FC_ASSERT( fee.amount > 0 );
+}
+
+share_type script_operation::calculate_fee( const fee_schedule_type& schedule )const
+{
+   return share_type((code.size() * 4 * schedule.at( data_fee_type ).value)/1024);
+}
+
 } } // namespace bts::chain

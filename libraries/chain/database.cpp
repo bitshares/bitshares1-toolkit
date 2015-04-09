@@ -373,6 +373,10 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    create_block_summary(next_block);
    clear_expired_transactions();
    clear_expired_proposals();
+
+   // notify observers that the block has been applied
+   applied_block( next_block ); //emit
+   _applied_ops.clear();
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num())(skip) )  }
 
 time_point database::get_next_generation_time( delegate_id_type del_id )const
@@ -786,7 +790,13 @@ operation_result database::apply_operation(transaction_evaluation_state& eval_st
 {
    assert("No registered evaluator for this operation." &&
           _operation_evaluators.size() > op.which() && _operation_evaluators[op.which()]);
-   return _operation_evaluators[op.which()]->evaluate( eval_state, op, true );
+   push_applied_operation( op );
+   auto result =  _operation_evaluators[op.which()]->evaluate( eval_state, op, true );
+   return result;
+}
+void database::push_applied_operation( const operation& op, const operation_result& r )
+{
+   _applied_ops.emplace_back(op);
 }
 
 const global_property_object& database::get_global_properties()const

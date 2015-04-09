@@ -10,6 +10,7 @@
 #include <bts/db/object.hpp>
 #include <bts/db/level_map.hpp>
 #include <bts/db/level_pod_map.hpp>
+#include <fc/signals.hpp>
 
 #include <fc/log/logger.hpp>
 
@@ -102,6 +103,26 @@ namespace bts { namespace chain {
          void pop_block();
          void clear_pending();
 
+         /**
+          *  This method is used to track appied operations during the evaluation of a block, these
+          *  operations should include any operation actually included in a transaction as well
+          *  as any implied/virtual operations that resulted, such as filling an order.  The
+          *  applied operations is cleared after applying each block and calling the block
+          *  observers which may want to index these operations.
+          */
+         void  push_applied_operation( const operation& op, const operation_result& r  = operation_result() );
+         const vector<operation>& get_applied_operations()const;
+
+         /**
+          *  This signal is emitted after all operations and virtual operation for a
+          *  block have been applied but before the get_applied_operations() are cleared.
+          *
+          *  You may not yield from this callback because the blockchain is holding
+          *  the write lock and may be in an "inconstant state" until after it is
+          *  released.
+          */
+         fc::signal<void(const signed_block&)> applied_block;
+
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
          void pop_undo() { object_database::pop_undo(); }
@@ -141,7 +162,15 @@ namespace bts { namespace chain {
           *  until the fork is resolved.  This should make maintaining
           *  the fork tree relatively simple.
           */
-         bts::db::level_map<block_id_type, signed_block>           _block_id_to_block;
+         bts::db::level_map<block_id_type, signed_block>   _block_id_to_block;
+
+         /**
+          * Contains the set of ops that are in the process of being applied from
+          * the current block.  It contains real and virtual operations in the
+          * order they occur and is cleared after the applied_block signal is
+          * emited.
+          */
+         vector<operation>                                 _applied_ops;
    };
 
 } }

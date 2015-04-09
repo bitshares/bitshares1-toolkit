@@ -65,6 +65,21 @@ namespace bts { namespace chain {
    };
 
    /**
+    *  Used to move delegate pay from accumulated_income to their account balance.
+    */
+   struct delegate_pay_withdraw
+   {
+      asset            fee;
+      delegate_id_type from_delegate;
+      account_id_type  to_account; ///< must be from_delegate->delegate_account
+      share_type       amount;
+
+      void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>& owner_auth_set)const;
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
     * @brief Publish delegate-specified price feeds for market-issued assets
     *
     * Delegates use this operation to publish their price feeds for market-issued assets which are maintained by the
@@ -172,6 +187,10 @@ namespace bts { namespace chain {
       asset           amount_to_sell;
       asset           fee;
       asset           min_to_receive;
+      /**
+       *  This order should expire if not filled by expiration
+       */
+      time_point_sec  expiration;
 
       /** if this flag is set the entire order must be filled or
        * the operation is rejected.
@@ -183,6 +202,7 @@ namespace bts { namespace chain {
       share_type      calculate_fee( const fee_schedule_type& k )const;
       price           get_price()const { return amount_to_sell / min_to_receive; }
    };
+
 
    /**
     *  Used to cancel an existing limit order, fee_pay_account and the
@@ -433,6 +453,22 @@ namespace bts { namespace chain {
    };
 
    /**
+    *  Runs a transient script with the given permissions.
+    */
+   struct script_operation
+   {
+       asset                     fee; ///< converted to gas after paying a data fee
+       account_id_type           fee_payer;
+       vector<script_op>         code;
+       flat_set<account_id_type> active_auth;
+       flat_set<account_id_type> owner_auth;
+
+       void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
+       void       validate()const;
+       share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
      * The Graphene Transaction Proposal Protocol
      *
      * Graphene allows users to propose a transaction which requires approval of multiple accounts in order to execute.
@@ -540,6 +576,23 @@ namespace bts { namespace chain {
    };
    ///@}
 
+   /**
+    *  This is a virtual operation that is created while matching orders and
+    *  emited for the purpose of accurately tracking account history, acclerating
+    *  reindex.  
+    */
+   struct fill_order_operation
+   {
+      object_id_type      order_id;
+      account_id_type     account_id;
+      asset               pays;
+      asset               receives;
+      asset               fee; // paid by receiving account
+
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const{}
+      void            validate()const { FC_ASSERT( !"virtual operation" ); }
+      share_type      calculate_fee( const fee_schedule_type& k )const { return share_type(); }
+   };
 
    typedef fc::static_variant<
             transfer_operation,
@@ -554,6 +607,7 @@ namespace bts { namespace chain {
             account_execute_script_operation,
             account_set_script_operation,
             account_set_data_operation,
+            script_operation,
             asset_create_operation,
             asset_update_operation,
             asset_whitelist_operation,
@@ -562,10 +616,24 @@ namespace bts { namespace chain {
             delegate_publish_feeds_operation,
             delegate_create_operation,
             delegate_update_operation,
+            delegate_pay_withdraw,
             proposal_create_operation,
             proposal_update_operation,
-            proposal_delete_operation
+            proposal_delete_operation,
+            fill_order_operation
          > operation;
+
+   /**
+    *  Used to track the result of applying an operation and when it was applied.
+    */
+   struct applied_operation
+   {
+      operation        op;
+      operation_result result;
+      uint32_t         block_num;
+      uint16_t         transaction_num;
+      uint16_t         op_num;
+   };
 
    /**
      * @brief Used to find accounts which must sign off on operations in a polymorphic manner
@@ -676,8 +744,9 @@ FC_REFLECT( bts::chain::delegate_publish_feeds_operation,
             (delegate)(fee)(feeds) )
 
 FC_REFLECT( bts::chain::limit_order_create_operation,
-            (seller)(amount_to_sell)(fee)(min_to_receive)(fill_or_kill)
+            (seller)(amount_to_sell)(fee)(min_to_receive)(expiration)(fill_or_kill)
           )
+FC_REFLECT( bts::chain::fill_order_operation, (order_id)(account_id)(pays)(receives)(fee) )
 FC_REFLECT( bts::chain::limit_order_cancel_operation,(fee_paying_account)(fee)(order) )
 FC_REFLECT( bts::chain::short_order_cancel_operation,(fee_paying_account)(fee)(order) )
 FC_REFLECT( bts::chain::short_order_create_operation, (seller)(fee)(amount_to_sell)(collateral)(initial_collateral_ratio)(maintenance_collateral_ratio) )
@@ -727,4 +796,6 @@ FC_REFLECT( bts::chain::account_set_data_operation, (account_id)(fee)(offset)(da
 FC_REFLECT( bts::chain::account_execute_script_operation, (gas_payer)(fee)(script_account)(args)(initial_authority)(deposits) )
 
 
+FC_REFLECT( bts::chain::delegate_pay_withdraw, (fee)(from_delegate)(to_account)(amount) )
+FC_REFLECT( bts::chain::script_operation, (fee)(fee_payer)(code)(active_auth)(owner_auth) )
 

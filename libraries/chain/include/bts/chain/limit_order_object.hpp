@@ -14,6 +14,7 @@ namespace bts { namespace chain {
         static const uint8_t space_id = protocol_ids;
         static const uint8_t type_id  = limit_order_object_type;
 
+        time_point_sec   expiration;
         account_id_type  seller;   
         share_type       for_sale; ///< asset_id == sell_price.base.asset_id
         price            sell_price;
@@ -24,11 +25,13 @@ namespace bts { namespace chain {
 
   struct by_id;
   struct by_price;
+  struct by_expiration;
   typedef multi_index_container< 
      limit_order_object,
      indexed_by<  
         hashed_unique< tag<by_id>, 
            member< object, object_id_type, &object::id > >,
+        ordered_non_unique< tag<by_expiration>, member< limit_order_object, time_point_sec, &limit_order_object::expiration> >,
         ordered_unique< tag<by_price>, 
            composite_key< limit_order_object, 
               member< limit_order_object, price, &limit_order_object::sell_price>,
@@ -45,6 +48,6 @@ namespace bts { namespace chain {
 
 FC_REFLECT_DERIVED( bts::chain::limit_order_object, 
                     (bts::db::object), 
-                    (seller)(for_sale)(sell_price) 
+                    (expiration)(seller)(for_sale)(sell_price) 
                   )
                     
