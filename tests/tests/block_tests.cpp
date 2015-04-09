@@ -33,7 +33,7 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
          wlog( "------------------------------------------------" );
          database db;
          db.open(data_dir.path() );
-         BOOST_CHECK( db.head_block_num() == 100 );
+         BOOST_CHECK_EQUAL( db.head_block_num(), 100 );
          auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
          for( uint32_t i = 0; i < 100; ++i )
          {
@@ -41,7 +41,7 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
             advance_simulated_time_to( db.get_next_generation_time(  ad[i%ad.size()] ) );
             auto b = db.generate_block( delegate_priv_key, ad[i%ad.size()] );
          }
-         BOOST_CHECK( db.head_block_num() == 200 );
+         BOOST_CHECK_EQUAL( db.head_block_num(), 200 );
       }
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));

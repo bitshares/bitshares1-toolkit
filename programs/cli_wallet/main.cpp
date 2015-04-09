@@ -105,8 +105,8 @@ class wallet_api
         return signed_transaction();
       }
 
-      signed_transaction transfer( string from, 
-                                   string to, 
+      signed_transaction transfer( string from,
+                                   string to,
                                    uint64_t amount,
                                    string asset_symbol,
                                    string memo,
@@ -123,11 +123,11 @@ class wallet_api
       fc::api<network_api>    _remote_net;
 };
 
-FC_API( wallet_api, 
+FC_API( wallet_api,
         (help)
         (import_key)
         (suggest_brain_key)
-        (create_account) 
+        (create_account)
         (transfer)
         (get_account)
         (get_object)
@@ -170,7 +170,7 @@ int main( int argc, char** argv )
           wallet = fc::json::from_file( wallet_file ).as<wallet_data>();
 
       fc::http::websocket_client client;
-      auto con  = client.connect( wallet.ws_server ); 
+      auto con  = client.connect( wallet.ws_server );
       auto apic = std::make_shared<fc::rpc::websocket_api_connection>(*con);
       con->closed.connect( [&](){ elog( "connection closed" ); } );
 
@@ -188,7 +188,7 @@ int main( int argc, char** argv )
       wallet_cli->register_api( wapi );
       wallet_cli->start();
       wallet_cli->wait();
-   } 
+   }
    catch ( const fc::exception& e )
    {
       std::cout << e.to_detail_string() << "\n";

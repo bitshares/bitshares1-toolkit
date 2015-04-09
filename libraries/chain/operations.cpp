@@ -571,4 +571,20 @@ share_type script_operation::calculate_fee( const fee_schedule_type& schedule )c
    return share_type((code.size() * 4 * schedule.at( data_fee_type ).value)/1024);
 }
 
+void delegate_withdraw_pay_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& owner_auth_set) const
+{
+   active_auth_set.insert(to_account);
+}
+
+void delegate_withdraw_pay_operation::validate() const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( amount >= 0 );
+}
+
+share_type delegate_withdraw_pay_operation::calculate_fee(const fee_schedule_type& k) const
+{
+   return k.at(delegate_withdraw_pay_fee_type);
+}
+
 } } // namespace bts::chain

@@ -55,7 +55,7 @@ namespace bts { namespace chain {
           * Will close the database before wiping. Database will be closed when this function returns.
           */
          void wipe(bool include_blocks);
-         void close();
+         void close(uint32_t blocks_to_rewind = 0);
 
          /**
           *  @return true if the block is in our fork DB or saved to disk as

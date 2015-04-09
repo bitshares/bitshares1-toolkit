@@ -80,7 +80,8 @@ namespace bts { namespace chain {
       key_create_fee_type,
       account_create_fee_type, ///< the cost to register the cheapest non-free account
       delegate_create_fee_type, ///< fixed fee for registering as a delegate, used to discourage frivioulous delegates
-      delegate_update_fee_type, ///< fixed fee for registering as a delegate, used to discourage frivioulous delegates
+      delegate_update_fee_type, ///< fixed fee for updating a delegate
+      delegate_withdraw_pay_fee_type, ///< fee for withdrawing delegate pay
       transfer_fee_type,
       limit_order_fee_type,
       short_order_fee_type,
@@ -200,8 +201,8 @@ namespace bts { namespace chain {
    typedef object_id< implementation_ids, impl_transaction_object_type,      transaction_object>                        transaction_obj_id_type;
    typedef object_id< implementation_ids, impl_block_summary_object_type,    block_summary_object>                      block_summary_id_type;
 
-   typedef object_id< implementation_ids, 
-                      impl_account_transaction_history_object_type,      
+   typedef object_id< implementation_ids,
+                      impl_account_transaction_history_object_type,
                       account_transaction_history_object>       account_transaction_history_id_type;
 
 
@@ -303,19 +304,19 @@ FC_REFLECT_ENUM( bts::chain::impl_object_type,
 
 FC_REFLECT_ENUM( bts::chain::meta_info_object_type, (meta_account_object_type)(meta_asset_object_type) )
 
-FC_REFLECT_ENUM( bts::chain::fee_type, 
+FC_REFLECT_ENUM( bts::chain::fee_type,
 (key_create_fee_type)
 (account_create_fee_type)
 (delegate_create_fee_type)
-(delegate_update_fee_type) 
+(delegate_update_fee_type)
 (transfer_fee_type)
 (limit_order_fee_type)
 (short_order_fee_type)
 (publish_feed_fee_type)
-(gas_fee_type) 
+(gas_fee_type)
 (max_gas_fee_type)
 (asset_create_fee_type)
-(asset_update_fee_type) 
+(asset_update_fee_type)
 (asset_issue_fee_type)
 (asset_fund_fee_pool_fee_type)
 (market_fee_type)
