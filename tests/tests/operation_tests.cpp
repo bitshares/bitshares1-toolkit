@@ -1576,15 +1576,16 @@ BOOST_AUTO_TEST_CASE( big_short3 )
  */
 BOOST_AUTO_TEST_CASE( trade_amount_equals_zero )
 {
+   BOOST_CHECK("Write a test case here." && false);
 }
 
 BOOST_AUTO_TEST_CASE( margin_call_limit_test )
 { try {
       const asset_object& bitusd      = create_bitasset( "BITUSD" );
-      const asset_object& bts         = get_asset( BTS_SYMBOL );
+      const asset_object& core         = get_asset( BTS_SYMBOL );
 
       db.modify( bitusd, [&]( asset_object& usd ){
-                 usd.current_feed.call_limit = bts.amount(3) / bitusd.amount(1);
+                 usd.current_feed.call_limit = core.amount(3) / bitusd.amount(1);
                  });
 
       const account_object& shorter1  = create_account( "shorter1" );
@@ -1601,13 +1602,34 @@ BOOST_AUTO_TEST_CASE( margin_call_limit_test )
       BOOST_REQUIRE( !create_short( shorter1, bitusd.amount(1000), asset(1000) )   );
       BOOST_REQUIRE_EQUAL( get_balance(buyer1, bitusd), 990 ); // 1000 - 1% fee
 
+      const auto& call_index = db.get_index_type<call_order_index>().indices().get<by_account>();
+      const auto call_itr = call_index.find(boost::make_tuple(shorter1.id, bitusd.id));
+      BOOST_REQUIRE( call_itr != call_index.end() );
+      const call_order_object& call = *call_itr;
+      BOOST_CHECK(call.get_collateral() == core.amount(2000));
+      BOOST_CHECK(call.get_debt() == bitusd.amount(1000));
+      BOOST_CHECK(call.call_price == price(core.amount(1500), bitusd.amount(1000)));
+      BOOST_CHECK_EQUAL(get_balance(shorter1, core), 9000);
+
       ilog( "=================================== START===================================\n\n");
       // this should cause the highest bid to below the margin call threshold
       // which means it should be filled by the cover
-      auto unmatched = create_sell_order( buyer1, bitusd.amount(990), bts.amount(1500) );
+      auto unmatched = create_sell_order( buyer1, bitusd.amount(495), core.amount(750) );
       if( unmatched ) edump((*unmatched));
-      BOOST_REQUIRE( !unmatched );
+      BOOST_CHECK( !unmatched );
+      BOOST_CHECK(call.get_debt() == bitusd.amount(505));
+      BOOST_CHECK(call.get_collateral() == core.amount(1250));
 
+      auto below_call_price = create_sell_order(buyer1, bitusd.amount(200), core.amount(1));
+      BOOST_REQUIRE(below_call_price);
+      auto above_call_price = create_sell_order(buyer1, bitusd.amount(200), core.amount(303));
+      BOOST_REQUIRE(above_call_price);
+      auto above_id = above_call_price->id;
+
+      cancel_limit_order(*below_call_price);
+      BOOST_CHECK_THROW(db.get_object(above_id), fc::exception);
+      BOOST_CHECK(call.get_debt() == bitusd.amount(305));
+      BOOST_CHECK(call.get_collateral() == core.amount(947));
    } catch( const fc::exception& e) {
       edump((e.to_detail_string()));
       throw;

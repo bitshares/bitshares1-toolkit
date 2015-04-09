@@ -57,6 +57,9 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
       });
    }
 
+   // Possible optimization: We only need to check calls if both are true:
+   //  - The new order is at the front of the book
+   //  - The new order is below the call limit price
    check_call_orders(*_sell_asset);
 
    if( !db().find(new_id) ) // then we were filled by call order

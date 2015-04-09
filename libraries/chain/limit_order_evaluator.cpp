@@ -49,6 +49,9 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
    });
    limit_order_id_type result = new_order_object.id; // save this because we may remove the object by filling it
 
+   // Possible optimization: We only need to check calls if both are true:
+   //  - The new order is at the front of the book
+   //  - The new order is below the call limit price
    bool called_some = check_call_orders(*_sell_asset);
    called_some |= check_call_orders(*_receive_asset);
    if( called_some && !db().find(result) ) // then we were filled by call order
@@ -178,6 +181,8 @@ asset limit_order_cancel_evaluator::do_apply( const limit_order_cancel_operation
   apply_delta_fee_pools();
 
   auto refunded = _order->amount_for_sale();
+  auto base_asset = _order->sell_price.base.asset_id;
+  auto quote_asset = _order->sell_price.quote.asset_id;
 
   d.remove( *_order );
 
@@ -191,6 +196,12 @@ asset limit_order_cancel_evaluator::do_apply( const limit_order_cancel_operation
      //did not gain or lose any voting stake. Counteract that adjustment here.
      adjust_votes(fee_paying_account->delegate_votes, -refunded.amount);
   }
+
+  // Possible optimization: order can be called by canceling a limit order iff the canceled order was at the top of the book.
+  // Do I need to check calls in both assets?
+  check_call_orders(base_asset(d));
+  check_call_orders(quote_asset(d));
+
   return refunded;
 }
 
