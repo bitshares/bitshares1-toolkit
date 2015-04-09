@@ -1630,6 +1630,20 @@ BOOST_AUTO_TEST_CASE( margin_call_limit_test )
       BOOST_CHECK_THROW(db.get_object(above_id), fc::exception);
       BOOST_CHECK(call.get_debt() == bitusd.amount(305));
       BOOST_CHECK(call.get_collateral() == core.amount(947));
+
+      below_call_price = create_sell_order(buyer1, bitusd.amount(200), core.amount(1));
+      BOOST_REQUIRE(below_call_price);
+      auto below_id = below_call_price->id;
+      above_call_price = create_sell_order(buyer1, bitusd.amount(95), core.amount(144));
+      BOOST_REQUIRE(above_call_price);
+      above_id = above_call_price->id;
+      auto match_below_call = create_sell_order(buyer2, core.amount(1), bitusd.amount(200));
+      BOOST_CHECK(!match_below_call);
+
+      BOOST_CHECK_THROW(db.get_object(above_id), fc::exception);
+      BOOST_CHECK_THROW(db.get_object(below_id), fc::exception);
+      BOOST_CHECK(call.get_debt() == bitusd.amount(210));
+      BOOST_CHECK(call.get_collateral() == core.amount(803));
    } catch( const fc::exception& e) {
       edump((e.to_detail_string()));
       throw;

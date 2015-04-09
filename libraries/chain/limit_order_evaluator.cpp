@@ -151,6 +151,11 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
          filled = (2 != match( new_order_object, *old_itr, old_itr->sell_price ));
    }
 
+   //Possible optimization: only check calls if the new order completely filled some old order
+   //Do I need to check both assets?
+   check_call_orders(*_sell_asset);
+   check_call_orders(*_receive_asset);
+
    apply_delta_balances();
    apply_delta_fee_pools();
 
