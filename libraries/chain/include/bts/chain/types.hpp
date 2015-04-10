@@ -86,8 +86,6 @@ namespace bts { namespace chain {
       limit_order_fee_type,
       short_order_fee_type,
       publish_feed_fee_type,
-      gas_fee_type, /// defines the exchange rate between CORE and GAS
-      max_gas_fee_type, /// defines the maximum GAS that can be provided
       asset_create_fee_type, ///< the cost to register the cheapest asset
       asset_update_fee_type, ///< the cost to modify a registered asset
       asset_issue_fee_type, ///< the cost to modify a registered asset
@@ -118,8 +116,6 @@ namespace bts { namespace chain {
       short_order_object_type,
       call_order_object_type,
       custom_object_type,
-      script_object_type,
-      data_object_type,
       proposal_object_type,
       operation_history_object_type
    };
@@ -156,8 +152,6 @@ namespace bts { namespace chain {
    class short_order_object;
    class call_order_object;
    class custom_object;
-   class script_object;
-   class data_object;
    class proposal_object;
    class operation_history_object;
 
@@ -170,8 +164,6 @@ namespace bts { namespace chain {
    typedef object_id< protocol_ids, short_order_object_type,  short_order_object>                  short_order_id_type;
    typedef object_id< protocol_ids, call_order_object_type,   call_order_object>                   call_order_id_type;
    typedef object_id< protocol_ids, custom_object_type,       custom_object>                       custom_id_type;
-   typedef object_id< protocol_ids, script_object_type,       script_object>                       script_id_type;
-   typedef object_id< protocol_ids, data_object_type,         data_object>                         data_id_type;
    typedef object_id< protocol_ids, proposal_object_type,     proposal_object>                     proposal_id_type;
    typedef object_id< protocol_ids, operation_history_object_type,     operation_history_object>   operation_history_id_type;
 
@@ -283,8 +275,6 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (short_order_object_type)
                  (call_order_object_type)
                  (custom_object_type)
-                 (script_object_type)
-                 (data_object_type)
                  (proposal_object_type)
                  (operation_history_object_type)
                )
@@ -314,8 +304,6 @@ FC_REFLECT_ENUM( bts::chain::fee_type,
                  (limit_order_fee_type)
                  (short_order_fee_type)
                  (publish_feed_fee_type)
-                 (gas_fee_type)
-                 (max_gas_fee_type)
                  (asset_create_fee_type)
                  (asset_update_fee_type)
                  (asset_issue_fee_type)

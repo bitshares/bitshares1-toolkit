@@ -459,56 +459,6 @@ share_type asset_whitelist_operation::calculate_fee(const fee_schedule_type& k) 
    return k.at( asset_issue_fee_type );
 }
 
-void account_set_script_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
-{
-   active_auth_set.insert(account_id);
-}
-
-void account_set_script_operation::validate()const
-{
-}
-
-share_type account_set_script_operation::calculate_fee( const fee_schedule_type& k )const
-{
-   return k.at( data_fee_type ).value * (1+script.size()/1024);
-}
-share_type account_set_data_operation::calculate_fee( const fee_schedule_type& k )const
-{
-   return k.at( data_fee_type ).value * (1+data.size()/1024);
-}
-
-void account_set_data_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
-{
-   active_auth_set.insert(account_id);
-}
-
-void account_set_data_operation::validate()const
-{
-   FC_ASSERT( data.size() <= BTS_MAX_DATA_SIZE - offset );
-}
-share_type account_execute_script_operation::calculate_fee( const fee_schedule_type& k )const
-{
-   return k.at( data_fee_type ).value * (1+(args.size()+8*initial_authority.size()+16*deposits.size())/1024);
-}
-
-void account_execute_script_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
-{
-   active_auth_set.insert(gas_payer);
-   for( auto id : initial_authority )
-      active_auth_set.insert(id);
-}
-
-void account_execute_script_operation::validate()const
-{
-   for( uint32_t i = 1; i < deposits.size(); ++i )
-      FC_ASSERT( deposits[i-1].asset_id < deposits[i].asset_id );
-   for( uint32_t i = 1; i < deposits.size(); ++i )
-      FC_ASSERT( deposits[i-1].asset_id < deposits[i].asset_id );
-   FC_ASSERT( script_account != account_id_type() );
-   FC_ASSERT( gas_payer != account_id_type() );
-   FC_ASSERT( args.size() <= BTS_MAX_SCRIPT_ARGS_SIZE );
-}
-
 void proposal_create_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
 {
    active_auth_set.insert(fee_paying_account);
@@ -553,22 +503,6 @@ void proposal_delete_operation::get_required_auth(flat_set<account_id_type>& act
 void proposal_delete_operation::validate() const
 {
    FC_ASSERT( fee.amount >= 0 );
-}
-
- void       script_operation::get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& owner_auth_set )const
-{
-   for( auto item : active_auth ) active_auth_set.insert(item);
-   for( auto item : owner_auth ) owner_auth_set.insert(item);
-}
-
- void       script_operation::validate()const
-{
-   FC_ASSERT( fee.amount > 0 );
-}
-
-share_type script_operation::calculate_fee( const fee_schedule_type& schedule )const
-{
-   return share_type((code.size() * 4 * schedule.at( data_fee_type ).value)/1024);
 }
 
 void delegate_withdraw_pay_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& owner_auth_set) const

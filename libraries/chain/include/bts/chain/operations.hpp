@@ -2,7 +2,6 @@
 #include <bts/chain/types.hpp>
 #include <bts/chain/asset.hpp>
 #include <bts/chain/authority.hpp>
-#include <bts/chain/vm.hpp>
 #include <fc/static_variant.hpp>
 #include <fc/uint128.hpp>
 
@@ -378,96 +377,6 @@ namespace bts { namespace chain {
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
-   /** @return code_object_id
-    *
-    *  Sets the code to be associated with an account, it will
-    *  create a new script ID if necessary or update an existing
-    *  script ID if no other accounts are using the same script.
-    **/
-   struct account_set_script_operation
-   {
-      account_id_type          account_id; // fee paying account
-      asset                    fee;
-      optional<script_id_type> existing_script_id;
-      vector<script_op>        script;
-
-      void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
-      void       validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-   };
-
-   /** @return data_object_id
-    *
-    *  Writes to the data segment associated with account_id,
-    *  requires permissions of account_id.  If the account
-    *  has no data associated, it will be allocated and
-    *  initlaized to all 0's.   The maximum length of the
-    *  data.size()+offset is 0xffff+8.  The offset is useful
-    *  for only updating a small segment of the account
-    *  data.
-    */
-   struct account_set_data_operation
-   {
-      account_id_type   account_id; // fee paying account
-      asset             fee;
-      uint16_t          offset = 0;
-      vector<char>      data;
-
-      void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
-      void       validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-   };
-
-
-   /**
-    *  This operation will execute a script, the return value of the
-    *  script will be ignored.  The fee paid by the script is converted
-    *  into gas which will be consumed whether or not the script throws
-    *  an error or completes.   If the script fails to complete then
-    *  no changes will be made to the database except the payment of the
-    *  gas.
-    *
-    *  The script will be run with the active permision of all accounts
-    *  or keys specified in the initial_authority and therefore the
-    *  transaction including this operation must include all of the
-    *  necessary signatures.
-    */
-   struct account_execute_script_operation
-   {
-      account_id_type           gas_payer; // who pays for gas
-      asset                     fee; ///< becomes gas
-      account_id_type           script_account; ///< account_object->code with account_object->data
-      vector<char>              args;
-      flat_set<account_id_type> initial_authority;
-      /**
-       * These deposits are only a manifest to the script; they do not directly affect the chain state. The deposits
-       * listed here must be effected by other operations in the same transaction.
-       */
-      ///@{
-      vector<asset>             deposits; // from gas_payer account
-      ///@}
-
-      void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
-      void       validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-   };
-
-   /**
-    *  Runs a transient script with the given permissions.
-    */
-   struct script_operation
-   {
-       asset                     fee; ///< converted to gas after paying a data fee
-       account_id_type           fee_payer;
-       vector<script_op>         code;
-       flat_set<account_id_type> active_auth;
-       flat_set<account_id_type> owner_auth;
-
-       void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
-       void       validate()const;
-       share_type calculate_fee( const fee_schedule_type& k )const;
-   };
-
    /**
      * The Graphene Transaction Proposal Protocol
      *
@@ -604,10 +513,6 @@ namespace bts { namespace chain {
             key_create_operation,
             account_create_operation,
             account_update_operation,
-            account_execute_script_operation,
-            account_set_script_operation,
-            account_set_data_operation,
-            script_operation,
             asset_create_operation,
             asset_update_operation,
             asset_whitelist_operation,
@@ -791,11 +696,4 @@ FC_REFLECT( bts::chain::proposal_update_operation, (fee_paying_account)(fee)(pro
 FC_REFLECT( bts::chain::proposal_delete_operation, (fee_paying_account)(using_owner_authority)(fee)(proposal) )
 FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (from_account)(asset_id)(amount)(fee) );
 
-FC_REFLECT( bts::chain::account_set_script_operation, (account_id)(fee)(script) );
-FC_REFLECT( bts::chain::account_set_data_operation, (account_id)(fee)(offset)(data) );
-FC_REFLECT( bts::chain::account_execute_script_operation, (gas_payer)(fee)(script_account)(args)(initial_authority)(deposits) )
-
-
 FC_REFLECT( bts::chain::delegate_withdraw_pay_operation, (fee)(from_delegate)(to_account)(amount) )
-FC_REFLECT( bts::chain::script_operation, (fee)(fee_payer)(code)(active_auth)(owner_auth) )
-
