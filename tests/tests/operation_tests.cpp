@@ -1570,6 +1570,10 @@ BOOST_AUTO_TEST_CASE( big_short3 )
    }
 }
 
+/**
+  * Originally, this test exposed a bug in vote tallying causing the total number of votes to exceed the number of
+  * voting shares.
+  */
 BOOST_AUTO_TEST_CASE(break_vote_count)
 {
    try {
@@ -1590,10 +1594,7 @@ BOOST_AUTO_TEST_CASE(break_vote_count)
       BOOST_CHECK_EQUAL(get_balance(shorter1, bitusd), 0);
       BOOST_CHECK_EQUAL(get_balance(shorter1, core), 99999200);
 
-      ilog( "=================================== START===================================\n\n");
       create_sell_order(shorter1, core.amount(90000000), bitusd.amount(1));
-      ilog( "=================================== STEP===================================\n\n");
-      create_sell_order(buyer1, bitusd.amount(1), core.amount(1));
    } catch( const fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
