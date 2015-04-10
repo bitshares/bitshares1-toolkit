@@ -299,20 +299,20 @@ BOOST_AUTO_TEST_CASE( proposed_single_account )
       BOOST_CHECK_EQUAL(proposal.available_owner_approvals.size(), 0);
       BOOST_CHECK(*proposal.required_active_approvals.begin() == nathan.id);
 
-      trx.operations = {proposal_update_operation{account_id_type(), asset(), proposal.id,{nathan.id}}};
+      trx.operations = {proposal_update_operation{account_id_type(), asset(), proposal.id,{nathan.id},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<account_id_type>{}}};
       trx.signatures = {genesis_key.sign_compact(trx.digest())};
       //Genesis may not add nathan's approval.
       BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
-      trx.operations = {proposal_update_operation{account_id_type(), asset(), proposal.id,{account_id_type()}}};
+      trx.operations = {proposal_update_operation{account_id_type(), asset(), proposal.id,{account_id_type()},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<account_id_type>{}}};
       trx.signatures = {genesis_key.sign_compact(trx.digest())};
       //Genesis has no stake in the transaction.
       BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
-      trx.operations = {proposal_update_operation{nathan.id, asset(), proposal.id,flat_set<account_id_type>{},flat_set<account_id_type>{},{nathan.id}}};
+      trx.operations = {proposal_update_operation{nathan.id, asset(), proposal.id,flat_set<account_id_type>{},flat_set<account_id_type>{},{nathan.id},flat_set<account_id_type>{}}};
       trx.signatures = {nathan_key1.sign_compact(trx.digest()), nathan_key2.sign_compact(trx.digest())};
       //This transaction doesn't need nathan's owner authority.
       BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
 
-      trx.operations = {proposal_update_operation{nathan.id, asset(), proposal.id,{nathan.id}}};
+      trx.operations = {proposal_update_operation{nathan.id, asset(), proposal.id,{nathan.id},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<account_id_type>{}}};
       trx.signatures = {nathan_key3.sign_compact(trx.digest()), nathan_key2.sign_compact(trx.digest())};
       BOOST_CHECK_EQUAL(get_balance(nathan, core), nathan_start_balance.amount.value);
       db.push_transaction(trx);

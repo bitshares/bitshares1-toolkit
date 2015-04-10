@@ -961,7 +961,7 @@ BOOST_AUTO_TEST_CASE( delegate_feeds )
       const vector<delegate_id_type>& active_delegates = db.get_global_properties().active_delegates;
       BOOST_REQUIRE(active_delegates.size() == 10);
 
-      delegate_publish_feeds_operation op({active_delegates[0], asset()});
+      delegate_publish_feeds_operation op({active_delegates[0], asset(), flat_set<price_feed>()});
       op.feeds.insert(price_feed());
       op.feeds.begin()->call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(30));
       op.feeds.begin()->short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(10));
