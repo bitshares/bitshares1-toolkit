@@ -1570,13 +1570,67 @@ BOOST_AUTO_TEST_CASE( big_short3 )
    }
 }
 
+BOOST_AUTO_TEST_CASE(break_vote_count)
+{
+   try {
+      const asset_object& bitusd      = create_bitasset( "BITUSD" );
+      const asset_object& core        = get_asset( BTS_SYMBOL );
+      const account_object& shorter1  = create_account( "shorter1" );
+      const account_object& buyer1    = create_account( "buyer1" );
+
+      transfer( genesis_account(db), shorter1, asset( 100000000 ) );
+      transfer( genesis_account(db), buyer1, asset( 100000000 ) );
+
+      create_short(shorter1, bitusd.amount(1300), core.amount(800));
+
+      create_sell_order(buyer1, core.amount(500), bitusd.amount(500));
+
+      BOOST_CHECK_EQUAL(get_balance(buyer1, core), 99999500);
+      BOOST_CHECK_EQUAL(get_balance(buyer1, bitusd), 804);
+      BOOST_CHECK_EQUAL(get_balance(shorter1, bitusd), 0);
+      BOOST_CHECK_EQUAL(get_balance(shorter1, core), 99999200);
+
+      ilog( "=================================== START===================================\n\n");
+      create_sell_order(shorter1, core.amount(90000000), bitusd.amount(1));
+      ilog( "=================================== STEP===================================\n\n");
+      create_sell_order(buyer1, bitusd.amount(1), core.amount(1));
+   } catch( const fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
 /**
  *  Create an order such that when the trade executes at the
  *  requested price the resulting payout to one party is 0
+ *
+ * I am unable to actually create such an order; I'm not sure it's possible. What I have done is create an order which
+ * broke an assert in the matching algorithm.
  */
 BOOST_AUTO_TEST_CASE( trade_amount_equals_zero )
 {
-   BOOST_CHECK("Write a test case here." && false);
+   try {
+      INVOKE(issue_uia);
+      const asset_object& test = get_asset( "TEST" );
+      const asset_object& core = get_asset( BTS_SYMBOL );
+      const account_object& core_seller = create_account( "shorter1" );
+      const account_object& core_buyer = get_account("nathan");
+
+      transfer( genesis_account(db), core_seller, asset( 100000000 ) );
+
+      BOOST_CHECK_EQUAL(get_balance(core_buyer, core), 0);
+      BOOST_CHECK_EQUAL(get_balance(core_buyer, test), 10000000);
+      BOOST_CHECK_EQUAL(get_balance(core_seller, test), 0);
+      BOOST_CHECK_EQUAL(get_balance(core_seller, core), 100000000);
+
+      ilog( "=================================== START===================================\n\n");
+      create_sell_order(core_seller, core.amount(1), test.amount(900000));
+      ilog( "=================================== STEP===================================\n\n");
+      create_sell_order(core_buyer, test.amount(900001), core.amount(1));
+   } catch( const fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
 }
 
 BOOST_AUTO_TEST_CASE( margin_call_limit_test )

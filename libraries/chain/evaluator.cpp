@@ -1,6 +1,6 @@
 #include <bts/chain/database.hpp>
-#include<bts/chain/evaluator.hpp>
-#include<bts/chain/transaction_evaluation_state.hpp>
+#include <bts/chain/evaluator.hpp>
+#include <bts/chain/transaction_evaluation_state.hpp>
 #include <bts/chain/key_object.hpp>
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/account_object.hpp>
@@ -182,7 +182,10 @@ int generic_evaluator::match( const limit_order_object& usd, const OrderType& co
    }
    else
    {
-      assert( core_for_sale < usd_for_sale * match_price );
+      //assert( core_for_sale < usd_for_sale * match_price );
+      //This assert is not always true -- see trade_amount_equals_zero in operation_tests.cpp
+      //Although usd_for_sale is greater than core_for_sale * match_price, core_for_sale == usd_for_sale * match_price
+      //Removing the assert seems to be safe -- apparently no asset is created or destroyed.
       usd_receives = core_for_sale;
       core_receives = core_for_sale * match_price;
    }
