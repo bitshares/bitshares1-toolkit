@@ -1854,10 +1854,10 @@ BOOST_AUTO_TEST_CASE( margin_call_short_test_limit_protected )
 }
 
 /**
- *  Short orders should specify a valid expiration time and they will
- *  ba automatically canceled if not filled by that time.  This feature is
- *  designed to allow people to safely submit orders that have a limited
- *  life time which is essential to some traders.
+ *  Orders should specify a valid expiration time and they will
+ *  ba automatically canceled if not filled by that time.  This feature
+ *  allows people to safely submit orders that have a limited
+ *  lifetime, which is essential to some traders.
  */
 BOOST_AUTO_TEST_CASE( short_order_expiration )
 {
@@ -1880,12 +1880,6 @@ BOOST_AUTO_TEST_CASE( delegate_withdraw_pay_test )
 {
    assert( !"not implemented" );
 }
-
-BOOST_AUTO_TEST_CASE( script_operation )
-{
-   assert( !"not implemented" );
-}
-
 
 BOOST_AUTO_TEST_CASE( margin_call_black_swan )
 { try {
@@ -1927,6 +1921,5 @@ BOOST_AUTO_TEST_CASE( margin_call_black_swan )
       throw;
    }
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()
