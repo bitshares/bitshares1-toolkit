@@ -284,6 +284,8 @@ share_type asset_update_operation::calculate_fee( const fee_schedule_type& k )co
    return k.at( asset_update_fee_type );
 }
 
+#warning TODO: Write account whitelist and blacklist operations
+
 void asset_issue_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
 {
    active_auth_set.insert(issuer);
@@ -442,21 +444,6 @@ void call_order_update_operation::validate()const
 share_type call_order_update_operation::calculate_fee(const fee_schedule_type& k) const
 {
    return k.at( short_order_fee_type );
-}
-
-void asset_whitelist_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
-{
-   active_auth_set.insert(issuer);
-}
-
-void asset_whitelist_operation::validate() const
-{
-   FC_ASSERT( fee.amount >= 0 );
-}
-
-share_type asset_whitelist_operation::calculate_fee(const fee_schedule_type& k) const
-{
-   return k.at( asset_issue_fee_type );
 }
 
 void proposal_create_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const

@@ -49,77 +49,78 @@ BOOST_AUTO_TEST_CASE( create_advanced_uia )
    }
 }
 
-BOOST_AUTO_TEST_CASE( issue_whitelist_uia )
-{
-   try {
-      INVOKE(create_advanced_uia);
-      const asset_object& advanced = get_asset("ADVANCED");
-      const account_object& nathan = create_account("nathan");
+#warning Rewrite these tests when new whitelist architecture is implemented.
+//BOOST_AUTO_TEST_CASE( issue_whitelist_uia )
+//{
+//   try {
+//      INVOKE(create_advanced_uia);
+//      const asset_object& advanced = get_asset("ADVANCED");
+//      const account_object& nathan = create_account("nathan");
 
-      asset_issue_operation op({advanced.issuer, advanced.amount(1000), asset(0), nathan.id});
-      trx.operations.emplace_back(op);
-      //Fail because nathan is not whitelisted.
-      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
+//      asset_issue_operation op({advanced.issuer, advanced.amount(1000), asset(0), nathan.id});
+//      trx.operations.emplace_back(op);
+//      //Fail because nathan is not whitelisted.
+//      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
 
-      asset_whitelist_operation wop({advanced.issuer, advanced.id, asset(), nathan.id, true});
+//      asset_whitelist_operation wop({advanced.issuer, advanced.id, asset(), nathan.id, true});
 
-      //Fail because attempting to unlist nathan who is already unlisted.
-      REQUIRE_THROW_WITH_VALUE(wop, authorize_account, false);
-      trx.operations.back() = wop;
-      db.push_transaction(trx, ~0);
-      //Fail because attempting to whitelist nathan who is already whitelisted.
-      REQUIRE_THROW_WITH_VALUE(wop, authorize_account, true);
+//      //Fail because attempting to unlist nathan who is already unlisted.
+//      REQUIRE_THROW_WITH_VALUE(wop, authorize_account, false);
+//      trx.operations.back() = wop;
+//      db.push_transaction(trx, ~0);
+//      //Fail because attempting to whitelist nathan who is already whitelisted.
+//      REQUIRE_THROW_WITH_VALUE(wop, authorize_account, true);
 
-      BOOST_CHECK(nathan.is_authorized_asset(advanced.id));
-      trx.operations.back() = op;
-      db.push_transaction(trx, ~0);
+//      BOOST_CHECK(nathan.is_authorized_asset(advanced.id));
+//      trx.operations.back() = op;
+//      db.push_transaction(trx, ~0);
 
-      BOOST_CHECK(nathan.balances(db).get_balance(advanced.id).amount == 1000);
-   } catch(fc::exception& e) {
-      edump((e.to_detail_string()));
-      throw;
-   }
-}
+//      BOOST_CHECK(nathan.balances(db).get_balance(advanced.id).amount == 1000);
+//   } catch(fc::exception& e) {
+//      edump((e.to_detail_string()));
+//      throw;
+//   }
+//}
 
-BOOST_AUTO_TEST_CASE( transfer_whitelist_uia )
-{
-   try {
-      INVOKE(issue_whitelist_uia);
-      const asset_object& advanced = get_asset("ADVANCED");
-      const account_object& nathan = get_account("nathan");
-      const account_object& dan = create_account("dan");
+//BOOST_AUTO_TEST_CASE( transfer_whitelist_uia )
+//{
+//   try {
+//      INVOKE(issue_whitelist_uia);
+//      const asset_object& advanced = get_asset("ADVANCED");
+//      const account_object& nathan = get_account("nathan");
+//      const account_object& dan = create_account("dan");
 
-      transfer_operation op({nathan.id, dan.id, advanced.amount(100)});
-      trx.operations.push_back(op);
-      //Fail because dan is not whitelisted.
-      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
+//      transfer_operation op({nathan.id, dan.id, advanced.amount(100)});
+//      trx.operations.push_back(op);
+//      //Fail because dan is not whitelisted.
+//      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
 
-      asset_whitelist_operation wop({advanced.issuer, advanced.id, asset(), dan.id, true});
-      trx.operations.back() = wop;
-      db.push_transaction(trx, ~0);
-      trx.operations.back() = op;
-      db.push_transaction(trx, ~0);
+//      asset_whitelist_operation wop({advanced.issuer, advanced.id, asset(), dan.id, true});
+//      trx.operations.back() = wop;
+//      db.push_transaction(trx, ~0);
+//      trx.operations.back() = op;
+//      db.push_transaction(trx, ~0);
 
-      BOOST_CHECK(nathan.balances(db).get_balance(advanced.id).amount == 900);
-      BOOST_CHECK(dan.balances(db).get_balance(advanced.id).amount == 100);
+//      BOOST_CHECK(nathan.balances(db).get_balance(advanced.id).amount == 900);
+//      BOOST_CHECK(dan.balances(db).get_balance(advanced.id).amount == 100);
 
-      wop.authorize_account = false;
-      wop.whitelist_account = nathan.id;
-      trx.operations.back() = wop;
-      db.push_transaction(trx, ~0);
+//      wop.authorize_account = false;
+//      wop.whitelist_account = nathan.id;
+//      trx.operations.back() = wop;
+//      db.push_transaction(trx, ~0);
 
-      op.amount = advanced.amount(50);
-      trx.operations.back() = op;
-      //Fail because nathan is not whitelisted.
-      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
-      std::swap(op.from, op.to);
-      trx.operations.back() = op;
-      //Fail because nathan is not whitelisted.
-      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
-   } catch(fc::exception& e) {
-      edump((e.to_detail_string()));
-      throw;
-   }
-}
+//      op.amount = advanced.amount(50);
+//      trx.operations.back() = op;
+//      //Fail because nathan is not whitelisted.
+//      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
+//      std::swap(op.from, op.to);
+//      trx.operations.back() = op;
+//      //Fail because nathan is not whitelisted.
+//      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
+//   } catch(fc::exception& e) {
+//      edump((e.to_detail_string()));
+//      throw;
+//   }
+//}
 
 BOOST_AUTO_TEST_SUITE_END()

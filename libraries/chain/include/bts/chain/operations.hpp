@@ -314,18 +314,19 @@ namespace bts { namespace chain {
     *
     * This operation must be signed by asset_id's issuer. authorize_account's signature is not required.
     */
-   struct asset_whitelist_operation
-   {
-      account_id_type  issuer; ///< Must be asset_id->issuer
-      asset_id_type    asset_id; ///< ID of the whitelist asset in question
-      asset            fee;
-      account_id_type  whitelist_account; ///< ID of the account to allow or disallow to hold the asset
-      bool             authorize_account; ///< True if whitelist_account may hold and transact the asset; false otherwise
+//   DEPRECATED
+//   struct asset_whitelist_operation
+//   {
+//      account_id_type  issuer; ///< Must be asset_id->issuer
+//      asset_id_type    asset_id; ///< ID of the whitelist asset in question
+//      asset            fee;
+//      account_id_type  whitelist_account; ///< ID of the account to allow or disallow to hold the asset
+//      bool             authorize_account; ///< True if whitelist_account may hold and transact the asset; false otherwise
 
-      void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
-      void validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-   };
+//      void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
+//      void validate()const;
+//      share_type calculate_fee( const fee_schedule_type& k )const;
+//   };
 
    struct asset_issue_operation
    {
@@ -515,7 +516,6 @@ namespace bts { namespace chain {
             account_update_operation,
             asset_create_operation,
             asset_update_operation,
-            asset_whitelist_operation,
             asset_issue_operation,
             asset_fund_fee_pool_operation,
             delegate_publish_feeds_operation,
@@ -677,9 +677,6 @@ FC_REFLECT( bts::chain::asset_update_operation,
             (issuer)(asset_to_update)(fee)(flags)(permissions)(new_issuer)(core_exchange_rate)(new_price_feed)
           )
 
-FC_REFLECT( bts::chain::asset_whitelist_operation,
-            (issuer)(asset_id)(fee)(whitelist_account)(authorize_account)
-          )
 FC_REFLECT( bts::chain::asset_issue_operation,
             (issuer)(asset_to_issue)(fee)(issue_to_account) )
 FC_REFLECT( bts::chain::delegate_create_operation,

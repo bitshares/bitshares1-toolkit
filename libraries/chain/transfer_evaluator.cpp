@@ -16,8 +16,8 @@ object_id_type transfer_evaluator::do_evaluate( const transfer_operation& op )
 
    if( asset_type.flags & white_list )
    {
-      FC_ASSERT( to_account.is_authorized_asset( op.amount.asset_id ) );
-      FC_ASSERT( from_account.is_authorized_asset( op.amount.asset_id ) );
+      FC_ASSERT( to_account.is_authorized_asset( asset_type ) );
+      FC_ASSERT( from_account.is_authorized_asset( asset_type ) );
    }
 
    // SHOULD BE HANDLED BY pay_fee FC_ASSERT( verify_authority( &from_account, authority::active ) );

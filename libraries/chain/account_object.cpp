@@ -1,18 +1,7 @@
 #include <bts/chain/account_object.hpp>
+#include <bts/chain/asset_object.hpp>
 
 namespace bts { namespace chain {
-void account_object::authorize_asset(asset_id_type asset_id, bool state)
-{
-   if( state )
-      FC_ASSERT(authorized_assets.insert(asset_id).second);
-   else
-      authorized_assets.erase(asset_id);
-}
-
-bool  account_object::is_authorized_asset( asset_id_type asset_id )const
-{
-   return std::binary_search( authorized_assets.begin(), authorized_assets.end(), asset_id );
-}
 
 void account_balance_object::add_balance( const asset& a )
 {
@@ -43,6 +32,15 @@ void account_balance_object::sub_balance( const asset& a )
    {
       FC_ASSERT( false, "No current Balance for Asset" );
    }
+}
+
+bool account_object::is_authorized_asset(const asset_object& asset_obj) const {
+   for( const auto id : blacklisting_accounts )
+      if( asset_obj.blacklist_authorities.find(id) != asset_obj.blacklist_authorities.end() ) return false;
+
+   for( const auto id : whitelisting_accounts )
+      if( asset_obj.whitelist_authorities.find(id) != asset_obj.whitelist_authorities.end() ) return true;
+   return false;
 }
 
 } } // bts::chain
