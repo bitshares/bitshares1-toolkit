@@ -1790,6 +1790,23 @@ BOOST_AUTO_TEST_CASE( script_operation )
    assert( !"not implemented" );
 }
 
+/**
+ *  To have a secure random number we need to ensure that the same
+ *  delegate does not get to produce two blocks in a row.  There is
+ *  always a chance that the last delegate of one round will be the
+ *  first delegate of the next round.  
+ *
+ *  This means that when we shuffle delegates we need to make sure
+ *  that there is at least N/2 delegates between consecutive turns
+ *  of the same delegate.    This means that durring the random 
+ *  shuffle we need to restrict the placement of delegates to maintain
+ *  this invariant.  
+ */
+BOOST_AUTO_TEST_CASE( delegate_groups_test )
+{
+   assert( !"not implemented" );
+}
+
 
 BOOST_AUTO_TEST_CASE( margin_call_black_swan )
 { try {
