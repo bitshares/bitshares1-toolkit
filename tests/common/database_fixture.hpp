@@ -250,6 +250,7 @@ struct database_fixture {
    {
       limit_order_cancel_operation cancel_order;
       cancel_order.fee_paying_account = order.seller;
+      cancel_order.order = order.id;
       trx.operations.push_back(cancel_order);
       for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
       trx.validate();
@@ -261,6 +262,7 @@ struct database_fixture {
    {
       short_order_cancel_operation cancel_order;
       cancel_order.fee_paying_account = order.seller;
+      cancel_order.order = order.id;
       trx.operations.push_back(cancel_order);
       for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
       trx.validate();

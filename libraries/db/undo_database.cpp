@@ -10,6 +10,10 @@ void undo_database::disable() { _disabled = true; }
 undo_database::session undo_database::start_undo_session()
 {
    if( _disabled ) return session(*this);
+
+   if( size() == max_size() )
+      _stack.pop_front();
+
    _stack.emplace_back();
    ++_active_sessions;
    return session(*this);

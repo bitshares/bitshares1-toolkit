@@ -1,6 +1,6 @@
 #include <bts/chain/database.hpp>
-#include<bts/chain/evaluator.hpp>
-#include<bts/chain/transaction_evaluation_state.hpp>
+#include <bts/chain/evaluator.hpp>
+#include <bts/chain/transaction_evaluation_state.hpp>
 #include <bts/chain/key_object.hpp>
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/account_object.hpp>
@@ -182,7 +182,10 @@ int generic_evaluator::match( const limit_order_object& usd, const OrderType& co
    }
    else
    {
-      assert( core_for_sale < usd_for_sale * match_price );
+      //assert( core_for_sale < usd_for_sale * match_price );
+      //This assert is not always true -- see trade_amount_equals_zero in operation_tests.cpp
+      //Although usd_for_sale is greater than core_for_sale * match_price, core_for_sale == usd_for_sale * match_price
+      //Removing the assert seems to be safe -- apparently no asset is created or destroyed.
       usd_receives = core_for_sale;
       core_receives = core_for_sale * match_price;
    }
@@ -343,13 +346,6 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
     return filled_short_or_limit;
 } FC_CAPTURE_AND_RETHROW() }
 
-
-
-
-
-
-
-
 asset generic_evaluator::calculate_market_fee( const asset_object& trade_asset, const asset& trade_amount )
 {
    assert( trade_asset.id == trade_amount.asset_id );
@@ -437,15 +433,20 @@ bool generic_evaluator::fill_order( const limit_order_object& order, const asset
        */
       if( order.amount_to_receive().amount == 0 )
       {
-         adjust_balance( &seller, &pays_asset, order.for_sale );
          if( pays.asset_id == asset_id_type() )
          {
+            //This is core asset. We need to manually update the balances to preserve voting invariants.
             const auto& balances = seller.balances(db());
             db().modify( balances, [&]( account_balance_object& b ){
                  b.total_core_in_orders -= order.for_sale;
+                 b.add_balance(order.amount_for_sale());
             });
+         } else {
+            //If we're not dealing with core asset, adjust_balance is sufficient.
+            adjust_balance( &seller, &pays_asset, order.for_sale );
          }
 
+         elog("Order has been satisfied, but still has buying power. Deleting it. Is this desirable behavior?");
          db().remove( order );
          return true;
       }

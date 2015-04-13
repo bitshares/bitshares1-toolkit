@@ -25,7 +25,7 @@ namespace bts { namespace app {
          };
 
          template<typename PluginType>
-         void register_plugin()
+         std::shared_ptr<PluginType> register_plugin()
          {
             auto plug = std::make_shared<PluginType>();
             typename PluginType::plugin_config cfg;
@@ -38,6 +38,8 @@ namespace bts { namespace app {
             }
             plug->initialize( *this, cfg);
             add_plugin( plug->plugin_name(), plug );
+
+            return plug;
          }
          std::shared_ptr<abstract_plugin> get_plugin( const string& name )const;
 

@@ -961,7 +961,7 @@ BOOST_AUTO_TEST_CASE( delegate_feeds )
       const vector<delegate_id_type>& active_delegates = db.get_global_properties().active_delegates;
       BOOST_REQUIRE(active_delegates.size() == 10);
 
-      delegate_publish_feeds_operation op({active_delegates[0], asset()});
+      delegate_publish_feeds_operation op({active_delegates[0], asset(), flat_set<price_feed>()});
       op.feeds.insert(price_feed());
       op.feeds.begin()->call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(30));
       op.feeds.begin()->short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(10));
@@ -1448,14 +1448,16 @@ BOOST_AUTO_TEST_CASE( big_short )
       // Shorter1 never had any USD, so he shouldn't have any now. He paid 800 BTS, so he should have 9200 left.
       BOOST_CHECK_EQUAL(get_balance(shorter1, bitusd), 0);
       BOOST_CHECK_EQUAL(get_balance(shorter1, bts), 9200);
-      /* TODO: check this with new index
-      BOOST_CHECK_EQUAL(shorter1.debts(db).call_orders.size(), 1);
-      BOOST_CHECK(shorter1.debts(db).call_orders.begin()->second(db).borrower == shorter1.id);
+
+      const auto& call_index = db.get_index_type<call_order_index>().indices().get<by_account>();
+      const auto call_itr = call_index.find(boost::make_tuple(shorter1.id, bitusd.id));
+      BOOST_CHECK(call_itr != call_index.end());
+      const call_order_object& call_object = *call_itr;
+      BOOST_CHECK(call_object.borrower == shorter1.id);
       //  800 from shorter1, 500 from buyer1 and buyer2 each, 500/700*200 from buyer3 totals 1942
-      BOOST_CHECK_EQUAL(shorter1.debts(db).call_orders.begin()->second(db).collateral.value, 1942);
+      BOOST_CHECK_EQUAL(call_object.collateral.value, 1942);
       // Shorter1 sold 1300 USD. Make sure that's recorded accurately.
-      BOOST_CHECK_EQUAL(shorter1.debts(db).call_orders.begin()->second(db).debt.value, 1300);
-      */
+      BOOST_CHECK_EQUAL(call_object.debt.value, 1300);
       // 13 USD was paid in market fees.
       BOOST_CHECK_EQUAL(bitusd.dynamic_asset_data_id(db).accumulated_fees.value, 13);
    } catch( const fc::exception& e) {
@@ -1504,14 +1506,16 @@ BOOST_AUTO_TEST_CASE( big_short2 )
       // Shorter1 never had any USD, so he shouldn't have any now. He paid 916 BTS, so he should have 9084 left.
       BOOST_CHECK_EQUAL(get_balance(shorter1, bitusd), 0);
       BOOST_CHECK_EQUAL(get_balance(shorter1, bts), 9084);
-      /* TODO: check this with new index
-      BOOST_CHECK_EQUAL(shorter1.debts(db).call_orders.size(), 1);
-      BOOST_CHECK(shorter1.debts(db).call_orders.begin()->second(db).borrower == shorter1.id);
+
+      const auto& call_index = db.get_index_type<call_order_index>().indices().get<by_account>();
+      const auto call_itr = call_index.find(boost::make_tuple(shorter1.id, bitusd.id));
+      BOOST_CHECK(call_itr != call_index.end());
+      const call_order_object& call_object = *call_itr;
+      BOOST_CHECK(call_object.borrower == shorter1.id);
       // 916 from shorter1, 500 from buyer1 and buyer2 each adds to 1916
-      BOOST_CHECK_EQUAL(shorter1.debts(db).call_orders.begin()->second(db).collateral.value, 1916);
+      BOOST_CHECK_EQUAL(call_object.collateral.value, 1916);
       // Shorter1 sold 1100 USD. Make sure that's recorded accurately.
-      BOOST_CHECK_EQUAL(shorter1.debts(db).call_orders.begin()->second(db).debt.value, 1100);
-      */
+      BOOST_CHECK_EQUAL(call_object.debt.value, 1100);
       // 11 USD was paid in market fees.
       BOOST_CHECK_EQUAL(bitusd.dynamic_asset_data_id(db).accumulated_fees.value, 11);
    } catch( const fc::exception& e) {
@@ -1557,13 +1561,45 @@ BOOST_AUTO_TEST_CASE( big_short3 )
       BOOST_CHECK_EQUAL(get_balance(shorter1, bitusd), 0);
       BOOST_CHECK_EQUAL(get_balance(shorter1, bts), 9200);
 
-      /* TODO: replace this with new index lookup
-      BOOST_CHECK_EQUAL(shorter1.debts(db).call_orders.size(), 1);
-      BOOST_CHECK(shorter1.debts(db).call_orders.begin()->second(db).borrower == shorter1.id);
-      BOOST_CHECK_EQUAL(shorter1.debts(db).call_orders.begin()->second(db).collateral.value, 1600);
-      BOOST_CHECK_EQUAL(shorter1.debts(db).call_orders.begin()->second(db).debt.value, 1300);
-      */
+      const auto& call_index = db.get_index_type<call_order_index>().indices().get<by_account>();
+      const auto call_itr = call_index.find(boost::make_tuple(shorter1.id, bitusd.id));
+      BOOST_CHECK(call_itr != call_index.end());
+      const call_order_object& call_object = *call_itr;
+      BOOST_CHECK(call_object.borrower == shorter1.id);
+      BOOST_CHECK_EQUAL(call_object.collateral.value, 1600);
+      BOOST_CHECK_EQUAL(call_object.debt.value, 1300);
       BOOST_CHECK_EQUAL(bitusd.dynamic_asset_data_id(db).accumulated_fees.value, 12);
+   } catch( const fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
+/**
+  * Originally, this test exposed a bug in vote tallying causing the total number of votes to exceed the number of
+  * voting shares. This bug was resolved in commit 489b0dafe981c3b96b17f23cfc9ddc348173c529
+  */
+BOOST_AUTO_TEST_CASE(break_vote_count)
+{
+   try {
+      const asset_object& bitusd      = create_bitasset( "BITUSD" );
+      const asset_object& core        = get_asset( BTS_SYMBOL );
+      const account_object& shorter1  = create_account( "shorter1" );
+      const account_object& buyer1    = create_account( "buyer1" );
+
+      transfer( genesis_account(db), shorter1, asset( 100000000 ) );
+      transfer( genesis_account(db), buyer1, asset( 100000000 ) );
+
+      create_short(shorter1, bitusd.amount(1300), core.amount(800));
+
+      create_sell_order(buyer1, core.amount(500), bitusd.amount(500));
+
+      BOOST_CHECK_EQUAL(get_balance(buyer1, core), 99999500);
+      BOOST_CHECK_EQUAL(get_balance(buyer1, bitusd), 804);
+      BOOST_CHECK_EQUAL(get_balance(shorter1, bitusd), 0);
+      BOOST_CHECK_EQUAL(get_balance(shorter1, core), 99999200);
+
+      create_sell_order(shorter1, core.amount(90000000), bitusd.amount(1));
    } catch( const fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
@@ -1573,18 +1609,43 @@ BOOST_AUTO_TEST_CASE( big_short3 )
 /**
  *  Create an order such that when the trade executes at the
  *  requested price the resulting payout to one party is 0
+ *
+ * I am unable to actually create such an order; I'm not sure it's possible. What I have done is create an order which
+ * broke an assert in the matching algorithm.
  */
 BOOST_AUTO_TEST_CASE( trade_amount_equals_zero )
 {
+   try {
+      INVOKE(issue_uia);
+      const asset_object& test = get_asset( "TEST" );
+      const asset_object& core = get_asset( BTS_SYMBOL );
+      const account_object& core_seller = create_account( "shorter1" );
+      const account_object& core_buyer = get_account("nathan");
+
+      transfer( genesis_account(db), core_seller, asset( 100000000 ) );
+
+      BOOST_CHECK_EQUAL(get_balance(core_buyer, core), 0);
+      BOOST_CHECK_EQUAL(get_balance(core_buyer, test), 10000000);
+      BOOST_CHECK_EQUAL(get_balance(core_seller, test), 0);
+      BOOST_CHECK_EQUAL(get_balance(core_seller, core), 100000000);
+
+      ilog( "=================================== START===================================\n\n");
+      create_sell_order(core_seller, core.amount(1), test.amount(900000));
+      ilog( "=================================== STEP===================================\n\n");
+      create_sell_order(core_buyer, test.amount(900001), core.amount(1));
+   } catch( const fc::exception& e) {
+      edump((e.to_detail_string()));
+      throw;
+   }
 }
 
 BOOST_AUTO_TEST_CASE( margin_call_limit_test )
 { try {
       const asset_object& bitusd      = create_bitasset( "BITUSD" );
-      const asset_object& bts         = get_asset( BTS_SYMBOL );
+      const asset_object& core         = get_asset( BTS_SYMBOL );
 
       db.modify( bitusd, [&]( asset_object& usd ){
-                 usd.current_feed.call_limit = bts.amount(3) / bitusd.amount(1);
+                 usd.current_feed.call_limit = core.amount(3) / bitusd.amount(1);
                  });
 
       const account_object& shorter1  = create_account( "shorter1" );
@@ -1601,13 +1662,48 @@ BOOST_AUTO_TEST_CASE( margin_call_limit_test )
       BOOST_REQUIRE( !create_short( shorter1, bitusd.amount(1000), asset(1000) )   );
       BOOST_REQUIRE_EQUAL( get_balance(buyer1, bitusd), 990 ); // 1000 - 1% fee
 
+      const auto& call_index = db.get_index_type<call_order_index>().indices().get<by_account>();
+      const auto call_itr = call_index.find(boost::make_tuple(shorter1.id, bitusd.id));
+      BOOST_REQUIRE( call_itr != call_index.end() );
+      const call_order_object& call = *call_itr;
+      BOOST_CHECK(call.get_collateral() == core.amount(2000));
+      BOOST_CHECK(call.get_debt() == bitusd.amount(1000));
+      BOOST_CHECK(call.call_price == price(core.amount(1500), bitusd.amount(1000)));
+      BOOST_CHECK_EQUAL(get_balance(shorter1, core), 9000);
+
       ilog( "=================================== START===================================\n\n");
       // this should cause the highest bid to below the margin call threshold
       // which means it should be filled by the cover
-      auto unmatched = create_sell_order( buyer1, bitusd.amount(990), bts.amount(1500) );
+      auto unmatched = create_sell_order( buyer1, bitusd.amount(495), core.amount(750) );
       if( unmatched ) edump((*unmatched));
-      BOOST_REQUIRE( !unmatched );
+      BOOST_CHECK( !unmatched );
+      BOOST_CHECK(call.get_debt() == bitusd.amount(505));
+      BOOST_CHECK(call.get_collateral() == core.amount(1250));
 
+      auto below_call_price = create_sell_order(buyer1, bitusd.amount(200), core.amount(1));
+      BOOST_REQUIRE(below_call_price);
+      auto above_call_price = create_sell_order(buyer1, bitusd.amount(200), core.amount(303));
+      BOOST_REQUIRE(above_call_price);
+      auto above_id = above_call_price->id;
+
+      cancel_limit_order(*below_call_price);
+      BOOST_CHECK_THROW(db.get_object(above_id), fc::exception);
+      BOOST_CHECK(call.get_debt() == bitusd.amount(305));
+      BOOST_CHECK(call.get_collateral() == core.amount(947));
+
+      below_call_price = create_sell_order(buyer1, bitusd.amount(200), core.amount(1));
+      BOOST_REQUIRE(below_call_price);
+      auto below_id = below_call_price->id;
+      above_call_price = create_sell_order(buyer1, bitusd.amount(95), core.amount(144));
+      BOOST_REQUIRE(above_call_price);
+      above_id = above_call_price->id;
+      auto match_below_call = create_sell_order(buyer2, core.amount(1), bitusd.amount(200));
+      BOOST_CHECK(!match_below_call);
+
+      BOOST_CHECK_THROW(db.get_object(above_id), fc::exception);
+      BOOST_CHECK_THROW(db.get_object(below_id), fc::exception);
+      BOOST_CHECK(call.get_debt() == bitusd.amount(210));
+      BOOST_CHECK(call.get_collateral() == core.amount(803));
    } catch( const fc::exception& e) {
       edump((e.to_detail_string()));
       throw;

@@ -57,6 +57,9 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
       });
    }
 
+   // Possible optimization: We only need to check calls if both are true:
+   //  - The new order is at the front of the book
+   //  - The new order is below the call limit price
    check_call_orders(*_sell_asset);
 
    if( !db().find(new_id) ) // then we were filled by call order
@@ -89,6 +92,11 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
          break; // 1 means ONLY old iter filled
    }
 
+   //Possible optimization: only check calls if the new order completely filled some old order
+   //Do I need to check both assets?
+   check_call_orders(*_sell_asset);
+   check_call_orders(*_receive_asset);
+
    apply_delta_balances();
    apply_delta_fee_pools();
 
@@ -120,6 +128,8 @@ asset short_order_cancel_evaluator::do_apply( const short_order_cancel_operation
   apply_delta_fee_pools();
 
   auto refunded = _order->get_collateral();
+  auto base_asset = _order->sell_price.base.asset_id;
+  auto quote_asset = _order->sell_price.quote.asset_id;
 
   d.remove( *_order );
 
@@ -134,6 +144,12 @@ asset short_order_cancel_evaluator::do_apply( const short_order_cancel_operation
      //Future optimization: don't change the votes in the first place; it's expensive to change it twice for no reason
      adjust_votes(fee_paying_account->delegate_votes, -refunded.amount);
   }
+
+  // Possible optimization: order can be called by canceling a short order iff the canceled order was at the top of the book.
+  // Do I need to check calls in both assets?
+  check_call_orders(base_asset(d));
+  check_call_orders(quote_asset(d));
+
   return refunded;
 }
 

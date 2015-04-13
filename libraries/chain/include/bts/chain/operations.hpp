@@ -67,7 +67,7 @@ namespace bts { namespace chain {
    /**
     *  Used to move delegate pay from accumulated_income to their account balance.
     */
-   struct delegate_pay_withdraw
+   struct delegate_withdraw_pay_operation
    {
       asset            fee;
       delegate_id_type from_delegate;
@@ -579,7 +579,7 @@ namespace bts { namespace chain {
    /**
     *  This is a virtual operation that is created while matching orders and
     *  emited for the purpose of accurately tracking account history, acclerating
-    *  reindex.  
+    *  reindex.
     */
    struct fill_order_operation
    {
@@ -616,7 +616,7 @@ namespace bts { namespace chain {
             delegate_publish_feeds_operation,
             delegate_create_operation,
             delegate_update_operation,
-            delegate_pay_withdraw,
+            delegate_withdraw_pay_operation,
             proposal_create_operation,
             proposal_update_operation,
             proposal_delete_operation,
@@ -796,6 +796,6 @@ FC_REFLECT( bts::chain::account_set_data_operation, (account_id)(fee)(offset)(da
 FC_REFLECT( bts::chain::account_execute_script_operation, (gas_payer)(fee)(script_account)(args)(initial_authority)(deposits) )
 
 
-FC_REFLECT( bts::chain::delegate_pay_withdraw, (fee)(from_delegate)(to_account)(amount) )
+FC_REFLECT( bts::chain::delegate_withdraw_pay_operation, (fee)(from_delegate)(to_account)(amount) )
 FC_REFLECT( bts::chain::script_operation, (fee)(fee_payer)(code)(active_auth)(owner_auth) )
 

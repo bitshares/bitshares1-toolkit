@@ -47,10 +47,6 @@ namespace bts { namespace chain {
 
          void open(const fc::path& data_dir, const genesis_allocation& initial_allocation = genesis_allocation());
          void reindex(fc::path data_dir, genesis_allocation initial_allocation = genesis_allocation());
-         /**
-          * Saves the complete state of the database to disk, this could take a while
-          */
-         void flush();
 
          /**
           * @brief wipe Delete database from disk, and potentially the raw chain as well.
@@ -59,7 +55,7 @@ namespace bts { namespace chain {
           * Will close the database before wiping. Database will be closed when this function returns.
           */
          void wipe(bool include_blocks);
-         void close();
+         void close(uint32_t blocks_to_rewind = 0);
 
          /**
           *  @return true if the block is in our fork DB or saved to disk as

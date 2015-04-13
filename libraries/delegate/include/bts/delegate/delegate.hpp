@@ -25,6 +25,8 @@ public:
       return name;
    }
 
+   void set_block_production(bool allow) { _production_enabled = allow; }
+
    struct plugin_config {
       std::map<bts::chain::delegate_id_type, fc::ecc::private_key> delegate_keys;
       /// Only set to true when starting a new network, or all delegates are offline.
