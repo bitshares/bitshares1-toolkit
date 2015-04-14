@@ -248,7 +248,7 @@ namespace bts { namespace chain {
       /**
        *  This order should expire if not filled by expiration
        */
-      time_point_sec  expiration;
+      time_point_sec  expiration = time_point_sec::maximum();
 
       /** if this flag is set the entire order must be filled or
        * the operation is rejected.
@@ -306,6 +306,9 @@ namespace bts { namespace chain {
       /// Fixed point representation of maintenance collateral ratio, with three digits of precision
       /// Must be greater than or equal to the minimum specified by price feed
       uint16_t        maintenance_collateral_ratio = BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO;
+      /// Expiration time for this order. Any unfilled portion of this order which is on the books at or past this time
+      /// will automatically be canceled.
+      time_point_sec  expiration = time_point_sec::maximum();
 
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       void       validate()const;
@@ -691,7 +694,8 @@ FC_REFLECT( bts::chain::limit_order_create_operation,
 FC_REFLECT( bts::chain::fill_order_operation, (order_id)(account_id)(pays)(receives)(fee) )
 FC_REFLECT( bts::chain::limit_order_cancel_operation,(fee_paying_account)(fee)(order) )
 FC_REFLECT( bts::chain::short_order_cancel_operation,(fee_paying_account)(fee)(order) )
-FC_REFLECT( bts::chain::short_order_create_operation, (seller)(fee)(amount_to_sell)(collateral)(initial_collateral_ratio)(maintenance_collateral_ratio) )
+FC_REFLECT( bts::chain::short_order_create_operation, (seller)(fee)(amount_to_sell)(collateral)
+            (initial_collateral_ratio)(maintenance_collateral_ratio)(expiration) )
 FC_REFLECT( bts::chain::call_order_update_operation, (funding_account)(fee)(collateral_to_add)(amount_to_cover)(maintenance_collateral_ratio) )
 
 FC_REFLECT( bts::chain::transfer_operation,

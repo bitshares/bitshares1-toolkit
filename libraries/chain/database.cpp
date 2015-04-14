@@ -373,6 +373,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    create_block_summary(next_block);
    clear_expired_transactions();
    clear_expired_proposals();
+   clear_expired_orders();
 
    // notify observers that the block has been applied
    applied_block( next_block ); //emit
@@ -799,6 +800,11 @@ void database::push_applied_operation( const operation& op, const operation_resu
    _applied_ops.emplace_back(op);
 }
 
+const vector<operation>& database::get_applied_operations() const
+{
+   return _applied_ops;
+}
+
 const global_property_object& database::get_global_properties()const
 {
    return get( global_property_id_type() );
@@ -910,7 +916,6 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
    update_global_properties();
 
    auto new_block_interval = global_props.block_interval;
-  // wdump( (current_block_interval)(new_block_interval) );
 
    // if block interval CHANGED during this block *THEN* we cannot simply
    // add the interval if we want to maintain the invariant that all timestamps are a multiple
@@ -964,6 +969,33 @@ void database::clear_expired_proposals()
               ("proposal", proposal));
       }
       remove(proposal);
+   }
+}
+
+void database::clear_expired_orders()
+{
+   transaction_evaluation_state cancel_context(this, true);
+
+   //Cancel expired limit orders
+   auto& limit_index = get_index_type<limit_order_index>().indices().get<by_expiration>();
+   while( !limit_index.empty() && limit_index.begin()->expiration <= head_block_time() )
+   {
+      const limit_order_object& order = *limit_index.begin();
+      limit_order_cancel_operation canceler;
+      canceler.fee_paying_account = order.seller;
+      canceler.order = order.id;
+      apply_operation(cancel_context, canceler);
+   }
+
+   //Cancel expired short orders
+   auto& short_index = get_index_type<short_order_index>().indices().get<by_expiration>();
+   while( !short_index.empty() && short_index.begin()->expiration <= head_block_time() )
+   {
+      const short_order_object& order = *short_index.begin();
+      short_order_cancel_operation canceler;
+      canceler.fee_paying_account = order.seller;
+      canceler.order = order.id;
+      apply_operation(cancel_context, canceler);
    }
 }
 

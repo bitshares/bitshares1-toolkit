@@ -148,6 +148,7 @@ namespace bts { namespace chain {
          void create_block_summary(const signed_block& next_block);
          void clear_expired_transactions();
          void clear_expired_proposals();
+         void clear_expired_orders();
          ///@}
 
          signed_block                           _pending_block;

@@ -9,6 +9,8 @@ object_id_type limit_order_create_evaluator::do_evaluate( const limit_order_crea
 {
    database& d = db();
 
+   FC_ASSERT( op.expiration >= d.head_block_time() );
+
    auto bts_fee_paid = pay_fee( op.seller, op.fee );
    auto bts_fee_required = op.calculate_fee( d.current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
@@ -46,6 +48,7 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
        obj.seller   = _seller->id;
        obj.for_sale = op.amount_to_sell.amount;
        obj.sell_price = op.get_price();
+       obj.expiration = op.expiration;
    });
    limit_order_id_type result = new_order_object.id; // save this because we may remove the object by filling it
 
