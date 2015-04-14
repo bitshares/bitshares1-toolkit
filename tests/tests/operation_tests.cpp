@@ -1871,11 +1871,26 @@ BOOST_AUTO_TEST_CASE( limit_order_expiration )
  *  Create an order that cannot be filled immediately and have the
  *  transaction fail.
  */
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( limit_order_fill_or_kill, 1 )
 BOOST_AUTO_TEST_CASE( limit_order_fill_or_kill )
-{
-   assert( !"not implemented" );
-}
+{ try {
+   INVOKE(issue_uia);
+   const account_object& nathan = get_account("nathan");
+   const asset_object& test = get_asset("TEST");
+   const asset_object& core = asset_id_type()(db);
+
+   limit_order_create_operation op;
+   op.seller = nathan.id;
+   op.amount_to_sell = test.amount(500);
+   op.min_to_receive = core.amount(500);
+   op.fill_or_kill = true;
+
+   trx.operations.clear();
+   trx.operations.push_back(op);
+   BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
+   op.fill_or_kill = false;
+   trx.operations.back() = op;
+   db.push_transaction(trx, ~0);
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( delegate_withdraw_pay_test, 1 )
 BOOST_AUTO_TEST_CASE( delegate_withdraw_pay_test )
