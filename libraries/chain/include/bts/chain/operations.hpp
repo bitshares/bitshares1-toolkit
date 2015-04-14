@@ -44,6 +44,48 @@ namespace bts { namespace chain {
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
+   /**
+    * @brief This operation is used to whitelist and blacklist accounts, primarily for transacting in whitelisted assets
+    *
+    * Accounts can freely specify opinions about other accounts, in the form of either whitelisting or blacklisting
+    * them. This information is used in chain validation only to determine whether an account is authorized to transact
+    * in an asset type which enforces a whitelist, but third parties can use this information for other uses as well,
+    * as long as it does not conflict with the use of whitelisted assets.
+    *
+    * An asset which enforces a whitelist specifies a list of accounts to maintain its whitelist, and a list of
+    * accounts to maintain its blacklist. In order for a given account A to hold and transact in a whitelisted asset S,
+    * A must be whitelisted by at least one of S's whitelist_authorities and blacklisted by none of S's
+    * blacklist_authorities. If A receives a balance of S, and is later removed from the whitelist(s) which allowed it
+    * to hold S, or added to any blacklist S specifies as authoritative, A's balance of S will be frozen until A's
+    * authorization is reinstated.
+    *
+    * This operation requires authorizing_account's signature, but not account_to_list's. The fee is paid by
+    * authorizing_account.
+    */
+   struct account_whitelist_operation
+   {
+      enum account_listing {
+         no_listing = 0x0, ///< No opinion is specified about this account
+         white_listed = 0x1, ///< This account is whitelisted, but not blacklisted
+         black_listed = 0x2, ///< This account is blacklisted, but not whitelisted
+         white_and_black_listed = white_listed | black_listed ///< This account is both whitelisted and blacklisted
+      };
+
+      /// The account which is specifying an opinion of another account
+      account_id_type authorizing_account;
+      /// The account being opined about
+      account_id_type account_to_list;
+      /// The new white and blacklist status of account_to_list, as determined by authorizing_account
+      /// This is a bitfield using values defined in the account_listing enum
+      uint8_t new_listing;
+      /// Paid by authorizing_account
+      asset           fee;
+
+      void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void validate()const { FC_ASSERT( fee.amount >= 0 ); FC_ASSERT(new_listing < 0x4); }
+      share_type calculate_fee(const fee_schedule_type& k)const { return k.at(account_whitelist_fee_type); }
+   };
+
    struct account_update_operation
    {
       account_id_type                     account;
@@ -117,16 +159,30 @@ namespace bts { namespace chain {
 
    struct asset_create_operation
    {
-      account_id_type         issuer; // same as fee paying account
+      /// This account must sign and pay the fee for this operation. Later, this account may update the asset
+      account_id_type         issuer;
       asset                   fee;
+      /// The ticker symbol of this asset
       string                  symbol;
+      /// Maximum number of shares of this asset that may exist at any given point
       share_type              max_supply;
-      uint8_t                 precision = 0; ///< number of digits to the right of decimal
+      /// Number of digits to the right of decimal point
+      uint8_t                 precision = 0;
+      /// Expressed in fixed-point notation, where 100 = 1%
       uint16_t                market_fee_percent = 0;
+      /// Bitfield specifying the flags the issuer is allowed to set
       uint16_t                permissions = 0;
+      /// Bitfield specifying which flags are currently in effect
       uint16_t                flags = 0;
-      price                   core_exchange_rate; // used for the fee pool
-      asset_id_type           short_backing_asset; // for bitassets, specifies what may be used as collateral.
+      /// Rate at which core asset from fee pool may be exhcanged for this asset
+      price                   core_exchange_rate;
+      /// Only for market-issued assets; this speicifies which asset type is used to collateralize short sales
+      asset_id_type           short_backing_asset;
+
+      /// The set of accounts which manage the whitelist for this asset
+      flat_set<account_id_type> whitelist_authorities;
+      /// The set of accounts which manage the blacklist for this asset
+      flat_set<account_id_type> blacklist_authorities;
 
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       void       validate()const;
@@ -155,8 +211,11 @@ namespace bts { namespace chain {
       optional<uint16_t>         permissions;
       optional<account_id_type>  new_issuer;
       optional<price>            core_exchange_rate;
-      // If price limits are null, shorts and margin calls are disabled.
+      /// If price limits are null, shorts and margin calls are disabled.
       optional<price_feed>       new_price_feed;
+
+      optional<flat_set<account_id_type>> new_whitelist_authorities;
+      optional<flat_set<account_id_type>> new_blacklist_authorities;
 
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       void validate()const;
@@ -299,34 +358,6 @@ namespace bts { namespace chain {
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
-
-   /**
-    * @brief This operation is used to authorize accounts to hold and transact in a whitelisted asset.
-    *
-    * Whitelisted assets can only be held and transfered by explicitly authorized accounts. This operation is how that
-    * authorization is granted or revoked. An asset issuer may publish this operation in order to authorize an account
-    * to hold his asset by setting authorize_account to true. The issuer may also use this operation to revoke the
-    * account's authorization by setting authorize_account to false.
-    *
-    * If authorize_account is set to true and the account is already authorized, or authorize_account is set to false
-    * and the account is already not authorized, this operation will fail. In other words, this operation must change
-    * the whitelist_account's authorization status in order to succeed.
-    *
-    * This operation must be signed by asset_id's issuer. authorize_account's signature is not required.
-    */
-//   DEPRECATED
-//   struct asset_whitelist_operation
-//   {
-//      account_id_type  issuer; ///< Must be asset_id->issuer
-//      asset_id_type    asset_id; ///< ID of the whitelist asset in question
-//      asset            fee;
-//      account_id_type  whitelist_account; ///< ID of the account to allow or disallow to hold the asset
-//      bool             authorize_account; ///< True if whitelist_account may hold and transact the asset; false otherwise
-
-//      void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
-//      void validate()const;
-//      share_type calculate_fee( const fee_schedule_type& k )const;
-//   };
 
    struct asset_issue_operation
    {
@@ -514,6 +545,7 @@ namespace bts { namespace chain {
             key_create_operation,
             account_create_operation,
             account_update_operation,
+            account_whitelist_operation,
             asset_create_operation,
             asset_update_operation,
             asset_issue_operation,
@@ -638,6 +670,11 @@ FC_REFLECT( bts::chain::account_create_operation,
 FC_REFLECT( bts::chain::account_update_operation,
             (account)(fee)(owner)(active)(voting_key)(memo_key)(vote)
           )
+
+FC_REFLECT_TYPENAME(bts::chain::account_whitelist_operation::account_listing)
+FC_REFLECT_ENUM(bts::chain::account_whitelist_operation::account_listing,
+                (no_listing)(white_listed)(black_listed)(white_and_black_listed))
+FC_REFLECT(bts::chain::account_whitelist_operation, (authorizing_account)(account_to_list)(new_listing)(fee))
 
 FC_REFLECT( bts::chain::delegate_update_operation,
             (delegate_account)(delegate_id)(fee)(fee_schedule)(signing_key)(pay_rate)

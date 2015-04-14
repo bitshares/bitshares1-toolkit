@@ -79,6 +79,7 @@ namespace bts { namespace chain {
    {
       key_create_fee_type,
       account_create_fee_type, ///< the cost to register the cheapest non-free account
+      account_whitelist_fee_type, ///< the fee to whitelist an account
       delegate_create_fee_type, ///< fixed fee for registering as a delegate, used to discourage frivioulous delegates
       delegate_update_fee_type, ///< fixed fee for updating a delegate
       delegate_withdraw_pay_fee_type, ///< fee for withdrawing delegate pay
@@ -297,6 +298,7 @@ FC_REFLECT_ENUM( bts::chain::meta_info_object_type, (meta_account_object_type)(m
 FC_REFLECT_ENUM( bts::chain::fee_type,
                  (key_create_fee_type)
                  (account_create_fee_type)
+                 (account_whitelist_fee_type)
                  (delegate_create_fee_type)
                  (delegate_update_fee_type)
                  (delegate_withdraw_pay_fee_type)

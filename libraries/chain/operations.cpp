@@ -249,7 +249,8 @@ void asset_update_operation::get_required_auth(flat_set<account_id_type>& active
 void asset_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( new_issuer || permissions || flags || core_exchange_rate || new_price_feed );
+   FC_ASSERT( new_issuer || permissions || flags || core_exchange_rate || new_price_feed || new_whitelist_authorities
+              || new_blacklist_authorities );
 
    if( permissions )
    {
@@ -283,8 +284,6 @@ share_type asset_update_operation::calculate_fee( const fee_schedule_type& k )co
 {
    return k.at( asset_update_fee_type );
 }
-
-#warning TODO: Write account whitelist and blacklist operations
 
 void asset_issue_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
 {
@@ -506,6 +505,11 @@ void delegate_withdraw_pay_operation::validate() const
 share_type delegate_withdraw_pay_operation::calculate_fee(const fee_schedule_type& k) const
 {
    return k.at(delegate_withdraw_pay_fee_type);
+}
+
+void account_whitelist_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
+{
+   active_auth_set.insert(authorizing_account);
 }
 
 } } // namespace bts::chain

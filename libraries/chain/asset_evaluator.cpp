@@ -8,6 +8,15 @@ object_id_type asset_create_evaluator::do_evaluate( const asset_create_operation
 { try {
    database& d = db();
 
+   FC_ASSERT( op.whitelist_authorities.size() <= d.get_global_properties().maximum_asset_whitelist_authorities );
+   FC_ASSERT( op.blacklist_authorities.size() <= d.get_global_properties().maximum_asset_whitelist_authorities );
+
+   // Check that all authorities do exist
+   for( auto id : op.whitelist_authorities )
+      d.get_object(id);
+   for( auto id : op.blacklist_authorities )
+      d.get_object(id);
+
    auto& asset_indx = db().get_index_type<asset_index>();
    auto asset_symbol_itr = asset_indx.indices().get<by_symbol>().find( op.symbol );
    FC_ASSERT( asset_symbol_itr == asset_indx.indices().get<by_symbol>().end() );
@@ -51,6 +60,8 @@ object_id_type asset_create_evaluator::do_apply( const asset_create_operation& o
          a.core_exchange_rate.base.asset_id = 0;
          a.core_exchange_rate.quote.asset_id = next_asset_id;
          a.dynamic_asset_data_id = dyn_asset.id;
+         a.whitelist_authorities = op.whitelist_authorities;
+         a.blacklist_authorities = op.blacklist_authorities;
       });
    assert( new_asset.id == next_asset_id );
 
@@ -133,6 +144,23 @@ object_id_type asset_update_evaluator::do_evaluate(const asset_update_operation&
    asset_to_update = &a;
    FC_ASSERT( o.issuer == a.issuer, "", ("o.issuer", o.issuer)("a.issuer", a.issuer) );
 
+   if( o.new_whitelist_authorities )
+   {
+      FC_ASSERT( o.new_whitelist_authorities->size() <= d.get_global_properties().maximum_asset_whitelist_authorities );
+      for( auto id : *o.new_whitelist_authorities )
+         d.get_object(id);
+   }
+   if( o.new_blacklist_authorities )
+   {
+      FC_ASSERT( o.new_blacklist_authorities->size() <= d.get_global_properties().maximum_asset_whitelist_authorities );
+      for( auto id : *o.new_blacklist_authorities )
+         d.get_object(id);
+   }
+   if( o.new_whitelist_authorities || o.new_blacklist_authorities )
+   {
+      FC_ASSERT( a.enforce_white_list() || o.flags && *o.flags & white_list );
+   }
+
    auto bts_fee_paid = pay_fee( a.issuer, o.fee );
    bts_fee_required = o.calculate_fee( d.current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
@@ -189,6 +217,10 @@ object_id_type asset_update_evaluator::do_apply(const asset_update_operation& o)
          a.core_exchange_rate = *o.core_exchange_rate;
       if( o.new_price_feed )
          a.current_feed = *o.new_price_feed;
+      if( o.new_whitelist_authorities )
+         a.whitelist_authorities = *o.new_whitelist_authorities;
+      if( o.new_blacklist_authorities )
+         a.blacklist_authorities = *o.new_blacklist_authorities;
    });
 
    return object_id_type();
