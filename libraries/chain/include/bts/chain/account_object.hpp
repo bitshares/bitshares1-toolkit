@@ -30,7 +30,8 @@ namespace bts { namespace chain {
          void                  sub_balance( const asset& a );
          asset                 get_balance( asset_id_type asset_id )const;
 
-         /** keeping the most recent operation as a root pointer to
+         /**
+          * Keep the most recent operation as a root pointer to
           * a linked list of the transaction history. This field is
           * not required by core validation and could in theory be
           * made an annotation on the account object, but because

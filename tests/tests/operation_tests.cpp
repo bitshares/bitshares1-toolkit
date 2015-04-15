@@ -1852,22 +1852,6 @@ BOOST_AUTO_TEST_CASE( margin_call_short_test_limit_protected )
 }
 
 /**
- *  Orders should specify a valid expiration time and they will
- *  ba automatically canceled if not filled by that time.  This feature
- *  allows people to safely submit orders that have a limited
- *  lifetime, which is essential to some traders.
- */
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( short_order_expiration, 1 )
-BOOST_AUTO_TEST_CASE( short_order_expiration )
-{
-   assert( !"not implemented" );
-}
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( limit_order_expiration, 1 )
-BOOST_AUTO_TEST_CASE( limit_order_expiration )
-{
-   assert( !"not implemented" );
-}
-/**
  *  Create an order that cannot be filled immediately and have the
  *  transaction fail.
  */

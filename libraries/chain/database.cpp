@@ -61,7 +61,7 @@ void database::close(uint32_t blocks_to_rewind)
 {
    _pending_block_session.reset();
 
-   for(int i = 0; i < blocks_to_rewind; ++i)
+   for(int i = 0; i < blocks_to_rewind && head_block_num() > 0; ++i)
       pop_block();
 
    object_database::close();

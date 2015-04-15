@@ -10,6 +10,8 @@
 
 using namespace bts::chain;
 
+BOOST_AUTO_TEST_SUITE(block_tests)
+
 BOOST_AUTO_TEST_CASE( generate_empty_blocks )
 {
    try {
@@ -397,3 +399,101 @@ BOOST_AUTO_TEST_CASE( maintenance_interval )
       throw;
    }
 }
+
+/**
+ *  Orders should specify a valid expiration time and they will ba automatically canceled if not filled by that time.
+ *  This feature allows people to safely submit orders that have a limited lifetime, which is essential to some
+ *  traders.
+ */
+BOOST_FIXTURE_TEST_CASE( short_order_expiration, database_fixture )
+{ try {
+   //Get a sane head block time
+   generate_block();
+
+   auto* test = &create_bitasset("TEST");
+   auto* core = &asset_id_type()(db);
+   auto* nathan = &create_account("nathan");
+   auto* genesis = &account_id_type()(db);
+
+   transfer(*genesis, *nathan, core->amount(50000));
+
+   BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 50000 );
+
+   short_order_create_operation op;
+   op.seller = nathan->id;
+   op.amount_to_sell = test->amount(500);
+   op.collateral = core->amount(500);
+   op.expiration = db.head_block_time() + fc::seconds(10);
+   trx.operations.push_back(op);
+   auto ptrx = db.push_transaction(trx, ~0);
+
+   BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 49500 );
+
+   auto ptrx_id = ptrx.operation_results.back().get<object_id_type>();
+   auto short_index = db.get_index_type<short_order_index>().indices();
+   auto short_itr = short_index.begin();
+   BOOST_REQUIRE( short_itr != short_index.end() );
+   BOOST_REQUIRE( short_itr->id == ptrx_id );
+   BOOST_REQUIRE( db.find_object(short_itr->id) );
+   BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 49500 );
+   auto id = short_itr->id;
+
+   generate_blocks(op.expiration);
+   test = &get_asset("TEST");
+   core = &asset_id_type()(db);
+   nathan = &get_account("nathan");
+   genesis = &account_id_type()(db);
+
+   BOOST_CHECK(db.find_object(id) == nullptr);
+   BOOST_CHECK(&get_account("nathan") == nathan);
+   BOOST_CHECK(get_account("nathan").balances == nathan->balances);
+   BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 50000 );
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( limit_order_expiration, 1 )
+BOOST_FIXTURE_TEST_CASE( limit_order_expiration, database_fixture )
+{ try {
+   //Get a sane head block time
+   generate_block();
+
+   auto* test = &create_bitasset("TEST");
+   auto* core = &asset_id_type()(db);
+   auto* nathan = &create_account("nathan");
+   auto* genesis = &account_id_type()(db);
+
+   transfer(*genesis, *nathan, core->amount(50000));
+
+   BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 50000 );
+
+   limit_order_create_operation op;
+   op.seller = nathan->id;
+   op.amount_to_sell = core->amount(500);
+   op.min_to_receive = test->amount(500);
+   op.expiration = db.head_block_time() + fc::seconds(10);
+   trx.operations.push_back(op);
+   auto ptrx = db.push_transaction(trx, ~0);
+
+   BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 49500 );
+
+   auto ptrx_id = ptrx.operation_results.back().get<object_id_type>();
+   auto limit_index = db.get_index_type<limit_order_index>().indices();
+   auto limit_itr = limit_index.begin();
+   BOOST_REQUIRE( limit_itr != limit_index.end() );
+   BOOST_REQUIRE( limit_itr->id == ptrx_id );
+   BOOST_REQUIRE( db.find_object(limit_itr->id) );
+   BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 49500 );
+   auto id = limit_itr->id;
+
+   generate_blocks(op.expiration);
+   test = &get_asset("TEST");
+   core = &asset_id_type()(db);
+   nathan = &get_account("nathan");
+   genesis = &account_id_type()(db);
+
+   BOOST_CHECK(db.find_object(id) == nullptr);
+   BOOST_CHECK(&get_account("nathan") == nathan);
+   BOOST_CHECK(get_account("nathan").balances == nathan->balances);
+   BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 50000 );
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_SUITE_END()
