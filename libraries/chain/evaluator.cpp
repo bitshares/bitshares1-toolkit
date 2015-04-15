@@ -90,17 +90,17 @@ namespace bts { namespace chain {
          auto itr = acnt.second.find( &db().get_core_asset() );
          if( itr != acnt.second.end() )
          {
-            adjust_votes( acnt.first->delegate_votes, itr->second );
+            adjust_votes( acnt.first->votes, itr->second );
          }
       }
    }
 
-   void generic_evaluator::adjust_votes( const vector<delegate_id_type>& delegate_ids, share_type delta )
+   void generic_evaluator::adjust_votes( const flat_set<vote_tally_id_type>& vote_tallies, share_type delta )
    {
       database& d = db();
-      for( auto id : delegate_ids )
+      for( auto id : vote_tallies )
       {
-         d.modify( id(d).vote(d), [&]( delegate_vote_object& v ){
+         d.modify( id(d), [&]( vote_tally_object& v ){
                    v.total_votes += delta;
             });
       }
@@ -366,10 +366,10 @@ void generic_evaluator::pay_order( const account_object& receiver, const asset& 
    });
 
    if( receives.asset_id == asset_id_type() )
-      adjust_votes( receiver.delegate_votes, receives.amount );
+      adjust_votes( receiver.votes, receives.amount );
 
    if( pays.asset_id == asset_id_type() )
-      adjust_votes( receiver.delegate_votes, -pays.amount );
+      adjust_votes( receiver.votes, -pays.amount );
 }
 
 
@@ -478,7 +478,7 @@ bool generic_evaluator::fill_order( const call_order_object& order, const asset&
    }
 
    if( pays.asset_id == asset_id_type() )
-      adjust_votes( borrower.delegate_votes, -pays.amount );
+      adjust_votes( borrower.votes, -pays.amount );
 
    if( collateral_freed )
    {
@@ -513,7 +513,7 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
       db().modify( balances, [&]( account_balance_object& b ){
              b.total_core_in_orders += buyer_to_collateral.amount;
       });
-      adjust_votes( seller.delegate_votes, buyer_to_collateral.amount );
+      adjust_votes( seller.votes, buyer_to_collateral.amount );
    }
 
    db().modify( pays_asset.dynamic_asset_data_id(db()), [&]( asset_dynamic_data_object& obj ){

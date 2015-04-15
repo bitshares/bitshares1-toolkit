@@ -149,7 +149,7 @@ void database::initialize_indexes()
    add_index< primary_index< simple_index< dynamic_global_property_object >> >();
    add_index< primary_index< simple_index< account_balance_object         >> >();
    add_index< primary_index< simple_index< asset_dynamic_data_object      >> >();
-   add_index< primary_index< flat_index<   delegate_vote_object           >> >();
+   add_index< primary_index< flat_index<   vote_tally_object           >> >();
    add_index< primary_index< flat_index<   delegate_feeds_object          >> >();
    add_index< primary_index< flat_index<   block_summary_object           >> >();
 }
@@ -191,8 +191,8 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
             a.name = string("init") + fc::to_string(i);
             a.balances = balance_obj.id;
          });
-      const delegate_vote_object& vote =
-         create<delegate_vote_object>( [&](delegate_vote_object& v) {
+      const vote_tally_object& vote =
+         create<vote_tally_object>( [&](vote_tally_object& v) {
             // Nothing to do here...
             (void)v;
          });
@@ -273,7 +273,8 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
                                                                  account_authority,
                                                                  account_authority,
                                                                  key_id,
-                                                                 key_id
+                                                                 key_id,
+                                                                 flat_set<vote_tally_id_type>()
                                                               }));
          trx.validate();
          auto ptrx = apply_transaction(trx, ~0);

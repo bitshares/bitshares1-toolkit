@@ -30,7 +30,7 @@ namespace bts { namespace chain {
          secret_hash_type               last_secret;
          share_type                     accumulated_income;
          // updated every transfer
-         delegate_vote_id_type          vote;
+         vote_tally_id_type          vote;
    };
 
    /**
@@ -45,11 +45,11 @@ namespace bts { namespace chain {
     *  has less than 32 bytes of backup state or at most 7 KB.  The penalty is
     *  a double-lookup of the object on every vote...
     */
-   class delegate_vote_object : public abstract_object<delegate_vote_object>
+   class vote_tally_object : public abstract_object<vote_tally_object>
    {
       public:
          static const uint8_t space_id = implementation_ids;
-         static const uint8_t  type_id = impl_delegate_vote_object_type;
+         static const uint8_t  type_id = impl_vote_tally_object_type;
 
          share_type  total_votes;
    };
@@ -89,5 +89,5 @@ FC_REFLECT_DERIVED( bts::chain::delegate_object, (bts::db::object),
                     (feeds)
                     (vote) )
 
-FC_REFLECT_DERIVED( bts::chain::delegate_vote_object, (bts::db::object), (total_votes) )
+FC_REFLECT_DERIVED( bts::chain::vote_tally_object, (bts::db::object), (total_votes) )
 FC_REFLECT_DERIVED( bts::chain::delegate_feeds_object, (bts::db::object), (feeds) )

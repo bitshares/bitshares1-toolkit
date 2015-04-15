@@ -89,9 +89,9 @@ namespace bts { namespace chain {
          /// The voting key may be used to update the account's votes.
          key_id_type           voting_key;
 
-         /// This is the list of delegates this account votes for. The weight of these votes is determined by this
+         /// This is the list of vote tallies this account votes for. The weight of these votes is determined by this
          /// account's balance of core asset.
-         vector<delegate_id_type> delegate_votes;
+         flat_set<vote_tally_id_type> votes;
 
          /// The reference BitShares implementation records the account's balances in a separate object. This field
          /// contains the ID of that object.
@@ -141,7 +141,7 @@ namespace bts { namespace chain {
 }}
 FC_REFLECT_DERIVED( bts::chain::account_object,
                     (bts::db::annotated_object<bts::chain::account_object>),
-                    (name)(owner)(active)(memo_key)(voting_key)(delegate_votes)(balances)
+                    (name)(owner)(active)(memo_key)(voting_key)(votes)(balances)
                     (whitelisting_accounts)(blacklisting_accounts) )
 
 FC_REFLECT_DERIVED( bts::chain::meta_account_object,

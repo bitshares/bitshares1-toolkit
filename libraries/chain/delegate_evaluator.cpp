@@ -21,7 +21,7 @@ object_id_type delegate_create_evaluator::do_apply( const delegate_create_operat
    apply_delta_balances();
    apply_delta_fee_pools();
 
-   const auto& vote_obj = db().create<delegate_vote_object>( [&]( delegate_vote_object& ){
+   const auto& vote_obj = db().create<vote_tally_object>( [&]( vote_tally_object& ){
          // initial vote is 0
    });
    const auto& feed_obj = db().create<delegate_feeds_object>( [&]( delegate_feeds_object& ) {} );

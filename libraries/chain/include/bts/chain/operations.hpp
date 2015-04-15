@@ -35,9 +35,7 @@ namespace bts { namespace chain {
       key_id_type     voting_key;
       key_id_type     memo_key;
 
-      /// Delegate IDs must be in sorted order
-      vector<delegate_id_type> vote;
-
+      flat_set<vote_tally_id_type> vote;
 
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       void       validate()const;
@@ -88,17 +86,13 @@ namespace bts { namespace chain {
 
    struct account_update_operation
    {
-      account_id_type                     account;
-      asset                               fee;
-      optional<authority>                 owner;
-      optional<authority>                 active;
-      optional<key_id_type>               voting_key;
-      optional<key_id_type>               memo_key;
-
-      /**
-       * Delegate IDs must be in sorted order
-       */
-      optional<vector<delegate_id_type>>  vote;
+      account_id_type                         account;
+      asset                                   fee;
+      optional<authority>                     owner;
+      optional<authority>                     active;
+      optional<key_id_type>                   voting_key;
+      optional<key_id_type>                   memo_key;
+      optional<flat_set<vote_tally_id_type>>  vote;
 
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>& owner_auth_set)const;
       void       validate()const;
@@ -670,6 +664,7 @@ FC_REFLECT( bts::chain::account_create_operation,
             (owner)(active)(voting_key)(memo_key)
           )
 
+FC_REFLECT_TYPENAME( fc::flat_set<bts::chain::vote_tally_id_type> )
 FC_REFLECT( bts::chain::account_update_operation,
             (account)(fee)(owner)(active)(voting_key)(memo_key)(vote)
           )

@@ -166,7 +166,9 @@ BOOST_AUTO_TEST_CASE( undo_pending )
          signed_transaction trx;
          trx.relative_expiration = 1000;
          account_id_type nathan_id = account_idx.get_next_id();
-         trx.operations.push_back(account_create_operation({account_id_type(), asset(), "nathan"}));
+         account_create_operation cop;
+         cop.name = "nathan";
+         trx.operations.push_back(cop);
          trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
          db.push_transaction(trx);
 
@@ -214,7 +216,9 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
       signed_transaction trx;
       trx.relative_expiration = 1000;
       account_id_type nathan_id = account_idx.get_next_id();
-      trx.operations.push_back(account_create_operation({account_id_type(), asset(), "nathan"}));
+      account_create_operation cop;
+      cop.name = "nathan";
+      trx.operations.push_back(cop);
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
       db1.push_transaction(trx);
 
@@ -267,7 +271,9 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
       signed_transaction trx;
       trx.relative_expiration = 1000;
       account_id_type nathan_id = account_idx.get_next_id();
-      trx.operations.push_back(account_create_operation({account_id_type(), asset(), "nathan"}));
+      account_create_operation cop;
+      cop.name = "nathan";
+      trx.operations.push_back(cop);
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
       db1.push_transaction(trx);
 
@@ -318,7 +324,9 @@ BOOST_AUTO_TEST_CASE( tapos )
       trx.relative_expiration = 1;
 
       account_id_type nathan_id = account_idx.get_next_id();
-      trx.operations.push_back(account_create_operation({account_id_type(), asset(), "nathan"}));
+      account_create_operation cop;
+      cop.name = "nathan";
+      trx.operations.push_back(cop);
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
 
       //ref_block_prefix isn't set, so we should see an exception here.

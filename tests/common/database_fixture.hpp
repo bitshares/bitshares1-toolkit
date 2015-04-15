@@ -108,15 +108,15 @@ struct database_fixture {
 
    void verify_vote_totals() {
       const account_index& account_idx = db.get_index_type<account_index>();
-      map<delegate_id_type, share_type> vote_sums;
+      map<vote_tally_id_type, share_type> vote_sums;
 
       for( const account_object& account : account_idx.indices() )
-         for( delegate_id_type del : account.delegate_votes )
-            vote_sums[del] += account.balances(db).total_core_in_orders
+         for( vote_tally_id_type tally : account.votes )
+            vote_sums[tally] += account.balances(db).total_core_in_orders
                   + account.balances(db).get_balance(asset_id_type()).amount;
 
       for( const auto& sum : vote_sums )
-         BOOST_CHECK_EQUAL(sum.second.value, sum.first(db).vote(db).total_votes.value);
+         BOOST_CHECK_EQUAL(sum.second.value, sum.first(db).total_votes.value);
    }
 
    database_fixture()
@@ -185,13 +185,13 @@ struct database_fixture {
       auto& active_delegates = db.get_global_properties().active_delegates;
       if( active_delegates.size() > 0 )
       {
-         set<delegate_id_type> votes;
-         votes.insert(active_delegates[rand() % active_delegates.size()]);
-         votes.insert(active_delegates[rand() % active_delegates.size()]);
-         votes.insert(active_delegates[rand() % active_delegates.size()]);
-         votes.insert(active_delegates[rand() % active_delegates.size()]);
-         votes.insert(active_delegates[rand() % active_delegates.size()]);
-         create_account.vote = vector<delegate_id_type>(votes.begin(), votes.end());
+         set<vote_tally_id_type> votes;
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
+         create_account.vote = flat_set<vote_tally_id_type>(votes.begin(), votes.end());
       }
 
       create_account.fee = create_account.calculate_fee(db.current_fee_schedule());

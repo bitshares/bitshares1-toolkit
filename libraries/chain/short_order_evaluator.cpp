@@ -145,7 +145,7 @@ asset short_order_cancel_evaluator::do_apply( const short_order_cancel_operation
      //do_evaluate adjusted balance by refunded.amount, which adds votes. This is undesirable, as the account
      //did not gain or lose any voting stake. Counteract that adjustment here.
      //Future optimization: don't change the votes in the first place; it's expensive to change it twice for no reason
-     adjust_votes(fee_paying_account->delegate_votes, -refunded.amount);
+     adjust_votes(fee_paying_account->votes, -refunded.amount);
   }
 
   // Possible optimization: order can be called by canceling a short order iff the canceled order was at the top of the book.

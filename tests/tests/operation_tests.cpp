@@ -129,7 +129,7 @@ BOOST_AUTO_TEST_CASE( update_account )
          authority(2, key_id, 1, key_id_type(), 1),
          authority(2, key_id, 1, key_id_type(), 1),
          key_id, optional<key_id_type>(),
-         vector<delegate_id_type>({active_delegates[0], active_delegates[5]})
+         flat_set<vote_tally_id_type>({active_delegates[0](db).vote, active_delegates[5](db).vote})
       };
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
@@ -144,7 +144,7 @@ BOOST_AUTO_TEST_CASE( update_account )
       BOOST_CHECK(nathan.owner.auths.size() == 2);
       BOOST_CHECK(nathan.owner.auths.at(key_id) == 1);
       BOOST_CHECK(nathan.owner.auths.at(key_id_type()) == 1);
-      BOOST_CHECK(nathan.delegate_votes.size() == 2);
+      BOOST_CHECK(nathan.votes.size() == 2);
 
       BOOST_CHECK(active_delegates[0](db).vote(db).total_votes == 30000);
       BOOST_CHECK(active_delegates[1](db).vote(db).total_votes == 0);
