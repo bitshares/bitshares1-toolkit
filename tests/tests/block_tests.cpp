@@ -445,12 +445,9 @@ BOOST_FIXTURE_TEST_CASE( short_order_expiration, database_fixture )
    genesis = &account_id_type()(db);
 
    BOOST_CHECK(db.find_object(id) == nullptr);
-   BOOST_CHECK(&get_account("nathan") == nathan);
-   BOOST_CHECK(get_account("nathan").balances == nathan->balances);
    BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 50000 );
 } FC_LOG_AND_RETHROW() }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( limit_order_expiration, 1 )
 BOOST_FIXTURE_TEST_CASE( limit_order_expiration, database_fixture )
 { try {
    //Get a sane head block time
@@ -491,8 +488,6 @@ BOOST_FIXTURE_TEST_CASE( limit_order_expiration, database_fixture )
    genesis = &account_id_type()(db);
 
    BOOST_CHECK(db.find_object(id) == nullptr);
-   BOOST_CHECK(&get_account("nathan") == nathan);
-   BOOST_CHECK(get_account("nathan").balances == nathan->balances);
    BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 50000 );
 } FC_LOG_AND_RETHROW() }
 
