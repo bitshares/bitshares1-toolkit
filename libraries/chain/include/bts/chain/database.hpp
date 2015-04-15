@@ -132,7 +132,7 @@ namespace bts { namespace chain {
          vector< unique_ptr<op_evaluator> >     _operation_evaluators;
 
          void update_global_dynamic_data( const signed_block& b );
-         void update_active_delegates();
+         void update_active_witnesses();
          void update_global_properties();
 
          void                  apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );

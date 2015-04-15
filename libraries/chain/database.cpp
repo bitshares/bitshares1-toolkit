@@ -372,7 +372,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    update_signing_witness(signing_witness, next_block);
 
    if( (next_block.block_num() % global_props.active_delegates.size()) == 0 )
-      update_active_delegates();
+      update_active_witnesses();
 
    auto current_block_interval = global_props.block_interval;
 
@@ -450,11 +450,11 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
    return tmp;
 } FC_CAPTURE_AND_RETHROW( (witness_id) ) }
 
-void database::update_active_delegates()
+void database::update_active_witnesses()
 {
-    vector<delegate_id_type> ids( dynamic_cast<simple_index<delegate_object>&>(get_mutable_index<delegate_object>()).size() );
-    for( uint32_t i = 0; i < ids.size(); ++i ) ids[i] = delegate_id_type(i);
-    std::sort( ids.begin(), ids.end(), [&]( delegate_id_type a,delegate_id_type b )->bool {
+    vector<witness_id_type> ids( dynamic_cast<simple_index<witness_object>&>(get_mutable_index<witness_object>()).size() );
+    for( uint32_t i = 0; i < ids.size(); ++i ) ids[i] = witness_id_type(i);
+    std::sort( ids.begin(), ids.end(), [&]( witness_id_type a,witness_id_type b )->bool {
        return a(*this).vote(*this).total_votes >
               b(*this).vote(*this).total_votes;
     });
@@ -481,7 +481,7 @@ void database::update_active_delegates()
     }
 
     modify( get_global_properties(), [&]( global_property_object& gp ){
-       gp.active_delegates = std::move(ids);
+       gp.active_witnesses = std::move(ids);
     });
 }
 

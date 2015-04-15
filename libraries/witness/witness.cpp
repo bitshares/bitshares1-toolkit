@@ -7,11 +7,12 @@
 void bts::witness_plugin::witness_plugin::configure(const bts::witness_plugin::witness_plugin::plugin_config& cfg)
 {
    _config = cfg;
+   wdump((chain::witness_id_type())(fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))));
 
    if( !_config.witness_keys.empty() )
-      _block_production_task = fc::async([this]{block_production_loop();}, "Delegate Block Production");
+      _block_production_task = fc::async([this]{block_production_loop();}, "Witness Block Production");
    else
-      elog("No delegates configured! Please add delegate IDs and private keys to configuration.");
+      elog("No witnesses configured! Please add delegate IDs and private keys to configuration.");
    _production_enabled = cfg.allow_production_on_stale_chain;
 }
 
@@ -37,7 +38,7 @@ void bts::witness_plugin::witness_plugin::block_production_loop()
    if( _production_enabled &&
        (llabs((next_production.first - chain::now()).count()) <= fc::seconds(1).count() || db.head_block_num() == 0) )
    {
-      ilog("Delegate ${id} production slot has arrived; generating a block now...", ("id", next_production.second));
+      ilog("Witness ${id} production slot has arrived; generating a block now...", ("id", next_production.second));
       try {
          auto block = db.generate_block(_config.witness_keys[next_production.second], next_production.second);
          ilog("Generated block #${n} with timestamp ${t} at time ${c}",
@@ -60,5 +61,5 @@ void bts::witness_plugin::witness_plugin::block_production_loop()
 
    //Sleep until the next production time for *any* delegate
    _block_production_task = fc::schedule([this]{block_production_loop();},
-                                         next_block_time, "Delegate Block Production");
+                                         next_block_time, "Witness Block Production");
 }
