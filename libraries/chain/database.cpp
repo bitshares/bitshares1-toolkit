@@ -24,6 +24,7 @@
 #include <bts/chain/transaction_object.hpp>
 #include <bts/chain/transfer_evaluator.hpp>
 #include <bts/chain/proposal_evaluator.hpp>
+#include <bts/chain/operation_history_object.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/crypto/digest.hpp>
@@ -344,6 +345,9 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    const delegate_object& signing_delegate = validate_block_header(skip, next_block);
    const auto& global_props = get_global_properties();
 
+   _current_block_num    = next_block.block_num();
+   _current_trx_in_block = 0;
+
    for( const auto& trx : next_block.transactions )
    {
       /* We do not need to push the undo state for each transaction
@@ -353,6 +357,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
        * when building a block.
        */
       apply_transaction( trx, skip );
+      ++_current_trx_in_block;
    }
 
    update_global_dynamic_data( next_block );
@@ -404,6 +409,7 @@ std::pair<fc::time_point, delegate_id_type> bts::chain::database::get_next_gener
    return result;
 }
 
+
 signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
                                        delegate_id_type del_id, uint32_t  skip )
 { try {
@@ -435,6 +441,8 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
    push_block( tmp, skip );
    return tmp;
 } FC_CAPTURE_AND_RETHROW( (del_id) ) }
+
+
 
 void database::update_active_delegates()
 {
@@ -745,8 +753,12 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    eval_state.operation_results.reserve( trx.operations.size() );
 
    processed_transaction ptrx(trx);
+   _current_op_in_trx = 0;
    for( auto op : ptrx.operations )
+   {
       eval_state.operation_results.emplace_back(apply_operation(eval_state, op));
+      ++_current_op_in_trx;
+   }
    ptrx.operation_results = std::move( eval_state.operation_results );
 
    //If we're skipping tapos check, but not expiration check, assume all transactions have maximum expiration time.
@@ -790,13 +802,25 @@ operation_result database::apply_operation(transaction_evaluation_state& eval_st
 {
    assert("No registered evaluator for this operation." &&
           _operation_evaluators.size() > op.which() && _operation_evaluators[op.which()]);
-   push_applied_operation( op );
+   auto op_id = push_applied_operation( op );
    auto result =  _operation_evaluators[op.which()]->evaluate( eval_state, op, true );
+   set_applied_operation_result( op_id, result );
    return result;
 }
-void database::push_applied_operation( const operation& op, const operation_result& r )
+uint32_t database::push_applied_operation( const operation& op )
 {
    _applied_ops.emplace_back(op);
+   auto& oh = _applied_ops.back();
+   oh.block_num    = _current_block_num;
+   oh.trx_in_block = _current_trx_in_block;
+   oh.op_in_trx    = _current_op_in_trx;
+   oh.virtual_op   = _current_virtual_op++;
+   return _applied_ops.size() - 1;
+}
+void database::set_applied_operation_result( uint32_t op_id, const operation_result& result )
+{
+   assert( op_id < _applied_ops.size() );
+   _applied_ops[op_id].result = result;
 }
 
 const global_property_object& database::get_global_properties()const

@@ -1,4 +1,5 @@
 #pragma once
+#include <bts/db/object.hpp>
 
 namespace bts { namespace chain {
 
@@ -14,11 +15,19 @@ namespace bts { namespace chain {
          static const uint8_t space_id = protocol_ids;
          static const uint8_t type_id  = operation_history_object_type;;
 
+         operation_history_object( const operation& o ):op(o){}
+         operation_history_object(){}
+
          operation         op;
          operation_result  result;
-         uint16_t          pos_in_block = 0;
+         /** the block that caused this operation */
+         uint32_t          block_num = 0;
+         /** the transaction in the block */
          uint16_t          trx_in_block = 0;
-         uint16_t          pos_in_trx = 0;
+         /** the operation within the transaction */
+         uint16_t          op_in_trx = 0;
+         /** any virtual operations implied by operation in block */
+         uint16_t          virtual_op = 0;
    };
 
    /**
@@ -38,18 +47,18 @@ namespace bts { namespace chain {
     *  linked list can be traversed with relatively effecient disk access because
     *  of the use of a memory mapped stack.
     */
-   class account_transaction_history_object :  public abstract_object<account_history_object>
+   class account_transaction_history_object :  public abstract_object<account_transaction_history_object>
    {
       public:
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_account_transaction_history_object_type;
-         operation_history_id_type    operation_id;
-         operation_history_id_type    next;
+         operation_history_id_type            operation_id;
+         account_transaction_history_id_type  next;
    };
 } } // bts::chain
 
 FC_REFLECT_DERIVED( bts::chain::operation_history_object, (bts::chain::object),
-                    (op)(result)(pos_in_block)(trx_in_block)(pos_in_trx) )
+                    (op)(result)(block_num)(trx_in_block)(op_in_trx)(virtual_op) )
 
 FC_REFLECT_DERIVED( bts::chain::account_transaction_history_object, (bts::chain::object), 
                     (operation_id)(next) )

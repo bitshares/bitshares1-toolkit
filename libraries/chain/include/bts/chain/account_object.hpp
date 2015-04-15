@@ -37,7 +37,8 @@ namespace bts { namespace chain {
           * transaction history is so common and this object is already
           * cached in the undo buffer (because it likely affected the
           * balances of this account) it is convienent to simply
-          * track this data here.
+          * track this data here.  Account balance objects don't currenty
+          * inherit from annotated object.
           */
          account_transaction_history_id_type most_recent_op;
 
