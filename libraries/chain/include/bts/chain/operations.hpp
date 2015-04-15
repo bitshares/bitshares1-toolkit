@@ -2,7 +2,6 @@
 #include <bts/chain/types.hpp>
 #include <bts/chain/asset.hpp>
 #include <bts/chain/authority.hpp>
-#include <bts/chain/vm.hpp>
 #include <fc/static_variant.hpp>
 #include <fc/uint128.hpp>
 
@@ -43,6 +42,48 @@ namespace bts { namespace chain {
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
+    * @brief This operation is used to whitelist and blacklist accounts, primarily for transacting in whitelisted assets
+    *
+    * Accounts can freely specify opinions about other accounts, in the form of either whitelisting or blacklisting
+    * them. This information is used in chain validation only to determine whether an account is authorized to transact
+    * in an asset type which enforces a whitelist, but third parties can use this information for other uses as well,
+    * as long as it does not conflict with the use of whitelisted assets.
+    *
+    * An asset which enforces a whitelist specifies a list of accounts to maintain its whitelist, and a list of
+    * accounts to maintain its blacklist. In order for a given account A to hold and transact in a whitelisted asset S,
+    * A must be whitelisted by at least one of S's whitelist_authorities and blacklisted by none of S's
+    * blacklist_authorities. If A receives a balance of S, and is later removed from the whitelist(s) which allowed it
+    * to hold S, or added to any blacklist S specifies as authoritative, A's balance of S will be frozen until A's
+    * authorization is reinstated.
+    *
+    * This operation requires authorizing_account's signature, but not account_to_list's. The fee is paid by
+    * authorizing_account.
+    */
+   struct account_whitelist_operation
+   {
+      enum account_listing {
+         no_listing = 0x0, ///< No opinion is specified about this account
+         white_listed = 0x1, ///< This account is whitelisted, but not blacklisted
+         black_listed = 0x2, ///< This account is blacklisted, but not whitelisted
+         white_and_black_listed = white_listed | black_listed ///< This account is both whitelisted and blacklisted
+      };
+
+      /// The account which is specifying an opinion of another account
+      account_id_type authorizing_account;
+      /// The account being opined about
+      account_id_type account_to_list;
+      /// The new white and blacklist status of account_to_list, as determined by authorizing_account
+      /// This is a bitfield using values defined in the account_listing enum
+      uint8_t new_listing;
+      /// Paid by authorizing_account
+      asset           fee;
+
+      void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void validate()const { FC_ASSERT( fee.amount >= 0 ); FC_ASSERT(new_listing < 0x4); }
+      share_type calculate_fee(const fee_schedule_type& k)const { return k.at(account_whitelist_fee_type); }
    };
 
    struct account_update_operation
@@ -118,16 +159,30 @@ namespace bts { namespace chain {
 
    struct asset_create_operation
    {
-      account_id_type         issuer; // same as fee paying account
+      /// This account must sign and pay the fee for this operation. Later, this account may update the asset
+      account_id_type         issuer;
       asset                   fee;
+      /// The ticker symbol of this asset
       string                  symbol;
+      /// Maximum number of shares of this asset that may exist at any given point
       share_type              max_supply;
-      uint8_t                 precision = 0; ///< number of digits to the right of decimal
+      /// Number of digits to the right of decimal point
+      uint8_t                 precision = 0;
+      /// Expressed in fixed-point notation, where 100 = 1%
       uint16_t                market_fee_percent = 0;
+      /// Bitfield specifying the flags the issuer is allowed to set
       uint16_t                permissions = 0;
+      /// Bitfield specifying which flags are currently in effect
       uint16_t                flags = 0;
-      price                   core_exchange_rate; // used for the fee pool
-      asset_id_type           short_backing_asset; // for bitassets, specifies what may be used as collateral.
+      /// Rate at which core asset from fee pool may be exhcanged for this asset
+      price                   core_exchange_rate;
+      /// Only for market-issued assets; this speicifies which asset type is used to collateralize short sales
+      asset_id_type           short_backing_asset;
+
+      /// The set of accounts which manage the whitelist for this asset
+      flat_set<account_id_type> whitelist_authorities;
+      /// The set of accounts which manage the blacklist for this asset
+      flat_set<account_id_type> blacklist_authorities;
 
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       void       validate()const;
@@ -156,8 +211,11 @@ namespace bts { namespace chain {
       optional<uint16_t>         permissions;
       optional<account_id_type>  new_issuer;
       optional<price>            core_exchange_rate;
-      // If price limits are null, shorts and margin calls are disabled.
+      /// If price limits are null, shorts and margin calls are disabled.
       optional<price_feed>       new_price_feed;
+
+      optional<flat_set<account_id_type>> new_whitelist_authorities;
+      optional<flat_set<account_id_type>> new_blacklist_authorities;
 
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       void validate()const;
@@ -301,33 +359,6 @@ namespace bts { namespace chain {
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
-   /**
-    * @brief This operation is used to authorize accounts to hold and transact in a whitelisted asset.
-    *
-    * Whitelisted assets can only be held and transfered by explicitly authorized accounts. This operation is how that
-    * authorization is granted or revoked. An asset issuer may publish this operation in order to authorize an account
-    * to hold his asset by setting authorize_account to true. The issuer may also use this operation to revoke the
-    * account's authorization by setting authorize_account to false.
-    *
-    * If authorize_account is set to true and the account is already authorized, or authorize_account is set to false
-    * and the account is already not authorized, this operation will fail. In other words, this operation must change
-    * the whitelist_account's authorization status in order to succeed.
-    *
-    * This operation must be signed by asset_id's issuer. authorize_account's signature is not required.
-    */
-   struct asset_whitelist_operation
-   {
-      account_id_type  issuer; ///< Must be asset_id->issuer
-      asset_id_type    asset_id; ///< ID of the whitelist asset in question
-      asset            fee;
-      account_id_type  whitelist_account; ///< ID of the account to allow or disallow to hold the asset
-      bool             authorize_account; ///< True if whitelist_account may hold and transact the asset; false otherwise
-
-      void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
-      void validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-   };
-
    struct asset_issue_operation
    {
       account_id_type  issuer; ///< Must be asset_to_issue->asset_id->issuer
@@ -376,96 +407,6 @@ namespace bts { namespace chain {
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
-   };
-
-   /** @return code_object_id
-    *
-    *  Sets the code to be associated with an account, it will
-    *  create a new script ID if necessary or update an existing
-    *  script ID if no other accounts are using the same script.
-    **/
-   struct account_set_script_operation
-   {
-      account_id_type          account_id; // fee paying account
-      asset                    fee;
-      optional<script_id_type> existing_script_id;
-      vector<script_op>        script;
-
-      void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
-      void       validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-   };
-
-   /** @return data_object_id
-    *
-    *  Writes to the data segment associated with account_id,
-    *  requires permissions of account_id.  If the account
-    *  has no data associated, it will be allocated and
-    *  initlaized to all 0's.   The maximum length of the
-    *  data.size()+offset is 0xffff+8.  The offset is useful
-    *  for only updating a small segment of the account
-    *  data.
-    */
-   struct account_set_data_operation
-   {
-      account_id_type   account_id; // fee paying account
-      asset             fee;
-      uint16_t          offset = 0;
-      vector<char>      data;
-
-      void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
-      void       validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-   };
-
-
-   /**
-    *  This operation will execute a script, the return value of the
-    *  script will be ignored.  The fee paid by the script is converted
-    *  into gas which will be consumed whether or not the script throws
-    *  an error or completes.   If the script fails to complete then
-    *  no changes will be made to the database except the payment of the
-    *  gas.
-    *
-    *  The script will be run with the active permision of all accounts
-    *  or keys specified in the initial_authority and therefore the
-    *  transaction including this operation must include all of the
-    *  necessary signatures.
-    */
-   struct account_execute_script_operation
-   {
-      account_id_type           gas_payer; // who pays for gas
-      asset                     fee; ///< becomes gas
-      account_id_type           script_account; ///< account_object->code with account_object->data
-      vector<char>              args;
-      flat_set<account_id_type> initial_authority;
-      /**
-       * These deposits are only a manifest to the script; they do not directly affect the chain state. The deposits
-       * listed here must be effected by other operations in the same transaction.
-       */
-      ///@{
-      vector<asset>             deposits; // from gas_payer account
-      ///@}
-
-      void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
-      void       validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-   };
-
-   /**
-    *  Runs a transient script with the given permissions.
-    */
-   struct script_operation
-   {
-       asset                     fee; ///< converted to gas after paying a data fee
-       account_id_type           fee_payer;
-       vector<script_op>         code;
-       flat_set<account_id_type> active_auth;
-       flat_set<account_id_type> owner_auth;
-
-       void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
-       void       validate()const;
-       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    /**
@@ -604,13 +545,9 @@ namespace bts { namespace chain {
             key_create_operation,
             account_create_operation,
             account_update_operation,
-            account_execute_script_operation,
-            account_set_script_operation,
-            account_set_data_operation,
-            script_operation,
+            account_whitelist_operation,
             asset_create_operation,
             asset_update_operation,
-            asset_whitelist_operation,
             asset_issue_operation,
             asset_fund_fee_pool_operation,
             delegate_publish_feeds_operation,
@@ -734,6 +671,11 @@ FC_REFLECT( bts::chain::account_update_operation,
             (account)(fee)(owner)(active)(voting_key)(memo_key)(vote)
           )
 
+FC_REFLECT_TYPENAME(bts::chain::account_whitelist_operation::account_listing)
+FC_REFLECT_ENUM(bts::chain::account_whitelist_operation::account_listing,
+                (no_listing)(white_listed)(black_listed)(white_and_black_listed))
+FC_REFLECT(bts::chain::account_whitelist_operation, (authorizing_account)(account_to_list)(new_listing)(fee))
+
 FC_REFLECT( bts::chain::delegate_update_operation,
             (delegate_account)(delegate_id)(fee)(fee_schedule)(signing_key)(pay_rate)
             (block_interval_sec)(maintenance_interval_sec)(max_transaction_size)
@@ -772,9 +714,6 @@ FC_REFLECT( bts::chain::asset_update_operation,
             (issuer)(asset_to_update)(fee)(flags)(permissions)(new_issuer)(core_exchange_rate)(new_price_feed)
           )
 
-FC_REFLECT( bts::chain::asset_whitelist_operation,
-            (issuer)(asset_id)(fee)(whitelist_account)(authorize_account)
-          )
 FC_REFLECT( bts::chain::asset_issue_operation,
             (issuer)(asset_to_issue)(fee)(issue_to_account) )
 FC_REFLECT( bts::chain::delegate_create_operation,
@@ -791,11 +730,4 @@ FC_REFLECT( bts::chain::proposal_update_operation, (fee_paying_account)(fee)(pro
 FC_REFLECT( bts::chain::proposal_delete_operation, (fee_paying_account)(using_owner_authority)(fee)(proposal) )
 FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (from_account)(asset_id)(amount)(fee) );
 
-FC_REFLECT( bts::chain::account_set_script_operation, (account_id)(fee)(script) );
-FC_REFLECT( bts::chain::account_set_data_operation, (account_id)(fee)(offset)(data) );
-FC_REFLECT( bts::chain::account_execute_script_operation, (gas_payer)(fee)(script_account)(args)(initial_authority)(deposits) )
-
-
 FC_REFLECT( bts::chain::delegate_withdraw_pay_operation, (fee)(from_delegate)(to_account)(amount) )
-FC_REFLECT( bts::chain::script_operation, (fee)(fee_payer)(code)(active_auth)(owner_auth) )
-

@@ -125,4 +125,37 @@ object_id_type account_update_evaluator::do_apply( const account_update_operatio
    return object_id_type();
 }
 
+object_id_type account_whitelist_evaluator::do_evaluate(const account_whitelist_operation& o)
+{ try {
+   database& d = db();
+
+   auto bts_fee_paid = pay_fee( o.authorizing_account, o.fee );
+   FC_ASSERT( bts_fee_paid >= o.calculate_fee( d.current_fee_schedule() ) );
+
+   listed_account = &o.account_to_list(d);
+
+   return object_id_type();
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+object_id_type account_whitelist_evaluator::do_apply(const account_whitelist_operation& o)
+{
+   database& d = db();
+
+   apply_delta_balances();
+   apply_delta_fee_pools();
+
+   d.modify(*listed_account, [&o](account_object& a) {
+      if( o.new_listing & o.white_listed )
+         a.whitelisting_accounts.insert(o.authorizing_account);
+      else
+         a.whitelisting_accounts.erase(o.authorizing_account);
+      if( o.new_listing & o.black_listed )
+         a.blacklisting_accounts.insert(o.authorizing_account);
+      else
+         a.blacklisting_accounts.erase(o.authorizing_account);
+   });
+
+   return object_id_type();
+}
+
 } } // bts::chain

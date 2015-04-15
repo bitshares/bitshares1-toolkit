@@ -28,6 +28,7 @@ BOOST_AUTO_TEST_CASE( create_advanced_uia )
       creator.flags = ASSET_ISSUER_PERMISSION_MASK & ~market_issued;
       creator.core_exchange_rate = price({asset(2),asset(1)});
       creator.short_backing_asset = asset_id_type();
+      creator.whitelist_authorities = creator.blacklist_authorities = {account_id_type()};
       trx.operations.push_back(std::move(creator));
       db.push_transaction(trx, ~0);
 
@@ -61,16 +62,12 @@ BOOST_AUTO_TEST_CASE( issue_whitelist_uia )
       //Fail because nathan is not whitelisted.
       BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
 
-      asset_whitelist_operation wop({advanced.issuer, advanced.id, asset(), nathan.id, true});
+      account_whitelist_operation wop({account_id_type(), nathan.id, account_whitelist_operation::white_listed});
 
-      //Fail because attempting to unlist nathan who is already unlisted.
-      REQUIRE_THROW_WITH_VALUE(wop, authorize_account, false);
       trx.operations.back() = wop;
       db.push_transaction(trx, ~0);
-      //Fail because attempting to whitelist nathan who is already whitelisted.
-      REQUIRE_THROW_WITH_VALUE(wop, authorize_account, true);
 
-      BOOST_CHECK(nathan.is_authorized_asset(advanced.id));
+      BOOST_CHECK(nathan.is_authorized_asset(advanced));
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
 
@@ -83,6 +80,7 @@ BOOST_AUTO_TEST_CASE( issue_whitelist_uia )
 
 BOOST_AUTO_TEST_CASE( transfer_whitelist_uia )
 {
+   using namespace bts;
    try {
       INVOKE(issue_whitelist_uia);
       const asset_object& advanced = get_asset("ADVANCED");
@@ -94,27 +92,70 @@ BOOST_AUTO_TEST_CASE( transfer_whitelist_uia )
       //Fail because dan is not whitelisted.
       BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
 
-      asset_whitelist_operation wop({advanced.issuer, advanced.id, asset(), dan.id, true});
+      account_whitelist_operation wop({account_id_type(), dan.id, account_whitelist_operation::white_listed});
       trx.operations.back() = wop;
       db.push_transaction(trx, ~0);
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
 
-      BOOST_CHECK(nathan.balances(db).get_balance(advanced.id).amount == 900);
-      BOOST_CHECK(dan.balances(db).get_balance(advanced.id).amount == 100);
+      BOOST_CHECK_EQUAL(get_balance(nathan, advanced), 900);
+      BOOST_CHECK_EQUAL(get_balance(dan, advanced), 100);
 
-      wop.authorize_account = false;
-      wop.whitelist_account = nathan.id;
+      wop.new_listing |= account_whitelist_operation::black_listed;
+      wop.account_to_list = nathan.id;
       trx.operations.back() = wop;
       db.push_transaction(trx, ~0);
 
       op.amount = advanced.amount(50);
       trx.operations.back() = op;
-      //Fail because nathan is not whitelisted.
+      //Fail because nathan is blacklisted
       BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
       std::swap(op.from, op.to);
       trx.operations.back() = op;
-      //Fail because nathan is not whitelisted.
+      //Fail because nathan is blacklisted
+      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
+
+      {
+         asset_update_operation op;
+         op.asset_to_update = advanced.id;
+         op.new_blacklist_authorities = flat_set<account_id_type>();
+         op.new_blacklist_authorities->insert(dan.id);
+         trx.operations.back() = op;
+         db.push_transaction(trx, ~0);
+         BOOST_CHECK(advanced.blacklist_authorities.find(dan.id) != advanced.blacklist_authorities.end());
+      }
+
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+      BOOST_CHECK_EQUAL(get_balance(nathan, advanced), 950);
+      BOOST_CHECK_EQUAL(get_balance(dan, advanced), 50);
+
+      wop.authorizing_account = dan.id;
+      wop.account_to_list = nathan.id;
+      wop.new_listing = account_whitelist_operation::black_listed;
+      trx.operations.back() = wop;
+      db.push_transaction(trx, ~0);
+
+      trx.operations.back() = op;
+      //Fail because nathan is blacklisted
+      BOOST_CHECK(!nathan.is_authorized_asset(advanced));
+      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
+
+      //Remove nathan from genesis' whitelist, add him to dan's. This should not authorize him to hold ADVANCED.
+      wop.authorizing_account = account_id_type();
+      wop.account_to_list = nathan.id;
+      wop.new_listing = account_whitelist_operation::no_listing;
+      trx.operations.back() = wop;
+      db.push_transaction(trx, ~0);
+      wop.authorizing_account = dan.id;
+      wop.account_to_list = nathan.id;
+      wop.new_listing = account_whitelist_operation::white_listed;
+      trx.operations.back() = wop;
+      db.push_transaction(trx, ~0);
+
+      trx.operations.back() = op;
+      //Fail because nathan is not whitelisted
+      BOOST_CHECK(!nathan.is_authorized_asset(advanced));
       BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
    } catch(fc::exception& e) {
       edump((e.to_detail_string()));

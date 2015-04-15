@@ -12,7 +12,6 @@
 using namespace bts::chain;
 
 BOOST_FIXTURE_TEST_SUITE( operation_tests, database_fixture )
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( margin_call_black_swan, 1 )
 
 BOOST_AUTO_TEST_CASE( create_account_test )
 {
@@ -55,7 +54,6 @@ BOOST_AUTO_TEST_CASE( create_account_test )
       BOOST_CHECK(nathan_account.id.space() == protocol_ids);
       BOOST_CHECK(nathan_account.id.type() == account_object_type);
       BOOST_CHECK(nathan_account.name == "nathan");
-      BOOST_CHECK(nathan_account.authorized_assets.empty());
 
       BOOST_REQUIRE(nathan_account.owner.auths.size() == 1);
       BOOST_CHECK(nathan_account.owner.auths.at(genesis_key) == 123);
@@ -1854,15 +1852,17 @@ BOOST_AUTO_TEST_CASE( margin_call_short_test_limit_protected )
 }
 
 /**
- *  Short orders should specify a valid expiration time and they will
- *  ba automatically canceled if not filled by that time.  This feature is
- *  designed to allow people to safely submit orders that have a limited
- *  life time which is essential to some traders.
+ *  Orders should specify a valid expiration time and they will
+ *  ba automatically canceled if not filled by that time.  This feature
+ *  allows people to safely submit orders that have a limited
+ *  lifetime, which is essential to some traders.
  */
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( short_order_expiration, 1 )
 BOOST_AUTO_TEST_CASE( short_order_expiration )
 {
    assert( !"not implemented" );
 }
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( limit_order_expiration, 1 )
 BOOST_AUTO_TEST_CASE( limit_order_expiration )
 {
    assert( !"not implemented" );
@@ -1871,11 +1871,13 @@ BOOST_AUTO_TEST_CASE( limit_order_expiration )
  *  Create an order that cannot be filled immediately and have the
  *  transaction fail.
  */
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( limit_order_fill_or_kill, 1 )
 BOOST_AUTO_TEST_CASE( limit_order_fill_or_kill )
 {
    assert( !"not implemented" );
 }
 
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( delegate_withdraw_pay_test, 1 )
 BOOST_AUTO_TEST_CASE( delegate_withdraw_pay_test )
 {
    assert( !"not implemented" );
@@ -1904,6 +1906,7 @@ BOOST_AUTO_TEST_CASE( delegate_groups_test )
 }
 
 
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( margin_call_black_swan, 1 )
 BOOST_AUTO_TEST_CASE( margin_call_black_swan )
 { try {
       const asset_object& bitusd      = create_bitasset( "BITUSD" );
@@ -1944,6 +1947,5 @@ BOOST_AUTO_TEST_CASE( margin_call_black_swan )
       throw;
    }
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

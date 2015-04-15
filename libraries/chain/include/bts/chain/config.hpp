@@ -33,6 +33,7 @@
 /** NOTE: making this a power of 2 (say 2^15) would greatly accelerate fee calcs */
 #define BTS_MAX_MARKET_FEE_PERCENT                         10000
 #define BTS_MAX_FEED_PRODUCERS                             200
+#define BTS_DEFAULT_MAX_ASSET_WHITELIST_AUTHORITIES        10
 
 #define BTS_MIN_COLLATERAL_RATIO                   1001  // lower than this could result in divide by 0
 #define BTS_MAX_COLLATERAL_RATIO                   32000 // higher than this is unnecessary and may exceed int16 storage
