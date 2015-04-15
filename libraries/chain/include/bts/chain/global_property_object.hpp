@@ -22,7 +22,9 @@ namespace bts { namespace chain {
          static const uint8_t type_id  = impl_global_property_object_type;
 
          vector<delegate_id_type>   active_delegates; // updated once per round
+         vector<witness_id_type>    active_witnesses; // updated once per round
          fee_schedule_type          current_fees; // indexed by fee_type, median of active delegate fee schedules
+         share_type                 witness_pay                         = BTS_DEFAULT_WITNESS_PAY;
          uint8_t                    block_interval                      = BTS_DEFAULT_BLOCK_INTERVAL; // seconds
          uint32_t                   maintenance_interval                = BTS_DEFAULT_MAINTENANCE_INTERVAL;
          uint32_t                   maximum_transaction_size            = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
@@ -52,16 +54,18 @@ namespace bts { namespace chain {
          uint32_t          head_block_number = 0;
          block_id_type     head_block_id;
          time_point_sec    time;
-         delegate_id_type  current_delegate;
+         witness_id_type   current_witness;
    };
 }}
 
 
 FC_REFLECT_DERIVED( bts::chain::dynamic_global_property_object, (bts::db::object),
-                    (random)(head_block_number)(head_block_id)(time)(current_delegate) )
+                    (random)(head_block_number)(head_block_id)(time)(current_witness) )
 
 FC_REFLECT_DERIVED( bts::chain::global_property_object, (bts::db::object),
+                    (witness_pay)
                     (active_delegates)
+                    (active_witnesses)
                     (current_fees)
                     (block_interval)
                     (maintenance_interval)

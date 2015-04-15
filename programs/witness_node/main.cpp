@@ -1,6 +1,6 @@
 #include <bts/app/application.hpp>
 
-#include <bts/delegate/delegate.hpp>
+#include <bts/witness/witness.hpp>
 
 #include <bts/chain/time.hpp>
 
@@ -11,10 +11,10 @@ using namespace bts;
 
 int main(int argc, char** argv) {
    try {
-      app::application node(fc::current_path()/"delegate_node_data_dir");
-      auto delegate_plug = node.register_plugin<delegate_plugin::delegate_plugin>();
+      app::application node(fc::current_path()/"witness_node_data_dir");
+      auto witness_plug = node.register_plugin<witness_plugin::witness_plugin>();
       if( argc > 1 )
-         delegate_plug->set_block_production(true);
+         witness_plug->set_block_production(true);
 
       //Start NTP time client
       chain::now();
@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
          exit_promise->set_value(signal);
       }, SIGINT);
 
-      ilog("Started delegate node on a chain with ${h} blocks.", ("h", node.chain_database()->head_block_num()));
+      ilog("Started witness node on a chain with ${h} blocks.", ("h", node.chain_database()->head_block_num()));
 
       int signal = exit_promise->wait();
       ilog("Exiting from signal ${n}", ("n", signal));

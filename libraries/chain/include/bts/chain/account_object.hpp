@@ -29,6 +29,7 @@ namespace bts { namespace chain {
          void                  add_balance( const asset& a );
          void                  sub_balance( const asset& a );
          asset                 get_balance( asset_id_type asset_id )const;
+         share_type            voting_weight()const;
 
          /**
           * Keep the most recent operation as a root pointer to

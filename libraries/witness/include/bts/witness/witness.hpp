@@ -5,11 +5,11 @@
 
 #include <fc/thread/future.hpp>
 
-namespace bts { namespace delegate_plugin {
+namespace bts { namespace witness_plugin {
 
-class delegate_plugin : public bts::app::plugin<delegate_plugin> {
+class witness_plugin : public bts::app::plugin<witness_plugin> {
 public:
-   ~delegate_plugin() {
+   ~witness_plugin() {
       try {
          if( _block_production_task.valid() )
             _block_production_task.cancel_and_wait(__FUNCTION__);
@@ -28,7 +28,7 @@ public:
    void set_block_production(bool allow) { _production_enabled = allow; }
 
    struct plugin_config {
-      std::map<bts::chain::delegate_id_type, fc::ecc::private_key> delegate_keys;
+      std::map<bts::chain::witness_id_type, fc::ecc::private_key> witness_keys;
       /// Only set to true when starting a new network, or all delegates are offline.
       bool allow_production_on_stale_chain = false;
    };
@@ -47,6 +47,6 @@ private:
 
 } } //bts::delegate
 
-FC_REFLECT( bts::delegate_plugin::delegate_plugin::plugin_config,
-            (delegate_keys)(allow_production_on_stale_chain)
+FC_REFLECT( bts::witness_plugin::witness_plugin::plugin_config,
+            (witness_keys)(allow_production_on_stale_chain)
            )

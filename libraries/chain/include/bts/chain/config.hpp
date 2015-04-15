@@ -41,7 +41,6 @@
 #define BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO   1750
 #define BTS_DEFAULT_MARGIN_PERIOD_SEC              (30*60*60*24)
 
-#define BTS_MAX_DATA_SIZE                          (~uint16_t(0))
-#define BTS_MAX_SCRIPT_ARGS_SIZE                   (0xffff+8)
+#define BTS_DEFAULT_WITNESS_PAY (50*BTS_BLOCKCHAIN_PRECISION)
 
 #define BTS_DEFAULT_MAX_PROPOSAL_LIFETIME_SEC      (60*60*24*7) // One week

@@ -113,6 +113,7 @@ namespace bts { namespace chain {
       account_object_type,
       asset_object_type,
       delegate_object_type,
+      witness_object_type,
       limit_order_object_type,
       short_order_object_type,
       call_order_object_type,
@@ -147,6 +148,7 @@ namespace bts { namespace chain {
    //typedef uint64_t                    object_id_type;
    class account_object;
    class delegate_object;
+   class witness_object;
    class asset_object;
    class key_object;
    class limit_order_object;
@@ -161,6 +163,7 @@ namespace bts { namespace chain {
    typedef object_id< protocol_ids, account_object_type,      account_object>                      account_id_type;
    typedef object_id< protocol_ids, asset_object_type,        asset_object>                        asset_id_type;
    typedef object_id< protocol_ids, delegate_object_type,     delegate_object>                     delegate_id_type;
+   typedef object_id< protocol_ids, witness_object_type,      witness_object>                      witness_id_type;
    typedef object_id< protocol_ids, limit_order_object_type,  limit_order_object>                  limit_order_id_type;
    typedef object_id< protocol_ids, short_order_object_type,  short_order_object>                  short_order_id_type;
    typedef object_id< protocol_ids, call_order_object_type,   call_order_object>                   call_order_id_type;
@@ -272,6 +275,7 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (account_object_type)
                  (asset_object_type)
                  (delegate_object_type)
+                 (witness_object_type)
                  (limit_order_object_type)
                  (short_order_object_type)
                  (call_order_object_type)

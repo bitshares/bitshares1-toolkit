@@ -148,9 +148,9 @@ struct database_fixture {
    {
       open_database();
 
-      auto ad = db.get_global_properties().active_delegates;
-      advance_simulated_time_to( db.get_next_generation_time(  ad[db.head_block_num()%ad.size()] ) );
-      return db.generate_block( delegate_priv_key, ad[db.head_block_num()%ad.size()], ~0 );
+      auto aw = db.get_global_properties().active_witnesses;
+      advance_simulated_time_to( db.get_next_generation_time(  aw[db.head_block_num()%aw.size()] ) );
+      return db.generate_block( delegate_priv_key, aw[db.head_block_num()%aw.size()], ~0 );
    }
 
    /**

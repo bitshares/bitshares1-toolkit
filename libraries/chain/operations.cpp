@@ -309,7 +309,7 @@ void delegate_create_operation::get_required_auth(flat_set<account_id_type>& act
 void delegate_create_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( pay_rate <= 100 );
+   FC_ASSERT( witness_pay >= 0 );
    FC_ASSERT( max_block_size >= BTS_MIN_BLOCK_SIZE_LIMIT );
    FC_ASSERT( max_transaction_size >= BTS_MIN_TRANSACTION_SIZE_LIMIT );
    FC_ASSERT( block_interval_sec > 0 && block_interval_sec <= BTS_MAX_BLOCK_INTERVAL );
@@ -324,7 +324,7 @@ void delegate_update_operation::get_required_auth(flat_set<account_id_type>& act
 void delegate_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( pay_rate <= 100 || pay_rate == 255 );
+   FC_ASSERT( witness_pay >= 0 );
    FC_ASSERT( max_block_size >= BTS_MIN_BLOCK_SIZE_LIMIT );
    FC_ASSERT( max_transaction_size >= BTS_MIN_TRANSACTION_SIZE_LIMIT );
    FC_ASSERT( block_interval_sec > 0 && block_interval_sec <= BTS_MAX_BLOCK_INTERVAL );

@@ -73,10 +73,10 @@ namespace bts { namespace chain {
          ///@throws fc::exception if the proposed transaction fails to apply.
          processed_transaction push_proposal( const proposal_object& proposal );
 
-         time_point   get_next_generation_time( delegate_id_type del_id )const;
-         std::pair<fc::time_point, delegate_id_type> get_next_generation_time(const set<delegate_id_type>& del_ids )const;
-         signed_block generate_block( const fc::ecc::private_key& delegate_key,
-                                      delegate_id_type del_id, uint32_t skip = 0 );
+         time_point   get_next_generation_time(witness_id_type del_id )const;
+         std::pair<fc::time_point, witness_id_type> get_next_generation_time(const set<witness_id_type>& witnesses )const;
+         signed_block generate_block(const fc::ecc::private_key& delegate_key,
+                                      witness_id_type del_id, uint32_t skip = 0 );
 
          asset current_delegate_registration_fee()const;
 
@@ -141,8 +141,8 @@ namespace bts { namespace chain {
 
          ///Steps involved in applying a new block
          ///@{
-         const delegate_object& validate_block_header(uint32_t skip, const signed_block& next_block);
-         void update_signing_delegate(const delegate_object& signing_delegate, const signed_block& new_block);
+         const witness_object& validate_block_header(uint32_t skip, const signed_block& next_block);
+         void update_signing_witness(const witness_object& signing_witness, const signed_block& new_block);
          void update_pending_block(const signed_block& next_block, uint8_t current_block_interval);
          void perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props);
          void create_block_summary(const signed_block& next_block);

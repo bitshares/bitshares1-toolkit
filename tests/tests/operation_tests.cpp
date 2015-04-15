@@ -213,9 +213,7 @@ BOOST_AUTO_TEST_CASE( create_delegate )
       delegate_create_operation op;
       op.delegate_account = account_id_type();
       op.fee = asset();
-      op.pay_rate = 50;
-      op.first_secret_hash = secret_hash_type::hash("my 53cr37 p4s5w0rd");
-      op.signing_key = key_id_type();
+      op.witness_pay = 50;
       op.block_interval_sec = BTS_DEFAULT_BLOCK_INTERVAL + 1;
       op.max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE + 1;
       op.max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE + 1;
@@ -231,11 +229,8 @@ BOOST_AUTO_TEST_CASE( create_delegate )
          op.fee_schedule.set(t, BTS_BLOCKCHAIN_PRECISION);
       trx.operations.back() = op;
 
-      //REQUIRE_THROW_WITH_VALUE(op, fee_schedule.at(2), share_type(-500));
       REQUIRE_THROW_WITH_VALUE(op, delegate_account, account_id_type(99999999));
       REQUIRE_THROW_WITH_VALUE(op, fee, asset(-600));
-      REQUIRE_THROW_WITH_VALUE(op, pay_rate, 123);
-      REQUIRE_THROW_WITH_VALUE(op, signing_key, key_id_type(9999999));
       REQUIRE_THROW_WITH_VALUE(op, block_interval_sec, 0);
       REQUIRE_THROW_WITH_VALUE(op, max_block_size, 0);
       REQUIRE_THROW_WITH_VALUE(op, max_transaction_size, 0);
@@ -247,15 +242,11 @@ BOOST_AUTO_TEST_CASE( create_delegate )
       const delegate_object& d = delegate_id(db);
 
       BOOST_CHECK(d.delegate_account == account_id_type());
-      BOOST_CHECK(d.signing_key == key_id_type());
-      BOOST_CHECK(d.pay_rate == 50);
+      BOOST_CHECK(d.witness_pay == 50);
       BOOST_CHECK(d.block_interval_sec == BTS_DEFAULT_BLOCK_INTERVAL + 1);
       BOOST_CHECK(d.max_block_size == BTS_DEFAULT_MAX_BLOCK_SIZE + 1);
       BOOST_CHECK(d.max_transaction_size == BTS_DEFAULT_MAX_TRANSACTION_SIZE + 1);
       BOOST_CHECK(d.max_sec_until_expiration == d.block_interval_sec * 2);
-      BOOST_CHECK(d.next_secret == secret_hash_type::hash("my 53cr37 p4s5w0rd"));
-      BOOST_CHECK(d.last_secret == secret_hash_type());
-      BOOST_CHECK(d.accumulated_income == 0);
       BOOST_CHECK(d.vote(db).total_votes == 0);
 
       for( int i = 0; i < FEE_TYPE_COUNT; ++i )
@@ -273,13 +264,12 @@ BOOST_AUTO_TEST_CASE( update_delegate )
 
       delegate_id_type delegate_id = db.get_index_type<primary_index<simple_index<delegate_object>>>().get_next_id().instance() - 1;
       const delegate_object& d = delegate_id(db);
-      BOOST_CHECK(d.next_secret == secret_hash_type::hash("my 53cr37 p4s5w0rd"));
 
       delegate_update_operation op;
       trx.operations.push_back(op);
       op.delegate_id = delegate_id;
       op.fee = asset();
-      op.pay_rate = 100;
+      op.witness_pay = 100;
       op.block_interval_sec = d.block_interval_sec / 2;
       op.max_block_size = d.max_block_size / 2;
       op.max_transaction_size = d.max_transaction_size / 2;
@@ -291,27 +281,22 @@ BOOST_AUTO_TEST_CASE( update_delegate )
 
       REQUIRE_THROW_WITH_VALUE(op, delegate_id, delegate_id_type(9999999));
       REQUIRE_THROW_WITH_VALUE(op, fee, asset(-5));
-      REQUIRE_THROW_WITH_VALUE(op, signing_key, object_id_type(protocol_ids, key_object_type, 999999999));
-      REQUIRE_THROW_WITH_VALUE(op, pay_rate, 127);
+      REQUIRE_THROW_WITH_VALUE(op, witness_pay, -127);
       REQUIRE_THROW_WITH_VALUE(op, block_interval_sec, 0);
       REQUIRE_THROW_WITH_VALUE(op, block_interval_sec, BTS_MAX_BLOCK_INTERVAL + 1);
       REQUIRE_THROW_WITH_VALUE(op, max_block_size, 0);
       REQUIRE_THROW_WITH_VALUE(op, max_transaction_size, 0);
       REQUIRE_THROW_WITH_VALUE(op, max_sec_until_expiration, op.block_interval_sec - 1);
-      //REQUIRE_THROW_WITH_VALUE(op, fee_schedule->at(0).value, share_type(0).value);
 
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
 
       BOOST_CHECK(d.delegate_account == account_id_type());
-      BOOST_CHECK(d.pay_rate == 100);
+      BOOST_CHECK(d.witness_pay == 100);
       BOOST_CHECK(d.block_interval_sec == (BTS_DEFAULT_BLOCK_INTERVAL + 1) / 2);
       BOOST_CHECK(d.max_block_size == (BTS_DEFAULT_MAX_BLOCK_SIZE + 1) / 2);
       BOOST_CHECK(d.max_transaction_size == (BTS_DEFAULT_MAX_TRANSACTION_SIZE + 1) / 2);
       BOOST_CHECK(d.max_sec_until_expiration == d.block_interval_sec * 2);
-      BOOST_CHECK(d.next_secret == secret_hash_type::hash("my 53cr37 p4s5w0rd"));
-      BOOST_CHECK(d.last_secret == secret_hash_type());
-      BOOST_CHECK(d.accumulated_income == 0);
       BOOST_CHECK(d.vote(db).total_votes == 0);
 
       for( int i = 0; i < FEE_TYPE_COUNT; ++i )
