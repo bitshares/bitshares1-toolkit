@@ -467,10 +467,17 @@ void database::update_active_delegates()
 {
    auto ids = sort_votable_objects<delegate_object>();
 
-   modify( get_global_properties(), [&]( global_property_object& gp ){
+   // Update genesis authorities
+   modify( get(account_id_type()), [&]( account_object& a ) {
+      a.owner.weight_threshold = ids.size()/2 + 1;
+      a.owner.auths.clear();
+      for( delegate_id_type id : ids )
+         a.owner.auths[get<delegate_object>(id).delegate_account]++;
+      a.active = a.owner;
+   });
+   modify( get_global_properties(), [&]( global_property_object& gp ) {
       gp.active_delegates = std::move(ids);
    });
-
 }
 
 void database::update_global_properties()

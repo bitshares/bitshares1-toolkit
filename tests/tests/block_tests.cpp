@@ -363,6 +363,7 @@ BOOST_FIXTURE_TEST_CASE( maintenance_interval, database_fixture )
 
       generate_block();
       BOOST_CHECK_EQUAL(db.head_block_num(), 1);
+      BOOST_CHECK_EQUAL(account_id_type()(db).owner.weight_threshold, 6);
 
       fc::time_point_sec maintenence_time = db.get_global_properties().next_maintenance_time;
       BOOST_CHECK_GT(maintenence_time.sec_since_epoch(), db.head_block_time().sec_since_epoch());
@@ -408,6 +409,7 @@ BOOST_FIXTURE_TEST_CASE( maintenance_interval, database_fixture )
       generate_block();
 
       auto new_properties = db.get_global_properties();
+      BOOST_CHECK_EQUAL(account_id_type()(db).owner.weight_threshold, 6);
       BOOST_CHECK(new_properties.active_delegates != initial_properties.active_delegates);
       BOOST_CHECK(std::find(new_properties.active_delegates.begin(),
                             new_properties.active_delegates.end(), nathans_delegate.id) !=
