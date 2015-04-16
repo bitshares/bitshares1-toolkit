@@ -327,7 +327,7 @@ namespace bts { namespace chain {
       account_id_type     fee_paying_account; ///< Must be order->seller
       asset               fee; ///< paid by order->seller
 
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
+      void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -351,7 +351,7 @@ namespace bts { namespace chain {
       asset               amount_to_cover; ///< the amount of the debt to be paid off
       uint16_t            maintenance_collateral_ratio = 0; ///< 0 means don't change, 1000 means feed
 
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
+      void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -363,7 +363,7 @@ namespace bts { namespace chain {
       asset            fee;
       account_id_type  issue_to_account;
 
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
+      void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -379,7 +379,7 @@ namespace bts { namespace chain {
       uint32_t                              max_sec_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
       fee_schedule_type                     fee_schedule;
 
-      void get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
+      void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -398,7 +398,7 @@ namespace bts { namespace chain {
       uint16_t                       max_undo_history_size = BTS_DEFAULT_MAX_UNDO_HISTORY;
       uint32_t                       max_sec_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
 
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
+      void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -524,7 +524,7 @@ namespace bts { namespace chain {
       asset               receives;
       asset               fee; // paid by receiving account
 
-      void            get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const{}
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const{}
       void            validate()const { FC_ASSERT( !"virtual operation" ); }
       share_type      calculate_fee( const fee_schedule_type& k )const { return share_type(); }
    };
