@@ -27,47 +27,10 @@ object_id_type delegate_create_evaluator::do_apply( const delegate_create_operat
 
    const auto& new_del_object = db().create<delegate_object>( [&]( delegate_object& obj ){
          obj.delegate_account         = op.delegate_account;
-         obj.witness_pay              = op.witness_pay;
-         obj.fee_schedule             = op.fee_schedule;
-         obj.block_interval_sec       = op.block_interval_sec;
-         obj.max_block_size           = op.max_block_size;
-         obj.max_transaction_size     = op.max_transaction_size;
-         obj.max_sec_until_expiration = op.max_sec_until_expiration;
          obj.vote                     = vote_obj.id;
          obj.feeds                    = feed_obj.id;
    });
    return new_del_object.id;
-}
-
-
-object_id_type delegate_update_evaluator::do_evaluate( const delegate_update_operation& op )
-{
-   database& d = db();
-   const delegate_object& del = op.delegate_id(d);
-
-   auto bts_fee_paid = pay_fee( del.delegate_account, op.fee );
-   auto bts_fee_required = op.calculate_fee( d.current_fee_schedule() );
-   FC_ASSERT( bts_fee_paid >= bts_fee_required );
-
-   if( op.fee_schedule ) FC_ASSERT( del.fee_schedule != *op.fee_schedule );
-   return object_id_type();
-}
-
-object_id_type delegate_update_evaluator::do_apply( const delegate_update_operation& op )
-{
-   apply_delta_balances();
-   apply_delta_fee_pools();
-
-   db().modify<delegate_object>( op.delegate_id(db()), [&]( delegate_object& obj ){
-         if( op.fee_schedule    ) obj.fee_schedule = *op.fee_schedule;
-
-         obj.witness_pay              = op.witness_pay;
-         obj.block_interval_sec       = op.block_interval_sec;
-         obj.max_block_size           = op.max_block_size;
-         obj.max_transaction_size     = op.max_transaction_size;
-         obj.max_sec_until_expiration = op.max_sec_until_expiration;
-   });
-   return object_id_type();
 }
 
 object_id_type delegate_publish_feeds_evaluator::do_evaluate(const delegate_publish_feeds_operation& o)

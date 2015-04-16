@@ -286,7 +286,6 @@ struct database_fixture {
    {
       delegate_create_operation op;
       op.delegate_account = owner.id;
-      op.fee_schedule = db.current_fee_schedule();
       trx.operations.push_back(op);
       trx.validate();
       auto r = db.push_transaction(trx, ~0);
@@ -372,7 +371,7 @@ struct database_fixture {
    {
       db.modify(global_property_id_type()(db), [fee](global_property_object& gpo) {
          for( int i=0; i < FEE_TYPE_COUNT; ++i)
-            gpo.current_fees.set(i, fee);
+            gpo.parameters.current_fees.set(i, fee);
       });
 
    }

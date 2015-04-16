@@ -1,7 +1,9 @@
 #pragma once
+
 #include <bts/chain/types.hpp>
 #include <bts/chain/asset.hpp>
 #include <bts/chain/authority.hpp>
+
 #include <fc/static_variant.hpp>
 #include <fc/uint128.hpp>
 
@@ -100,17 +102,19 @@ namespace bts { namespace chain {
    };
 
    /**
-    *  Used to move delegate pay from accumulated_income to their account balance.
+    * @brief Create a delegate object, as a bid to hold a delegate seat on the network.
+    *
+    * Accounts which wish to become delegates may use this operation to create a delegate object which stakeholders may
+    * vote on to approve its position as a delegate.
     */
-   struct delegate_withdraw_pay_operation
+   struct delegate_create_operation
    {
-      asset            fee;
-      delegate_id_type from_delegate;
-      account_id_type  to_account; ///< must be from_delegate->delegate_account
-      share_type       amount;
+      /// The account which owns the delegate. This account pays the fee for this operation.
+      account_id_type                       delegate_account;
+      asset                                 fee;
 
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>& owner_auth_set)const;
-      void       validate()const;
+      void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
@@ -138,6 +142,43 @@ namespace bts { namespace chain {
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
+   /**
+    *  Used to move witness pay from accumulated_income to their account balance.
+    */
+   struct witness_withdraw_pay_operation
+   {
+      /// The account to pay. Must match from_witness->witness_account. This account pays the fee for this operation.
+      account_id_type  to_account;
+      witness_id_type  from_witness;
+      share_type       amount;
+      asset            fee;
+
+      void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
+    * @brief Used by delegates to update the global parameters of the blockchain.
+    *
+    * This operation allows the delegates to update the global parameters on the blockchain. These control various
+    * tunable aspects of the chain, including block and maintenance intervals, maximum data sizes, the fees charged by
+    * the network, etc.
+    *
+    * This operation may only be used in a proposed transaction, and a proposed transaction which contains this
+    * operation must have a review period specified in the current global parameters before it may be accepted.
+    */
+   struct global_parameters_update_operation
+   {
+      chain_parameters new_parameters;
+      asset fee;
+
+      void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
+      { active_auth_set.insert(account_id_type()); }
+      void validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
    struct transfer_operation
    {
       account_id_type from;
@@ -146,7 +187,7 @@ namespace bts { namespace chain {
       asset           fee; ///< same asset_id as amount.asset_id
       vector<char>    memo;
 
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
+      void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -178,7 +219,7 @@ namespace bts { namespace chain {
       /// The set of accounts which manage the blacklist for this asset
       flat_set<account_id_type> blacklist_authorities;
 
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
+      void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -211,7 +252,7 @@ namespace bts { namespace chain {
       optional<flat_set<account_id_type>> new_whitelist_authorities;
       optional<flat_set<account_id_type>> new_blacklist_authorities;
 
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
+      void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -249,7 +290,7 @@ namespace bts { namespace chain {
        */
       bool            fill_or_kill = false;
 
-      void            get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
       price           get_price()const { return amount_to_sell / min_to_receive; }
@@ -268,7 +309,7 @@ namespace bts { namespace chain {
       account_id_type     fee_paying_account;
       asset               fee;
 
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
+      void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
@@ -304,7 +345,7 @@ namespace bts { namespace chain {
       /// will automatically be canceled.
       time_point_sec  expiration = time_point_sec::maximum();
 
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
+      void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
 
@@ -365,41 +406,6 @@ namespace bts { namespace chain {
 
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-   };
-
-   struct delegate_create_operation
-   {
-      account_id_type                       delegate_account; // same as fee_paying account
-      asset                                 fee;
-      share_type                            witness_pay = BTS_DEFAULT_WITNESS_PAY;
-      uint8_t                               block_interval_sec = BTS_DEFAULT_BLOCK_INTERVAL;
-      uint32_t                              max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE;
-      uint32_t                              max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
-      uint32_t                              max_sec_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
-      fee_schedule_type                     fee_schedule;
-
-      void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
-      void validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-   };
-
-   struct delegate_update_operation
-   {
-      account_id_type                delegate_account; ///< must match delegate_id->delegate_account
-      delegate_id_type               delegate_id;
-      asset                          fee; ///< paid by delegate_id->delegate_account
-      optional<fee_schedule_type>    fee_schedule;
-      share_type                     witness_pay;
-      uint8_t                        block_interval_sec = BTS_DEFAULT_BLOCK_INTERVAL;
-      uint32_t                       maintenance_interval_sec = BTS_DEFAULT_MAINTENANCE_INTERVAL;
-      uint32_t                       max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
-      uint32_t                       max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE;
-      uint16_t                       max_undo_history_size = BTS_DEFAULT_MAX_UNDO_HISTORY;
-      uint32_t                       max_sec_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
-
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
-      void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
@@ -546,8 +552,7 @@ namespace bts { namespace chain {
             asset_fund_fee_pool_operation,
             delegate_publish_feeds_operation,
             delegate_create_operation,
-            delegate_update_operation,
-            delegate_withdraw_pay_operation,
+            witness_withdraw_pay_operation,
             proposal_create_operation,
             proposal_update_operation,
             proposal_delete_operation,
@@ -671,14 +676,12 @@ FC_REFLECT_ENUM(bts::chain::account_whitelist_operation::account_listing,
                 (no_listing)(white_listed)(black_listed)(white_and_black_listed))
 FC_REFLECT(bts::chain::account_whitelist_operation, (authorizing_account)(account_to_list)(new_listing)(fee))
 
-FC_REFLECT( bts::chain::delegate_update_operation,
-            (delegate_account)(delegate_id)(fee)(fee_schedule)
-            (block_interval_sec)(maintenance_interval_sec)(max_transaction_size)
-            (max_block_size)(max_undo_history_size)(max_sec_until_expiration)
-          )
-
+FC_REFLECT( bts::chain::delegate_create_operation,
+            (delegate_account)(fee) )
 FC_REFLECT( bts::chain::delegate_publish_feeds_operation,
             (delegate)(fee)(feeds) )
+
+FC_REFLECT( bts::chain::witness_withdraw_pay_operation, (fee)(from_witness)(to_account)(amount) )
 
 FC_REFLECT( bts::chain::limit_order_create_operation,
             (seller)(amount_to_sell)(fee)(min_to_receive)(expiration)(fill_or_kill)
@@ -712,10 +715,6 @@ FC_REFLECT( bts::chain::asset_update_operation,
 
 FC_REFLECT( bts::chain::asset_issue_operation,
             (issuer)(asset_to_issue)(fee)(issue_to_account) )
-FC_REFLECT( bts::chain::delegate_create_operation,
-            (delegate_account)(fee)(block_interval_sec)(max_block_size)
-            (max_transaction_size)(max_sec_until_expiration)(fee_schedule)
-          )
 
 FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(proposed_ops) )
 FC_REFLECT( bts::chain::proposal_update_operation, (fee_paying_account)(fee)(proposal)
@@ -723,4 +722,3 @@ FC_REFLECT( bts::chain::proposal_update_operation, (fee_paying_account)(fee)(pro
 FC_REFLECT( bts::chain::proposal_delete_operation, (fee_paying_account)(using_owner_authority)(fee)(proposal) )
 FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (from_account)(asset_id)(amount)(fee) );
 
-FC_REFLECT( bts::chain::delegate_withdraw_pay_operation, (fee)(from_delegate)(to_account)(amount) )

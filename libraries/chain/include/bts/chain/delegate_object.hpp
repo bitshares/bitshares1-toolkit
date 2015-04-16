@@ -14,14 +14,6 @@ namespace bts { namespace chain {
          static const uint8_t type_id  = delegate_object_type;
 
          account_id_type                delegate_account;
-         fee_schedule_type              fee_schedule;
-         share_type                     witness_pay               = BTS_DEFAULT_WITNESS_PAY;
-         uint8_t                        block_interval_sec        = BTS_DEFAULT_BLOCK_INTERVAL;
-         uint32_t                       maintenance_interval_sec  = BTS_DEFAULT_MAINTENANCE_INTERVAL;
-         uint32_t                       max_transaction_size      = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
-         uint32_t                       max_block_size            = BTS_DEFAULT_MAX_BLOCK_SIZE;
-         uint16_t                       max_undo_history_size     = BTS_DEFAULT_MAX_UNDO_HISTORY;
-         uint32_t                       max_sec_until_expiration  = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
          delegate_feeds_id_type         feeds;
          vote_tally_id_type             vote;
    };
@@ -70,14 +62,6 @@ namespace bts { namespace chain {
 
 FC_REFLECT_DERIVED( bts::chain::delegate_object, (bts::db::object),
                     (delegate_account)
-                    (fee_schedule)
-                    (witness_pay)
-                    (block_interval_sec)
-                    (maintenance_interval_sec)
-                    (max_block_size)
-                    (max_transaction_size)
-                    (max_undo_history_size)
-                    (max_sec_until_expiration)
                     (feeds)
                     (vote) )
 

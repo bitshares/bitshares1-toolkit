@@ -213,22 +213,10 @@ BOOST_AUTO_TEST_CASE( create_delegate )
       delegate_create_operation op;
       op.delegate_account = account_id_type();
       op.fee = asset();
-      op.witness_pay = 50;
-      op.block_interval_sec = BTS_DEFAULT_BLOCK_INTERVAL + 1;
-      op.max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE + 1;
-      op.max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE + 1;
-      op.max_sec_until_expiration = op.block_interval_sec * 2;
-
-      for( int t = 0; t < FEE_TYPE_COUNT; ++t )
-         op.fee_schedule.set(t, BTS_BLOCKCHAIN_PRECISION);
       trx.operations.push_back(op);
 
       REQUIRE_THROW_WITH_VALUE(op, delegate_account, account_id_type(99999999));
       REQUIRE_THROW_WITH_VALUE(op, fee, asset(-600));
-      REQUIRE_THROW_WITH_VALUE(op, block_interval_sec, 0);
-      REQUIRE_THROW_WITH_VALUE(op, max_block_size, 0);
-      REQUIRE_THROW_WITH_VALUE(op, max_transaction_size, 0);
-      REQUIRE_THROW_WITH_VALUE(op, max_sec_until_expiration, 0);
       trx.operations.back() = op;
 
       delegate_id_type delegate_id = db.get_index_type<primary_index<simple_index<delegate_object>>>().get_next_id();
@@ -236,66 +224,8 @@ BOOST_AUTO_TEST_CASE( create_delegate )
       const delegate_object& d = delegate_id(db);
 
       BOOST_CHECK(d.delegate_account == account_id_type());
-      BOOST_CHECK(d.witness_pay == 50);
-      BOOST_CHECK(d.block_interval_sec == BTS_DEFAULT_BLOCK_INTERVAL + 1);
-      BOOST_CHECK(d.max_block_size == BTS_DEFAULT_MAX_BLOCK_SIZE + 1);
-      BOOST_CHECK(d.max_transaction_size == BTS_DEFAULT_MAX_TRANSACTION_SIZE + 1);
-      BOOST_CHECK(d.max_sec_until_expiration == d.block_interval_sec * 2);
       BOOST_CHECK(d.vote(db).total_votes == 0);
-
-      for( int i = 0; i < FEE_TYPE_COUNT; ++i )
-         BOOST_CHECK(d.fee_schedule.at(i) == BTS_BLOCKCHAIN_PRECISION);
    } catch (fc::exception& e) {
-      edump((e.to_detail_string()));
-      throw;
-   }
-}
-
-BOOST_AUTO_TEST_CASE( update_delegate )
-{
-   try {
-      INVOKE(create_delegate);
-
-      delegate_id_type delegate_id = db.get_index_type<primary_index<simple_index<delegate_object>>>().get_next_id().instance() - 1;
-      const delegate_object& d = delegate_id(db);
-
-      delegate_update_operation op;
-      trx.operations.push_back(op);
-      op.delegate_id = delegate_id;
-      op.fee = asset();
-      op.witness_pay = 100;
-      op.block_interval_sec = d.block_interval_sec / 2;
-      op.max_block_size = d.max_block_size / 2;
-      op.max_transaction_size = d.max_transaction_size / 2;
-      op.max_sec_until_expiration = d.max_sec_until_expiration / 2;
-
-      op.fee_schedule = decltype(d.fee_schedule)();
-      for( int t = 0; t < FEE_TYPE_COUNT; ++t )
-         op.fee_schedule->set(t,BTS_BLOCKCHAIN_PRECISION / 2);
-
-      REQUIRE_THROW_WITH_VALUE(op, delegate_id, delegate_id_type(9999999));
-      REQUIRE_THROW_WITH_VALUE(op, fee, asset(-5));
-      REQUIRE_THROW_WITH_VALUE(op, witness_pay, -127);
-      REQUIRE_THROW_WITH_VALUE(op, block_interval_sec, 0);
-      REQUIRE_THROW_WITH_VALUE(op, block_interval_sec, BTS_MAX_BLOCK_INTERVAL + 1);
-      REQUIRE_THROW_WITH_VALUE(op, max_block_size, 0);
-      REQUIRE_THROW_WITH_VALUE(op, max_transaction_size, 0);
-      REQUIRE_THROW_WITH_VALUE(op, max_sec_until_expiration, op.block_interval_sec - 1);
-
-      trx.operations.back() = op;
-      db.push_transaction(trx, ~0);
-
-      BOOST_CHECK(d.delegate_account == account_id_type());
-      BOOST_CHECK(d.witness_pay == 100);
-      BOOST_CHECK(d.block_interval_sec == (BTS_DEFAULT_BLOCK_INTERVAL + 1) / 2);
-      BOOST_CHECK(d.max_block_size == (BTS_DEFAULT_MAX_BLOCK_SIZE + 1) / 2);
-      BOOST_CHECK(d.max_transaction_size == (BTS_DEFAULT_MAX_TRANSACTION_SIZE + 1) / 2);
-      BOOST_CHECK(d.max_sec_until_expiration == d.block_interval_sec * 2);
-      BOOST_CHECK(d.vote(db).total_votes == 0);
-
-      for( int i = 0; i < FEE_TYPE_COUNT; ++i )
-         BOOST_CHECK(d.fee_schedule.at(i) == BTS_BLOCKCHAIN_PRECISION / 2);
-   } catch(fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
    }

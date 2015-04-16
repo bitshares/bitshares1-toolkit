@@ -112,7 +112,6 @@ void database::initialize_evaluators()
    register_evaluator<account_update_evaluator>();
    register_evaluator<account_whitelist_evaluator>();
    register_evaluator<delegate_create_evaluator>();
-   register_evaluator<delegate_update_evaluator>();
    register_evaluator<asset_create_evaluator>();
    register_evaluator<asset_issue_evaluator>();
    register_evaluator<asset_update_evaluator>();
@@ -356,6 +355,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
    const witness_object& signing_witness = validate_block_header(skip, next_block);
    const auto& global_props = get_global_properties();
+   const auto& dynamic_global_props = get<dynamic_global_property_object>(dynamic_global_property_id_type());
 
    for( const auto& trx : next_block.transactions )
    {
@@ -371,10 +371,10 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    update_global_dynamic_data( next_block );
    update_signing_witness(signing_witness, next_block);
 
-   auto current_block_interval = global_props.block_interval;
+   auto current_block_interval = global_props.parameters.block_interval;
 
    // Are we at the maintenance interval?
-   if( global_props.next_maintenance_time <= next_block.timestamp )
+   if( dynamic_global_props.next_maintenance_time <= next_block.timestamp )
       // This will update _pending_block.timestamp if the block interval has changed
       perform_chain_maintenance(next_block, global_props);
    // If we're at the end of a round, shuffle the active witnesses
@@ -401,7 +401,7 @@ time_point database::get_next_generation_time( witness_id_type del_id )const
    const auto& gp = get_global_properties();
    auto now = bts::chain::now();
    const auto& active_witness = gp.active_witnesses;
-   const auto& interval   = gp.block_interval;
+   const auto& interval   = gp.parameters.block_interval;
    auto witness_slot = ((now.sec_since_epoch()+interval-1) /interval);
    for( uint32_t i = 0; i < active_witness.size(); ++i )
    {
@@ -444,7 +444,7 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
    _pending_block.witness = witness_id;
    if( !(skip & skip_delegate_signature) ) _pending_block.sign( delegate_key );
 
-   FC_ASSERT( fc::raw::pack_size(_pending_block) <= get_global_properties().maximum_block_size );
+   FC_ASSERT( fc::raw::pack_size(_pending_block) <= get_global_properties().parameters.maximum_block_size );
    //This line used to std::move(_pending_block) but this is unsafe as _pending_block is later referenced without being
    //reinitialized. Future optimization could be to move it, then reinitialize it with the values we need to preserve.
    signed_block tmp = _pending_block;
@@ -477,71 +477,6 @@ void database::update_active_delegates()
    });
    modify( get_global_properties(), [&]( global_property_object& gp ) {
       gp.active_delegates = std::move(ids);
-   });
-}
-
-void database::update_global_properties()
-{
-   wlog("Updating global properties...");
-   global_property_object tmp = get_global_properties();
-   vector<const delegate_object*> ids;
-   std::transform(tmp.active_delegates.begin(), tmp.active_delegates.end(), std::back_inserter(ids),
-                  [this](delegate_id_type id){
-                     return &id(*this);
-                  });
-
-   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
-                     [&]( const delegate_object* a, const delegate_object* b )->bool {
-                          return a->block_interval_sec < b->block_interval_sec;
-                     });
-   tmp.block_interval = ids[ids.size()/2]->block_interval_sec;
-   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
-                     [&]( const delegate_object* a, const delegate_object* b )->bool {
-                          return a->maintenance_interval_sec < b->maintenance_interval_sec;
-                     });
-   tmp.maintenance_interval = ids[ids.size()/2]->maintenance_interval_sec;
-   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
-                     [&]( const delegate_object* a, const delegate_object* b )->bool {
-                          return a->max_transaction_size < b->max_transaction_size;
-                     });
-   tmp.maximum_transaction_size = ids[ids.size()/2]->max_transaction_size;
-   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
-                     [&]( const delegate_object* a, const delegate_object* b )->bool {
-                          return a->max_block_size < b->max_block_size;
-                     });
-   tmp.maximum_block_size = ids[ids.size()/2]->max_block_size;
-   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
-                     [&]( const delegate_object* a, const delegate_object* b )->bool {
-                          return a->max_undo_history_size < b->max_undo_history_size;
-                     });
-   tmp.maximum_undo_history = ids[ids.size()/2]->max_undo_history_size;
-   std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
-                     [&]( const delegate_object* a, const delegate_object* b )->bool {
-                          return a->max_sec_until_expiration < b->max_sec_until_expiration;
-                     });
-   tmp.maximum_time_until_expiration = ids[ids.size()/2]->max_sec_until_expiration;
-
-   for( uint32_t f = 0; f < tmp.current_fees.size(); ++f )
-   {
-      std::nth_element( ids.begin(), ids.begin() + ids.size()/2, ids.end(),
-                        [&]( const delegate_object* a, const delegate_object* b )->bool {
-                             return a->fee_schedule.at(f) < b->fee_schedule.at(f);
-                        });
-      tmp.current_fees.set(f, ids[ids.size()/2]->fee_schedule.at(f));
-   }
-
-   if( tmp.next_maintenance_time <= head_block_time() )
-   {
-      if( head_block_num() == 1 )
-         tmp.next_maintenance_time = time_point_sec() +
-               (((head_block_time().sec_since_epoch() / tmp.maintenance_interval) + 1) * tmp.maintenance_interval);
-      else
-         tmp.next_maintenance_time += tmp.maintenance_interval;
-      assert( tmp.next_maintenance_time > head_block_time() );
-   }
-
-   modify( global_property_id_type()(*this), [&]( global_property_object& gpo ){
-      gpo = std::move(tmp);
    });
 }
 
@@ -705,7 +640,7 @@ processed_transaction database::push_transaction( const signed_transaction& trx,
    _pending_block.transactions.push_back(processed_trx);
 
    FC_ASSERT( (skip & skip_block_size_check) ||
-              fc::raw::pack_size(_pending_block) <= get_global_properties().maximum_block_size );
+              fc::raw::pack_size(_pending_block) <= get_global_properties().parameters.maximum_block_size );
 
    // The transaction applied successfully. Merge its changes into the pending block session.
    session.merge();
@@ -763,18 +698,18 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    }
    eval_state.operation_results.reserve( trx.operations.size() );
 
+   const chain_parameters& chain_parameters = get_global_properties().parameters;
    processed_transaction ptrx(trx);
    for( auto op : ptrx.operations )
       eval_state.operation_results.emplace_back(apply_operation(eval_state, op));
    ptrx.operation_results = std::move( eval_state.operation_results );
 
    //If we're skipping tapos check, but not expiration check, assume all transactions have maximum expiration time.
-   fc::time_point_sec trx_expiration = _pending_block.timestamp + get_global_properties().maximum_time_until_expiration;
+   fc::time_point_sec trx_expiration = _pending_block.timestamp + chain_parameters.maximum_time_until_expiration;
    if( !(skip & skip_tapos_check) )
    {
       //Check the TaPoS reference and expiration time
       //Remember that the TaPoS block number is abbreviated; it contains only the lower 16 bits.
-      const global_property_object& global_properties = get_global_properties();
       //Lookup TaPoS block summary by block number (remember block summary instances are the block numbers)
       const block_summary_object& tapos_block_summary
             = static_cast<const block_summary_object&>(get_index<block_summary_object>()
@@ -782,13 +717,13 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
                                                                                   + trx.ref_block_num)));
       //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
       FC_ASSERT( trx.ref_block_prefix == tapos_block_summary.block_id._hash[1] );
-      trx_expiration = tapos_block_summary.timestamp + global_properties.block_interval*trx.relative_expiration.value;
+      trx_expiration = tapos_block_summary.timestamp + chain_parameters.block_interval*trx.relative_expiration.value;
       if( tapos_block_summary.timestamp == time_point_sec() )
-         trx_expiration = now() + global_properties.block_interval*trx.relative_expiration.value;
+         trx_expiration = now() + chain_parameters.block_interval*trx.relative_expiration.value;
       FC_ASSERT( _pending_block.timestamp <= trx_expiration ||
                  (trx.ref_block_prefix == 0 && trx.ref_block_num == 0 && head_block_num() < trx.relative_expiration)
                  , "", ("exp", trx_expiration) );
-      FC_ASSERT( trx_expiration <= head_block_time() + global_properties.maximum_time_until_expiration
+      FC_ASSERT( trx_expiration <= head_block_time() + chain_parameters.maximum_time_until_expiration
                  //Allow transactions through on block 1
                  || head_block_num() == 0 );
    }
@@ -827,9 +762,14 @@ const global_property_object& database::get_global_properties()const
 {
    return get( global_property_id_type() );
 }
+
+const dynamic_global_property_object&database::get_dynamic_global_properties() const
+{
+   return get( dynamic_global_property_id_type() );
+}
 const fee_schedule_type&  database::current_fee_schedule()const
 {
-   return get_global_properties().current_fees;
+   return get_global_properties().parameters.current_fees;
 }
 time_point_sec database::head_block_time()const
 {
@@ -890,12 +830,13 @@ const witness_object& database::validate_block_header(uint32_t skip, const signe
    FC_ASSERT( _pending_block.timestamp <= (now  + fc::seconds(1)), "", ("now",now)("pending",_pending_block.timestamp) );
    FC_ASSERT( _pending_block.previous == next_block.previous, "", ("pending.prev",_pending_block.previous)("next.prev",next_block.previous) );
    FC_ASSERT( _pending_block.timestamp <= next_block.timestamp, "", ("_pending_block.timestamp",_pending_block.timestamp)("next",next_block.timestamp)("blocknum",next_block.block_num()) );
-   FC_ASSERT( _pending_block.timestamp.sec_since_epoch() % get_global_properties().block_interval == 0 );
+   FC_ASSERT( _pending_block.timestamp.sec_since_epoch() % global_props.parameters.block_interval == 0 );
    const witness_object& witness = next_block.witness(*this);
    FC_ASSERT( secret_hash_type::hash(next_block.previous_secret) == witness.next_secret, "",
               ("previous_secret", next_block.previous_secret)("next_secret", witness.next_secret));
    if( !(skip&skip_delegate_signature) ) FC_ASSERT( next_block.validate_signee( witness.signing_key(*this).key() ) );
-   auto expected_witness_num = (next_block.timestamp.sec_since_epoch() / global_props.block_interval)%global_props.active_witnesses.size();
+   auto expected_witness_num = (next_block.timestamp.sec_since_epoch() /
+                                global_props.parameters.block_interval) % global_props.active_witnesses.size();
    FC_ASSERT( next_block.witness == global_props.active_witnesses[expected_witness_num] );
 
    return witness;
@@ -907,7 +848,7 @@ void database::update_signing_witness(const witness_object& signing_witness, con
    const auto& asset_data = core_asset.dynamic_asset_data_id(*this);
 
    // Slowly pay out income averaged over 1M blocks
-   share_type pay = std::min(get_global_properties().witness_pay, asset_data.accumulated_fees);
+   share_type pay = std::min(get_global_properties().parameters.witness_pay, asset_data.accumulated_fees);
    modify( asset_data, [&]( asset_dynamic_data_object& o ){ o.accumulated_fees -= pay; } );
 
    modify( signing_witness, [&]( witness_object& obj ){
@@ -929,11 +870,10 @@ void database::update_pending_block(const signed_block& next_block, uint8_t curr
 
 void database::perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props)
 {
-   update_global_properties();
    update_active_witnesses();
    update_active_delegates();
 
-   auto new_block_interval = global_props.block_interval;
+   auto new_block_interval = global_props.parameters.block_interval;
 
    // if block interval CHANGED during this block *THEN* we cannot simply
    // add the interval if we want to maintain the invariant that all timestamps are a multiple
@@ -945,6 +885,23 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
       _pending_block.timestamp -=  r;
       assert( (_pending_block.timestamp.sec_since_epoch() % new_block_interval)  == 0 );
    }
+
+   auto next_maintenance_time = get<dynamic_global_property_object>(dynamic_global_property_id_type()).next_maintenance_time;
+   auto maintenance_interval = get_global_properties().parameters.maintenance_interval;
+
+   if( next_maintenance_time <= next_block.timestamp )
+   {
+      if( next_block.block_num() == 1 )
+         next_maintenance_time = time_point_sec() +
+               (((next_block.timestamp.sec_since_epoch() / maintenance_interval) + 1) * maintenance_interval);
+      else
+         next_maintenance_time += maintenance_interval;
+      assert( next_maintenance_time > next_block.timestamp );
+   }
+
+   modify(get_dynamic_global_properties(), [next_maintenance_time](dynamic_global_property_object& d) {
+      d.next_maintenance_time = next_maintenance_time;
+   });
 }
 
 void database::create_block_summary(const signed_block& next_block)
@@ -962,7 +919,8 @@ void database::clear_expired_transactions()
    //Transactions must have expired by at least two forking windows in order to be removed.
    auto& transaction_idx = static_cast<transaction_index&>(get_mutable_index(implementation_ids, impl_transaction_object_type));
    const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
-   auto forking_window_time = get_global_properties().maximum_undo_history * get_global_properties().block_interval;
+   const auto& global_parameters = get_global_properties().parameters;
+   auto forking_window_time = global_parameters.maximum_undo_history * global_parameters.block_interval;
    while( !dedupe_index.empty()
           && head_block_time() - dedupe_index.rbegin()->expiration >= fc::seconds(forking_window_time) )
       transaction_idx.remove(*dedupe_index.rbegin());

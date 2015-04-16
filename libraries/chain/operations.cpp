@@ -296,10 +296,6 @@ share_type delegate_create_operation::calculate_fee( const fee_schedule_type& k 
 {
    return k.at( delegate_create_fee_type ) ;
 }
-share_type delegate_update_operation::calculate_fee( const fee_schedule_type& k )const
-{
-   return k.at( delegate_update_fee_type ) ;
-}
 
 void delegate_create_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
 {
@@ -309,27 +305,6 @@ void delegate_create_operation::get_required_auth(flat_set<account_id_type>& act
 void delegate_create_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( witness_pay >= 0 );
-   FC_ASSERT( max_block_size >= BTS_MIN_BLOCK_SIZE_LIMIT );
-   FC_ASSERT( max_transaction_size >= BTS_MIN_TRANSACTION_SIZE_LIMIT );
-   FC_ASSERT( block_interval_sec > 0 && block_interval_sec <= BTS_MAX_BLOCK_INTERVAL );
-   FC_ASSERT( max_sec_until_expiration > block_interval_sec );
-   for( auto fe : fee_schedule.fees ) FC_ASSERT( fe >= 0 );
-}
-void delegate_update_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
-{
-   active_auth_set.insert(delegate_account);
-}
-
-void delegate_update_operation::validate()const
-{
-   FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( witness_pay >= 0 );
-   FC_ASSERT( max_block_size >= BTS_MIN_BLOCK_SIZE_LIMIT );
-   FC_ASSERT( max_transaction_size >= BTS_MIN_TRANSACTION_SIZE_LIMIT );
-   FC_ASSERT( block_interval_sec > 0 && block_interval_sec <= BTS_MAX_BLOCK_INTERVAL );
-   FC_ASSERT( max_sec_until_expiration > block_interval_sec );
-   if( fee_schedule ) for( auto fe : fee_schedule->fees ) FC_ASSERT( fe > 0 );
 }
 
 void asset_fund_fee_pool_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
@@ -480,25 +455,36 @@ void proposal_delete_operation::validate() const
    FC_ASSERT( fee.amount >= 0 );
 }
 
-void delegate_withdraw_pay_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& owner_auth_set) const
+void witness_withdraw_pay_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
 {
    active_auth_set.insert(to_account);
 }
 
-void delegate_withdraw_pay_operation::validate() const
+void witness_withdraw_pay_operation::validate() const
 {
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( amount >= 0 );
 }
 
-share_type delegate_withdraw_pay_operation::calculate_fee(const fee_schedule_type& k) const
+share_type witness_withdraw_pay_operation::calculate_fee(const fee_schedule_type& k) const
 {
-   return k.at(delegate_withdraw_pay_fee_type);
+   return k.at(witness_withdraw_pay_fee_type);
 }
 
 void account_whitelist_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
 {
    active_auth_set.insert(authorizing_account);
+}
+
+void global_parameters_update_operation::validate() const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   new_parameters.validate();
+}
+
+share_type global_parameters_update_operation::calculate_fee(const fee_schedule_type& k) const
+{
+   return k.at(global_parameters_update_fee_type);
 }
 
 } } // namespace bts::chain

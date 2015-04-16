@@ -8,8 +8,9 @@ object_id_type asset_create_evaluator::do_evaluate( const asset_create_operation
 { try {
    database& d = db();
 
-   FC_ASSERT( op.whitelist_authorities.size() <= d.get_global_properties().maximum_asset_whitelist_authorities );
-   FC_ASSERT( op.blacklist_authorities.size() <= d.get_global_properties().maximum_asset_whitelist_authorities );
+   const auto& chain_parameters = d.get_global_properties().parameters;
+   FC_ASSERT( op.whitelist_authorities.size() <= chain_parameters.maximum_asset_whitelist_authorities );
+   FC_ASSERT( op.blacklist_authorities.size() <= chain_parameters.maximum_asset_whitelist_authorities );
 
    // Check that all authorities do exist
    for( auto id : op.whitelist_authorities )
@@ -144,15 +145,17 @@ object_id_type asset_update_evaluator::do_evaluate(const asset_update_operation&
    asset_to_update = &a;
    FC_ASSERT( o.issuer == a.issuer, "", ("o.issuer", o.issuer)("a.issuer", a.issuer) );
 
+   const auto& chain_parameters = d.get_global_properties().parameters;
+
    if( o.new_whitelist_authorities )
    {
-      FC_ASSERT( o.new_whitelist_authorities->size() <= d.get_global_properties().maximum_asset_whitelist_authorities );
+      FC_ASSERT( o.new_whitelist_authorities->size() <= chain_parameters.maximum_asset_whitelist_authorities );
       for( auto id : *o.new_whitelist_authorities )
          d.get_object(id);
    }
    if( o.new_blacklist_authorities )
    {
-      FC_ASSERT( o.new_blacklist_authorities->size() <= d.get_global_properties().maximum_asset_whitelist_authorities );
+      FC_ASSERT( o.new_blacklist_authorities->size() <= chain_parameters.maximum_asset_whitelist_authorities );
       for( auto id : *o.new_blacklist_authorities )
          d.get_object(id);
    }

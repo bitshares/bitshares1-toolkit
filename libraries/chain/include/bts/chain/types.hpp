@@ -49,9 +49,6 @@ namespace bts { namespace chain {
 
    typedef fc::ecc::private_key        private_key_type;
 
-   /**
-    *
-    */
    enum asset_issuer_permission_flags
    {
       charge_market_fee   = 0x01,
@@ -77,16 +74,15 @@ namespace bts { namespace chain {
     */
    enum fee_type
    {
-      key_create_fee_type,
+      key_create_fee_type, ///< the cost to register a public key with the blockchain
       account_create_fee_type, ///< the cost to register the cheapest non-free account
       account_whitelist_fee_type, ///< the fee to whitelist an account
       delegate_create_fee_type, ///< fixed fee for registering as a delegate, used to discourage frivioulous delegates
-      delegate_update_fee_type, ///< fixed fee for updating a delegate
-      delegate_withdraw_pay_fee_type, ///< fee for withdrawing delegate pay
-      transfer_fee_type,
-      limit_order_fee_type,
-      short_order_fee_type,
-      publish_feed_fee_type,
+      witness_withdraw_pay_fee_type, ///< fee for withdrawing witness pay
+      transfer_fee_type, ///< fee for transferring some asset
+      limit_order_fee_type, ///< fee for placing a limit order in the markets
+      short_order_fee_type, ///< fee for placing a short order in the markets
+      publish_feed_fee_type, ///< fee for publishing a price feed
       asset_create_fee_type, ///< the cost to register the cheapest asset
       asset_update_fee_type, ///< the cost to modify a registered asset
       asset_issue_fee_type, ///< the cost to modify a registered asset
@@ -95,6 +91,7 @@ namespace bts { namespace chain {
       transaction_fee_type, ///< a base price for every transaction
       data_fee_type, ///< a price per 1024 bytes of user data
       signature_fee_type, ///< a surcharge on transactions with more than 2 signatures.
+      global_parameters_update_fee_type, ///> the cost to update the global parameters
       FEE_TYPE_COUNT ///< Sentry value which contains the number of different fee types
    };
 
@@ -254,6 +251,37 @@ namespace bts { namespace chain {
        friend bool operator != ( const public_key_type& p1, const public_key_type& p2);
    };
 
+   struct chain_parameters
+   {
+      fee_schedule_type       current_fees; // indexed by fee_type
+      share_type              witness_pay                         = BTS_DEFAULT_WITNESS_PAY;
+      uint8_t                 block_interval                      = BTS_DEFAULT_BLOCK_INTERVAL; // seconds
+      uint32_t                maintenance_interval                = BTS_DEFAULT_MAINTENANCE_INTERVAL;
+      uint32_t                maximum_transaction_size            = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
+      uint32_t                maximum_block_size                  = BTS_DEFAULT_MAX_BLOCK_SIZE;
+      uint32_t                maximum_undo_history                = BTS_DEFAULT_MAX_UNDO_HISTORY;
+      uint32_t                maximum_time_until_expiration       = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
+      uint32_t                maximum_proposal_lifetime           = BTS_DEFAULT_MAX_PROPOSAL_LIFETIME_SEC;
+      uint8_t                 maximum_asset_whitelist_authorities = BTS_DEFAULT_MAX_ASSET_WHITELIST_AUTHORITIES;
+
+      void validate()const
+      {
+         FC_ASSERT( witness_pay >= 0 );
+         FC_ASSERT( block_interval <= BTS_MAX_BLOCK_INTERVAL );
+         FC_ASSERT( maintenance_interval > block_interval,
+                    "Maintenance interval must be longer than block interval" );
+         FC_ASSERT( maintenance_interval % block_interval == 0,
+                    "Maintenance interval must be a multiple of block interval" );
+         FC_ASSERT( maximum_transaction_size >= BTS_MIN_TRANSACTION_SIZE_LIMIT,
+                    "Transaction size limit is too low" );
+         FC_ASSERT( maximum_block_size >= BTS_MIN_BLOCK_SIZE_LIMIT,
+                    "Block size limit is too low" );
+         FC_ASSERT( maximum_time_until_expiration > block_interval,
+                    "Maximum transaction expiration time must be greater than a block interval" );
+         for( auto fe : current_fees.fees ) FC_ASSERT( fe >= 0 );
+      }
+   };
+
 } }  // bts::chain
 
 namespace fc
@@ -262,8 +290,8 @@ namespace fc
     void from_variant( const fc::variant& var,  bts::chain::public_key_type& vo );
     void to_variant( const bts::chain::fee_schedule_type& var,  fc::variant& vo );
     void from_variant( const fc::variant& var,  bts::chain::fee_schedule_type& vo );
-
 }
+
 FC_REFLECT( bts::chain::public_key_type, (key_data) )
 FC_REFLECT( bts::chain::public_key_type::binary_key, (data)(check) )
 FC_REFLECT( bts::chain::fee_schedule_type, (fees) )
@@ -304,8 +332,7 @@ FC_REFLECT_ENUM( bts::chain::fee_type,
                  (account_create_fee_type)
                  (account_whitelist_fee_type)
                  (delegate_create_fee_type)
-                 (delegate_update_fee_type)
-                 (delegate_withdraw_pay_fee_type)
+                 (witness_withdraw_pay_fee_type)
                  (transfer_fee_type)
                  (limit_order_fee_type)
                  (short_order_fee_type)
@@ -318,5 +345,19 @@ FC_REFLECT_ENUM( bts::chain::fee_type,
                  (transaction_fee_type)
                  (data_fee_type)
                  (signature_fee_type)
+                 (global_parameters_update_fee_type)
                  (FEE_TYPE_COUNT)
                )
+
+FC_REFLECT( bts::chain::chain_parameters,
+            (current_fees)
+            (witness_pay)
+            (block_interval)
+            (maintenance_interval)
+            (maximum_transaction_size)
+            (maximum_block_size)
+            (maximum_undo_history)
+            (maximum_time_until_expiration)
+            (maximum_proposal_lifetime)
+            (maximum_asset_whitelist_authorities)
+          )
