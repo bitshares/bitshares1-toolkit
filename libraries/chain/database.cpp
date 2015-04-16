@@ -371,17 +371,18 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    update_global_dynamic_data( next_block );
    update_signing_witness(signing_witness, next_block);
 
-   if( (next_block.block_num() % global_props.active_delegates.size()) == 0 )
-      update_active_witnesses();
-
    auto current_block_interval = global_props.block_interval;
-
-   update_pending_block(next_block, current_block_interval);
 
    // Are we at the maintenance interval?
    if( next_block.block_num() % (global_props.maintenance_interval / current_block_interval) == 0 )
       // This will update _pending_block.timestamp if the block interval has changed
       perform_chain_maintenance(next_block, global_props);
+   // If we're at the end of a round, shuffle the active witnesses
+   // We can skip this if they were just updated during chain maintenance
+   else if( (next_block.block_num() % global_props.active_delegates.size()) == 0 )
+      modify(global_props, [this](global_property_object& p) {
+         shuffle_vector(p.active_witnesses);
+      });
 
    create_block_summary(next_block);
    clear_expired_transactions();
@@ -391,6 +392,8 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    // notify observers that the block has been applied
    applied_block( next_block ); //emit
    _applied_ops.clear();
+
+   update_pending_block(next_block, current_block_interval);
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num())(skip) )  }
 
 time_point database::get_next_generation_time( witness_id_type del_id )const
@@ -911,6 +914,7 @@ void database::update_pending_block(const signed_block& next_block, uint8_t curr
 void database::perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props)
 {
    update_global_properties();
+   update_active_witnesses();
    update_active_delegates();
 
    auto new_block_interval = global_props.block_interval;

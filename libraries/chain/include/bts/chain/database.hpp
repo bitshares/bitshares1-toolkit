@@ -145,12 +145,15 @@ namespace bts { namespace chain {
          ///@{
          const witness_object& validate_block_header(uint32_t skip, const signed_block& next_block);
          void update_global_dynamic_data( const signed_block& b );
+         void update_signing_witness(const witness_object& signing_witness, const signed_block& new_block);
+         void update_pending_block(const signed_block& next_block, uint8_t current_block_interval);
+         ///Steps performed only at maintenance intervals
+         ///@{
          void update_active_witnesses();
          void update_active_delegates();
          void update_global_properties();
-         void update_signing_witness(const witness_object& signing_witness, const signed_block& new_block);
-         void update_pending_block(const signed_block& next_block, uint8_t current_block_interval);
          void perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props);
+         ///@}
          void create_block_summary(const signed_block& next_block);
          void clear_expired_transactions();
          void clear_expired_proposals();
