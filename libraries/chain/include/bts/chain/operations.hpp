@@ -35,9 +35,7 @@ namespace bts { namespace chain {
       key_id_type     voting_key;
       key_id_type     memo_key;
 
-      /// Delegate IDs must be in sorted order
-      vector<delegate_id_type> vote;
-
+      flat_set<vote_tally_id_type> vote;
 
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       void       validate()const;
@@ -88,17 +86,13 @@ namespace bts { namespace chain {
 
    struct account_update_operation
    {
-      account_id_type                     account;
-      asset                               fee;
-      optional<authority>                 owner;
-      optional<authority>                 active;
-      optional<key_id_type>               voting_key;
-      optional<key_id_type>               memo_key;
-
-      /**
-       * Delegate IDs must be in sorted order
-       */
-      optional<vector<delegate_id_type>>  vote;
+      account_id_type                         account;
+      asset                                   fee;
+      optional<authority>                     owner;
+      optional<authority>                     active;
+      optional<key_id_type>                   voting_key;
+      optional<key_id_type>                   memo_key;
+      optional<flat_set<vote_tally_id_type>>  vote;
 
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>& owner_auth_set)const;
       void       validate()const;
@@ -248,7 +242,7 @@ namespace bts { namespace chain {
       /**
        *  This order should expire if not filled by expiration
        */
-      time_point_sec  expiration;
+      time_point_sec  expiration = time_point_sec::maximum();
 
       /** if this flag is set the entire order must be filled or
        * the operation is rejected.
@@ -306,6 +300,9 @@ namespace bts { namespace chain {
       /// Fixed point representation of maintenance collateral ratio, with three digits of precision
       /// Must be greater than or equal to the minimum specified by price feed
       uint16_t        maintenance_collateral_ratio = BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO;
+      /// Expiration time for this order. Any unfilled portion of this order which is on the books at or past this time
+      /// will automatically be canceled.
+      time_point_sec  expiration = time_point_sec::maximum();
 
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       void       validate()const;
@@ -375,34 +372,31 @@ namespace bts { namespace chain {
    {
       account_id_type                       delegate_account; // same as fee_paying account
       asset                                 fee;
-      uint8_t                               pay_rate;  // 0 to 100%
-      secret_hash_type                      first_secret_hash;
-      key_id_type                           signing_key;
+      share_type                            witness_pay = BTS_DEFAULT_WITNESS_PAY;
       uint8_t                               block_interval_sec = BTS_DEFAULT_BLOCK_INTERVAL;
       uint32_t                              max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE;
       uint32_t                              max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
       uint32_t                              max_sec_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
       fee_schedule_type                     fee_schedule;
 
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
+      void get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct delegate_update_operation
    {
-      account_id_type                                 delegate_account; ///< must match delegate_id->delegate_account
-      delegate_id_type                                delegate_id;
-      asset                                           fee; ///< paid by delegate_id->delegate_account
-      optional<fee_schedule_type>                     fee_schedule;
-      optional<relative_key_id_type>                  signing_key;
-      uint8_t                                         pay_rate = 255; ///< 255 for unchanged
-      uint8_t                                         block_interval_sec = BTS_DEFAULT_BLOCK_INTERVAL;
-      uint32_t                                        maintenance_interval_sec = BTS_DEFAULT_MAINTENANCE_INTERVAL;
-      uint32_t                                        max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
-      uint32_t                                        max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE;
-      uint16_t                                        max_undo_history_size = BTS_DEFAULT_MAX_UNDO_HISTORY;
-      uint32_t                                        max_sec_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
+      account_id_type                delegate_account; ///< must match delegate_id->delegate_account
+      delegate_id_type               delegate_id;
+      asset                          fee; ///< paid by delegate_id->delegate_account
+      optional<fee_schedule_type>    fee_schedule;
+      share_type                     witness_pay;
+      uint8_t                        block_interval_sec = BTS_DEFAULT_BLOCK_INTERVAL;
+      uint32_t                       maintenance_interval_sec = BTS_DEFAULT_MAINTENANCE_INTERVAL;
+      uint32_t                       max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
+      uint32_t                       max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE;
+      uint16_t                       max_undo_history_size = BTS_DEFAULT_MAX_UNDO_HISTORY;
+      uint32_t                       max_sec_until_expiration = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
 
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       void       validate()const;
@@ -667,6 +661,7 @@ FC_REFLECT( bts::chain::account_create_operation,
             (owner)(active)(voting_key)(memo_key)
           )
 
+FC_REFLECT_TYPENAME( fc::flat_set<bts::chain::vote_tally_id_type> )
 FC_REFLECT( bts::chain::account_update_operation,
             (account)(fee)(owner)(active)(voting_key)(memo_key)(vote)
           )
@@ -677,7 +672,7 @@ FC_REFLECT_ENUM(bts::chain::account_whitelist_operation::account_listing,
 FC_REFLECT(bts::chain::account_whitelist_operation, (authorizing_account)(account_to_list)(new_listing)(fee))
 
 FC_REFLECT( bts::chain::delegate_update_operation,
-            (delegate_account)(delegate_id)(fee)(fee_schedule)(signing_key)(pay_rate)
+            (delegate_account)(delegate_id)(fee)(fee_schedule)
             (block_interval_sec)(maintenance_interval_sec)(max_transaction_size)
             (max_block_size)(max_undo_history_size)(max_sec_until_expiration)
           )
@@ -691,7 +686,8 @@ FC_REFLECT( bts::chain::limit_order_create_operation,
 FC_REFLECT( bts::chain::fill_order_operation, (order_id)(account_id)(pays)(receives)(fee) )
 FC_REFLECT( bts::chain::limit_order_cancel_operation,(fee_paying_account)(fee)(order) )
 FC_REFLECT( bts::chain::short_order_cancel_operation,(fee_paying_account)(fee)(order) )
-FC_REFLECT( bts::chain::short_order_create_operation, (seller)(fee)(amount_to_sell)(collateral)(initial_collateral_ratio)(maintenance_collateral_ratio) )
+FC_REFLECT( bts::chain::short_order_create_operation, (seller)(fee)(amount_to_sell)(collateral)
+            (initial_collateral_ratio)(maintenance_collateral_ratio)(expiration) )
 FC_REFLECT( bts::chain::call_order_update_operation, (funding_account)(fee)(collateral_to_add)(amount_to_cover)(maintenance_collateral_ratio) )
 
 FC_REFLECT( bts::chain::transfer_operation,
@@ -717,11 +713,8 @@ FC_REFLECT( bts::chain::asset_update_operation,
 FC_REFLECT( bts::chain::asset_issue_operation,
             (issuer)(asset_to_issue)(fee)(issue_to_account) )
 FC_REFLECT( bts::chain::delegate_create_operation,
-            (delegate_account)(fee)(pay_rate)
-            (first_secret_hash)(signing_key)
-            (block_interval_sec)(max_block_size)
-            (max_transaction_size)(max_sec_until_expiration)
-            (fee_schedule)
+            (delegate_account)(fee)(block_interval_sec)(max_block_size)
+            (max_transaction_size)(max_sec_until_expiration)(fee_schedule)
           )
 
 FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(proposed_ops) )

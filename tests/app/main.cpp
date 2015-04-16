@@ -47,8 +47,8 @@ BOOST_AUTO_TEST_CASE( two_node_network )
       BOOST_CHECK(nathan_key_id(*app2.chain_database()).key_data.get<public_key_type>() == nathan_key.get_public_key());
       ilog("Pushed transaction");
 
-      advance_simulated_time_to(app2.chain_database()->get_next_generation_time(delegate_id_type()));
-      app2.p2p_node()->broadcast(bts::net::block_message(app2.chain_database()->generate_block(genesis_key, delegate_id_type())));
+      advance_simulated_time_to(app2.chain_database()->get_next_generation_time(witness_id_type()));
+      app2.p2p_node()->broadcast(bts::net::block_message(app2.chain_database()->generate_block(genesis_key, witness_id_type())));
 
       fc::usleep(fc::milliseconds(500));
       BOOST_CHECK_EQUAL(app.p2p_node()->get_connection_count(), 1);

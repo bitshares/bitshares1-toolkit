@@ -22,8 +22,8 @@ namespace bts { namespace chain {
          object_id_type do_apply( const account_update_operation& o );
 
          const account_object*    acnt;
-         vector<delegate_id_type> remove_votes;
-         vector<delegate_id_type> add_votes;
+         flat_set<vote_tally_id_type> remove_votes;
+         flat_set<vote_tally_id_type> add_votes;
    };
 
    class account_whitelist_evaluator : public evaluator<account_whitelist_evaluator>

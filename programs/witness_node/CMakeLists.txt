@@ -1,4 +1,4 @@
-add_executable( delegate_node main.cpp )
+add_executable( witness_node main.cpp )
 if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
@@ -8,5 +8,5 @@ if( GPERFTOOLS_FOUND )
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
-target_link_libraries( delegate_node
-                       PRIVATE bts_app bts_delegate bts_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+target_link_libraries( witness_node
+                       PRIVATE bts_app bts_witness bts_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )

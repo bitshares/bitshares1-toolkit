@@ -1,2 +1,2 @@
-add_subdirectory( delegate )
+add_subdirectory( witness )
 add_subdirectory( account_history )

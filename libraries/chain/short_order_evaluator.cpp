@@ -10,6 +10,8 @@ object_id_type short_order_create_evaluator::do_evaluate( const short_order_crea
 {
    database& d = db();
 
+   FC_ASSERT( op.expiration >= d.head_block_time() );
+
    auto bts_fee_paid = pay_fee( op.seller, op.fee );
    auto bts_fee_required = op.calculate_fee( d.current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required, "", ("bts_fee_paid",bts_fee_paid)("bts_fee_required",bts_fee_required) );
@@ -42,10 +44,11 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
        obj.seller                       = _seller->id;
        obj.for_sale                     = op.amount_to_sell.amount;
        obj.available_collateral         = op.collateral.amount;
-       obj.sell_price                  = op.sell_price();
+       obj.sell_price                   = op.sell_price();
        obj.call_price                   = op.call_price();
        obj.initial_collateral_ratio     = op.initial_collateral_ratio;
        obj.maintenance_collateral_ratio = op.maintenance_collateral_ratio;
+       obj.expiration                   = op.expiration;
    });
    short_order_id_type new_id = new_order_object.id;
 
@@ -142,7 +145,7 @@ asset short_order_cancel_evaluator::do_apply( const short_order_cancel_operation
      //do_evaluate adjusted balance by refunded.amount, which adds votes. This is undesirable, as the account
      //did not gain or lose any voting stake. Counteract that adjustment here.
      //Future optimization: don't change the votes in the first place; it's expensive to change it twice for no reason
-     adjust_votes(fee_paying_account->delegate_votes, -refunded.amount);
+     adjust_votes(fee_paying_account->votes, -refunded.amount);
   }
 
   // Possible optimization: order can be called by canceling a short order iff the canceled order was at the top of the book.

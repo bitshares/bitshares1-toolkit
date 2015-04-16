@@ -110,12 +110,6 @@ void account_update_operation::validate()const
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( account != account_id_type() );
    FC_ASSERT( owner || active || voting_key || memo_key || vote );
-
-   if( vote && vote->size() > 1 )
-   {
-      for( int i = 1; i < vote->size(); ++i )
-         FC_ASSERT( vote->at(i-1) < vote->at(i) );
-   }
 }
 
 
@@ -169,11 +163,6 @@ void account_create_operation::validate()const
    {
       FC_ASSERT( owner.weight_threshold == 1 );
       FC_ASSERT( owner.auths.size() == 1 );
-   }
-   if( vote.size() > 1 )
-   {
-      for( int i = 1; i < vote.size(); ++i )
-         FC_ASSERT( vote.at(i-1) < vote.at(i) );
    }
 }
 
@@ -320,12 +309,12 @@ void delegate_create_operation::get_required_auth(flat_set<account_id_type>& act
 void delegate_create_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( pay_rate <= 100 );
+   FC_ASSERT( witness_pay >= 0 );
    FC_ASSERT( max_block_size >= BTS_MIN_BLOCK_SIZE_LIMIT );
    FC_ASSERT( max_transaction_size >= BTS_MIN_TRANSACTION_SIZE_LIMIT );
    FC_ASSERT( block_interval_sec > 0 && block_interval_sec <= BTS_MAX_BLOCK_INTERVAL );
    FC_ASSERT( max_sec_until_expiration > block_interval_sec );
-   for( auto fe : fee_schedule.fees ) FC_ASSERT( fe > 0 );
+   for( auto fe : fee_schedule.fees ) FC_ASSERT( fe >= 0 );
 }
 void delegate_update_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
 {
@@ -335,7 +324,7 @@ void delegate_update_operation::get_required_auth(flat_set<account_id_type>& act
 void delegate_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( pay_rate <= 100 || pay_rate == 255 );
+   FC_ASSERT( witness_pay >= 0 );
    FC_ASSERT( max_block_size >= BTS_MIN_BLOCK_SIZE_LIMIT );
    FC_ASSERT( max_transaction_size >= BTS_MIN_TRANSACTION_SIZE_LIMIT );
    FC_ASSERT( block_interval_sec > 0 && block_interval_sec <= BTS_MAX_BLOCK_INTERVAL );

@@ -113,6 +113,7 @@ namespace bts { namespace chain {
       account_object_type,
       asset_object_type,
       delegate_object_type,
+      witness_object_type,
       limit_order_object_type,
       short_order_object_type,
       call_order_object_type,
@@ -130,7 +131,7 @@ namespace bts { namespace chain {
       impl_delegate_feeds_object_type,
       impl_account_balance_object_type,
       impl_account_debt_object_type,
-      impl_delegate_vote_object_type,
+      impl_vote_tally_object_type,
       impl_transaction_object_type,
       impl_block_summary_object_type,
       impl_account_transaction_history_object_type
@@ -147,6 +148,7 @@ namespace bts { namespace chain {
    //typedef uint64_t                    object_id_type;
    class account_object;
    class delegate_object;
+   class witness_object;
    class asset_object;
    class key_object;
    class limit_order_object;
@@ -161,6 +163,7 @@ namespace bts { namespace chain {
    typedef object_id< protocol_ids, account_object_type,      account_object>                      account_id_type;
    typedef object_id< protocol_ids, asset_object_type,        asset_object>                        asset_id_type;
    typedef object_id< protocol_ids, delegate_object_type,     delegate_object>                     delegate_id_type;
+   typedef object_id< protocol_ids, witness_object_type,      witness_object>                      witness_id_type;
    typedef object_id< protocol_ids, limit_order_object_type,  limit_order_object>                  limit_order_id_type;
    typedef object_id< protocol_ids, short_order_object_type,  short_order_object>                  short_order_id_type;
    typedef object_id< protocol_ids, call_order_object_type,   call_order_object>                   call_order_id_type;
@@ -175,7 +178,7 @@ namespace bts { namespace chain {
    class global_property_object;
    class dynamic_global_property_object;
    class index_meta_object;
-   class delegate_vote_object;
+   class vote_tally_object;
    class asset_dynamic_data_object;
    class account_balance_object;
    class account_debt_object;
@@ -188,9 +191,9 @@ namespace bts { namespace chain {
    typedef object_id< implementation_ids, impl_dynamic_global_property_object_type,  dynamic_global_property_object>    dynamic_global_property_id_type;
    typedef object_id< implementation_ids, impl_asset_dynamic_data_type,      asset_dynamic_data_object>                 dynamic_asset_data_id_type;
    typedef object_id< implementation_ids, impl_account_balance_object_type,  account_balance_object>                    account_balance_id_type;
-   typedef object_id< implementation_ids, impl_delegate_feeds_object_type,    delegate_feeds_object>                    delegate_feeds_id_type;
+   typedef object_id< implementation_ids, impl_delegate_feeds_object_type,   delegate_feeds_object>                     delegate_feeds_id_type;
    typedef object_id< implementation_ids, impl_account_debt_object_type,     account_debt_object>                       account_debt_id_type;
-   typedef object_id< implementation_ids, impl_delegate_vote_object_type,    delegate_vote_object>                      delegate_vote_id_type;
+   typedef object_id< implementation_ids, impl_vote_tally_object_type,       vote_tally_object>                         vote_tally_id_type;
    typedef object_id< implementation_ids, impl_transaction_object_type,      transaction_object>                        transaction_obj_id_type;
    typedef object_id< implementation_ids, impl_block_summary_object_type,    block_summary_object>                      block_summary_id_type;
 
@@ -262,7 +265,7 @@ namespace fc
 
 }
 FC_REFLECT( bts::chain::public_key_type, (key_data) )
-FC_REFLECT( bts::chain::public_key_type::binary_key, (data)(check) );
+FC_REFLECT( bts::chain::public_key_type::binary_key, (data)(check) )
 FC_REFLECT( bts::chain::fee_schedule_type, (fees) )
 
 FC_REFLECT_ENUM( bts::chain::object_type,
@@ -272,6 +275,7 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (account_object_type)
                  (asset_object_type)
                  (delegate_object_type)
+                 (witness_object_type)
                  (limit_order_object_type)
                  (short_order_object_type)
                  (call_order_object_type)
@@ -287,7 +291,7 @@ FC_REFLECT_ENUM( bts::chain::impl_object_type,
                  (impl_delegate_feeds_object_type)
                  (impl_account_balance_object_type)
                  (impl_account_debt_object_type)
-                 (impl_delegate_vote_object_type)
+                 (impl_vote_tally_object_type)
                  (impl_transaction_object_type)
                  (impl_block_summary_object_type)
                  (impl_account_transaction_history_object_type)

@@ -36,7 +36,7 @@ using namespace bts::db;
 #define RESET(v) v = decltype(v)()
 ///This allows me to build consecutive test cases. It's pretty ugly, but it works well enough for unit tests.
 /// i.e. This allows a test on update_account to begin with the database at the end state of create_account.
-#define INVOKE(test) ((test*)this)->test_method(); RESET(trx); trx.relative_expiration = 1000
+#define INVOKE(test) ((struct test*)this)->test_method(); RESET(trx); trx.relative_expiration = 1000
 
 namespace bts { namespace chain {
 
@@ -45,6 +45,8 @@ struct database_fixture {
    signed_transaction trx;
    key_id_type genesis_key;
    fc::ecc::private_key private_key = fc::ecc::private_key::generate();
+   fc::ecc::private_key delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
+   optional<fc::temp_directory> data_dir;
 
    void verify_asset_supplies()
    {
@@ -106,15 +108,15 @@ struct database_fixture {
 
    void verify_vote_totals() {
       const account_index& account_idx = db.get_index_type<account_index>();
-      map<delegate_id_type, share_type> vote_sums;
+      map<vote_tally_id_type, share_type> vote_sums;
 
       for( const account_object& account : account_idx.indices() )
-         for( delegate_id_type del : account.delegate_votes )
-            vote_sums[del] += account.balances(db).total_core_in_orders
+         for( vote_tally_id_type tally : account.votes )
+            vote_sums[tally] += account.balances(db).total_core_in_orders
                   + account.balances(db).get_balance(asset_id_type()).amount;
 
       for( const auto& sum : vote_sums )
-         BOOST_CHECK_EQUAL(sum.second.value, sum.first(db).vote(db).total_votes.value);
+         BOOST_CHECK_EQUAL(sum.second.value, sum.first(db).total_votes.value);
    }
 
    database_fixture()
@@ -122,11 +124,52 @@ struct database_fixture {
       db.init_genesis();
       genesis_key(db); // attempt to deref
       trx.relative_expiration = 1000;
+
+      chain::start_simulated_time(bts::chain::now());
    }
    ~database_fixture(){
       verify_asset_supplies();
       verify_vote_totals();
       shutdown_ntp_time();
+
+      if( data_dir )
+         db.close();
+   }
+
+   void open_database()
+   {
+      if( !data_dir ) {
+         data_dir = fc::temp_directory();
+         db.open(data_dir->path());
+      }
+   }
+
+   signed_block generate_block()
+   {
+      open_database();
+
+      auto aw = db.get_global_properties().active_witnesses;
+      advance_simulated_time_to( db.get_next_generation_time(  aw[db.head_block_num()%aw.size()] ) );
+      return db.generate_block( delegate_priv_key, aw[db.head_block_num()%aw.size()], ~0 );
+   }
+
+   /**
+    * @brief Generates block_count blocks
+    * @param block_count number of blocks to generate
+    */
+   void generate_blocks(int block_count)
+   {
+      for( uint32_t i = 0; i < block_count; ++i )
+         generate_block();
+   }
+   /**
+    * @brief Generates blocks until the head block time matches or exceeds timestamp
+    * @param timestamp target time to generate blocks until
+    */
+   void generate_blocks(time_point_sec timestamp)
+   {
+      while( db.head_block_time() < timestamp )
+         generate_block();
    }
 
    account_create_operation make_account( const std::string& name = "nathan", key_id_type key = key_id_type() ) {
@@ -142,13 +185,13 @@ struct database_fixture {
       auto& active_delegates = db.get_global_properties().active_delegates;
       if( active_delegates.size() > 0 )
       {
-         set<delegate_id_type> votes;
-         votes.insert(active_delegates[rand() % active_delegates.size()]);
-         votes.insert(active_delegates[rand() % active_delegates.size()]);
-         votes.insert(active_delegates[rand() % active_delegates.size()]);
-         votes.insert(active_delegates[rand() % active_delegates.size()]);
-         votes.insert(active_delegates[rand() % active_delegates.size()]);
-         create_account.vote = vector<delegate_id_type>(votes.begin(), votes.end());
+         set<vote_tally_id_type> votes;
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
+         create_account.vote = flat_set<vote_tally_id_type>(votes.begin(), votes.end());
       }
 
       create_account.fee = create_account.calculate_fee(db.current_fee_schedule());
@@ -187,6 +230,30 @@ struct database_fixture {
       return db.get<asset_object>(r.operation_results[0].get<object_id_type>());
    }
 
+   const asset_object& create_user_issued_asset( const string& name )
+   {
+      asset_create_operation creator;
+      creator.issuer = account_id_type();
+      creator.fee = asset();
+      creator.symbol = name;
+      creator.max_supply = 0;
+      creator.precision = 2;
+      creator.core_exchange_rate = price({asset(1),asset(1)});
+      creator.max_supply = BTS_MAX_SHARE_SUPPLY;
+      trx.operations.push_back(std::move(creator));
+      trx.validate();
+      auto r = db.push_transaction(trx, ~0);
+      trx.operations.clear();
+      return db.get<asset_object>(r.operation_results[0].get<object_id_type>());
+   }
+
+   void issue_uia(const account_object& recipient, asset amount)
+   {
+      asset_issue_operation op({amount.asset_id(db).issuer, amount, asset(), recipient.id});
+      trx.validate();
+      trx.operations.push_back(op);
+   }
+
    const short_order_object* create_short( const account_object& seller,
                                            const asset& amount_to_sell,
                                            const asset& collateral_provided,
@@ -213,6 +280,18 @@ struct database_fixture {
       auto r = db.push_transaction(trx, ~0);
       trx.operations.clear();
       return db.get<account_object>(r.operation_results[0].get<object_id_type>());
+   }
+
+   const delegate_object& create_delegate( const account_object& owner )
+   {
+      delegate_create_operation op;
+      op.delegate_account = owner.id;
+      op.fee_schedule = db.current_fee_schedule();
+      trx.operations.push_back(op);
+      trx.validate();
+      auto r = db.push_transaction(trx, ~0);
+      trx.operations.clear();
+      return db.get<delegate_object>(r.operation_results[0].get<object_id_type>());
    }
 
    const key_object& register_key( const public_key_type& key )

@@ -62,7 +62,7 @@ void database::close(uint32_t blocks_to_rewind)
 {
    _pending_block_session.reset();
 
-   for(int i = 0; i < blocks_to_rewind; ++i)
+   for(int i = 0; i < blocks_to_rewind && head_block_num() > 0; ++i)
       pop_block();
 
    object_database::close();
@@ -139,6 +139,7 @@ void database::initialize_indexes()
    add_index< primary_index< account_index> >();
    add_index< primary_index< simple_index<key_object>> >();
    add_index< primary_index< simple_index<delegate_object>> >();
+   add_index< primary_index< simple_index<witness_object>> >();
    add_index< primary_index< limit_order_index > >();
    add_index< primary_index< short_order_index > >();
    add_index< primary_index< call_order_index > >();
@@ -150,7 +151,7 @@ void database::initialize_indexes()
    add_index< primary_index< simple_index< dynamic_global_property_object >> >();
    add_index< primary_index< simple_index< account_balance_object         >> >();
    add_index< primary_index< simple_index< asset_dynamic_data_object      >> >();
-   add_index< primary_index< flat_index<   delegate_vote_object           >> >();
+   add_index< primary_index< flat_index<   vote_tally_object              >> >();
    add_index< primary_index< flat_index<   delegate_feeds_object          >> >();
    add_index< primary_index< flat_index<   block_summary_object           >> >();
 }
@@ -179,6 +180,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
       });
 
    vector<delegate_id_type> init_delegates;
+   vector<witness_id_type> init_witnesses;
 
    for( int i = 0; i < BTS_MIN_DELEGATE_COUNT; ++i )
    {
@@ -192,23 +194,32 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
             a.name = string("init") + fc::to_string(i);
             a.balances = balance_obj.id;
          });
-      const delegate_vote_object& vote =
-         create<delegate_vote_object>( [&](delegate_vote_object& v) {
+      const vote_tally_object& vote =
+         create<vote_tally_object>( [&](vote_tally_object&) {
             // Nothing to do here...
-            (void)v;
          });
       const delegate_feeds_object& delegate_feeds = create<delegate_feeds_object>([](delegate_feeds_object&){});
       const delegate_object& init_delegate = create<delegate_object>( [&](delegate_object& d) {
          d.delegate_account = delegate_account.id;
-         d.signing_key = genesis_key.id;
-         secret_hash_type::encoder enc;
-         fc::raw::pack( enc, genesis_private_key );
-         fc::raw::pack( enc, d.last_secret );
-         d.next_secret = secret_hash_type::hash(enc.result());
          d.vote = vote.id;
          d.feeds = delegate_feeds.id;
       });
       init_delegates.push_back(init_delegate.id);
+
+      const vote_tally_object& witness_vote =
+         create<vote_tally_object>( [&](vote_tally_object&) {
+            // Nothing to do here...
+         });
+      const witness_object& init_witness = create<witness_object>( [&](witness_object& d) {
+            d.witness_account = delegate_account.id;
+            d.vote = witness_vote.id;
+            secret_hash_type::encoder enc;
+            fc::raw::pack( enc, genesis_private_key );
+            fc::raw::pack( enc, d.last_secret );
+            d.next_secret = secret_hash_type::hash(enc.result());
+      });
+      init_witnesses.push_back(init_witness.id);
+
    }
    create<block_summary_object>( [&](block_summary_object& p) {
    });
@@ -216,6 +227,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
    const global_property_object& properties =
       create<global_property_object>( [&](global_property_object& p) {
          p.active_delegates = init_delegates;
+         p.active_witnesses = init_witnesses;
       });
    (void)properties;
 
@@ -274,7 +286,8 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
                                                                  account_authority,
                                                                  account_authority,
                                                                  key_id,
-                                                                 key_id
+                                                                 key_id,
+                                                                 flat_set<vote_tally_id_type>()
                                                               }));
          trx.validate();
          auto ptrx = apply_transaction(trx, ~0);
@@ -342,7 +355,7 @@ asset database::current_delegate_registration_fee()const
 
 void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
-   const delegate_object& signing_delegate = validate_block_header(skip, next_block);
+   const witness_object& signing_witness = validate_block_header(skip, next_block);
    const auto& global_props = get_global_properties();
 
    _current_block_num    = next_block.block_num();
@@ -361,68 +374,72 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    }
 
    update_global_dynamic_data( next_block );
-   update_signing_delegate(signing_delegate, next_block);
-
-   if( (next_block.block_num() % global_props.active_delegates.size()) == 0 )
-      update_active_delegates();
+   update_signing_witness(signing_witness, next_block);
 
    auto current_block_interval = global_props.block_interval;
 
-   update_pending_block(next_block, current_block_interval);
-
    // Are we at the maintenance interval?
-   if( next_block.block_num() % (global_props.maintenance_interval / current_block_interval) == 0 )
+   if( global_props.next_maintenance_time <= next_block.timestamp )
       // This will update _pending_block.timestamp if the block interval has changed
       perform_chain_maintenance(next_block, global_props);
+   // If we're at the end of a round, shuffle the active witnesses
+   // We can skip this if they were just updated during chain maintenance
+   else if( (next_block.block_num() % global_props.active_delegates.size()) == 0 )
+      modify(global_props, [this](global_property_object& p) {
+         shuffle_vector(p.active_witnesses);
+      });
 
    create_block_summary(next_block);
    clear_expired_transactions();
    clear_expired_proposals();
+   clear_expired_orders();
 
    // notify observers that the block has been applied
    applied_block( next_block ); //emit
    _applied_ops.clear();
+
+   update_pending_block(next_block, current_block_interval);
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num())(skip) )  }
 
-time_point database::get_next_generation_time( delegate_id_type del_id )const
+time_point database::get_next_generation_time( witness_id_type del_id )const
 {
    const auto& gp = get_global_properties();
    auto now = bts::chain::now();
-   const auto& active_del = gp.active_delegates;
+   const auto& active_witness = gp.active_witnesses;
    const auto& interval   = gp.block_interval;
-   auto delegate_slot = ((now.sec_since_epoch()+interval-1) /interval);
-   for( uint32_t i = 0; i < active_del.size(); ++i )
+   auto witness_slot = ((now.sec_since_epoch()+interval-1) /interval);
+   for( uint32_t i = 0; i < active_witness.size(); ++i )
    {
-      if( active_del[ delegate_slot % active_del.size()] == del_id )
-         return time_point_sec() + fc::seconds( delegate_slot * interval );
-      ++delegate_slot;
+      if( active_witness[ witness_slot % active_witness.size()] == del_id )
+         return time_point_sec() + fc::seconds( witness_slot * interval );
+      ++witness_slot;
    }
-   FC_ASSERT( !"Not an Active Delegate" );
+   FC_ASSERT( !"Not an Active Witness" );
 }
 
-std::pair<fc::time_point, delegate_id_type> bts::chain::database::get_next_generation_time(const set<bts::chain::delegate_id_type>& del_ids) const
+std::pair<fc::time_point, witness_id_type> database::get_next_generation_time(const set<bts::chain::witness_id_type>& witnesses) const
 {
-   std::pair<fc::time_point, delegate_id_type> result;
+   std::pair<fc::time_point, witness_id_type> result;
    result.first = fc::time_point::maximum();
-   for( delegate_id_type id : del_ids )
+   for( witness_id_type id : witnesses )
       result = std::min(result, std::make_pair(get_next_generation_time(id), id));
    return result;
 }
 
 
 signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
-                                       delegate_id_type del_id, uint32_t  skip )
+                                       witness_id_type witness_id, uint32_t  skip )
 { try {
-   const auto& del_obj = del_id(*this);
+   const auto& witness_obj = witness_id(*this);
 
    if( !(skip & skip_delegate_signature) )
-      FC_ASSERT( del_obj.signing_key(*this).key() == delegate_key.get_public_key() );
+      FC_ASSERT( witness_obj.signing_key(*this).key() == delegate_key.get_public_key() );
 
-   _pending_block.timestamp = get_next_generation_time( del_id );
+   _pending_block.timestamp = get_next_generation_time( witness_id );
 
    secret_hash_type::encoder last_enc;
    fc::raw::pack( last_enc, delegate_key );
-   fc::raw::pack( last_enc, del_obj.last_secret );
+   fc::raw::pack( last_enc, witness_obj.last_secret );
    _pending_block.previous_secret = last_enc.result();
 
    secret_hash_type::encoder next_enc;
@@ -430,7 +447,7 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
    fc::raw::pack( next_enc, _pending_block.previous_secret );
    _pending_block.next_secret_hash = secret_hash_type::hash(next_enc.result());
 
-   _pending_block.delegate_id = del_id;
+   _pending_block.witness = witness_id;
    if( !(skip & skip_delegate_signature) ) _pending_block.sign( delegate_key );
 
    FC_ASSERT( fc::raw::pack_size(_pending_block) <= get_global_properties().maximum_block_size );
@@ -440,43 +457,28 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
    _pending_block.transactions.clear();
    push_block( tmp, skip );
    return tmp;
-} FC_CAPTURE_AND_RETHROW( (del_id) ) }
+} FC_CAPTURE_AND_RETHROW( (witness_id) ) }
+
+void database::update_active_witnesses()
+{
+   auto ids = sort_votable_objects<witness_object>();
+   shuffle_vector(ids);
+
+   modify( get_global_properties(), [&]( global_property_object& gp ){
+      gp.active_witnesses = std::move(ids);
+   });
+}
 
 
 
 void database::update_active_delegates()
 {
-    vector<delegate_id_type> ids( dynamic_cast<simple_index<delegate_object>&>(get_mutable_index<delegate_object>()).size() );
-    for( uint32_t i = 0; i < ids.size(); ++i ) ids[i] = delegate_id_type(i);
-    std::sort( ids.begin(), ids.end(), [&]( delegate_id_type a,delegate_id_type b )->bool {
-       return a(*this).vote(*this).total_votes >
-              b(*this).vote(*this).total_votes;
-    });
+   auto ids = sort_votable_objects<delegate_object>();
 
-    uint64_t base_threshold = ids[9](*this).vote(*this).total_votes.value;
-    uint64_t threshold =  (base_threshold / 100) * 75;
-    uint32_t i = 10;
+   modify( get_global_properties(), [&]( global_property_object& gp ){
+      gp.active_delegates = std::move(ids);
+   });
 
-    for( ; i < ids.size(); ++i )
-    {
-       if( ids[i](*this).vote(*this).total_votes < threshold ) break;
-       threshold = (base_threshold / (100) ) * (75 + i/(ids.size()/4));
-    }
-    ids.resize( i );
-
-    // shuffle ids
-    auto randvalue = dynamic_global_property_id_type()(*this).random;
-    for( uint32_t i = 0; i < ids.size(); ++i )
-    {
-       const auto rands_per_hash = sizeof(secret_hash_type) / sizeof(randvalue._hash[0]);
-       std::swap( ids[i], ids[ i + (randvalue._hash[i%rands_per_hash] % (ids.size()-i))] );
-       if( i % rands_per_hash == (rands_per_hash-1) )
-          randvalue = secret_hash_type::hash( randvalue );
-    }
-
-    modify( get_global_properties(), [&]( global_property_object& gp ){
-       gp.active_delegates = std::move(ids);
-    });
 }
 
 void database::update_global_properties()
@@ -529,6 +531,16 @@ void database::update_global_properties()
       tmp.current_fees.set(f, ids[ids.size()/2]->fee_schedule.at(f));
    }
 
+   if( tmp.next_maintenance_time <= head_block_time() )
+   {
+      if( head_block_num() == 1 )
+         tmp.next_maintenance_time = time_point_sec() +
+               (((head_block_time().sec_since_epoch() / tmp.maintenance_interval) + 1) * tmp.maintenance_interval);
+      else
+         tmp.next_maintenance_time += tmp.maintenance_interval;
+      assert( tmp.next_maintenance_time > head_block_time() );
+   }
+
    modify( global_property_id_type()(*this), [&]( global_property_object& gpo ){
       gpo = std::move(tmp);
    });
@@ -544,7 +556,7 @@ void database::update_global_dynamic_data( const signed_block& b )
       dgp.head_block_number = b.block_num();
       dgp.head_block_id = b.id();
       dgp.time = b.timestamp;
-      dgp.current_delegate = b.delegate_id;
+      dgp.current_witness = b.witness;
    });
 }
 
@@ -823,6 +835,11 @@ void database::set_applied_operation_result( uint32_t op_id, const operation_res
    _applied_ops[op_id].result = result;
 }
 
+const vector<operation_history_object>& database::get_applied_operations() const
+{
+   return _applied_ops;
+}
+
 const global_property_object& database::get_global_properties()const
 {
    return get( global_property_id_type() );
@@ -883,7 +900,7 @@ const signed_transaction& database::get_recent_transaction(const transaction_id_
    return itr->trx;
 }
 
-const delegate_object& database::validate_block_header(uint32_t skip, const signed_block& next_block)
+const witness_object& database::validate_block_header(uint32_t skip, const signed_block& next_block)
 {
    auto now = bts::chain::now();
    const auto& global_props = get_global_properties();
@@ -891,28 +908,26 @@ const delegate_object& database::validate_block_header(uint32_t skip, const sign
    FC_ASSERT( _pending_block.previous == next_block.previous, "", ("pending.prev",_pending_block.previous)("next.prev",next_block.previous) );
    FC_ASSERT( _pending_block.timestamp <= next_block.timestamp, "", ("_pending_block.timestamp",_pending_block.timestamp)("next",next_block.timestamp)("blocknum",next_block.block_num()) );
    FC_ASSERT( _pending_block.timestamp.sec_since_epoch() % get_global_properties().block_interval == 0 );
-   const delegate_object& del = next_block.delegate_id(*this);
-   FC_ASSERT( secret_hash_type::hash(next_block.previous_secret) == del.next_secret, "",
-              ("previous_secret", next_block.previous_secret)("next_secret", del.next_secret));
-   if( !(skip&skip_delegate_signature) ) FC_ASSERT( next_block.validate_signee( del.signing_key(*this).key() ) );
-   auto expected_delegate_num = (next_block.timestamp.sec_since_epoch() / global_props.block_interval)%global_props.active_delegates.size();
-   FC_ASSERT( next_block.delegate_id == global_props.active_delegates[expected_delegate_num] );
+   const witness_object& witness = next_block.witness(*this);
+   FC_ASSERT( secret_hash_type::hash(next_block.previous_secret) == witness.next_secret, "",
+              ("previous_secret", next_block.previous_secret)("next_secret", witness.next_secret));
+   if( !(skip&skip_delegate_signature) ) FC_ASSERT( next_block.validate_signee( witness.signing_key(*this).key() ) );
+   auto expected_witness_num = (next_block.timestamp.sec_since_epoch() / global_props.block_interval)%global_props.active_witnesses.size();
+   FC_ASSERT( next_block.witness == global_props.active_witnesses[expected_witness_num] );
 
-   return del;
+   return witness;
 }
 
-void database::update_signing_delegate(const delegate_object& signing_delegate, const signed_block& new_block)
+void database::update_signing_witness(const witness_object& signing_witness, const signed_block& new_block)
 {
    const auto& core_asset = get( asset_id_type() );
    const auto& asset_data = core_asset.dynamic_asset_data_id(*this);
 
    // Slowly pay out income averaged over 1M blocks
-   uint64_t pay = asset_data.accumulated_fees.value / (1024*1024); // close enough to 1M but more effecient
-   pay *= signing_delegate.pay_rate;
-   pay /= 100;
+   share_type pay = std::min(get_global_properties().witness_pay, asset_data.accumulated_fees);
    modify( asset_data, [&]( asset_dynamic_data_object& o ){ o.accumulated_fees -= pay; } );
 
-   modify( signing_delegate, [&]( delegate_object& obj ){
+   modify( signing_witness, [&]( witness_object& obj ){
            obj.last_secret = new_block.previous_secret;
            obj.next_secret = new_block.next_secret_hash;
            obj.accumulated_income += pay;
@@ -932,9 +947,10 @@ void database::update_pending_block(const signed_block& next_block, uint8_t curr
 void database::perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props)
 {
    update_global_properties();
+   update_active_witnesses();
+   update_active_delegates();
 
    auto new_block_interval = global_props.block_interval;
-  // wdump( (current_block_interval)(new_block_interval) );
 
    // if block interval CHANGED during this block *THEN* we cannot simply
    // add the interval if we want to maintain the invariant that all timestamps are a multiple
@@ -988,6 +1004,33 @@ void database::clear_expired_proposals()
               ("proposal", proposal));
       }
       remove(proposal);
+   }
+}
+
+void database::clear_expired_orders()
+{
+   transaction_evaluation_state cancel_context(this, true);
+
+   //Cancel expired limit orders
+   auto& limit_index = get_index_type<limit_order_index>().indices().get<by_expiration>();
+   while( !limit_index.empty() && limit_index.begin()->expiration <= head_block_time() )
+   {
+      const limit_order_object& order = *limit_index.begin();
+      limit_order_cancel_operation canceler;
+      canceler.fee_paying_account = order.seller;
+      canceler.order = order.id;
+      apply_operation(cancel_context, canceler);
+   }
+
+   //Cancel expired short orders
+   auto& short_index = get_index_type<short_order_index>().indices().get<by_expiration>();
+   while( !short_index.empty() && short_index.begin()->expiration <= head_block_time() )
+   {
+      const short_order_object& order = *short_index.begin();
+      short_order_cancel_operation canceler;
+      canceler.fee_paying_account = order.seller;
+      canceler.order = order.id;
+      apply_operation(cancel_context, canceler);
    }
 }
 

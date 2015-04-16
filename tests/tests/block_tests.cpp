@@ -10,6 +10,8 @@
 
 using namespace bts::chain;
 
+BOOST_AUTO_TEST_SUITE(block_tests)
+
 BOOST_AUTO_TEST_CASE( generate_empty_blocks )
 {
    try {
@@ -23,9 +25,9 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
          auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
          for( uint32_t i = 0; i < 100; ++i )
          {
-            auto ad = db.get_global_properties().active_delegates;
-            advance_simulated_time_to( db.get_next_generation_time(  ad[i%ad.size()] ) );
-            auto b =  db.generate_block( delegate_priv_key, ad[i%ad.size()] );
+            auto aw = db.get_global_properties().active_witnesses;
+            advance_simulated_time_to( db.get_next_generation_time(  aw[i%aw.size()] ) );
+            auto b =  db.generate_block( delegate_priv_key, aw[i%aw.size()] );
          }
          db.close();
       }
@@ -37,9 +39,9 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
          auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
          for( uint32_t i = 0; i < 100; ++i )
          {
-            auto ad = db.get_global_properties().active_delegates;
-            advance_simulated_time_to( db.get_next_generation_time(  ad[i%ad.size()] ) );
-            auto b = db.generate_block( delegate_priv_key, ad[i%ad.size()] );
+            auto aw = db.get_global_properties().active_witnesses;
+            advance_simulated_time_to( db.get_next_generation_time(  aw[i%aw.size()] ) );
+            auto b = db.generate_block( delegate_priv_key, aw[i%aw.size()] );
          }
          BOOST_CHECK_EQUAL( db.head_block_num(), 200 );
       }
@@ -62,9 +64,9 @@ BOOST_AUTO_TEST_CASE( undo_block )
          auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
          for( uint32_t i = 0; i < 5; ++i )
          {
-            auto ad = db.get_global_properties().active_delegates;
-            advance_simulated_time_to( db.get_next_generation_time(  ad[i%ad.size()] ) );
-            auto b =  db.generate_block( delegate_priv_key, ad[i%ad.size()] );
+            auto aw = db.get_global_properties().active_witnesses;
+            advance_simulated_time_to( db.get_next_generation_time(  aw[i%aw.size()] ) );
+            auto b =  db.generate_block( delegate_priv_key, aw[i%aw.size()] );
          }
          BOOST_CHECK( db.head_block_num() == 5 );
          db.pop_block();
@@ -75,9 +77,9 @@ BOOST_AUTO_TEST_CASE( undo_block )
          BOOST_CHECK( db.head_block_num() == 2 );
          for( uint32_t i = 0; i < 5; ++i )
          {
-            auto ad = db.get_global_properties().active_delegates;
-            advance_simulated_time_to( db.get_next_generation_time(  ad[i%ad.size()] ) );
-            auto b =  db.generate_block( delegate_priv_key, ad[i%ad.size()] );
+            auto aw = db.get_global_properties().active_witnesses;
+            advance_simulated_time_to( db.get_next_generation_time(  aw[i%aw.size()] ) );
+            auto b =  db.generate_block( delegate_priv_key, aw[i%aw.size()] );
          }
          BOOST_CHECK( db.head_block_num() == 7 );
       }
@@ -103,22 +105,22 @@ BOOST_AUTO_TEST_CASE( fork_blocks )
       auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
       for( uint32_t i = 0; i < 20; ++i )
       {
-         auto ad = db1.get_global_properties().active_delegates;
-         advance_simulated_time_to( db1.get_next_generation_time(  ad[i%ad.size()] ) );
-         auto b =  db1.generate_block( delegate_priv_key, ad[i%ad.size()] );
+         auto aw = db1.get_global_properties().active_witnesses;
+         advance_simulated_time_to( db1.get_next_generation_time(  aw[i%aw.size()] ) );
+         auto b =  db1.generate_block( delegate_priv_key, aw[i%aw.size()] );
          try {
             db2.push_block(b);
          } FC_CAPTURE_AND_RETHROW( ("db2") );
       }
       for( uint32_t i = 20; i < 23; ++i )
       {
-         auto ad1 = db1.get_global_properties().active_delegates;
+         auto ad1 = db1.get_global_properties().active_witnesses;
          advance_simulated_time_to( db1.get_next_generation_time(  ad1[i%ad1.size()] ) );
          auto b =  db1.generate_block( delegate_priv_key, ad1[i%ad1.size()] );
       }
       for( uint32_t i = 23; i < 26; ++i )
       {
-         auto ad2 = db2.get_global_properties().active_delegates;
+         auto ad2 = db2.get_global_properties().active_witnesses;
          advance_simulated_time_to( db2.get_next_generation_time(  ad2[i%ad2.size()] ) );
          auto b =  db2.generate_block( delegate_priv_key, ad2[i%ad2.size()] );
          db1.push_block(b);
@@ -129,7 +131,7 @@ BOOST_AUTO_TEST_CASE( fork_blocks )
       signed_block good_block;
       BOOST_CHECK_EQUAL(db1.head_block_num(), 23);
       {
-         auto ad2 = db2.get_global_properties().active_delegates;
+         auto ad2 = db2.get_global_properties().active_witnesses;
          advance_simulated_time_to( db2.get_next_generation_time(  ad2[db2.head_block_num()%ad2.size()] ) );
          auto b =  db2.generate_block( delegate_priv_key, ad2[db2.head_block_num()%ad2.size()] );
          good_block = b;
@@ -164,13 +166,15 @@ BOOST_AUTO_TEST_CASE( undo_pending )
          signed_transaction trx;
          trx.relative_expiration = 1000;
          account_id_type nathan_id = account_idx.get_next_id();
-         trx.operations.push_back(account_create_operation({account_id_type(), asset(), "nathan"}));
+         account_create_operation cop;
+         cop.name = "nathan";
+         trx.operations.push_back(cop);
          trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
          db.push_transaction(trx);
 
-         auto ad = db.get_global_properties().active_delegates;
-         advance_simulated_time_to( db.get_next_generation_time(  ad[db.head_block_num()%ad.size()] ) );
-         auto b =  db.generate_block( delegate_priv_key, ad[db.head_block_num()%ad.size()] );
+         auto aw = db.get_global_properties().active_witnesses;
+         advance_simulated_time_to( db.get_next_generation_time(  aw[db.head_block_num()%aw.size()] ) );
+         auto b =  db.generate_block( delegate_priv_key, aw[db.head_block_num()%aw.size()] );
 
          BOOST_CHECK(nathan_id(db).name == "nathan");
 
@@ -212,32 +216,34 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
       signed_transaction trx;
       trx.relative_expiration = 1000;
       account_id_type nathan_id = account_idx.get_next_id();
-      trx.operations.push_back(account_create_operation({account_id_type(), asset(), "nathan"}));
+      account_create_operation cop;
+      cop.name = "nathan";
+      trx.operations.push_back(cop);
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
       db1.push_transaction(trx);
 
-      auto ad = db1.get_global_properties().active_delegates;
-      advance_simulated_time_to( db1.get_next_generation_time(  ad[db1.head_block_num()%ad.size()] ) );
-      auto b =  db1.generate_block( delegate_priv_key, ad[db1.head_block_num()%ad.size()] );
+      auto aw = db1.get_global_properties().active_witnesses;
+      advance_simulated_time_to( db1.get_next_generation_time(  aw[db1.head_block_num()%aw.size()] ) );
+      auto b =  db1.generate_block( delegate_priv_key, aw[db1.head_block_num()%aw.size()] );
 
       BOOST_CHECK(nathan_id(db1).name == "nathan");
 
-      ad = db2.get_global_properties().active_delegates;
-      advance_simulated_time_to( db2.get_next_generation_time(  ad[db2.head_block_num()%ad.size()] ) );
-      b =  db2.generate_block( delegate_priv_key, ad[db2.head_block_num()%ad.size()] );
+      aw = db2.get_global_properties().active_witnesses;
+      advance_simulated_time_to( db2.get_next_generation_time(  aw[db2.head_block_num()%aw.size()] ) );
+      b =  db2.generate_block( delegate_priv_key, aw[db2.head_block_num()%aw.size()] );
       db1.push_block(b);
-      ad = db2.get_global_properties().active_delegates;
-      advance_simulated_time_to( db2.get_next_generation_time(  ad[db2.head_block_num()%ad.size()] ) );
-      b =  db2.generate_block( delegate_priv_key, ad[db2.head_block_num()%ad.size()] );
+      aw = db2.get_global_properties().active_witnesses;
+      advance_simulated_time_to( db2.get_next_generation_time(  aw[db2.head_block_num()%aw.size()] ) );
+      b =  db2.generate_block( delegate_priv_key, aw[db2.head_block_num()%aw.size()] );
       db1.push_block(b);
 
       BOOST_CHECK_THROW(nathan_id(db1), fc::exception);
 
       db2.push_transaction(trx);
 
-      ad = db2.get_global_properties().active_delegates;
-      advance_simulated_time_to( db2.get_next_generation_time(  ad[db2.head_block_num()%ad.size()] ) );
-      b =  db2.generate_block( delegate_priv_key, ad[db2.head_block_num()%ad.size()] );
+      aw = db2.get_global_properties().active_witnesses;
+      advance_simulated_time_to( db2.get_next_generation_time(  aw[db2.head_block_num()%aw.size()] ) );
+      b =  db2.generate_block( delegate_priv_key, aw[db2.head_block_num()%aw.size()] );
       db1.push_block(b);
 
       BOOST_CHECK(nathan_id(db1).name == "nathan");
@@ -265,7 +271,9 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
       signed_transaction trx;
       trx.relative_expiration = 1000;
       account_id_type nathan_id = account_idx.get_next_id();
-      trx.operations.push_back(account_create_operation({account_id_type(), asset(), "nathan"}));
+      account_create_operation cop;
+      cop.name = "nathan";
+      trx.operations.push_back(cop);
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
       db1.push_transaction(trx);
 
@@ -277,9 +285,9 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
 
       BOOST_CHECK_THROW(db1.push_transaction(trx), fc::exception);
 
-      auto ad = db1.get_global_properties().active_delegates;
-      advance_simulated_time_to( db1.get_next_generation_time(  ad[db1.head_block_num()%ad.size()] ) );
-      auto b =  db1.generate_block( delegate_priv_key, ad[db1.head_block_num()%ad.size()] );
+      auto aw = db1.get_global_properties().active_witnesses;
+      advance_simulated_time_to( db1.get_next_generation_time(  aw[db1.head_block_num()%aw.size()] ) );
+      auto b =  db1.generate_block( delegate_priv_key, aw[db1.head_block_num()%aw.size()] );
       db2.push_block(b);
 
       BOOST_CHECK_THROW(db1.push_transaction(trx), fc::exception);
@@ -306,9 +314,9 @@ BOOST_AUTO_TEST_CASE( tapos )
       auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
       const bts::db::index& account_idx = db1.get_index(protocol_ids, account_object_type);
 
-      auto ad = db1.get_global_properties().active_delegates;
-      advance_simulated_time_to( db1.get_next_generation_time(  ad[db1.head_block_num()%ad.size()] ) );
-      auto b =  db1.generate_block( delegate_priv_key, ad[db1.head_block_num()%ad.size()] );
+      auto aw = db1.get_global_properties().active_witnesses;
+      advance_simulated_time_to( db1.get_next_generation_time(  aw[db1.head_block_num()%aw.size()] ) );
+      auto b =  db1.generate_block( delegate_priv_key, aw[db1.head_block_num()%aw.size()] );
 
       signed_transaction trx;
       trx.ref_block_num = db1.head_block_num();
@@ -316,7 +324,9 @@ BOOST_AUTO_TEST_CASE( tapos )
       trx.relative_expiration = 1;
 
       account_id_type nathan_id = account_idx.get_next_id();
-      trx.operations.push_back(account_create_operation({account_id_type(), asset(), "nathan"}));
+      account_create_operation cop;
+      cop.name = "nathan";
+      trx.operations.push_back(cop);
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
 
       //ref_block_prefix isn't set, so we should see an exception here.
@@ -326,9 +336,9 @@ BOOST_AUTO_TEST_CASE( tapos )
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
       db1.push_transaction(trx);
 
-      ad = db1.get_global_properties().active_delegates;
-      advance_simulated_time_to( db1.get_next_generation_time(  ad[db1.head_block_num()%ad.size()] ) );
-      b =  db1.generate_block( delegate_priv_key, ad[db1.head_block_num()%ad.size()] );
+      aw = db1.get_global_properties().active_witnesses;
+      advance_simulated_time_to( db1.get_next_generation_time(  aw[db1.head_block_num()%aw.size()] ) );
+      b =  db1.generate_block( delegate_priv_key, aw[db1.head_block_num()%aw.size()] );
 
       trx.operations.clear();
       trx.signatures.clear();
@@ -346,54 +356,164 @@ BOOST_AUTO_TEST_CASE( tapos )
    }
 }
 
-BOOST_AUTO_TEST_CASE( maintenance_interval )
+BOOST_FIXTURE_TEST_CASE( maintenance_interval, database_fixture )
 {
    try {
-      fc::temp_directory data_dir;
       auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
+
+      generate_block();
+      BOOST_CHECK_EQUAL(db.head_block_num(), 1);
+
+      fc::time_point_sec maintenence_time = db.get_global_properties().next_maintenance_time;
+      BOOST_CHECK_GT(maintenence_time.sec_since_epoch(), db.head_block_time().sec_since_epoch());
+      BOOST_CHECK_GT(maintenence_time.sec_since_epoch(), bts::chain::now().sec_since_epoch());
+      auto initial_properties = db.get_global_properties();
+      const account_object& nathan = create_account("nathan");
+      const delegate_object nathans_delegate = create_delegate(nathan);
       {
-         database db;
-         db.open(data_dir.path(), genesis_allocation() );
-
-         start_simulated_time( bts::chain::now() );
-         auto ad = db.get_global_properties().active_delegates;
-         advance_simulated_time_to( db.get_next_generation_time(  ad[db.head_block_num()%ad.size()] ) );
-         auto b =  db.generate_block( delegate_priv_key, ad[db.head_block_num()%ad.size()] );
-
-         fc::time_point_sec maintanence_time = db.head_block_time() + fc::seconds(db.get_global_properties().maintenance_interval);
-         auto initial_properties = db.get_global_properties();
-
-         for( auto del : initial_properties.active_delegates )
-         {
-            signed_transaction trx;
-            trx.ref_block_prefix = db.head_block_id()._hash[1];
-            trx.ref_block_num = 1;
-            trx.relative_expiration = 1;
-            delegate_update_operation op;
-            op.delegate_id = del;
-            op.max_transaction_size = 3005;
-            trx.operations.push_back(op);
-            trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
-            db.push_transaction(trx);
-         }
-
-         while( maintanence_time >= db.head_block_time() )
-         {
-            ad = db.get_global_properties().active_delegates;
-            advance_simulated_time_to( db.get_next_generation_time(  ad[db.head_block_num()%ad.size()] ) );
-            b =  db.generate_block( delegate_priv_key, ad[db.head_block_num()%ad.size()],
-                  database::skip_delegate_signature | database::skip_tapos_check );
-         }
-
-         ad = db.get_global_properties().active_delegates;
-         advance_simulated_time_to( db.get_next_generation_time(  ad[db.head_block_num()%ad.size()] ) );
-         b =  db.generate_block( delegate_priv_key, ad[db.head_block_num()%ad.size()] );
-
-         BOOST_CHECK_EQUAL( db.get_global_properties().maximum_transaction_size, 3005 );
-         db.close();
+         account_update_operation op;
+         op.account = nathan.id;
+         op.vote = nathan.votes;
+         op.vote->insert(nathans_delegate.vote);
+         trx.operations.push_back(op);
+         db.push_transaction(trx, ~0);
+         trx.operations.clear();
       }
+      transfer(account_id_type()(db), nathan, asset(5000));
+
+      for( auto del : initial_properties.active_delegates )
+      {
+         signed_transaction trx;
+         trx.ref_block_prefix = db.head_block_id()._hash[1];
+         trx.ref_block_num = 1;
+         trx.relative_expiration = 1;
+         delegate_update_operation op;
+         op.delegate_id = del;
+         op.max_transaction_size = 3005;
+         trx.operations.push_back(op);
+         trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+         db.push_transaction(trx);
+      }
+
+      generate_blocks(maintenence_time - initial_properties.block_interval);
+      BOOST_CHECK_EQUAL(db.get_global_properties().maximum_transaction_size,
+                        initial_properties.maximum_transaction_size);
+      BOOST_CHECK_EQUAL(db.get_global_properties().next_maintenance_time.sec_since_epoch(),
+                        db.head_block_time().sec_since_epoch() + db.get_global_properties().block_interval);
+      //Technically the next check could fail because the shuffled witness list happens to match the original list.
+      //This should be exceedingly rare, though.
+      BOOST_CHECK(db.get_global_properties().active_witnesses != initial_properties.active_witnesses);
+      BOOST_CHECK(db.get_global_properties().active_delegates == initial_properties.active_delegates);
+
+      generate_block();
+
+      auto new_properties = db.get_global_properties();
+      BOOST_CHECK(new_properties.active_delegates != initial_properties.active_delegates);
+      BOOST_CHECK(std::find(new_properties.active_delegates.begin(),
+                            new_properties.active_delegates.end(), nathans_delegate.id) !=
+                  new_properties.active_delegates.end());
+      BOOST_CHECK_EQUAL(new_properties.next_maintenance_time.sec_since_epoch(),
+                        maintenence_time.sec_since_epoch() + new_properties.maintenance_interval);
+      maintenence_time = new_properties.next_maintenance_time;
+      BOOST_CHECK_GT(maintenence_time.sec_since_epoch(), db.head_block_time().sec_since_epoch());
+      BOOST_CHECK_GT(maintenence_time.sec_since_epoch(), bts::chain::now().sec_since_epoch());
+      BOOST_CHECK_EQUAL(db.get_global_properties().maximum_transaction_size, 3005);
+      db.close();
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
    }
 }
+
+/**
+ *  Orders should specify a valid expiration time and they will ba automatically canceled if not filled by that time.
+ *  This feature allows people to safely submit orders that have a limited lifetime, which is essential to some
+ *  traders.
+ */
+BOOST_FIXTURE_TEST_CASE( short_order_expiration, database_fixture )
+{ try {
+   //Get a sane head block time
+   generate_block();
+
+   auto* test = &create_bitasset("TEST");
+   auto* core = &asset_id_type()(db);
+   auto* nathan = &create_account("nathan");
+   auto* genesis = &account_id_type()(db);
+
+   transfer(*genesis, *nathan, core->amount(50000));
+
+   BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 50000 );
+
+   short_order_create_operation op;
+   op.seller = nathan->id;
+   op.amount_to_sell = test->amount(500);
+   op.collateral = core->amount(500);
+   op.expiration = db.head_block_time() + fc::seconds(10);
+   trx.operations.push_back(op);
+   auto ptrx = db.push_transaction(trx, ~0);
+
+   BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 49500 );
+
+   auto ptrx_id = ptrx.operation_results.back().get<object_id_type>();
+   auto short_index = db.get_index_type<short_order_index>().indices();
+   auto short_itr = short_index.begin();
+   BOOST_REQUIRE( short_itr != short_index.end() );
+   BOOST_REQUIRE( short_itr->id == ptrx_id );
+   BOOST_REQUIRE( db.find_object(short_itr->id) );
+   BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 49500 );
+   auto id = short_itr->id;
+
+   generate_blocks(op.expiration);
+   test = &get_asset("TEST");
+   core = &asset_id_type()(db);
+   nathan = &get_account("nathan");
+   genesis = &account_id_type()(db);
+
+   BOOST_CHECK(db.find_object(id) == nullptr);
+   BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 50000 );
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE( limit_order_expiration, database_fixture )
+{ try {
+   //Get a sane head block time
+   generate_block();
+
+   auto* test = &create_bitasset("TEST");
+   auto* core = &asset_id_type()(db);
+   auto* nathan = &create_account("nathan");
+   auto* genesis = &account_id_type()(db);
+
+   transfer(*genesis, *nathan, core->amount(50000));
+
+   BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 50000 );
+
+   limit_order_create_operation op;
+   op.seller = nathan->id;
+   op.amount_to_sell = core->amount(500);
+   op.min_to_receive = test->amount(500);
+   op.expiration = db.head_block_time() + fc::seconds(10);
+   trx.operations.push_back(op);
+   auto ptrx = db.push_transaction(trx, ~0);
+
+   BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 49500 );
+
+   auto ptrx_id = ptrx.operation_results.back().get<object_id_type>();
+   auto limit_index = db.get_index_type<limit_order_index>().indices();
+   auto limit_itr = limit_index.begin();
+   BOOST_REQUIRE( limit_itr != limit_index.end() );
+   BOOST_REQUIRE( limit_itr->id == ptrx_id );
+   BOOST_REQUIRE( db.find_object(limit_itr->id) );
+   BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 49500 );
+   auto id = limit_itr->id;
+
+   generate_blocks(op.expiration);
+   test = &get_asset("TEST");
+   core = &asset_id_type()(db);
+   nathan = &get_account("nathan");
+   genesis = &account_id_type()(db);
+
+   BOOST_CHECK(db.find_object(id) == nullptr);
+   BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 50000 );
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_SUITE_END()

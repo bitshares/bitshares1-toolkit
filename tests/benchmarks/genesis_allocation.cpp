@@ -76,9 +76,9 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
 #endif
          int blocks_out = 0;
          auto delegate_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
-         auto ad = db.get_global_properties().active_delegates;
-         advance_simulated_time_to( db.get_next_generation_time( ad[blocks_out % ad.size()] ) );
-         auto b =  db.generate_block( delegate_priv_key, ad[blocks_out++ % ad.size()], ~0 );
+         auto aw = db.get_global_properties().active_witnesses;
+         advance_simulated_time_to( db.get_next_generation_time( aw[blocks_out % aw.size()] ) );
+         auto b =  db.generate_block( delegate_priv_key, aw[blocks_out++ % aw.size()], ~0 );
 
          start_time = fc::time_point::now();
          for( int i = 0; i < blocks_to_produce; ++i )
@@ -87,9 +87,9 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
             trx.operations.emplace_back(transfer_operation({account_id_type(i + 11), account_id_type(), asset(1), asset(1), vector<char>()}));
             db.push_transaction(trx, ~0);
 
-            ad = db.get_global_properties().active_delegates;
-            advance_simulated_time_to( db.get_next_generation_time( ad[blocks_out % ad.size()] ) );
-            b =  db.generate_block( delegate_priv_key, ad[blocks_out++ % ad.size()], ~0 );
+            aw = db.get_global_properties().active_witnesses;
+            advance_simulated_time_to( db.get_next_generation_time( aw[blocks_out % aw.size()] ) );
+            b =  db.generate_block( delegate_priv_key, aw[blocks_out++ % aw.size()], ~0 );
          }
          ilog("Pushed ${c} blocks (1 op each, no validation) in ${t} milliseconds.",
               ("c", blocks_out)("t", (fc::time_point::now() - start_time).count() / 1000));

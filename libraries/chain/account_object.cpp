@@ -22,6 +22,11 @@ asset account_balance_object::get_balance( asset_id_type what )const
    return asset{0,what};
 }
 
+share_type account_balance_object::voting_weight() const
+{
+   return get_balance(asset_id_type()).amount + total_core_in_orders;
+}
+
 void account_balance_object::sub_balance( const asset& a )
 {
    FC_ASSERT( a.amount > 0 );

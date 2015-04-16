@@ -83,7 +83,7 @@ namespace bts { namespace chain {
           */
          asset      get_balance( const account_object* for_account, const asset_object* for_asset )const;
          void       adjust_balance( const account_object* for_account, const asset_object* for_asset, share_type delta );
-         void       adjust_votes( const vector<delegate_id_type>& delegate_ids, share_type delta );
+         void       adjust_votes(const flat_set<vote_tally_id_type>& vote_tallies, share_type delta );
          
          asset      calculate_market_fee( const asset_object& aobj, const asset& trade_amount );
 

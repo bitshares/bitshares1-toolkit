@@ -9,6 +9,8 @@ object_id_type limit_order_create_evaluator::do_evaluate( const limit_order_crea
 {
    database& d = db();
 
+   FC_ASSERT( op.expiration >= d.head_block_time() );
+
    auto bts_fee_paid = pay_fee( op.seller, op.fee );
    auto bts_fee_required = op.calculate_fee( d.current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
@@ -46,6 +48,7 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
        obj.seller   = _seller->id;
        obj.for_sale = op.amount_to_sell.amount;
        obj.sell_price = op.get_price();
+       obj.expiration = op.expiration;
    });
    limit_order_id_type result = new_order_object.id; // save this because we may remove the object by filling it
 
@@ -124,14 +127,14 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
                ilog( "next short with limits" );
                auto old_short_itr = short_itr;
                ++short_itr;
-               filled = (2 != match( new_order_object, *old_short_itr, old_short_itr->sell_price ) );
+               filled = (match( new_order_object, *old_short_itr, old_short_itr->sell_price ) != 2 );
             }
             else
             {
                ilog( "next limit" );
                auto old_limit_itr = limit_itr;
                ++limit_itr;
-               filled = (2 != match( new_order_object, *old_limit_itr, old_limit_itr->sell_price ) );
+               filled = (match( new_order_object, *old_limit_itr, old_limit_itr->sell_price ) != 2 );
             }
          }
          else if( short_itr != short_end  )
@@ -139,7 +142,7 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
             wlog( "next short no limits left" );
             auto old_short_itr = short_itr;
             ++short_itr;
-            filled = (2 != match( new_order_object, *old_short_itr, old_short_itr->sell_price ) );
+            filled = (match( new_order_object, *old_short_itr, old_short_itr->sell_price ) != 2 );
          }
          else break;
       }
@@ -148,13 +151,15 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
    {
          auto old_itr = limit_itr;
          ++limit_itr;
-         filled = (2 != match( new_order_object, *old_itr, old_itr->sell_price ));
+         filled = (match( new_order_object, *old_itr, old_itr->sell_price ) != 2);
    }
 
    //Possible optimization: only check calls if the new order completely filled some old order
    //Do I need to check both assets?
    check_call_orders(*_sell_asset);
    check_call_orders(*_receive_asset);
+
+   FC_ASSERT( !op.fill_or_kill || db().find_object(result) == nullptr );
 
    apply_delta_balances();
    apply_delta_fee_pools();
@@ -180,34 +185,34 @@ asset limit_order_cancel_evaluator::do_evaluate( const limit_order_cancel_operat
 
 asset limit_order_cancel_evaluator::do_apply( const limit_order_cancel_operation& o )
 {
-  database&   d = db();
+   database&   d = db();
 
-  apply_delta_balances();
-  apply_delta_fee_pools();
+   apply_delta_balances();
+   apply_delta_fee_pools();
 
-  auto refunded = _order->amount_for_sale();
-  auto base_asset = _order->sell_price.base.asset_id;
-  auto quote_asset = _order->sell_price.quote.asset_id;
+   auto refunded = _order->amount_for_sale();
+   auto base_asset = _order->sell_price.base.asset_id;
+   auto quote_asset = _order->sell_price.quote.asset_id;
 
-  d.remove( *_order );
+   d.remove( *_order );
 
-  if( refunded.asset_id == asset_id_type() )
-  {
-     auto& bal_obj = fee_paying_account->balances(d);
-     d.modify( bal_obj, [&]( account_balance_object& obj ){
-         obj.total_core_in_orders -= refunded.amount;
-     });
-     //do_evaluate adjusted balance by refunded.amount, which adds votes. This is undesirable, as the account
-     //did not gain or lose any voting stake. Counteract that adjustment here.
-     adjust_votes(fee_paying_account->delegate_votes, -refunded.amount);
-  }
+   if( refunded.asset_id == asset_id_type() )
+   {
+      auto& bal_obj = fee_paying_account->balances(d);
+      d.modify( bal_obj, [&]( account_balance_object& obj ){
+          obj.total_core_in_orders -= refunded.amount;
+      });
+      //do_evaluate adjusted balance by refunded.amount, which adds votes. This is undesirable, as the account
+      //did not gain or lose any voting stake. Counteract that adjustment here.
+      adjust_votes(fee_paying_account->votes, -refunded.amount);
+   }
 
-  // Possible optimization: order can be called by canceling a limit order iff the canceled order was at the top of the book.
-  // Do I need to check calls in both assets?
-  check_call_orders(base_asset(d));
-  check_call_orders(quote_asset(d));
+   // Possible optimization: order can be called by canceling a limit order iff the canceled order was at the top of the book.
+   // Do I need to check calls in both assets?
+   check_call_orders(base_asset(d));
+   check_call_orders(quote_asset(d));
 
-  return refunded;
+   return refunded;
 }
 
 

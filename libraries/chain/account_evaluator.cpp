@@ -62,7 +62,7 @@ object_id_type account_create_evaluator::do_apply( const account_create_operatio
          obj.balances       = bal_obj.id;
          obj.memo_key       = get_relative_id(o.memo_key);
          obj.voting_key     = get_relative_id(o.voting_key);
-         obj.delegate_votes = o.vote;
+         obj.votes          = o.vote;
    });
 
    return new_acnt_object.id;
@@ -93,11 +93,11 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
 
    if( o.vote )
    {
-      std::set_difference( acnt->delegate_votes.begin(), acnt->delegate_votes.end(),
+      std::set_difference( acnt->votes.begin(), acnt->votes.end(),
                            o.vote->begin(), o.vote->end(),
                            std::inserter( remove_votes, remove_votes.begin() ) );
       std::set_difference( o.vote->begin(), o.vote->end(),
-                           acnt->delegate_votes.begin(), acnt->delegate_votes.end(),
+                           acnt->votes.begin(), acnt->votes.end(),
                            std::inserter( add_votes, add_votes.begin() ) );
    }
 
@@ -120,7 +120,7 @@ object_id_type account_update_evaluator::do_apply( const account_update_operatio
           if( o.active ) a.active = *o.active;
           if( o.voting_key ) a.voting_key = *o.voting_key;
           if( o.memo_key ) a.memo_key = *o.memo_key;
-          if( o.vote ) a.delegate_votes = *o.vote;
+          if( o.vote ) a.votes = *o.vote;
       });
    return object_id_type();
 }
