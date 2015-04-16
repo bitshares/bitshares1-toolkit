@@ -33,6 +33,7 @@ namespace bts { namespace chain {
          uint32_t                   maximum_time_until_expiration       = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
          uint32_t                   maximum_proposal_lifetime           = BTS_DEFAULT_MAX_PROPOSAL_LIFETIME_SEC;
          uint8_t                    maximum_asset_whitelist_authorities = BTS_DEFAULT_MAX_ASSET_WHITELIST_AUTHORITIES;
+         time_point_sec             next_maintenance_time;
    };
 
    /**
@@ -75,4 +76,5 @@ FC_REFLECT_DERIVED( bts::chain::global_property_object, (bts::db::object),
                     (maximum_time_until_expiration)
                     (maximum_proposal_lifetime)
                     (maximum_asset_whitelist_authorities)
+                    (next_maintenance_time)
                   )

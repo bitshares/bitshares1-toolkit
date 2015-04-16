@@ -282,6 +282,18 @@ struct database_fixture {
       return db.get<account_object>(r.operation_results[0].get<object_id_type>());
    }
 
+   const delegate_object& create_delegate( const account_object& owner )
+   {
+      delegate_create_operation op;
+      op.delegate_account = owner.id;
+      op.fee_schedule = db.current_fee_schedule();
+      trx.operations.push_back(op);
+      trx.validate();
+      auto r = db.push_transaction(trx, ~0);
+      trx.operations.clear();
+      return db.get<delegate_object>(r.operation_results[0].get<object_id_type>());
+   }
+
    const key_object& register_key( const public_key_type& key )
    {
       trx.operations.push_back(key_create_operation({account_id_type(), asset(), key}));

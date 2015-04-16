@@ -374,7 +374,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    auto current_block_interval = global_props.block_interval;
 
    // Are we at the maintenance interval?
-   if( next_block.block_num() % (global_props.maintenance_interval / current_block_interval) == 0 )
+   if( global_props.next_maintenance_time <= next_block.timestamp )
       // This will update _pending_block.timestamp if the block interval has changed
       perform_chain_maintenance(next_block, global_props);
    // If we're at the end of a round, shuffle the active witnesses
@@ -466,7 +466,6 @@ void database::update_active_witnesses()
 void database::update_active_delegates()
 {
    auto ids = sort_votable_objects<delegate_object>();
-   shuffle_vector(ids);
 
    modify( get_global_properties(), [&]( global_property_object& gp ){
       gp.active_delegates = std::move(ids);
@@ -522,6 +521,16 @@ void database::update_global_properties()
                              return a->fee_schedule.at(f) < b->fee_schedule.at(f);
                         });
       tmp.current_fees.set(f, ids[ids.size()/2]->fee_schedule.at(f));
+   }
+
+   if( tmp.next_maintenance_time <= head_block_time() )
+   {
+      if( head_block_num() == 1 )
+         tmp.next_maintenance_time = time_point_sec() +
+               (((head_block_time().sec_since_epoch() / tmp.maintenance_interval) + 1) * tmp.maintenance_interval);
+      else
+         tmp.next_maintenance_time += tmp.maintenance_interval;
+      assert( tmp.next_maintenance_time > head_block_time() );
    }
 
    modify( global_property_id_type()(*this), [&]( global_property_object& gpo ){

@@ -372,7 +372,7 @@ namespace bts { namespace chain {
    {
       account_id_type                       delegate_account; // same as fee_paying account
       asset                                 fee;
-      share_type                            witness_pay;
+      share_type                            witness_pay = BTS_DEFAULT_WITNESS_PAY;
       uint8_t                               block_interval_sec = BTS_DEFAULT_BLOCK_INTERVAL;
       uint32_t                              max_block_size = BTS_DEFAULT_MAX_BLOCK_SIZE;
       uint32_t                              max_transaction_size = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
