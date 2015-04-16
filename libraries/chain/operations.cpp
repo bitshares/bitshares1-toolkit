@@ -314,7 +314,7 @@ void delegate_create_operation::validate()const
    FC_ASSERT( max_transaction_size >= BTS_MIN_TRANSACTION_SIZE_LIMIT );
    FC_ASSERT( block_interval_sec > 0 && block_interval_sec <= BTS_MAX_BLOCK_INTERVAL );
    FC_ASSERT( max_sec_until_expiration > block_interval_sec );
-   for( auto fe : fee_schedule.fees ) FC_ASSERT( fe > 0 );
+   for( auto fe : fee_schedule.fees ) FC_ASSERT( fe >= 0 );
 }
 void delegate_update_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
 {

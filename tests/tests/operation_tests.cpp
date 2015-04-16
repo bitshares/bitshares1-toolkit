@@ -220,14 +220,8 @@ BOOST_AUTO_TEST_CASE( create_delegate )
       op.max_sec_until_expiration = op.block_interval_sec * 2;
 
       for( int t = 0; t < FEE_TYPE_COUNT; ++t )
-         op.fee_schedule.set(t,0);
-      trx.operations.push_back(op);
-      //Zero fee schedule should cause failure
-      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
-
-      for( int t = 0; t < FEE_TYPE_COUNT; ++t )
          op.fee_schedule.set(t, BTS_BLOCKCHAIN_PRECISION);
-      trx.operations.back() = op;
+      trx.operations.push_back(op);
 
       REQUIRE_THROW_WITH_VALUE(op, delegate_account, account_id_type(99999999));
       REQUIRE_THROW_WITH_VALUE(op, fee, asset(-600));
