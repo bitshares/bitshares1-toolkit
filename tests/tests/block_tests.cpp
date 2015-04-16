@@ -370,10 +370,15 @@ BOOST_FIXTURE_TEST_CASE( maintenance_interval, database_fixture )
       auto initial_properties = db.get_global_properties();
       const account_object& nathan = create_account("nathan");
       const delegate_object nathans_delegate = create_delegate(nathan);
-      //Lazily modifying db directly. Sue me.
-      db.modify(nathan, [nathans_delegate](account_object& n) {
-         n.votes.insert(nathans_delegate.vote);
-      });
+      {
+         account_update_operation op;
+         op.account = nathan.id;
+         op.vote = nathan.votes;
+         op.vote->insert(nathans_delegate.vote);
+         trx.operations.push_back(op);
+         db.push_transaction(trx, ~0);
+         trx.operations.clear();
+      }
       transfer(account_id_type()(db), nathan, asset(5000));
 
       for( auto del : initial_properties.active_delegates )
@@ -403,7 +408,6 @@ BOOST_FIXTURE_TEST_CASE( maintenance_interval, database_fixture )
       generate_block();
 
       auto new_properties = db.get_global_properties();
-      idump((new_properties.active_delegates)(nathans_delegate.id));
       BOOST_CHECK(new_properties.active_delegates != initial_properties.active_delegates);
       BOOST_CHECK(std::find(new_properties.active_delegates.begin(),
                             new_properties.active_delegates.end(), nathans_delegate.id) !=
