@@ -12,7 +12,7 @@ object_id_type proposal_create_evaluator::do_evaluate(const proposal_create_oper
    auto bts_fee_paid = pay_fee(o.fee_paying_account, o.fee);
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
 
-   FC_ASSERT( o.expiration_time <= d.head_block_time() + d.get_global_properties().maximum_proposal_lifetime,
+   FC_ASSERT( o.expiration_time <= d.head_block_time() + d.get_global_properties().parameters.maximum_proposal_lifetime,
               "Proposal expiration time is too far in the future.");
 
    for( const op_wrapper& op : o.proposed_ops )

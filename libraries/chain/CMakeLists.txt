@@ -8,6 +8,7 @@ add_library( bts_chain
              delegate_evaluator.cpp
              transfer_evaluator.cpp
              proposal_evaluator.cpp
+             global_parameters_evaluator.cpp
              evaluator.cpp
              fork_database.cpp
              database.cpp

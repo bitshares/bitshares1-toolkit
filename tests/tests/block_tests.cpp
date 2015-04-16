@@ -363,8 +363,9 @@ BOOST_FIXTURE_TEST_CASE( maintenance_interval, database_fixture )
 
       generate_block();
       BOOST_CHECK_EQUAL(db.head_block_num(), 1);
+      BOOST_CHECK_EQUAL(account_id_type()(db).owner.weight_threshold, 6);
 
-      fc::time_point_sec maintenence_time = db.get_global_properties().next_maintenance_time;
+      fc::time_point_sec maintenence_time = db.get_dynamic_global_properties().next_maintenance_time;
       BOOST_CHECK_GT(maintenence_time.sec_since_epoch(), db.head_block_time().sec_since_epoch());
       BOOST_CHECK_GT(maintenence_time.sec_since_epoch(), bts::chain::now().sec_since_epoch());
       auto initial_properties = db.get_global_properties();
@@ -381,25 +382,11 @@ BOOST_FIXTURE_TEST_CASE( maintenance_interval, database_fixture )
       }
       transfer(account_id_type()(db), nathan, asset(5000));
 
-      for( auto del : initial_properties.active_delegates )
-      {
-         signed_transaction trx;
-         trx.ref_block_prefix = db.head_block_id()._hash[1];
-         trx.ref_block_num = 1;
-         trx.relative_expiration = 1;
-         delegate_update_operation op;
-         op.delegate_id = del;
-         op.max_transaction_size = 3005;
-         trx.operations.push_back(op);
-         trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
-         db.push_transaction(trx);
-      }
-
-      generate_blocks(maintenence_time - initial_properties.block_interval);
-      BOOST_CHECK_EQUAL(db.get_global_properties().maximum_transaction_size,
-                        initial_properties.maximum_transaction_size);
-      BOOST_CHECK_EQUAL(db.get_global_properties().next_maintenance_time.sec_since_epoch(),
-                        db.head_block_time().sec_since_epoch() + db.get_global_properties().block_interval);
+      generate_blocks(maintenence_time - initial_properties.parameters.block_interval);
+      BOOST_CHECK_EQUAL(db.get_global_properties().parameters.maximum_transaction_size,
+                        initial_properties.parameters.maximum_transaction_size);
+      BOOST_CHECK_EQUAL(db.get_dynamic_global_properties().next_maintenance_time.sec_since_epoch(),
+                        db.head_block_time().sec_since_epoch() + db.get_global_properties().parameters.block_interval);
       //Technically the next check could fail because the shuffled witness list happens to match the original list.
       //This should be exceedingly rare, though.
       BOOST_CHECK(db.get_global_properties().active_witnesses != initial_properties.active_witnesses);
@@ -408,16 +395,16 @@ BOOST_FIXTURE_TEST_CASE( maintenance_interval, database_fixture )
       generate_block();
 
       auto new_properties = db.get_global_properties();
+      BOOST_CHECK_EQUAL(account_id_type()(db).owner.weight_threshold, 6);
       BOOST_CHECK(new_properties.active_delegates != initial_properties.active_delegates);
       BOOST_CHECK(std::find(new_properties.active_delegates.begin(),
                             new_properties.active_delegates.end(), nathans_delegate.id) !=
                   new_properties.active_delegates.end());
-      BOOST_CHECK_EQUAL(new_properties.next_maintenance_time.sec_since_epoch(),
-                        maintenence_time.sec_since_epoch() + new_properties.maintenance_interval);
-      maintenence_time = new_properties.next_maintenance_time;
+      BOOST_CHECK_EQUAL(db.get_dynamic_global_properties().next_maintenance_time.sec_since_epoch(),
+                        maintenence_time.sec_since_epoch() + new_properties.parameters.maintenance_interval);
+      maintenence_time = db.get_dynamic_global_properties().next_maintenance_time;
       BOOST_CHECK_GT(maintenence_time.sec_since_epoch(), db.head_block_time().sec_since_epoch());
       BOOST_CHECK_GT(maintenence_time.sec_since_epoch(), bts::chain::now().sec_since_epoch());
-      BOOST_CHECK_EQUAL(db.get_global_properties().maximum_transaction_size, 3005);
       db.close();
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));

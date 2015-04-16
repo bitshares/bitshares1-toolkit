@@ -7,7 +7,6 @@
 void bts::witness_plugin::witness_plugin::configure(const bts::witness_plugin::witness_plugin::plugin_config& cfg)
 {
    _config = cfg;
-   wdump((chain::witness_id_type())(fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))));
 
    if( !_config.witness_keys.empty() )
       _block_production_task = fc::async([this]{block_production_loop();}, "Witness Block Production");
@@ -20,10 +19,11 @@ void bts::witness_plugin::witness_plugin::block_production_loop()
 {
    chain::database& db = database();
    std::set<chain::witness_id_type> witnesses;
+   const auto& global_parameters = db.get_global_properties().parameters;
 
    // Is there a head block within a block interval of now? If so, we're synced and can begin production.
    if( !_production_enabled &&
-       llabs((db.head_block_time() - chain::now()).to_seconds()) <= db.get_global_properties().block_interval )
+       llabs((db.head_block_time() - chain::now()).to_seconds()) <= global_parameters.block_interval )
       _production_enabled = true;
    idump((_production_enabled));
 
@@ -53,8 +53,9 @@ void bts::witness_plugin::witness_plugin::block_production_loop()
    }
 
    //Get next production time for *any* delegate
-   auto block_interval = db.get_global_properties().block_interval;
-   fc::time_point next_block_time = fc::time_point() + fc::seconds(((chain::now().sec_since_epoch()) / block_interval) * block_interval + block_interval);
+   auto block_interval = global_parameters.block_interval;
+   fc::time_point next_block_time = fc::time_point_sec() +
+         (chain::now().sec_since_epoch() / block_interval + 1) * block_interval;
 
    if( chain::ntp_time().valid() )
       next_block_time -= chain::ntp_error();

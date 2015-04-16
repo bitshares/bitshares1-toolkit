@@ -13,15 +13,6 @@ namespace bts { namespace chain {
          object_id_type do_apply( const delegate_create_operation& o );
    };
 
-   class delegate_update_evaluator : public evaluator<delegate_update_evaluator>
-   {
-      public:
-         typedef delegate_update_operation operation_type;
-
-         object_id_type do_evaluate( const delegate_update_operation& o );
-         object_id_type do_apply( const delegate_update_operation& o );
-   };
-
    class delegate_publish_feeds_evaluator : public evaluator<delegate_publish_feeds_evaluator>
    {
       public:

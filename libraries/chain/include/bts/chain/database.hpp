@@ -81,9 +81,10 @@ namespace bts { namespace chain {
 
          asset current_delegate_registration_fee()const;
 
-         const asset_object&           get_core_asset()const;
-         const global_property_object& get_global_properties()const;
-         const fee_schedule_type&      current_fee_schedule()const;
+         const asset_object&                    get_core_asset()const;
+         const global_property_object&          get_global_properties()const;
+         const dynamic_global_property_object&  get_dynamic_global_properties()const;
+         const fee_schedule_type&               current_fee_schedule()const;
 
          time_point_sec head_block_time()const;
          uint32_t       head_block_num()const;
@@ -154,7 +155,6 @@ namespace bts { namespace chain {
          ///@{
          void update_active_witnesses();
          void update_active_delegates();
-         void update_global_properties();
          void perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props);
          ///@}
          void create_block_summary(const signed_block& next_block);
