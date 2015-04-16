@@ -342,6 +342,8 @@ namespace bts { namespace chain {
     *
     *  @note the call_order_id is implied by the funding_account and assets involved. This implies that the assets must
     *  have appropriate asset_ids, even if the amount is zero.
+    *
+    *  @note this operation can be used to force a market order using the collateral without requiring outside funds.
     */
    struct call_order_update_operation
    {

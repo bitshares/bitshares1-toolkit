@@ -1883,6 +1883,16 @@ BOOST_AUTO_TEST_CASE( delegate_groups_test )
    assert( !"not implemented" );
 }
 
+/**
+ * This test demonstrates how using the call_order_update_operation to
+ * increase the maitenance collateral ratio above the current market 
+ * price, perhaps setting it to infiity.  
+ */
+BOOST_AUTO_TEST_CASE( cover_with_collateral_test )
+{
+   assert( !"not implemented" );
+}
+
 
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( margin_call_black_swan, 1 )
 BOOST_AUTO_TEST_CASE( margin_call_black_swan )

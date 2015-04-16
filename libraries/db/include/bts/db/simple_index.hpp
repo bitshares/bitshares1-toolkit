@@ -25,6 +25,7 @@ namespace bts { namespace db {
              _objects[instance].reset(new T);
              _objects[instance]->id = id;
              constructor( *_objects[instance] );
+             _objects[instance]->id = id; // just in case it changed
              use_next_id();
              return *_objects[instance];
          }
