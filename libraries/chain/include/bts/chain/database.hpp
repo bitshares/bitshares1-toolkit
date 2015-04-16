@@ -10,6 +10,7 @@
 #include <bts/db/object.hpp>
 #include <bts/db/level_map.hpp>
 #include <bts/db/level_pod_map.hpp>
+#include <bts/db/simple_index.hpp>
 #include <fc/signals.hpp>
 
 #include <fc/log/logger.hpp>
@@ -131,9 +132,10 @@ namespace bts { namespace chain {
          optional<undo_database::session>       _pending_block_session;
          vector< unique_ptr<op_evaluator> >     _operation_evaluators;
 
-         void update_global_dynamic_data( const signed_block& b );
-         void update_active_witnesses();
-         void update_global_properties();
+         template<class Content>
+         void shuffle_vector(vector<Content>& ids);
+         template<class ObjectType>
+         vector<object_id<ObjectType::space_id, ObjectType::type_id, ObjectType>> sort_votable_objects()const;
 
          void                  apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
          processed_transaction apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
@@ -142,6 +144,10 @@ namespace bts { namespace chain {
          ///Steps involved in applying a new block
          ///@{
          const witness_object& validate_block_header(uint32_t skip, const signed_block& next_block);
+         void update_global_dynamic_data( const signed_block& b );
+         void update_active_witnesses();
+         void update_active_delegates();
+         void update_global_properties();
          void update_signing_witness(const witness_object& signing_witness, const signed_block& new_block);
          void update_pending_block(const signed_block& next_block, uint8_t current_block_interval);
          void perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props);
@@ -174,5 +180,46 @@ namespace bts { namespace chain {
          vector<operation>                                 _applied_ops;
    };
 
-} }
+   template<class Content>
+   void database::shuffle_vector(vector<Content>& ids)
+   {
+      auto randvalue = dynamic_global_property_id_type()(*this).random;
+      for( uint32_t i = 0; i < ids.size(); ++i )
+      {
+         const auto rands_per_hash = sizeof(secret_hash_type) / sizeof(randvalue._hash[0]);
+         std::swap( ids[i], ids[ i + (randvalue._hash[i%rands_per_hash] % (ids.size()-i))] );
+         if( i % rands_per_hash == (rands_per_hash-1) )
+            randvalue = secret_hash_type::hash( randvalue );
+      }
+   }
 
+   template<class ObjectType>
+   vector<object_id<ObjectType::space_id, ObjectType::type_id, ObjectType>> database::sort_votable_objects() const
+   {
+      using ObjectIdType = object_id<ObjectType::space_id, ObjectType::type_id, ObjectType>;
+      const auto& all_objects = dynamic_cast<const simple_index<ObjectType>&>(get_index<ObjectType>());
+      vector<ObjectIdType> ids;
+      ids.reserve(all_objects.size());
+      std::transform(all_objects.begin(), all_objects.end(), std::back_inserter(ids), [](const ObjectType& w) {
+         return w.id;
+      });
+      std::sort( ids.begin(), ids.end(), [&]( ObjectIdType a, ObjectIdType b )->bool {
+         return a(*this).vote(*this).total_votes >
+               b(*this).vote(*this).total_votes;
+      });
+
+      uint64_t base_threshold = ids[9](*this).vote(*this).total_votes.value;
+      uint64_t threshold =  (base_threshold / 100) * 75;
+      uint32_t i = 10;
+
+      for( ; i < ids.size(); ++i )
+      {
+         if( ids[i](*this).vote(*this).total_votes < threshold ) break;
+         threshold = (base_threshold / (100) ) * (75 + i/(ids.size()/4));
+      }
+      ids.resize( i );
+
+      return ids;
+   }
+
+} }

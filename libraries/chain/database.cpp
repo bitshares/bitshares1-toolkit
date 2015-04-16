@@ -409,7 +409,7 @@ time_point database::get_next_generation_time( witness_id_type del_id )const
    FC_ASSERT( !"Not an Active Witness" );
 }
 
-std::pair<fc::time_point, witness_id_type> bts::chain::database::get_next_generation_time(const set<bts::chain::witness_id_type>& witnesses) const
+std::pair<fc::time_point, witness_id_type> database::get_next_generation_time(const set<bts::chain::witness_id_type>& witnesses) const
 {
    std::pair<fc::time_point, witness_id_type> result;
    result.first = fc::time_point::maximum();
@@ -452,37 +452,23 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
 
 void database::update_active_witnesses()
 {
-    vector<witness_id_type> ids( dynamic_cast<simple_index<witness_object>&>(get_mutable_index<witness_object>()).size() );
-    for( uint32_t i = 0; i < ids.size(); ++i ) ids[i] = witness_id_type(i);
-    std::sort( ids.begin(), ids.end(), [&]( witness_id_type a,witness_id_type b )->bool {
-       return a(*this).vote(*this).total_votes >
-              b(*this).vote(*this).total_votes;
-    });
+   auto ids = sort_votable_objects<witness_object>();
+   shuffle_vector(ids);
 
-    uint64_t base_threshold = ids[9](*this).vote(*this).total_votes.value;
-    uint64_t threshold =  (base_threshold / 100) * 75;
-    uint32_t i = 10;
+   modify( get_global_properties(), [&]( global_property_object& gp ){
+      gp.active_witnesses = std::move(ids);
+   });
+}
 
-    for( ; i < ids.size(); ++i )
-    {
-       if( ids[i](*this).vote(*this).total_votes < threshold ) break;
-       threshold = (base_threshold / (100) ) * (75 + i/(ids.size()/4));
-    }
-    ids.resize( i );
+void database::update_active_delegates()
+{
+   auto ids = sort_votable_objects<delegate_object>();
+   shuffle_vector(ids);
 
-    // shuffle ids
-    auto randvalue = dynamic_global_property_id_type()(*this).random;
-    for( uint32_t i = 0; i < ids.size(); ++i )
-    {
-       const auto rands_per_hash = sizeof(secret_hash_type) / sizeof(randvalue._hash[0]);
-       std::swap( ids[i], ids[ i + (randvalue._hash[i%rands_per_hash] % (ids.size()-i))] );
-       if( i % rands_per_hash == (rands_per_hash-1) )
-          randvalue = secret_hash_type::hash( randvalue );
-    }
+   modify( get_global_properties(), [&]( global_property_object& gp ){
+      gp.active_delegates = std::move(ids);
+   });
 
-    modify( get_global_properties(), [&]( global_property_object& gp ){
-       gp.active_witnesses = std::move(ids);
-    });
 }
 
 void database::update_global_properties()
@@ -925,6 +911,7 @@ void database::update_pending_block(const signed_block& next_block, uint8_t curr
 void database::perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props)
 {
    update_global_properties();
+   update_active_delegates();
 
    auto new_block_interval = global_props.block_interval;
 
