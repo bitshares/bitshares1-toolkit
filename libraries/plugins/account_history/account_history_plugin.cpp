@@ -103,11 +103,7 @@ struct operation_get_impacted_accounts
 
    }
 
-   void operator()( const delegate_update_operation& o )const {
-
-   }
-
-   void operator()( const delegate_withdraw_pay_operation& o )const {
+   void operator()( const witness_withdraw_pay_operation& o )const {
 
    }
 
