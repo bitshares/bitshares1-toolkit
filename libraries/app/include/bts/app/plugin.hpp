@@ -9,6 +9,9 @@ class abstract_plugin
    public:
       virtual ~abstract_plugin(){}
       virtual const std::string& plugin_name()const = 0;
+
+      /** called after the database has been fully loaded */
+      virtual void init(){}
 };
 
 template<class P>

@@ -6,8 +6,12 @@
 
 #include <fc/thread/thread.hpp>
 
+#include <bts/account_history/account_history_plugin.hpp>
+
 #define BOOST_TEST_MODULE Test Application
 #include <boost/test/included/unit_test.hpp>
+
+using namespace bts;
 
 BOOST_AUTO_TEST_CASE( two_node_network )
 {
@@ -18,11 +22,15 @@ BOOST_AUTO_TEST_CASE( two_node_network )
 
       start_simulated_time(fc::time_point::now());
 
-      bts::app::application app(app_dir.path());
+      bts::app::application app;
+      app.register_plugin<bts::account_history::account_history_plugin>();
+      app.configure(app_dir.path());
       app.configuration()["daemon"] = bts::app::application::daemon_configuration({fc::ip::endpoint::from_string("127.0.0.1:3939")});
       app.apply_configuration();
 
-      bts::app::application app2(app2_dir.path());
+      bts::app::application app2;
+      app2.register_plugin<account_history::account_history_plugin>();
+      app2.configure(app2_dir.path());
       app2.configuration()["daemon"] = bts::app::application::daemon_configuration({fc::ip::endpoint::from_string("127.0.0.1:4040"),
                                                                                     {fc::ip::endpoint::from_string("127.0.0.1:3939")}});
       app2.apply_configuration();

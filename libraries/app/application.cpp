@@ -1,4 +1,5 @@
 #include <bts/app/application.hpp>
+#include <bts/app/plugin.hpp>
 #include <bts/app/api.hpp>
 
 #include <bts/net/core_messages.hpp>
@@ -74,11 +75,15 @@ namespace detail {
          fc::json::save_to_file(_configuration, _data_dir/"config.json");
       }
 
-      application_impl(application* self, fc::path data_dir)
+      application_impl(application* self)
          : _self(self),
-           _data_dir(data_dir),
            _chain_db(std::make_shared<chain::database>())
       {
+      }
+
+      void configure( const fc::path& data_dir )
+      {
+         _data_dir = data_dir,
          _chain_db->open(data_dir / "blockchain");
          if( fc::exists(data_dir / "config.json") ) {
             try {
@@ -90,6 +95,8 @@ namespace detail {
          } else {
             initialize_configuration();
          }
+         for( const auto& p : _plugins )
+            p.second->init();
 
          auto daemon_config = _configuration["daemon"].as<application::daemon_configuration>();
          reset_p2p_node(data_dir, daemon_config);
@@ -323,8 +330,8 @@ namespace detail {
 
 }
 
-application::application(fc::path data_dir)
-   : my(new detail::application_impl(this,data_dir))
+application::application()
+   : my(new detail::application_impl(this))
 {}
 
 application::~application()
@@ -339,6 +346,11 @@ application::~application()
       ilog("Closing chain database");
       my->_chain_db->close();
    }
+}
+
+void application::configure( const fc::path& data_dir )
+{
+   my->configure( data_dir );
 }
 
 std::shared_ptr<abstract_plugin> application::get_plugin(const string& name) const

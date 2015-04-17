@@ -11,7 +11,8 @@ using namespace bts;
 
 int main(int argc, char** argv) {
    try {
-      app::application node(fc::current_path()/"witness_node_data_dir");
+      app::application node;
+      node.configure(fc::current_path()/"witness_node_data_dir");
       auto witness_plug = node.register_plugin<witness_plugin::witness_plugin>();
       if( argc > 1 )
          witness_plug->set_block_production(true);
