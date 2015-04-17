@@ -81,6 +81,7 @@ BOOST_AUTO_TEST_CASE( child_account )
       const auto& child_key = register_key(child_private_key.get_public_key());
       const auto& nathan_key = register_key(nathan_private_key.get_public_key());
       const account_object& nathan = get_account("nathan");
+      const account_object& root = create_account("root");
 
       db.modify(nathan, [nathan_key](account_object& a) {
          a.owner = authority(1, nathan_key.get_id(), 1);
@@ -88,6 +89,7 @@ BOOST_AUTO_TEST_CASE( child_account )
       });
 
       auto op = make_account("nathan/child");
+      op.fee_paying_account = root.id;
       op.owner = authority(1, child_key.get_id(), 1);
       op.active = authority(1, child_key.get_id(), 1);
       trx.operations.emplace_back(op);
@@ -1791,23 +1793,19 @@ BOOST_AUTO_TEST_CASE( delegate_withdraw_pay_test )
    assert( !"not implemented" );
 }
 
-BOOST_AUTO_TEST_CASE( script_operation )
-{
-   assert( !"not implemented" );
-}
-
 /**
  *  To have a secure random number we need to ensure that the same
  *  delegate does not get to produce two blocks in a row.  There is
  *  always a chance that the last delegate of one round will be the
- *  first delegate of the next round.  
+ *  first delegate of the next round.
  *
  *  This means that when we shuffle delegates we need to make sure
  *  that there is at least N/2 delegates between consecutive turns
- *  of the same delegate.    This means that durring the random 
+ *  of the same delegate.    This means that durring the random
  *  shuffle we need to restrict the placement of delegates to maintain
- *  this invariant.  
+ *  this invariant.
  */
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( delegate_groups_test, 1 )
 BOOST_AUTO_TEST_CASE( delegate_groups_test )
 {
    assert( !"not implemented" );
@@ -1815,14 +1813,14 @@ BOOST_AUTO_TEST_CASE( delegate_groups_test )
 
 /**
  * This test demonstrates how using the call_order_update_operation to
- * increase the maitenance collateral ratio above the current market 
- * price, perhaps setting it to infiity.  
+ * increase the maintenance collateral ratio above the current market
+ * price, perhaps setting it to infinity.
  */
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( cover_with_collateral_test, 1 )
 BOOST_AUTO_TEST_CASE( cover_with_collateral_test )
 {
    assert( !"not implemented" );
 }
-
 
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( margin_call_black_swan, 1 )
 BOOST_AUTO_TEST_CASE( margin_call_black_swan )

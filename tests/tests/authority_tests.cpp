@@ -269,9 +269,11 @@ BOOST_AUTO_TEST_CASE( proposed_single_account )
       const account_object& nathan = get_account("nathan");
       const asset_object& core = asset_id_type()(db);
 
+      transfer(account_id_type()(db), account_id_type(1)(db), core.amount(1000000));
+
       //Following any_two_of_three, nathan's active authority is satisfied by any two of {key1,key2,key3}
-      proposal_create_operation op = {account_id_type(), asset(),
-                                      {{transfer_operation{nathan.id, account_id_type(), core.amount(100)}}},
+      proposal_create_operation op = {account_id_type(1), asset(),
+                                      {{transfer_operation{nathan.id, account_id_type(1), core.amount(100)}}},
                                       db.head_block_time() + fc::days(1)};
       asset nathan_start_balance = nathan.balances(db).get_balance(core.id);
       {
@@ -279,7 +281,7 @@ BOOST_AUTO_TEST_CASE( proposed_single_account )
          op.get_required_auth(active_set, owner_set);
          BOOST_CHECK_EQUAL(active_set.size(), 1);
          BOOST_CHECK_EQUAL(owner_set.size(), 0);
-         BOOST_CHECK(*active_set.begin() == account_id_type());
+         BOOST_CHECK(*active_set.begin() == account_id_type(1));
 
          active_set.clear();
          op.proposed_ops.front().get_required_auth(active_set, owner_set);
@@ -299,20 +301,16 @@ BOOST_AUTO_TEST_CASE( proposed_single_account )
       BOOST_CHECK_EQUAL(proposal.available_owner_approvals.size(), 0);
       BOOST_CHECK(*proposal.required_active_approvals.begin() == nathan.id);
 
-      trx.operations = {proposal_update_operation{account_id_type(), asset(), proposal.id,{nathan.id},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<account_id_type>{}}};
+      trx.operations = {proposal_update_operation{account_id_type(), asset(), proposal.id,{nathan.id},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<key_id_type>{},flat_set<key_id_type>{}}};
       trx.signatures = {genesis_key.sign_compact(trx.digest())};
       //Genesis may not add nathan's approval.
       BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
-      trx.operations = {proposal_update_operation{account_id_type(), asset(), proposal.id,{account_id_type()},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<account_id_type>{}}};
+      trx.operations = {proposal_update_operation{account_id_type(), asset(), proposal.id,{account_id_type()},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<key_id_type>{},flat_set<key_id_type>{}}};
       trx.signatures = {genesis_key.sign_compact(trx.digest())};
       //Genesis has no stake in the transaction.
       BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
-      trx.operations = {proposal_update_operation{nathan.id, asset(), proposal.id,flat_set<account_id_type>{},flat_set<account_id_type>{},{nathan.id},flat_set<account_id_type>{}}};
-      trx.signatures = {nathan_key1.sign_compact(trx.digest()), nathan_key2.sign_compact(trx.digest())};
-      //This transaction doesn't need nathan's owner authority.
-      BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
 
-      trx.operations = {proposal_update_operation{nathan.id, asset(), proposal.id,{nathan.id},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<account_id_type>{}}};
+      trx.operations = {proposal_update_operation{nathan.id, asset(), proposal.id,{nathan.id},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<key_id_type>{},flat_set<key_id_type>{}}};
       trx.signatures = {nathan_key3.sign_compact(trx.digest()), nathan_key2.sign_compact(trx.digest())};
       BOOST_CHECK_EQUAL(get_balance(nathan, core), nathan_start_balance.amount.value);
       db.push_transaction(trx);
@@ -322,5 +320,81 @@ BOOST_AUTO_TEST_CASE( proposed_single_account )
       throw;
    }
 }
+
+/// Verify that genesis authority cannot be invoked in a normal transaction
+BOOST_AUTO_TEST_CASE( genesis_authority )
+{ try {
+   fc::ecc::private_key nathan_key = fc::ecc::private_key::generate();
+   fc::ecc::private_key genesis_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
+   const account_object nathan = create_account("nathan", register_key(nathan_key.get_public_key()).id);
+   const auto& global_params = db.get_global_properties().parameters;
+
+   generate_block();
+
+   // Signatures are for suckers.
+   db.modify(db.get_global_properties(), [](global_property_object& p) {
+      // Turn the review period WAY down, so it doesn't take long to produce blocks to that point in simulated time.
+      p.parameters.genesis_proposal_review_period = fc::days(1).to_seconds();
+   });
+
+   trx.operations.push_back(transfer_operation({account_id_type(), nathan.id, asset(100000)}));
+   sign(trx, genesis_key);
+   BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
+
+   auto sign = [&] { trx.signatures.clear(); trx.sign(nathan_key); };
+
+   proposal_create_operation pop;
+   pop.proposed_ops.push_back({trx.operations.front()});
+   pop.expiration_time = db.head_block_time() + global_params.genesis_proposal_review_period*2;
+   pop.fee_paying_account = nathan.id;
+   trx.operations.back() = pop;
+   sign();
+
+   // The review period isn't set yet. Make sure it throws.
+   BOOST_REQUIRE_THROW( db.push_transaction(trx), fc::exception );
+   pop.review_period_seconds = global_params.genesis_proposal_review_period / 2;
+   trx.operations.back() = pop;
+   sign();
+   // The review period is too short. Make sure it throws.
+   BOOST_REQUIRE_THROW( db.push_transaction(trx), fc::exception );
+   pop.review_period_seconds = global_params.genesis_proposal_review_period;
+   trx.operations.back() = pop;
+   sign();
+   proposal_object prop = db.get<proposal_object>(db.push_transaction(trx).operation_results.front().get<object_id_type>());
+   BOOST_REQUIRE(db.find_object(prop.id));
+
+   BOOST_CHECK(prop.expiration_time == pop.expiration_time);
+   BOOST_CHECK(prop.review_period_time && *prop.review_period_time == pop.expiration_time - *pop.review_period_seconds);
+   BOOST_CHECK(prop.proposed_transaction.operations.size() == 1);
+   BOOST_CHECK_EQUAL(get_balance(nathan, asset_id_type()(db)), 0);
+   BOOST_CHECK(!db.get<proposal_object>(prop.id).is_authorized_to_execute(&db));
+
+   generate_block();
+   BOOST_REQUIRE(db.find_object(prop.id));
+   BOOST_CHECK_EQUAL(get_balance(nathan, asset_id_type()(db)), 0);
+   BOOST_CHECK(!db.get<proposal_object>(prop.id).is_authorized_to_execute(&db));
+   trx.operations.clear();
+   trx.signatures.clear();
+   proposal_update_operation uop;
+   uop.fee_paying_account = account_id_type(1);
+   uop.proposal = prop.id;
+   uop.key_approvals_to_add.emplace();
+   trx.operations.push_back(uop);
+   trx.sign(genesis_key);
+   db.push_transaction(trx);
+   BOOST_CHECK_EQUAL(get_balance(nathan, asset_id_type()(db)), 0);
+   BOOST_CHECK(db.get<proposal_object>(prop.id).is_authorized_to_execute(&db));
+
+   generate_blocks(*prop.review_period_time);
+   uop.key_approvals_to_add.clear();
+   uop.active_approvals_to_add.insert(account_id_type(1));
+   trx.operations.back() = uop;
+   trx.sign(genesis_key);
+   // Should throw because the transaction is now in review.
+   BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
+
+   generate_blocks(prop.expiration_time);
+   BOOST_CHECK_EQUAL(get_balance(nathan, asset_id_type()(db)), 100000);
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

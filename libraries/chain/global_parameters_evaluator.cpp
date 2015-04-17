@@ -1,10 +1,13 @@
 #include <bts/chain/global_parameters_evaluator.hpp>
+#include <bts/chain/transaction_evaluation_state.hpp>
 #include <bts/chain/database.hpp>
 
 namespace bts { namespace chain {
 
 object_id_type global_parameters_update_evaluator::do_evaluate(const global_parameters_update_operation& o)
 {
+   FC_ASSERT(trx_state->_is_proposed_trx);
+
    auto fee_paid = pay_fee(account_id_type(), o.fee);
    FC_ASSERT(fee_paid >= o.calculate_fee(db().current_fee_schedule()));
 

@@ -13,7 +13,7 @@ namespace bts { namespace db {
     *  means to find and update information.
     *
     *  Objects are assigned a unique and sequential object ID by the database within
-    *  the id_space defined in the object.  
+    *  the id_space defined in the object.
     *
     *  All objects must be serializable via FC_REFLECT() and their content must be
     *  faithfully restored.   Additionally all objects must be copy-constructable and

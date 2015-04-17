@@ -262,6 +262,7 @@ namespace bts { namespace chain {
       uint32_t                maximum_undo_history                = BTS_DEFAULT_MAX_UNDO_HISTORY;
       uint32_t                maximum_time_until_expiration       = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
       uint32_t                maximum_proposal_lifetime           = BTS_DEFAULT_MAX_PROPOSAL_LIFETIME_SEC;
+      uint32_t                genesis_proposal_review_period      = BTS_DEFAULT_GENESIS_PROPOSAL_REVIEW_PERIOD_SEC;
       uint8_t                 maximum_asset_whitelist_authorities = BTS_DEFAULT_MAX_ASSET_WHITELIST_AUTHORITIES;
 
       void validate()const
@@ -278,6 +279,8 @@ namespace bts { namespace chain {
                     "Block size limit is too low" );
          FC_ASSERT( maximum_time_until_expiration > block_interval,
                     "Maximum transaction expiration time must be greater than a block interval" );
+         FC_ASSERT( maximum_proposal_lifetime - genesis_proposal_review_period > block_interval,
+                    "Genesis proposal review period must be less than the maximum proposal lifetime" );
          for( auto fe : current_fees.fees ) FC_ASSERT( fe >= 0 );
       }
    };

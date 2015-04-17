@@ -36,5 +36,6 @@ namespace bts { namespace chain {
          transaction* _trx;
          database*    _db = nullptr;
          bool         _skip_signature_check = false;
+         bool         _is_proposed_trx = false;
    };
 } } // namespace bts::chain
