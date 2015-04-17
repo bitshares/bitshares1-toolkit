@@ -331,6 +331,12 @@ BOOST_AUTO_TEST_CASE( genesis_authority )
 
    generate_block();
 
+   // Signatures are for suckers.
+   db.modify(db.get_global_properties(), [](global_property_object& p) {
+      // Turn the review period WAY down, so it doesn't take long to produce blocks to that point in simulated time.
+      p.parameters.genesis_proposal_review_period = fc::days(1).to_seconds();
+   });
+
    trx.operations.push_back(transfer_operation({account_id_type(), nathan.id, asset(100000)}));
    sign(trx, genesis_key);
    BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
@@ -339,7 +345,7 @@ BOOST_AUTO_TEST_CASE( genesis_authority )
 
    proposal_create_operation pop;
    pop.proposed_ops.push_back({trx.operations.front()});
-   pop.expiration_time = db.head_block_time() + global_params.maximum_proposal_lifetime;
+   pop.expiration_time = db.head_block_time() + global_params.genesis_proposal_review_period*2;
    pop.fee_paying_account = nathan.id;
    trx.operations.back() = pop;
    sign();
@@ -358,9 +364,10 @@ BOOST_AUTO_TEST_CASE( genesis_authority )
    BOOST_REQUIRE(db.find_object(prop.id));
 
    BOOST_CHECK(prop.expiration_time == pop.expiration_time);
-   BOOST_CHECK(prop.review_period_time == pop.expiration_time - *pop.review_period_seconds);
+   BOOST_CHECK(prop.review_period_time && *prop.review_period_time == pop.expiration_time - *pop.review_period_seconds);
    BOOST_CHECK(prop.proposed_transaction.operations.size() == 1);
    BOOST_CHECK_EQUAL(get_balance(nathan, asset_id_type()(db)), 0);
+   BOOST_CHECK(!db.get<proposal_object>(prop.id).is_authorized_to_execute(&db));
 
    generate_block();
    BOOST_REQUIRE(db.find_object(prop.id));
@@ -378,6 +385,16 @@ BOOST_AUTO_TEST_CASE( genesis_authority )
    BOOST_CHECK_EQUAL(get_balance(nathan, asset_id_type()(db)), 0);
    BOOST_CHECK(db.get<proposal_object>(prop.id).is_authorized_to_execute(&db));
 
+   generate_blocks(*prop.review_period_time);
+   uop.key_approvals_to_add.clear();
+   uop.active_approvals_to_add.insert(account_id_type(1));
+   trx.operations.back() = uop;
+   trx.sign(genesis_key);
+   // Should throw because the transaction is now in review.
+   BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
+
+   generate_blocks(prop.expiration_time);
+   BOOST_CHECK_EQUAL(get_balance(nathan, asset_id_type()(db)), 100000);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

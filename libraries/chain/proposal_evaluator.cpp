@@ -80,7 +80,8 @@ object_id_type proposal_update_evaluator::do_evaluate(const proposal_update_oper
    for( account_id_type id : o.owner_approvals_to_add )
       FC_ASSERT( trx_state->check_authority(&id(d), authority::owner) );
    for( key_id_type id : o.key_approvals_to_add )
-      FC_ASSERT( trx_state->signed_by.find(id(d).key_address()) != trx_state->signed_by.end() );
+      FC_ASSERT( trx_state->signed_by.find(id(d).key_address()) != trx_state->signed_by.end()
+                 || trx_state->_skip_signature_check );
    for( account_id_type id : o.active_approvals_to_remove )
    {
       FC_ASSERT( _proposal->available_active_approvals.find(id) != _proposal->available_active_approvals.end(),
@@ -94,7 +95,8 @@ object_id_type proposal_update_evaluator::do_evaluate(const proposal_update_oper
       FC_ASSERT( trx_state->check_authority(&id(d), authority::owner) );
    }
    for( key_id_type id : o.key_approvals_to_remove )
-      FC_ASSERT( trx_state->signed_by.find(id(d).key_address()) != trx_state->signed_by.end() );
+      FC_ASSERT( trx_state->signed_by.find(id(d).key_address()) != trx_state->signed_by.end()
+                 || trx_state->_skip_signature_check );
 
    return object_id_type();
 }

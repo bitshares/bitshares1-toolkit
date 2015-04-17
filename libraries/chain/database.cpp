@@ -661,14 +661,14 @@ processed_transaction database::push_proposal(const proposal_object& proposal)
    eval_state._is_proposed_trx = true;
 
    //Inject the approving authorities into the transaction eval state
-   std::transform(proposal.available_active_approvals.begin(),
-                  proposal.available_active_approvals.end(),
+   std::transform(proposal.required_active_approvals.begin(),
+                  proposal.required_active_approvals.end(),
                   std::inserter(eval_state.approved_by, eval_state.approved_by.begin()),
                   []( account_id_type id ) {
                      return std::make_pair(id, authority::active);
                   });
-   std::transform(proposal.available_owner_approvals.begin(),
-                  proposal.available_owner_approvals.end(),
+   std::transform(proposal.required_owner_approvals.begin(),
+                  proposal.required_owner_approvals.end(),
                   std::inserter(eval_state.approved_by, eval_state.approved_by.begin()),
                   []( account_id_type id ) {
                      return std::make_pair(id, authority::owner);
@@ -959,15 +959,15 @@ void database::clear_expired_proposals()
       const proposal_object& proposal = *proposal_expiration_index.begin();
       processed_transaction result;
       try {
-         if( proposal.required_active_approvals.empty() && proposal.required_owner_approvals.empty() )
+         if( proposal.is_authorized_to_execute(this) )
          {
             result = push_proposal(proposal);
             //TODO: Do something with result so plugins can process it.
             continue;
          }
       } catch( const fc::exception& e ) {
-         elog("Failed to apply proposed transaction on its expiration. Deleting it.",
-              ("proposal", proposal));
+         elog("Failed to apply proposed transaction on its expiration. Deleting it.\n${proposal}\n${error}",
+              ("proposal", proposal)("error", e.to_detail_string()));
       }
       remove(proposal);
    }
