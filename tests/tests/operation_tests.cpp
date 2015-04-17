@@ -126,13 +126,12 @@ BOOST_AUTO_TEST_CASE( update_account )
       trx.operations.emplace_back(key_create_operation({nathan.id, asset(), address(nathan_new_key.get_public_key())}));
       db.push_transaction(trx, ~0);
 
-      account_update_operation op = {
-         nathan.id, asset(),
-         authority(2, key_id, 1, key_id_type(), 1),
-         authority(2, key_id, 1, key_id_type(), 1),
-         key_id, optional<key_id_type>(),
-         flat_set<vote_tally_id_type>({active_delegates[0](db).vote, active_delegates[5](db).vote})
-      };
+      account_update_operation op;
+      op.account = nathan.id;
+      op.owner = authority(2, key_id, 1, key_id_type(), 1);
+      op.active = authority(2, key_id, 1, key_id_type(), 1);
+      op.voting_key = key_id;
+      op.vote = flat_set<vote_tally_id_type>({active_delegates[0](db).vote, active_delegates[5](db).vote});
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
 

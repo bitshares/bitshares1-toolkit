@@ -43,7 +43,7 @@ BOOST_AUTO_TEST_CASE( two_node_network )
       fc::ecc::private_key nathan_key = fc::ecc::private_key::generate();
       fc::ecc::private_key genesis_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
       bts::chain::signed_transaction trx;
-      trx.operations.push_back(key_create_operation({account_id_type(), asset(), public_key_type(nathan_key.get_public_key())}));
+      trx.operations.push_back(key_create_operation({account_id_type(1), asset(), public_key_type(nathan_key.get_public_key())}));
       trx.set_expiration(app2.chain_database()->head_block_id());
       trx.validate();
       trx.signatures.push_back(genesis_key.sign_compact(trx.digest()));
