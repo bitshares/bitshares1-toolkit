@@ -34,8 +34,8 @@ namespace bts { namespace chain {
       string          name;
       authority       owner;
       authority       active;
-      key_id_type     voting_key;
-      key_id_type     memo_key;
+      object_id_type  voting_key;
+      object_id_type  memo_key;
 
       flat_set<vote_tally_id_type> vote;
 
@@ -92,8 +92,8 @@ namespace bts { namespace chain {
       asset                                   fee;
       optional<authority>                     owner;
       optional<authority>                     active;
-      optional<key_id_type>                   voting_key;
-      optional<key_id_type>                   memo_key;
+      optional<object_id_type>                voting_key;
+      optional<object_id_type>                memo_key;
       optional<flat_set<vote_tally_id_type>>  vote;
 
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>& owner_auth_set)const;
