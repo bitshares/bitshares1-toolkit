@@ -278,16 +278,13 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          object_id_type key_id(relative_protocol_ids, 0, 0);
          authority account_authority;
          account_authority.add_authority(key_id_type(key_id), 1);
-         trx.operations.emplace_back(account_create_operation({
-                                                                 genesis_account.id,
-                                                                 asset(),
-                                                                 string(),
-                                                                 account_authority,
-                                                                 account_authority,
-                                                                 key_id,
-                                                                 key_id,
-                                                                 flat_set<vote_tally_id_type>()
-                                                              }));
+         account_create_operation cop;
+         cop.fee_paying_account = account_id_type(1);
+         cop.active = account_authority;
+         cop.owner = account_authority;
+         cop.voting_key = key_id;
+         cop.memo_key = key_id;
+         trx.operations.push_back(cop);
          trx.validate();
          auto ptrx = apply_transaction(trx, ~0);
          trx = signed_transaction();
