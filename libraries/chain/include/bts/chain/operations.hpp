@@ -458,6 +458,7 @@ namespace bts { namespace chain {
        asset              fee;
        vector<op_wrapper> proposed_ops;
        time_point_sec     expiration_time;
+       optional<uint32_t> review_period_seconds;
 
       void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
       void       validate()const;
@@ -490,6 +491,8 @@ namespace bts { namespace chain {
       flat_set<account_id_type>  active_approvals_to_remove;
       flat_set<account_id_type>  owner_approvals_to_add;
       flat_set<account_id_type>  owner_approvals_to_remove;
+      flat_set<key_id_type>      key_approvals_to_add;
+      flat_set<key_id_type>      key_approvals_to_remove;
 
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& owner_auth_set)const;
       void       validate()const;
@@ -718,9 +721,10 @@ FC_REFLECT( bts::chain::asset_update_operation,
 FC_REFLECT( bts::chain::asset_issue_operation,
             (issuer)(asset_to_issue)(fee)(issue_to_account) )
 
-FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(proposed_ops) )
+FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(proposed_ops)(review_period_seconds) )
 FC_REFLECT( bts::chain::proposal_update_operation, (fee_paying_account)(fee)(proposal)
-            (active_approvals_to_add)(active_approvals_to_remove)(owner_approvals_to_add)(owner_approvals_to_remove) )
+            (active_approvals_to_add)(active_approvals_to_remove)(owner_approvals_to_add)(owner_approvals_to_remove)
+            (key_approvals_to_add)(key_approvals_to_remove) )
 FC_REFLECT( bts::chain::proposal_delete_operation, (fee_paying_account)(using_owner_authority)(fee)(proposal) )
 FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (from_account)(asset_id)(amount)(fee) );
 
