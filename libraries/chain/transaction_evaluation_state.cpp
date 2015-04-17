@@ -10,6 +10,7 @@ namespace bts { namespace chain {
    bool transaction_evaluation_state::check_authority( const account_object* account, authority::classification auth_class, int depth )
    {
       FC_ASSERT( account != nullptr );
+      FC_ASSERT( account->id.instance() != 0 || _is_proposed_trx || _skip_signature_check );
 
       if( _skip_signature_check || approved_by.find(make_pair(account->id, auth_class)) != approved_by.end() )
          return true;

@@ -81,6 +81,7 @@ BOOST_AUTO_TEST_CASE( child_account )
       const auto& child_key = register_key(child_private_key.get_public_key());
       const auto& nathan_key = register_key(nathan_private_key.get_public_key());
       const account_object& nathan = get_account("nathan");
+      const account_object& root = create_account("root");
 
       db.modify(nathan, [nathan_key](account_object& a) {
          a.owner = authority(1, nathan_key.get_id(), 1);
@@ -88,6 +89,7 @@ BOOST_AUTO_TEST_CASE( child_account )
       });
 
       auto op = make_account("nathan/child");
+      op.fee_paying_account = root.id;
       op.owner = authority(1, child_key.get_id(), 1);
       op.active = authority(1, child_key.get_id(), 1);
       trx.operations.emplace_back(op);

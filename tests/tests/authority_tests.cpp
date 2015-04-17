@@ -269,9 +269,11 @@ BOOST_AUTO_TEST_CASE( proposed_single_account )
       const account_object& nathan = get_account("nathan");
       const asset_object& core = asset_id_type()(db);
 
+      transfer(account_id_type()(db), account_id_type(1)(db), core.amount(1000000));
+
       //Following any_two_of_three, nathan's active authority is satisfied by any two of {key1,key2,key3}
-      proposal_create_operation op = {account_id_type(), asset(),
-                                      {{transfer_operation{nathan.id, account_id_type(), core.amount(100)}}},
+      proposal_create_operation op = {account_id_type(1), asset(),
+                                      {{transfer_operation{nathan.id, account_id_type(1), core.amount(100)}}},
                                       db.head_block_time() + fc::days(1)};
       asset nathan_start_balance = nathan.balances(db).get_balance(core.id);
       {
@@ -279,7 +281,7 @@ BOOST_AUTO_TEST_CASE( proposed_single_account )
          op.get_required_auth(active_set, owner_set);
          BOOST_CHECK_EQUAL(active_set.size(), 1);
          BOOST_CHECK_EQUAL(owner_set.size(), 0);
-         BOOST_CHECK(*active_set.begin() == account_id_type());
+         BOOST_CHECK(*active_set.begin() == account_id_type(1));
 
          active_set.clear();
          op.proposed_ops.front().get_required_auth(active_set, owner_set);
@@ -322,5 +324,15 @@ BOOST_AUTO_TEST_CASE( proposed_single_account )
       throw;
    }
 }
+
+/// Verify that genesis authority cannot be invoked in a normal transaction
+BOOST_AUTO_TEST_CASE( genesis_authority )
+{ try {
+   const account_object& nathan = create_account("nathan");
+
+   trx.operations.push_back(transfer_operation({account_id_type(), nathan.id, asset(100000)}));
+   sign(trx, fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis"))));
+   BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

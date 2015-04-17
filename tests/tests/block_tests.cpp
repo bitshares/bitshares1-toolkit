@@ -163,10 +163,22 @@ BOOST_AUTO_TEST_CASE( undo_pending )
          auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
          const bts::db::index& account_idx = db.get_index(protocol_ids, account_object_type);
 
+         {
+            signed_transaction trx;
+            trx.set_expiration(db.head_block_id());
+            trx.operations.push_back(transfer_operation({account_id_type(), account_id_type(1), asset(10000000)}));
+            db.push_transaction(trx, ~0);
+
+            auto aw = db.get_global_properties().active_witnesses;
+            advance_simulated_time_to( db.get_next_generation_time(  aw[db.head_block_num()%aw.size()] ) );
+            auto b =  db.generate_block( delegate_priv_key, aw[db.head_block_num()%aw.size()], ~0 );
+         }
+
          signed_transaction trx;
          trx.relative_expiration = 1000;
          account_id_type nathan_id = account_idx.get_next_id();
          account_create_operation cop;
+         cop.fee_paying_account = account_id_type(1);
          cop.name = "nathan";
          trx.operations.push_back(cop);
          trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
@@ -180,12 +192,12 @@ BOOST_AUTO_TEST_CASE( undo_pending )
 
          trx = decltype(trx)();
          trx.relative_expiration = 1000;
-         trx.operations.push_back(transfer_operation({account_id_type(), nathan_id, asset(5000), asset(1)}));
+         trx.operations.push_back(transfer_operation({account_id_type(1), nathan_id, asset(5000), asset(1)}));
          trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
          db.push_transaction(trx);
          trx = decltype(trx)();
          trx.relative_expiration = 1001;
-         trx.operations.push_back(transfer_operation({account_id_type(), nathan_id, asset(5000), asset(1)}));
+         trx.operations.push_back(transfer_operation({account_id_type(1), nathan_id, asset(5000), asset(1)}));
          trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
          db.push_transaction(trx);
 
@@ -217,6 +229,7 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
       trx.relative_expiration = 1000;
       account_id_type nathan_id = account_idx.get_next_id();
       account_create_operation cop;
+      cop.fee_paying_account = account_id_type(1);
       cop.name = "nathan";
       trx.operations.push_back(cop);
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
@@ -264,6 +277,8 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
       db1.open(dir1.path());
       db2.open(dir2.path());
 
+      auto skip_sigs = database::skip_transaction_signatures;
+
       start_simulated_time(bts::chain::now());
       auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
       const bts::db::index& account_idx = db1.get_index(protocol_ids, account_object_type);
@@ -275,23 +290,23 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
       cop.name = "nathan";
       trx.operations.push_back(cop);
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
-      db1.push_transaction(trx);
+      db1.push_transaction(trx, skip_sigs);
 
       trx = decltype(trx)();
       trx.relative_expiration = 1000;
       trx.operations.push_back(transfer_operation({account_id_type(), nathan_id, asset(500)}));
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
-      db1.push_transaction(trx);
+      db1.push_transaction(trx, skip_sigs);
 
-      BOOST_CHECK_THROW(db1.push_transaction(trx), fc::exception);
+      BOOST_CHECK_THROW(db1.push_transaction(trx, skip_sigs), fc::exception);
 
       auto aw = db1.get_global_properties().active_witnesses;
       advance_simulated_time_to( db1.get_next_generation_time(  aw[db1.head_block_num()%aw.size()] ) );
-      auto b =  db1.generate_block( delegate_priv_key, aw[db1.head_block_num()%aw.size()] );
-      db2.push_block(b);
+      auto b =  db1.generate_block( delegate_priv_key, aw[db1.head_block_num()%aw.size()], skip_sigs );
+      db2.push_block(b, skip_sigs);
 
-      BOOST_CHECK_THROW(db1.push_transaction(trx), fc::exception);
-      BOOST_CHECK_THROW(db2.push_transaction(trx), fc::exception);
+      BOOST_CHECK_THROW(db1.push_transaction(trx, skip_sigs), fc::exception);
+      BOOST_CHECK_THROW(db2.push_transaction(trx, skip_sigs), fc::exception);
       BOOST_CHECK_EQUAL(nathan_id(db1).balances(db1).get_balance(asset_id_type()).amount.value, 500);
       BOOST_CHECK_EQUAL(nathan_id(db2).balances(db2).get_balance(asset_id_type()).amount.value, 500);
    } catch (fc::exception& e) {
@@ -310,6 +325,8 @@ BOOST_AUTO_TEST_CASE( tapos )
       db1.open(dir1.path());
       db2.open(dir2.path());
 
+      const account_object& init1 = *db1.get_index_type<account_index>().indices().get<by_name>().find("init1");
+
       start_simulated_time(bts::chain::now());
       auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
       const bts::db::index& account_idx = db1.get_index(protocol_ids, account_object_type);
@@ -325,6 +342,7 @@ BOOST_AUTO_TEST_CASE( tapos )
 
       account_id_type nathan_id = account_idx.get_next_id();
       account_create_operation cop;
+      cop.fee_paying_account = init1.id;
       cop.name = "nathan";
       trx.operations.push_back(cop);
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
@@ -345,11 +363,11 @@ BOOST_AUTO_TEST_CASE( tapos )
       trx.operations.push_back(transfer_operation({account_id_type(), nathan_id, asset(50)}));
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
       //relative_expiration is 1, but ref block is 2 blocks old, so this should fail.
-      BOOST_REQUIRE_THROW(db1.push_transaction(trx), fc::exception);
+      BOOST_REQUIRE_THROW(db1.push_transaction(trx, database::skip_transaction_signatures), fc::exception);
       trx.relative_expiration = 2;
       trx.signatures.clear();
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
-      db1.push_transaction(trx);
+      db1.push_transaction(trx, database::skip_transaction_signatures);
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;

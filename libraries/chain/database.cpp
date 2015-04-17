@@ -658,6 +658,7 @@ processed_transaction database::push_transaction( const signed_transaction& trx,
 processed_transaction database::push_proposal(const proposal_object& proposal)
 {
    transaction_evaluation_state eval_state(this);
+   eval_state._is_proposed_trx = true;
 
    //Inject the approving authorities into the transaction eval state
    std::transform(proposal.available_active_approvals.begin(),
