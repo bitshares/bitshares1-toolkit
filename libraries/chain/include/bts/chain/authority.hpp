@@ -34,6 +34,11 @@ namespace bts { namespace chain {
       {
          auths[k] = w;
       }
+      void add_authority( relative_key_id_type k, weight_type w )
+      {
+         auths[k] = w;
+      }
+
       template<typename AuthType>
       void add_authorities(AuthType k, weight_type w)
       {
