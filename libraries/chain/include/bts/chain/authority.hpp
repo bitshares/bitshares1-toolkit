@@ -50,6 +50,19 @@ namespace bts { namespace chain {
          add_authority(k, w);
          add_authorities(auths...);
       }
+
+      vector<key_id_type> get_keys() const
+      {
+         vector<key_id_type> result;
+         result.reserve( auths.size() );
+         for( const pair<object_id_type, weight_type>& item : auths )
+         {
+            if( item.first.type() == key_object_type )
+                result.push_back( item.first );
+         }
+         return result;
+      }
+
       uint32_t                             weight_threshold = 0;
       flat_map<object_id_type,weight_type> auths;
    };
