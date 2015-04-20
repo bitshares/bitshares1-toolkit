@@ -52,6 +52,18 @@ namespace bts { namespace chain {
           *  time an order is created or modified.
           */
          share_type            total_core_in_orders;
+         
+         /**
+          *  Tracks the total fees paid by this account for the purpose
+          *  of calculating bulk discounts.
+          */
+         share_type            lifetime_fees_paid;
+
+         /**
+          *  Tracks the total cash back accrued from bulk discounts and
+          *  referrals.
+          */
+         share_type            cashback_rewards;
 
          /**
           * Keep balances sorted for best performance of lookups in log(n) time,
@@ -74,20 +86,31 @@ namespace bts { namespace chain {
          static const uint8_t space_id = protocol_ids;
          static const uint8_t type_id  = account_object_type;
 
+         /**
+          *  Tracks the account that created this account and thus qualifies for a cut
+          *  of the transaction fees paid by this account.
+          */
+         account_id_type       referrer;
+
          /// The account's name. This name must be unique among all account names on the graph. The name may be empty.
          string                name;
-         /// The owner authority represents absolute control over the account. Usually the keys in this authority will
-         /// be kept in cold storage, as they should not be needed very often and compromise of these keys constitutes
-         /// complete and irrevocable loss of the account. Generally the only time the owner authority is required is to
-         /// update the active authority.
+
+         /** The owner authority represents absolute control over the account. Usually the keys in this authority will
+          * be kept in cold storage, as they should not be needed very often and compromise of these keys constitutes
+          * complete and irrevocable loss of the account. Generally the only time the owner authority is required is to
+          * update the active authority.
+          */
          authority             owner;
+
          /// The owner authority contains the hot keys of the account. This authority has control over nearly all
          /// operations the account may perform.
          authority             active;
+
          /// The memo key is the key this account will typically use to encrypt/sign transaction memos and other non-
          /// validated account activities. This field is here to prevent confusion if the active authority has zero or
          /// multiple keys in it.
          key_id_type           memo_key;
+
          /// The voting key may be used to update the account's votes.
          key_id_type           voting_key;
 
@@ -99,19 +122,28 @@ namespace bts { namespace chain {
          /// contains the ID of that object.
          account_balance_id_type          balances;
 
-         /// This is a set of all accounts which have 'whitelisted' this account. Whitelisting is only used in core
-         /// validation for the purpose of authorizing accounts to hold and transact in whitelisted assets. This
-         /// account cannot update this set, except by transferring ownership of the account, which will clear it. Other
-         /// accounts may add or remove their IDs from this set.
+         /** This is a set of all accounts which have 'whitelisted' this account. Whitelisting is only used in core
+          * validation for the purpose of authorizing accounts to hold and transact in whitelisted assets. This
+          * account cannot update this set, except by transferring ownership of the account, which will clear it. Other
+          * accounts may add or remove their IDs from this set.
+          */
          flat_set<account_id_type>        whitelisting_accounts;
-         /// This is a set of all accounts which have 'blacklisted' this account. Blacklisting is only used in core
-         /// validation for the purpose of forbidding accounts from holding and transacting in whitelisted assets. This
-         /// account cannot update this set, and it will be preserved even if the account is transferred. Other accounts
-         /// may add or remove their IDs from this set.
+
+         /** This is a set of all accounts which have 'blacklisted' this account. Blacklisting is only used in core
+          * validation for the purpose of forbidding accounts from holding and transacting in whitelisted assets. This
+          * account cannot update this set, and it will be preserved even if the account is transferred. Other accounts
+          * may add or remove their IDs from this set.
+          */
          flat_set<account_id_type>        blacklisting_accounts;
 
-         /// @return true if this account is whitelisted and not blacklisted to transact in the provided asset; false
-         /// otherwise.
+         /** 
+          * Tracks whether or not this account has upgraded to prime.
+          */
+         bool is_prime = false;
+
+         /** @return true if this account is whitelisted and not blacklisted to transact in the provided asset; false
+          * otherwise.
+          */
          bool is_authorized_asset(const asset_object& asset_obj)const;
    };
 
@@ -143,11 +175,11 @@ namespace bts { namespace chain {
 }}
 FC_REFLECT_DERIVED( bts::chain::account_object,
                     (bts::db::annotated_object<bts::chain::account_object>),
-                    (name)(owner)(active)(memo_key)(voting_key)(votes)(balances)
-                    (whitelisting_accounts)(blacklisting_accounts) )
+                    (referrer)(name)(owner)(active)(memo_key)(voting_key)(votes)(balances)
+                    (whitelisting_accounts)(blacklisting_accounts)(is_prime) )
 
 FC_REFLECT_DERIVED( bts::chain::meta_account_object,
                     (bts::db::object),
                     (memo_key)(delegate_id) )
 
-FC_REFLECT_DERIVED( bts::chain::account_balance_object, (bts::chain::object), (most_recent_op)(total_core_in_orders)(balances) )
+FC_REFLECT_DERIVED( bts::chain::account_balance_object, (bts::chain::object), (most_recent_op)(total_core_in_orders)(lifetime_fees_paid)(cashback_rewards)(balances) )
