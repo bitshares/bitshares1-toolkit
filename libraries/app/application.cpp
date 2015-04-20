@@ -73,8 +73,9 @@ namespace detail {
          auto key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("nathan")));
          if(config.initial_allocation.size() == 1 &&
                config.initial_allocation.front().first.get<public_key_type>() == key.get_public_key())
-            dlog("Stake has been allocated to account ${id}, which has private key ${key}.",
-                 ("id", account_id_type(11))("key", bts::utilities::key_to_wif(key)));
+            dlog("Stake has been allocated to account ${id}, which has private key ${key} public key ${pubkey}.",
+                 ("id", account_id_type(11))("key", bts::utilities::key_to_wif(key))
+                 ("pubkey", public_key_type(key.get_public_key())));
       }
 
    public:
