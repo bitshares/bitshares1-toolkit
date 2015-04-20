@@ -152,6 +152,7 @@ BOOST_AUTO_TEST_CASE( update_account )
       BOOST_CHECK(active_delegates[4](db).vote(db).total_votes == 0);
       BOOST_CHECK(active_delegates[5](db).vote(db).total_votes == 30000);
       BOOST_CHECK(active_delegates[6](db).vote(db).total_votes == 0);
+      BOOST_CHECK( false && "upgrade to prime account" );
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
@@ -1819,6 +1820,26 @@ BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( cover_with_collateral_test, 1 )
 BOOST_AUTO_TEST_CASE( cover_with_collateral_test )
 {
    assert( !"not implemented" );
+}
+
+/**
+ *  Make sure witness pay equals a percent of accumulated fees rather than
+ *  a fixed amount.  This percentage should be a PARAMTER on the order of
+ *  0.00001% of accumulated fees per block.
+ */
+BOOST_AUTO_TEST_CASE( witness_pay_test )
+{
+   assert( !"not implemneted" );
+}
+
+BOOST_AUTO_TEST_CASE( transfer_cashback_test )
+{
+   assert( !"not implemneted" );
+}
+
+BOOST_AUTO_TEST_CASE( bulk_discount_test )
+{
+   assert( !"not implemneted" );
 }
 
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( margin_call_black_swan, 1 )
