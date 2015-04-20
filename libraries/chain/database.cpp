@@ -473,13 +473,37 @@ void database::update_active_delegates()
    auto ids = sort_votable_objects<delegate_object>();
 
    // Update genesis authorities
-   modify( get(account_id_type()), [&]( account_object& a ) {
-      a.owner.weight_threshold = ids.size()/2 + 1;
-      a.owner.auths.clear();
-      for( delegate_id_type id : ids )
-         a.owner.auths[get<delegate_object>(id).delegate_account]++;
-      a.active = a.owner;
-   });
+   if( !ids.empty() )
+      modify( get(account_id_type()), [&]( account_object& a ) {
+         uint64_t total_votes = 0;
+         map<account_id_type, share_type> weights;
+         a.owner.weight_threshold = 0;
+         a.owner.auths.clear();
+
+         for( delegate_id_type id : ids )
+         {
+            const delegate_object& del = get<delegate_object>(id);
+            const vote_tally_object& tally = del.vote(*this);
+            weights.emplace(del.delegate_account, tally.total_votes);
+            total_votes += tally.total_votes.value;
+         }
+
+         // total_votes is 64 bits. Subtract the number of leading low bits from 64 to get the number of useful bits,
+         // then I want to keep the most significant 16 bits of what's left.
+         int8_t bits_to_drop = std::max(int(64 - __builtin_clzll(total_votes)) - 16, 0);
+         for( const auto& weight : weights )
+         {
+            // Ensure that everyone has at least one vote. Zero weights aren't allowed.
+            uint16_t votes = std::max((weight.second.value >> bits_to_drop), 1ll);
+            a.owner.auths[weight.first] += votes;
+            a.owner.weight_threshold += votes;
+         }
+
+         a.owner.weight_threshold /= 2;
+         a.owner.weight_threshold += 1;
+         idump((a.owner));
+         a.active = a.owner;
+      });
    modify( get_global_properties(), [&]( global_property_object& gp ) {
       gp.active_delegates = std::move(ids);
    });

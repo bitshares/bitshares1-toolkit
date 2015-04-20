@@ -219,14 +219,15 @@ namespace bts { namespace chain {
       });
 
       uint64_t base_threshold = ids[9](*this).vote(*this).total_votes.value;
-      uint64_t threshold =  (base_threshold / 100) * 75;
+      uint64_t threshold =  base_threshold * 75 / 100;
       uint32_t i = 10;
 
-      for( ; i < ids.size(); ++i )
-      {
-         if( ids[i](*this).vote(*this).total_votes < threshold ) break;
-         threshold = (base_threshold / (100) ) * (75 + i/(ids.size()/4));
-      }
+      if( threshold > 0 )
+         for( ; i < ids.size(); ++i )
+         {
+            if( ids[i](*this).vote(*this).total_votes < threshold ) break;
+            threshold = (base_threshold / (100) ) * (75 + i/(ids.size()/4));
+         }
       ids.resize( i );
 
       return ids;
