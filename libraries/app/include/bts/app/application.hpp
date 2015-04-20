@@ -15,16 +15,20 @@ namespace bts { namespace app {
          application();
          ~application();
 
-         void configure( const fc::path& data_dir );
-
          typedef std::map<string,fc::variant> config;
 
          struct daemon_configuration
          {
             fc::ip::endpoint              p2p_endpoint;
             std::vector<fc::ip::endpoint> seed_nodes;
-            fc::ip::endpoint              websocket_endpoint;
+            fc::ip::endpoint              websocket_endpoint = fc::ip::endpoint::from_string("127.0.0.1:8090");
+            chain::genesis_allocation     initial_allocation = {
+               {bts::chain::public_key_type(fc::ecc::private_key::regenerate(fc::sha256::hash(string("nathan"))).get_public_key()), 1}
+            };
          };
+
+         void configure( const fc::path& data_dir );
+         void configure( const fc::path& data_dir, const daemon_configuration& config );
 
          template<typename PluginType>
          std::shared_ptr<PluginType> register_plugin()
@@ -60,4 +64,5 @@ namespace bts { namespace app {
 
 } }
 
-FC_REFLECT( bts::app::application::daemon_configuration, (p2p_endpoint)(websocket_endpoint)(seed_nodes) )
+FC_REFLECT( bts::app::application::daemon_configuration,
+            (p2p_endpoint)(websocket_endpoint)(seed_nodes)(initial_allocation) )

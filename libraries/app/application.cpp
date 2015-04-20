@@ -6,6 +6,8 @@
 
 #include <bts/chain/time.hpp>
 
+#include <bts/utilities/key_conversion.hpp>
+
 #include <fc/rpc/api_connection.hpp>
 #include <fc/rpc/websocket_api.hpp>
 
@@ -26,7 +28,7 @@ namespace detail {
    class application_impl : public net::node_delegate
    {
       void reset_p2p_node(const fc::path& data_dir, const application::daemon_configuration& cfg)
-      {
+      { try {
          _p2p_network = std::make_shared<net::node>("Graphene Reference Implementation");
 
          _p2p_network->load_configuration(data_dir / "p2p");
@@ -47,10 +49,10 @@ namespace detail {
          _p2p_network->sync_from(net::item_id(net::core_message_type_enum::block_message_type,
                                               _chain_db->head_block_id()),
                                  std::vector<uint32_t>());
-      }
+      } FC_CAPTURE_AND_RETHROW( (cfg) ) }
 
       void reset_websocket_server(const application::daemon_configuration& cfg)
-      {
+      { try {
          _websocket_server = std::make_shared<fc::http::websocket_server>();
 
          _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
@@ -61,12 +63,18 @@ namespace detail {
          });
          _websocket_server->listen( cfg.websocket_endpoint );
          _websocket_server->start_accept();
-      }
+      } FC_CAPTURE_AND_RETHROW( (cfg) ) }
 
       void initialize_configuration()
       {
-         _configuration["daemon"] = application::daemon_configuration();
+         application::daemon_configuration config;
+         _configuration["daemon"] = config;
          save_configuration();
+         auto key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("nathan")));
+         if(config.initial_allocation.size() == 1 &&
+               config.initial_allocation.front().first.get<public_key_type>() == key.get_public_key())
+            dlog("Stake has been allocated to account ${id}, which has private key ${key}.",
+                 ("id", account_id_type(11))("key", bts::utilities::key_to_wif(key)));
       }
 
    public:
@@ -81,10 +89,9 @@ namespace detail {
       {
       }
 
-      void configure( const fc::path& data_dir )
+      void configure( const fc::path& data_dir)
       {
-         _data_dir = data_dir,
-         _chain_db->open(data_dir / "blockchain");
+         _data_dir = data_dir;
          if( fc::exists(data_dir / "config.json") )
          {
             try
@@ -99,14 +106,24 @@ namespace detail {
          }
          else
          {
+            ilog("Initializing new configuration file.");
             initialize_configuration();
          }
+
+         configure(data_dir, _configuration["daemon"].as<application::daemon_configuration>());
+      }
+
+      void configure( const fc::path& data_dir, const application::daemon_configuration& config )
+      {
+         _data_dir = data_dir;
+         _configuration["daemon"] = config;
+         _chain_db->open(data_dir / "blockchain", config.initial_allocation);
+
          for( const auto& p : _plugins )
             p.second->init();
 
-         auto daemon_config = _configuration["daemon"].as<application::daemon_configuration>();
-         reset_p2p_node(data_dir, daemon_config);
-         reset_websocket_server(daemon_config);
+         reset_p2p_node(data_dir, config);
+         reset_websocket_server(config);
       }
 
       void apply_configuration()
@@ -357,6 +374,11 @@ application::~application()
 void application::configure( const fc::path& data_dir )
 {
    my->configure( data_dir );
+}
+
+void application::configure(const fc::path& data_dir, const application::daemon_configuration& config)
+{
+   my->configure(data_dir, config);
 }
 
 std::shared_ptr<abstract_plugin> application::get_plugin(const string& name) const

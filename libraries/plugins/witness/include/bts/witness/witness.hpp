@@ -28,7 +28,18 @@ public:
    void set_block_production(bool allow) { _production_enabled = allow; }
 
    struct plugin_config {
-      std::map<bts::chain::witness_id_type, fc::ecc::private_key> witness_keys;
+      std::map<bts::chain::witness_id_type, fc::ecc::private_key> witness_keys = {
+         {bts::chain::witness_id_type(0), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
+         {bts::chain::witness_id_type(1), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
+         {bts::chain::witness_id_type(2), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
+         {bts::chain::witness_id_type(3), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
+         {bts::chain::witness_id_type(4), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
+         {bts::chain::witness_id_type(5), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
+         {bts::chain::witness_id_type(6), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
+         {bts::chain::witness_id_type(7), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
+         {bts::chain::witness_id_type(8), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
+         {bts::chain::witness_id_type(9), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))}
+      };
       /// Only set to true when starting a new network, or all delegates are offline.
       bool allow_production_on_stale_chain = false;
    };
