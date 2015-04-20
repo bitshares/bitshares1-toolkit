@@ -40,7 +40,7 @@ real-world contracts, but in Graphene, all core smart contracts are collateraliz
 must post *collateral* which is used to perform settlement.  The party which posts collateral is referred to as the *long side*.
 
 | Contract type | Long name     | Long fungible? | Long transferrable? | Short name       | Short fungible? | Short transferrable? |
-| ------------- | ------------- | -------------- | ------------------- | ---------------- | ----------------------------------------
+| ------------- | ------------- | -------------- | ------------------- | ---------------- | --------------- | -------------------- |
 | BitAsset      | Long holder   | Yes            | Yes                 | Short holder     | No              | No                   |
 | Bond          | Lender        | No             | Yes                 | Borrower         | No              | Yes                  |
 | Option        | Option holder | ?              | Yes                 | Option writer    | ?               | Yes                  |
@@ -197,6 +197,8 @@ NB, this attack may be more difficult in practice, because clients do lookup of 
 to have a revocation period -- this way if you've heard from someone in the last 30 days that their address is `email/user_at_example_dot_com`,
 then you know you'll either send the funds to the right person or get an error.  Also, wallets should warn if one of your contacts
 has been revoked and reassigned.
+
+It also complicates account history, as the name displayed will be determined by the mapping for the name at the time the tx was performed.
 
 Assertion ops
 -------------

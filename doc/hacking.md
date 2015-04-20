@@ -29,14 +29,6 @@ You can edit `witneess_node_data_dir/config.json` like this:
 
 If you send private keys over this connection, clearly `websocket_endpoint` should be bound to localhost for security.
 
-BitAssets 3.0 partial cover vs fractional cover
------------------------------------------------
-
-The main purpose of this article is to address whether BitAssets 3.0 should *cover* positions or *release* positions.  In particular,
-let us suppose we have the following book:
-
-
-
 Core mechanics
 --------------
 
