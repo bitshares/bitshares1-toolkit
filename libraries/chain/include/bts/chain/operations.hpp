@@ -31,6 +31,13 @@ namespace bts { namespace chain {
    {
       account_id_type fee_paying_account;
       asset           fee;
+
+      /**
+       *  If fee_paying_account->is_prime then referrer can be
+       *  any other account that is also prime.  Otherwise referrer must
+       *  equal fee_paying_account->referrer.
+       */
+      account_id_type referrer;
       string          name;
       authority       owner;
       authority       active;
@@ -96,6 +103,11 @@ namespace bts { namespace chain {
       optional<object_id_type>                memo_key = key_id_type();
       optional<flat_set<vote_tally_id_type>>  vote;
 
+      /**
+       *   If set to true, sets the account's referrer to itself.
+       */
+      bool                                    prime = false;
+
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>& owner_auth_set)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -116,6 +128,44 @@ namespace bts { namespace chain {
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
+    *  @brief transfers the cashback rewards to balance
+    *
+    *  This is defined as a separate operation because cashback rewards would end up creating many
+    *  small 'micro-payments' and this helps keep the ledger clean.
+    */
+   struct account_claim_cashback_operation
+   {
+      account_id_type account;
+      asset           fee;
+      share_type      amount;
+
+      void        get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void        validate()const;
+      share_type  calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
+    *  @brief transfers the account to another account while clearing the white/black lists
+    *
+    *  In theory an account can be transferred by simply updating the authorities, but that kind
+    *  of transfer lacks semantic meaning and is more often done to rotate keys without transferring 
+    *  ownership.   This operation is used to indicate the legal transfer of title to this account and
+    *  a break in the operation history.
+    *
+    *  The account_id's owner/active/voting/memo authority should be set to new_owner
+    */
+   struct account_transfer_operation
+   {
+      account_id_type account_id;
+      account_id_type new_owner;
+      asset           fee;
+
+      void        get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void        validate()const;
+      share_type  calculate_fee( const fee_schedule_type& k )const;
    };
 
    /**
@@ -551,6 +601,8 @@ namespace bts { namespace chain {
             account_create_operation,
             account_update_operation,
             account_whitelist_operation,
+            account_claim_cashback_operation,
+            account_transfer_operation,
             asset_create_operation,
             asset_update_operation,
             asset_issue_operation,
@@ -667,19 +719,23 @@ FC_REFLECT( bts::chain::key_create_operation,
 
 FC_REFLECT( bts::chain::account_create_operation,
             (fee_paying_account)(fee)
+            (referrer)
             (name)
             (owner)(active)(voting_key)(memo_key)
           )
 
 FC_REFLECT_TYPENAME( fc::flat_set<bts::chain::vote_tally_id_type> )
 FC_REFLECT( bts::chain::account_update_operation,
-            (account)(fee)(owner)(active)(voting_key)(memo_key)(vote)
+            (account)(fee)(owner)(active)(voting_key)(memo_key)(vote)(prime)
           )
 
-FC_REFLECT_TYPENAME(bts::chain::account_whitelist_operation::account_listing)
-FC_REFLECT_ENUM(bts::chain::account_whitelist_operation::account_listing,
+FC_REFLECT_TYPENAME( bts::chain::account_whitelist_operation::account_listing)
+FC_REFLECT_ENUM( bts::chain::account_whitelist_operation::account_listing,
                 (no_listing)(white_listed)(black_listed)(white_and_black_listed))
-FC_REFLECT(bts::chain::account_whitelist_operation, (authorizing_account)(account_to_list)(new_listing)(fee))
+
+FC_REFLECT( bts::chain::account_whitelist_operation, (authorizing_account)(account_to_list)(new_listing)(fee))
+FC_REFLECT( bts::chain::account_claim_cashback_operation,      (account)(fee)(amount) )
+FC_REFLECT( bts::chain::account_transfer_operation, (account_id)(new_owner)(fee) )
 
 FC_REFLECT( bts::chain::delegate_create_operation,
             (delegate_account)(fee) )

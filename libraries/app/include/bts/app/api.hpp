@@ -29,6 +29,18 @@ namespace bts { namespace app {
          bts::chain::database& _db;
    };
 
+   class history_api
+   {
+        history_api( application& app ):_app(app){}
+
+        /**
+         *  @return all operations related to account id from the most recent until, but not including limit_id
+         */
+        vector<operation_history_object>  get_account_history( account_id_type id, operation_history_id_type limit_id  = operation_history_id_type() )const;
+
+        application&              _app;
+   };
+
    class network_api
    {
       public:

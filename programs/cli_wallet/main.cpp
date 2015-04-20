@@ -95,14 +95,156 @@ class wallet_api
          return false;
       }
 
-      signed_transaction create_account( string brain_key,
-                                         string account_name,
-                                         string pay_from_account )
+      string normalize_brain_key( string s )
       {
-        wdump( (_remote_db->get_global_properties() ) );
-        auto opt_account = _remote_db->lookup_account_names( {account_name} );
-        wdump( (opt_account) );
-        return signed_transaction();
+          size_t i = 0, n = s.length();
+          std::string result;
+          char c;
+          result.reserve( n );
+
+          bool preceded_by_whitespace = false;
+          bool non_empty = false;
+          while( i < n )
+          {
+              c = s[i++];
+              switch( c )
+              {
+                  case ' ':  case '\t': case '\r': case '\n': case '\v': case '\f':
+                      preceded_by_whitespace = true;
+                      continue;
+
+                  case 'a': c = 'A'; break;
+                  case 'b': c = 'B'; break;
+                  case 'c': c = 'C'; break;
+                  case 'd': c = 'D'; break;
+                  case 'e': c = 'E'; break;
+                  case 'f': c = 'F'; break;
+                  case 'g': c = 'G'; break;
+                  case 'h': c = 'H'; break;
+                  case 'i': c = 'I'; break;
+                  case 'j': c = 'J'; break;
+                  case 'k': c = 'K'; break;
+                  case 'l': c = 'L'; break;
+                  case 'm': c = 'M'; break;
+                  case 'n': c = 'N'; break;
+                  case 'o': c = 'O'; break;
+                  case 'p': c = 'P'; break;
+                  case 'q': c = 'Q'; break;
+                  case 'r': c = 'R'; break;
+                  case 's': c = 'S'; break;
+                  case 't': c = 'T'; break;
+                  case 'u': c = 'U'; break;
+                  case 'v': c = 'V'; break;
+                  case 'w': c = 'W'; break;
+                  case 'x': c = 'X'; break;
+                  case 'y': c = 'Y'; break;
+                  case 'z': c = 'Z'; break;
+
+                  default:
+                      break;
+              }
+              if( preceded_by_whitespace && non_empty )
+                  result.push_back(' ');
+              result.push_back(c);
+              preceded_by_whitespace = false;
+              non_empty = true;
+          }
+
+          return result;
+      }
+
+      fc::ecc::private_key derive_private_key(
+          const std::string& prefix_string, int sequence_number)
+      {
+           std::string sequence_string = std::to_string(sequence_number);
+           fc::sha512 h = fc::sha512::hash(prefix_string + " " + sequence_string);
+           fc::ecc::private_key derived_key = fc::ecc::private_key::regenerate(fc::sha256::hash(h));
+           return derived_key;
+      }
+
+      signed_transaction create_account_with_brain_key(
+          string brain_key,
+          string account_name,
+          string pay_from_account
+          )
+      {
+        // TODO:  process when pay_from_account is ID
+
+        account_object pay_from_account_object =
+            this->get_account( pay_from_account );
+
+        account_id_type pay_from_account_id = pay_from_account_object.id;
+
+        string normalized_brain_key = normalize_brain_key( brain_key );
+        // TODO:  scan blockchain for accounts that exist with same brain key
+        fc::ecc::private_key owner_privkey = derive_private_key( normalized_brain_key, 0 );
+        fc::ecc::private_key active_privkey = derive_private_key( key_to_wif(owner_privkey), 0);
+
+        bts::chain::public_key_type owner_pubkey = owner_privkey.get_public_key();
+        bts::chain::public_key_type active_pubkey = active_privkey.get_public_key();
+
+        // get pay_from_account_id
+        key_create_operation owner_key_create_op;
+        owner_key_create_op.fee_paying_account = pay_from_account_id;
+        owner_key_create_op.key_data = owner_pubkey;
+
+        key_create_operation active_key_create_op;
+        active_key_create_op.fee_paying_account = pay_from_account_id;
+        active_key_create_op.key_data = active_pubkey;
+
+        // key_create_op.calculate_fee(db.current_fee_schedule());
+
+        // TODO:  Check if keys already exist!!!
+
+        account_create_operation account_create_op;
+
+        vector<string> v_pay_from_account;
+        v_pay_from_account.push_back( pay_from_account );
+
+        account_create_op.fee_paying_account = pay_from_account_id;
+
+        relative_key_id_type owner_rkid(0);
+        relative_key_id_type active_rkid(1);
+
+        account_create_op.name = account_name;
+        account_create_op.owner = authority(1, owner_rkid, 1);
+        account_create_op.active = authority(1, active_rkid, 1);
+        account_create_op.memo_key = active_rkid;
+        account_create_op.voting_key = active_rkid;
+        account_create_op.vote = flat_set<vote_tally_id_type>();
+
+        // current_fee_schedule()
+        // find_account(pay_from_account)
+
+        // account_create_op.fee = account_create_op.calculate_fee(db.current_fee_schedule());
+
+        signed_transaction tx;
+
+        tx.operations.push_back( owner_key_create_op );
+        tx.operations.push_back( active_key_create_op );
+        tx.operations.push_back( account_create_op );
+
+        tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
+
+        vector<key_id_type> paying_keys = pay_from_account_object.active.get_keys();
+
+        tx.validate();
+
+        for( key_id_type& key : paying_keys )
+        {
+            auto it = _wallet.keys.find(key);
+            if( it != _wallet.keys.end() )
+            {
+                fc::optional< fc::ecc::private_key > privkey = wif_to_key( it->second );
+                if( !privkey.valid() )
+                {
+                    FC_ASSERT( false, "Malformed private key in _wallet.keys" );
+                }
+                tx.sign( *privkey );
+            }
+        }
+
+        return tx;
       }
 
       signed_transaction transfer( string from,
@@ -127,10 +269,11 @@ FC_API( wallet_api,
         (help)
         (import_key)
         (suggest_brain_key)
-        (create_account)
+        (create_account_with_brain_key)
         (transfer)
         (get_account)
         (get_object)
+        (normalize_brain_key)
        )
 
 struct help_visitor
@@ -179,6 +322,7 @@ int main( int argc, char** argv )
 
       auto wapiptr = std::make_shared<wallet_api>(remote_api);
       wapiptr->_wallet = wallet;
+
       fc::api<wallet_api> wapi(wapiptr);
 
       auto wallet_cli = std::make_shared<fc::rpc::cli>();

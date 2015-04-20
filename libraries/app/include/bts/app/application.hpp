@@ -12,8 +12,10 @@ namespace bts { namespace app {
    class application
    {
       public:
-         application(fc::path data_dir);
+         application();
          ~application();
+
+         void configure( const fc::path& data_dir );
 
          typedef std::map<string,fc::variant> config;
 

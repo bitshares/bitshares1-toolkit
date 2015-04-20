@@ -460,6 +460,38 @@ void proposal_delete_operation::get_required_auth(flat_set<account_id_type>& act
       active_auth_set.insert(fee_paying_account);
 }
 
+void account_transfer_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+}
+
+void account_transfer_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
+{
+   active_auth_set.insert( account_id );
+}
+
+share_type  account_transfer_operation::calculate_fee( const fee_schedule_type& k )const
+{
+   return k.at(transfer_fee_type);
+}
+
+
+void account_claim_cashback_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( amount >= 0 );
+}
+
+void account_claim_cashback_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
+{
+   active_auth_set.insert( account );
+}
+
+share_type  account_claim_cashback_operation::calculate_fee( const fee_schedule_type& k )const
+{
+   return k.at(transfer_fee_type);
+}
+
 void proposal_delete_operation::validate() const
 {
    FC_ASSERT( fee.amount >= 0 );

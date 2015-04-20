@@ -76,6 +76,11 @@ struct operation_get_impacted_accounts
          add_authority( *o.active );
       }
    }
+   void operator()( const account_transfer_operation& o )const
+   {
+      _impacted.insert( o.new_owner );
+   }
+   void operator()( const account_claim_cashback_operation& o )const{}
 
    void operator()( const account_whitelist_operation& o )const {
        _impacted.insert( o.account_to_list );
