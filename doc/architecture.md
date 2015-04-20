@@ -40,7 +40,7 @@ real-world contracts, but in Graphene, all core smart contracts are collateraliz
 must post *collateral* which is used to perform settlement.  The party which posts collateral is referred to as the *long side*.
 
 | Contract type | Long name     | Long fungible? | Long transferrable? | Short name       | Short fungible? | Short transferrable? |
-| ------------- | ------------- | -------------- | ------------------- | ---------------- | ----------------------------------------
+| ------------- | ------------- | -------------- | ------------------- | ---------------- | --------------- | -------------------- |
 | BitAsset      | Long holder   | Yes            | Yes                 | Short holder     | No              | No                   |
 | Bond          | Lender        | No             | Yes                 | Borrower         | No              | Yes                  |
 | Option        | Option holder | ?              | Yes                 | Option writer    | ?               | Yes                  |
