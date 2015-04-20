@@ -71,6 +71,14 @@ namespace bts { namespace chain {
          ref_block_prefix = reference_block._hash[1];
          relative_expiration = lifetime_intervals;
       }
+
+      /// visit all operations
+      template<typename Visitor>
+      void visit( Visitor&& visitor )
+      {
+         for( auto& op : operations )
+            op.visit( std::forward<Visitor>( visitor ) );
+      }
    };
 
    struct signed_transaction : public transaction

@@ -85,14 +85,20 @@ namespace detail {
       {
          _data_dir = data_dir,
          _chain_db->open(data_dir / "blockchain");
-         if( fc::exists(data_dir / "config.json") ) {
-            try {
+         if( fc::exists(data_dir / "config.json") )
+         {
+            try
+            {
                _configuration = fc::json::from_file(data_dir / "config.json").as<application::config>();
-            } catch( fc::exception& e ) {
+            }
+            catch( fc::exception& e )
+            {
                elog("Failed to read config file:\n${e}", ("e", e.to_detail_string()));
                initialize_configuration();
             }
-         } else {
+         }
+         else
+         {
             initialize_configuration();
          }
          for( const auto& p : _plugins )
