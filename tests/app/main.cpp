@@ -16,6 +16,7 @@ using namespace bts;
 BOOST_AUTO_TEST_CASE( two_node_network )
 {
    using namespace bts::chain;
+   using namespace bts::app;
    try {
       fc::temp_directory app_dir;
       fc::temp_directory app2_dir;
@@ -24,15 +25,18 @@ BOOST_AUTO_TEST_CASE( two_node_network )
 
       bts::app::application app;
       app.register_plugin<bts::account_history::account_history_plugin>();
-      app.configure(app_dir.path());
-      app.configuration()["daemon"] = bts::app::application::daemon_configuration({fc::ip::endpoint::from_string("127.0.0.1:3939")});
+      application::daemon_configuration config;
+      config.initial_allocation.clear();
+      config.websocket_endpoint = fc::ip::endpoint();
+      config.p2p_endpoint = fc::ip::endpoint::from_string("127.0.0.1:3939");
+      app.configure(app_dir.path(), config);
       app.apply_configuration();
 
       bts::app::application app2;
       app2.register_plugin<account_history::account_history_plugin>();
-      app2.configure(app2_dir.path());
-      app2.configuration()["daemon"] = bts::app::application::daemon_configuration({fc::ip::endpoint::from_string("127.0.0.1:4040"),
-                                                                                    {fc::ip::endpoint::from_string("127.0.0.1:3939")}});
+      config.p2p_endpoint = fc::ip::endpoint::from_string("127.0.0.1:4040");
+      config.seed_nodes = {fc::ip::endpoint::from_string("127.0.0.1:3939")};
+      app2.configure(app2_dir.path(), config);
       app2.apply_configuration();
       fc::usleep(fc::milliseconds(500));
 
