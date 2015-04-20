@@ -98,6 +98,12 @@ namespace bts { namespace chain {
          { 
             share_type to_issuer; 
             share_type from_pool;
+            share_type to_accumulated_fees;
+         };
+         struct cash_back_stats
+         {
+            share_type cash_back;
+            share_type total_fees_paid;
          };
 
          const account_object*            fee_paying_account = nullptr;
@@ -110,6 +116,7 @@ namespace bts { namespace chain {
           */
          flat_map<const asset_object*, fee_stats>                                     fees_paid;
          flat_map< const account_object*, flat_map<const asset_object*, share_type> > delta_balance;
+         flat_map<const account_object*, cash_back_stats>                             cash_back;
          transaction_evaluation_state*                                                trx_state;
 
 

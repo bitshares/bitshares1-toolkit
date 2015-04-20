@@ -59,6 +59,7 @@ struct database_fixture {
       map<asset_id_type,share_type> total_debts;
       share_type core_in_orders;
       share_type reported_core_in_orders;
+      share_type cash_back_rewards;
 
       for( const account_balance_object& a : balance_index )
       {
@@ -66,7 +67,9 @@ struct database_fixture {
          {
             total_balances[balance.first] += balance.second;
          }
+         total_balances[asset_id_type()] += a.cashback_rewards;
          reported_core_in_orders += a.total_core_in_orders;
+         //cash_back_rewards       += a.cashback_rewards;
       }
       for( const limit_order_object& o : db.get_index_type<limit_order_index>().indices() )
       {

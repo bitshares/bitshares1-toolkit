@@ -24,6 +24,7 @@ namespace bts { namespace chain {
       FC_ASSERT( fee.amount >= 0 );
       fee_paying_account = &account_id(db());
       FC_ASSERT( verify_authority( fee_paying_account, authority::active ) );
+      fee_paying_account_balances = &fee_paying_account->balances(db());
 
       fee_asset = &fee.asset_id(db());
       fee_asset_dyn_data = &fee_asset->dynamic_asset_data_id(db());
@@ -36,9 +37,41 @@ namespace bts { namespace chain {
          FC_ASSERT( fee_from_pool.asset_id == asset_id_type() );
          FC_ASSERT( fee_from_pool.amount <= fee_asset_dyn_data->fee_pool - fees_paid[fee_asset].from_pool );
          fees_paid[fee_asset].from_pool += fee_from_pool.amount;
+         fees_paid[fee_asset].to_issuer += fee.amount;
       }
+      const auto& gp = db().get_global_properties();
+      auto bulk_cashback  = share_type(0); // fee_from_pool.amount.value * 
+      if( fee_paying_account_balances->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_min &&
+          fee_paying_account->is_prime )
+      {
+         uint64_t bulk_discount_percent = 0;
+         if( fee_paying_account_balances->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_max )
+            bulk_discount_percent = gp.parameters.max_bulk_discount_percent_of_fee;
+         else if( fee_paying_account_balances->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_min )
+         {
+            bulk_discount_percent = 
+               (gp.parameters.max_bulk_discount_percent_of_fee * 
+               (fee_paying_account_balances->lifetime_fees_paid.value  - gp.parameters.bulk_discount_threshold_min.value)) / 
+               (gp.parameters.bulk_discount_threshold_max.value);
+         }
+         assert( bulk_discount_percent <= 10000 );
+         assert( bulk_discount_percent >= 0 );
+
+         bulk_cashback = (fee_from_pool.amount.value * bulk_discount_percent) / 10000;
+         assert( bulk_cashback <= fee_from_pool.amount );
+      }
+
+      auto after_bulk_discount = fee_from_pool.amount - bulk_cashback;
+      auto acumulated = (after_bulk_discount.value  * gp.parameters.witness_percent_of_fee)/10000;
+      auto referral   = after_bulk_discount.value - acumulated;
+
+      fees_paid[fee_asset].to_accumulated_fees += acumulated; //fee_from_pool.amount;
       adjust_balance( fee_paying_account, fee_asset, -fee.amount );
-      fees_paid[fee_asset].to_issuer += fee.amount;
+      cash_back[ &fee_paying_account->referrer(db()) ].cash_back  += referral;
+      cash_back[ fee_paying_account ].cash_back                   += bulk_cashback;
+      cash_back[ fee_paying_account ].total_fees_paid             += after_bulk_discount;
+
+      assert( referral + bulk_cashback + acumulated  == fee_from_pool.amount );
 
       return fee_from_pool.amount;
    } FC_CAPTURE_AND_RETHROW( (account_id)(fee) ) }
@@ -116,9 +149,20 @@ namespace bts { namespace chain {
                           dyn.accumulated_fees += fee.second.to_issuer;
                      });
          if( dyn_asst_data.id != asset_id_type() )
+         {
             db().modify(dynamic_asset_data_id_type()(db()), [&]( asset_dynamic_data_object& dyn) {
-               dyn.accumulated_fees += fee.second.from_pool;
+               //dyn.accumulated_fees += fee.second.from_pool;
+               dyn.accumulated_fees += fee.second.to_accumulated_fees;
             });
+         }
+      }
+      for( const auto& cash : cash_back )
+      {
+         const auto& bal = cash.first->balances(db());
+         db().modify( bal, [&]( account_balance_object& obj ){
+             obj.cashback_rewards   += cash.second.cash_back;
+             obj.lifetime_fees_paid += cash.second.total_fees_paid;
+         });
       }
    }
    object_id_type generic_evaluator::get_relative_id( object_id_type rel_id )const
