@@ -198,6 +198,8 @@ to have a revocation period -- this way if you've heard from someone in the last
 then you know you'll either send the funds to the right person or get an error.  Also, wallets should warn if one of your contacts
 has been revoked and reassigned.
 
+It also complicates account history, as the name displayed will be determined by the mapping for the name at the time the tx was performed.
+
 Assertion ops
 -------------
 
