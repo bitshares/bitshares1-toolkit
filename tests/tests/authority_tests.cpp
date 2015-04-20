@@ -397,4 +397,81 @@ BOOST_AUTO_TEST_CASE( genesis_authority )
    BOOST_CHECK_EQUAL(get_balance(nathan, asset_id_type()(db)), 100000);
 } FC_LOG_AND_RETHROW() }
 
+BOOST_FIXTURE_TEST_CASE( fired_delegates, database_fixture )
+{ try {
+   generate_block();
+   fc::ecc::private_key genesis_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
+   fc::ecc::private_key delegate_key = fc::ecc::private_key::generate();
+   auto delegate_key_object = register_key(delegate_key.get_public_key());
+
+   //Meet nathan. He has a little money.
+   const account_object* nathan = &create_account("nathan");
+   transfer(account_id_type()(db), *nathan, asset(5000));
+   generate_block();
+   nathan = &get_account("nathan");
+   flat_set<vote_tally_id_type> delegates;
+
+   db.modify(db.get_global_properties(), [](global_property_object& p) {
+      // Turn the review period WAY down, so it doesn't take long to produce blocks to that point in simulated time.
+      p.parameters.genesis_proposal_review_period = fc::days(1).to_seconds();
+   });
+
+   for( int i = 0; i < 15; ++i )
+      delegates.insert(create_delegate(create_account("delegate" + fc::to_string(i+1), delegate_key_object.id)).vote);
+
+   //A proposal is created to give nathan lots more money.
+   proposal_create_operation pop = proposal_create_operation::genesis_proposal(db);
+   pop.fee_paying_account = account_id_type(1);
+   pop.expiration_time = db.head_block_time() + *pop.review_period_seconds * 3;
+   pop.proposed_ops.emplace_back(transfer_operation({account_id_type(), nathan->id, asset(100000)}));
+   trx.operations.push_back(pop);
+   sign(trx, genesis_key);
+   const proposal_object& prop = db.get<proposal_object>(db.push_transaction(trx).operation_results.front().get<object_id_type>());
+   proposal_id_type pid = prop.id;
+   BOOST_CHECK(!prop.is_authorized_to_execute(&db));
+
+   //Genesis key approves of the proposal.
+   proposal_update_operation uop;
+   uop.fee_paying_account = account_id_type(1);
+   uop.proposal = prop.id;
+   uop.key_approvals_to_add.emplace();
+   trx.operations.back() = uop;
+   trx.sign(genesis_key);
+   db.push_transaction(trx);
+   BOOST_CHECK(prop.is_authorized_to_execute(&db));
+
+   //Time passes... the proposal is now in its review period.
+   generate_blocks(*prop.review_period_time);
+
+   fc::time_point_sec maintenance_time = db.get_dynamic_global_properties().next_maintenance_time;
+   BOOST_CHECK_LT(maintenance_time.sec_since_epoch(), pid(db).expiration_time.sec_since_epoch());
+   //Yay! The proposal to give nathan more money is authorized.
+   BOOST_CHECK(pid(db).is_authorized_to_execute(&db));
+
+   nathan = &get_account("nathan");
+   BOOST_CHECK_EQUAL(get_balance(*nathan, asset_id_type()(db)), 5000);
+
+   {
+      //Oh noes! Nathan votes for a whole new slate of delegates!
+      account_update_operation op;
+      op.account = nathan->id;
+      op.vote = delegates;
+      trx.operations.push_back(op);
+      db.push_transaction(trx, ~0);
+      trx.operations.clear();
+   }
+
+   //Time passes... the set of active delegates gets updated.
+   generate_blocks(maintenance_time);
+   //The proposal is no longer authorized, because the active delegates got changed.
+   BOOST_CHECK(!pid(db).is_authorized_to_execute(&db));
+   //Time passes... the proposal has now expired.
+   generate_blocks(pid(db).expiration_time);
+   BOOST_CHECK(db.find(pid) == nullptr);
+
+   //Nathan didn't get any more money because the proposal was rejected.
+   nathan = &get_account("nathan");
+   BOOST_CHECK_EQUAL(get_balance(*nathan, asset_id_type()(db)), 5000);
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()

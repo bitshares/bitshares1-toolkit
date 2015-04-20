@@ -151,7 +151,7 @@ namespace bts { namespace chain {
     *  @brief transfers the account to another account while clearing the white/black lists
     *
     *  In theory an account can be transferred by simply updating the authorities, but that kind
-    *  of transfer lacks semantic meaning and is more often done to rotate keys without transferring 
+    *  of transfer lacks semantic meaning and is more often done to rotate keys without transferring
     *  ownership.   This operation is used to indicate the legal transfer of title to this account and
     *  a break in the operation history.
     *
@@ -510,6 +510,10 @@ namespace bts { namespace chain {
        time_point_sec     expiration_time;
        optional<uint32_t> review_period_seconds;
 
+       /// Constructs a proposal_create_operation suitable for genesis proposals, with fee, expiration time and review
+       /// period set appropriately.
+       static proposal_create_operation genesis_proposal(const class database& db);
+
       void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
@@ -699,6 +703,7 @@ namespace bts { namespace chain {
    struct op_wrapper
    {
       public:
+      op_wrapper(const operation& op = operation()):op(op){}
       operation op;
 
       void       validate()const { op.visit( operation_validator() ); }
@@ -777,7 +782,8 @@ FC_REFLECT( bts::chain::asset_update_operation,
 FC_REFLECT( bts::chain::asset_issue_operation,
             (issuer)(asset_to_issue)(fee)(issue_to_account) )
 
-FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(proposed_ops)(review_period_seconds) )
+FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(expiration_time)
+            (proposed_ops)(review_period_seconds) )
 FC_REFLECT( bts::chain::proposal_update_operation, (fee_paying_account)(fee)(proposal)
             (active_approvals_to_add)(active_approvals_to_remove)(owner_approvals_to_add)(owner_approvals_to_remove)
             (key_approvals_to_add)(key_approvals_to_remove) )

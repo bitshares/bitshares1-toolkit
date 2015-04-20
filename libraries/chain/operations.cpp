@@ -1,3 +1,4 @@
+#include <bts/chain/database.hpp>
 #include <bts/chain/operations.hpp>
 
 namespace bts { namespace chain {
@@ -407,6 +408,16 @@ void call_order_update_operation::validate()const
 share_type call_order_update_operation::calculate_fee(const fee_schedule_type& k) const
 {
    return k.at( short_order_fee_type );
+}
+
+proposal_create_operation proposal_create_operation::genesis_proposal(const database& db)
+{
+   auto global_params = db.get_global_properties().parameters;
+   proposal_create_operation op = {account_id_type(), asset(), {},
+                                   db.head_block_time() + global_params.maximum_proposal_lifetime,
+                                   global_params.genesis_proposal_review_period};
+   op.fee = op.calculate_fee(global_params.current_fees);
+   return op;
 }
 
 void proposal_create_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const

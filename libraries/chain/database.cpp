@@ -501,7 +501,6 @@ void database::update_active_delegates()
 
          a.owner.weight_threshold /= 2;
          a.owner.weight_threshold += 1;
-         idump((a.owner));
          a.active = a.owner;
       });
    modify( get_global_properties(), [&]( global_property_object& gp ) {
