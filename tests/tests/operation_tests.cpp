@@ -1861,6 +1861,11 @@ BOOST_AUTO_TEST_CASE( witness_pay_test )
    assert( !"not implemneted" );
 }
 
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( transfer_cashback_test, 1 )
+BOOST_AUTO_TEST_CASE( transfer_cashback_test )
+{
+   assert( !"not implemneted" );
+}
 
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( bulk_discount_test, 1 )
 BOOST_AUTO_TEST_CASE( bulk_discount_test )
