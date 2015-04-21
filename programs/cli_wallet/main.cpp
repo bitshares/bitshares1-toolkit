@@ -178,16 +178,11 @@ class wallet_api
       signed_transaction create_account_with_brain_key(
           string brain_key,
           string account_name,
-          string pay_from_account
+          string registrar_account,
+          string referrer_account,
+          uint8_t referrer_percent
           )
       {
-        // TODO:  process when pay_from_account is ID
-
-        account_object pay_from_account_object =
-            this->get_account( pay_from_account );
-
-        account_id_type pay_from_account_id = pay_from_account_object.id;
-
         string normalized_brain_key = normalize_brain_key( brain_key );
         // TODO:  scan blockchain for accounts that exist with same brain key
         fc::ecc::private_key owner_privkey = derive_private_key( normalized_brain_key, 0 );
@@ -196,13 +191,30 @@ class wallet_api
         bts::chain::public_key_type owner_pubkey = owner_privkey.get_public_key();
         bts::chain::public_key_type active_pubkey = active_privkey.get_public_key();
 
+        account_create_operation account_create_op;
+
+        // TODO:  process when pay_from_account is ID
+
+        account_object registrar_account_object =
+            this->get_account( registrar_account );
+
+        account_id_type registrar_account_id = registrar_account_object.id;
+
+        if( referrer_percent > 0 )
+        {
+            account_object referrer_account_object =
+                this->get_account( referrer_account );
+            account_create_op.referrer = referrer_account_object.id;
+            account_create_op.referrer_percent = referrer_percent;
+        }
+
         // get pay_from_account_id
         key_create_operation owner_key_create_op;
-        owner_key_create_op.fee_paying_account = pay_from_account_id;
+        owner_key_create_op.fee_paying_account = registrar_account_id;
         owner_key_create_op.key_data = owner_pubkey;
 
         key_create_operation active_key_create_op;
-        active_key_create_op.fee_paying_account = pay_from_account_id;
+        active_key_create_op.fee_paying_account = registrar_account_id;
         active_key_create_op.key_data = active_pubkey;
 
         // key_create_op.calculate_fee(db.current_fee_schedule());
@@ -219,6 +231,7 @@ class wallet_api
         relative_key_id_type owner_rkid(0);
         relative_key_id_type active_rkid(1);
 
+        account_create_op.registrar = registrar_account_id;
         account_create_op.name = account_name;
         account_create_op.owner = authority(1, owner_rkid, 1);
         account_create_op.active = authority(1, active_rkid, 1);
@@ -239,7 +252,7 @@ class wallet_api
 
         tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
 
-        vector<key_id_type> paying_keys = pay_from_account_object.active.get_keys();
+        vector<key_id_type> paying_keys = registrar_account_object.active.get_keys();
 
         tx.validate();
 
