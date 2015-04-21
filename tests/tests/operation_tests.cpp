@@ -19,7 +19,7 @@ BOOST_AUTO_TEST_CASE( create_account_test )
       trx.operations.push_back(make_account());
       account_create_operation op = trx.operations.back().get<account_create_operation>();
 
-      REQUIRE_THROW_WITH_VALUE(op, fee_paying_account, account_id_type(9999999));
+      REQUIRE_THROW_WITH_VALUE(op, registrar, account_id_type(9999999));
       REQUIRE_THROW_WITH_VALUE(op, fee, asset(-1));
       REQUIRE_THROW_WITH_VALUE(op, name, "!");
       REQUIRE_THROW_WITH_VALUE(op, name, "Sam");
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE( child_account )
       });
 
       auto op = make_account("nathan/child");
-      op.fee_paying_account = root.id;
+      op.registrar = root.id;
       op.owner = authority(1, child_key.get_id(), 1);
       op.active = authority(1, child_key.get_id(), 1);
       trx.operations.emplace_back(op);
@@ -152,7 +152,17 @@ BOOST_AUTO_TEST_CASE( update_account )
       BOOST_CHECK(active_delegates[4](db).vote(db).total_votes == 0);
       BOOST_CHECK(active_delegates[5](db).vote(db).total_votes == 30000);
       BOOST_CHECK(active_delegates[6](db).vote(db).total_votes == 0);
-      BOOST_CHECK( false && "upgrade to prime account" );
+
+      transfer(account_id_type()(db), nathan, asset(3000000));
+
+      enable_fees();
+      op.prime   = true;
+      op.fee     = op.calculate_fee( db.get_global_properties().parameters.current_fees );
+      trx.operations.push_back(op);
+      db.push_transaction(trx, ~0);
+
+      BOOST_CHECK( nathan.referrer == nathan.id );
+      BOOST_CHECK( nathan.referrer_percent == 100 );
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
@@ -1839,6 +1849,8 @@ BOOST_AUTO_TEST_CASE( transfer_cashback_test )
 
 BOOST_AUTO_TEST_CASE( bulk_discount_test )
 {
+   const account_object& shorter1  = create_account( "alice" );
+   const account_object& shorter2  = create_account( "bob" );
    assert( !"not implemneted" );
 }
 

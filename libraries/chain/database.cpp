@@ -279,7 +279,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          authority account_authority;
          account_authority.add_authority(key_id_type(key_id), 1);
          account_create_operation cop;
-         cop.fee_paying_account = account_id_type(1);
+         cop.registrar = account_id_type(1);
          cop.active = account_authority;
          cop.owner = account_authority;
          cop.voting_key = key_id;

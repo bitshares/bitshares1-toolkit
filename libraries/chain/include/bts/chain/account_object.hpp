@@ -85,12 +85,23 @@ namespace bts { namespace chain {
       public:
          static const uint8_t space_id = protocol_ids;
          static const uint8_t type_id  = account_object_type;
+         /**
+          *  The account that paid the fee to register this account, this account is
+          *  known as the primary referrer and is entitled to a percent of transaction
+          *  fees.
+          */
+         account_id_type       registrar; 
 
          /**
-          *  Tracks the account that created this account and thus qualifies for a cut
-          *  of the transaction fees paid by this account.
+          * The registrar may be a faucet with its own revenue sharing model that allows
+          * users to refer each other.  
           */
          account_id_type       referrer;
+
+         /**
+          *  Any referral fees not paid to referrer are paid to registrar
+          */
+         uint8_t               referrer_percent = 0;
 
          /// The account's name. This name must be unique among all account names on the graph. The name may be empty.
          string                name;
@@ -175,7 +186,7 @@ namespace bts { namespace chain {
 }}
 FC_REFLECT_DERIVED( bts::chain::account_object,
                     (bts::db::annotated_object<bts::chain::account_object>),
-                    (referrer)(name)(owner)(active)(memo_key)(voting_key)(votes)(balances)
+                    (registrar)(referrer)(referrer_percent)(name)(owner)(active)(memo_key)(voting_key)(votes)(balances)
                     (whitelisting_accounts)(blacklisting_accounts)(is_prime) )
 
 FC_REFLECT_DERIVED( bts::chain::meta_account_object,

@@ -177,7 +177,7 @@ struct database_fixture {
 
    account_create_operation make_account( const std::string& name = "nathan", key_id_type key = key_id_type() ) {
       account_create_operation create_account;
-      create_account.fee_paying_account = account_id_type();
+      create_account.registrar = account_id_type();
 
       create_account.name = name;
       create_account.owner = authority(123, key, 123);
@@ -200,6 +200,45 @@ struct database_fixture {
       create_account.fee = create_account.calculate_fee(db.current_fee_schedule());
       return create_account;
    }
+
+   account_create_operation make_account( const std::string& name,
+                                          const account_object& registrar, 
+                                          const account_object& referrer, 
+                                          uint8_t referrer_percent = 100, 
+                                          key_id_type key = key_id_type() ) 
+   {
+      account_create_operation          create_account;
+
+      create_account.registrar          = registrar.id; 
+      create_account.referrer           = referrer.id;
+      create_account.referrer_percent   = referrer_percent;
+
+      create_account.name = name;
+      create_account.owner = authority(123, key, 123);
+      create_account.active = authority(321, key, 321);
+      create_account.memo_key = key;
+      create_account.voting_key = key;
+
+      auto& active_delegates = db.get_global_properties().active_delegates;
+      if( active_delegates.size() > 0 )
+      {
+         set<vote_tally_id_type> votes;
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
+         create_account.vote = flat_set<vote_tally_id_type>(votes.begin(), votes.end());
+      }
+
+      create_account.fee = create_account.calculate_fee(db.current_fee_schedule());
+      return create_account;
+   }
+
+
+
+
+
    account_id_type genesis_account;
 
    const asset_object& get_asset( const string& symbol )
@@ -279,6 +318,17 @@ struct database_fixture {
    const account_object& create_account( const string& name, const key_id_type& key = key_id_type() )
    {
       trx.operations.push_back(make_account(name, key));
+      trx.validate();
+      auto r = db.push_transaction(trx, ~0);
+      trx.operations.clear();
+      return db.get<account_object>(r.operation_results[0].get<object_id_type>());
+   }
+   const account_object& create_account( const string& name, 
+                                         const account_object& registrar, 
+                                         const account_object& referrer, 
+                                         const key_id_type& key = key_id_type() )
+   {
+      trx.operations.push_back(make_account(name, registrar, referrer, key));
       trx.validate();
       auto r = db.push_transaction(trx, ~0);
       trx.operations.clear();
@@ -375,6 +425,7 @@ struct database_fixture {
       db.modify(global_property_id_type()(db), [fee](global_property_object& gpo) {
          for( int i=0; i < FEE_TYPE_COUNT; ++i)
             gpo.parameters.current_fees.set(i, fee);
+         gpo.parameters.current_fees.set( prime_upgrade_fee_type, 10*fee.value );
       });
 
    }

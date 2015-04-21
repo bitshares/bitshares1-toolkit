@@ -92,6 +92,7 @@ namespace bts { namespace chain {
       data_fee_type, ///< a price per 1024 bytes of user data
       signature_fee_type, ///< a surcharge on transactions with more than 2 signatures.
       global_parameters_update_fee_type, ///< the cost to update the global parameters
+      prime_upgrade_fee_type, ///< the cost to upgrade an account to prime
       FEE_TYPE_COUNT ///< Sentry value which contains the number of different fee types
    };
 
@@ -358,6 +359,7 @@ FC_REFLECT_ENUM( bts::chain::fee_type,
                  (data_fee_type)
                  (signature_fee_type)
                  (global_parameters_update_fee_type)
+                 (prime_upgrade_fee_type)
                  (FEE_TYPE_COUNT)
                )
 

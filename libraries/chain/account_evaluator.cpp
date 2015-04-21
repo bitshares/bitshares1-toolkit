@@ -7,12 +7,22 @@ namespace bts { namespace chain {
 
 object_id_type account_create_evaluator::do_evaluate( const account_create_operation& op )
 {
-   auto bts_fee_paid = pay_fee( op.fee_paying_account, op.fee );
+   auto bts_fee_paid = pay_fee( op.registrar, op.fee );
    auto bts_fee_required = op.calculate_fee( db().current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
 
    FC_ASSERT( is_relative(op.voting_key) || db().find_object(op.voting_key) );
    FC_ASSERT( is_relative(op.memo_key) || db().find_object(op.memo_key) );
+
+   if( fee_paying_account->is_prime )
+   {
+      FC_ASSERT( op.referrer(db()).is_prime );
+   }
+   else
+   {
+      FC_ASSERT( op.referrer == fee_paying_account->referrer );
+      FC_ASSERT( op.referrer_percent == fee_paying_account->referrer_percent );
+   }
 
    for( auto id : op.owner.auths )
       FC_ASSERT( is_relative(id.first) || db().find<object>(id.first) );
@@ -56,13 +66,25 @@ object_id_type account_create_evaluator::do_apply( const account_create_operatio
    });
 
    const auto& new_acnt_object = db().create<account_object>( [&]( account_object& obj ){
-         obj.name           = o.name;
-         obj.owner          = owner;
-         obj.active         = active;
-         obj.balances       = bal_obj.id;
-         obj.memo_key       = get_relative_id(o.memo_key);
-         obj.voting_key     = get_relative_id(o.voting_key);
-         obj.votes          = o.vote;
+         if( fee_paying_account->is_prime )
+         {
+            obj.registrar        = o.registrar;
+            obj.referrer         = o.referrer;
+            obj.referrer_percent = o.referrer_percent;
+         }
+         else
+         {
+            obj.registrar         = fee_paying_account->registrar;
+            obj.referrer          = fee_paying_account->referrer;
+            obj.referrer_percent  = fee_paying_account->referrer_percent;
+         }
+         obj.name             = o.name;
+         obj.owner            = owner;
+         obj.active           = active;
+         obj.balances         = bal_obj.id;
+         obj.memo_key         = get_relative_id(o.memo_key);
+         obj.voting_key       = get_relative_id(o.voting_key);
+         obj.votes            = o.vote;
    });
 
    return new_acnt_object.id;
@@ -115,12 +137,18 @@ object_id_type account_update_evaluator::do_apply( const account_update_operatio
          adjust_votes( add_votes, core_bal );
       }
    }
+   wdump((o));
    db().modify( *acnt, [&]( account_object& a  ){
           if( o.owner ) a.owner = *o.owner;
           if( o.active ) a.active = *o.active;
           if( o.voting_key ) a.voting_key = *o.voting_key;
           if( o.memo_key ) a.memo_key = *o.memo_key;
           if( o.vote ) a.votes = *o.vote;
+          if( o.prime )
+          {
+            a.referrer_percent = 100;
+            a.referrer = a.id;
+          }
       });
    return object_id_type();
 }
