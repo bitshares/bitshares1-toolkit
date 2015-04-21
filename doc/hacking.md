@@ -29,6 +29,16 @@ You can edit `witneess_node_data_dir/config.json` like this:
 
 If you send private keys over this connection, clearly `websocket_endpoint` should be bound to localhost for security.
 
+Code coverage testing
+---------------------
+
+TODO:  Write something here
+
+Unit testing
+------------
+
+TODO:  Write something here
+
 Core mechanics
 --------------
 
@@ -43,6 +53,11 @@ Core mechanics
 - Markets
 - Escrow
 - Recurring payments
+
+Gotchas
+-------
+
+- Key objects can actually contain a key or address
 
 Witness node
 ------------
