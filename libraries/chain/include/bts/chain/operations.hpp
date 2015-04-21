@@ -619,7 +619,8 @@ namespace bts { namespace chain {
             proposal_create_operation,
             proposal_update_operation,
             proposal_delete_operation,
-            fill_order_operation
+            fill_order_operation,
+            global_parameters_update_operation
          > operation;
 
    /**
@@ -792,3 +793,4 @@ FC_REFLECT( bts::chain::proposal_update_operation, (fee_paying_account)(fee)(pro
 FC_REFLECT( bts::chain::proposal_delete_operation, (fee_paying_account)(using_owner_authority)(fee)(proposal) )
 FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (from_account)(asset_id)(amount)(fee) );
 
+FC_REFLECT( bts::chain::global_parameters_update_operation, (new_parameters)(fee) )

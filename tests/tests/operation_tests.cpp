@@ -175,7 +175,7 @@ BOOST_AUTO_TEST_CASE( transfer_core_asset )
                                                    asset(),
                                                    vector<char>()
                                                   }));
-      for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
+      trx.visit( operation_set_fee( db.current_fee_schedule() ) );
 
       asset fee = trx.operations.front().get<transfer_operation>().fee;
       trx.validate();
@@ -195,7 +195,7 @@ BOOST_AUTO_TEST_CASE( transfer_core_asset )
                                                    asset(),
                                                    vector<char>()
                                                   }));
-      for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
+      trx.visit( operation_set_fee( db.current_fee_schedule() ) );
 
       fee = trx.operations.front().get<transfer_operation>().fee;
       trx.validate();

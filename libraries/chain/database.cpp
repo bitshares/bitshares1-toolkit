@@ -25,6 +25,7 @@
 #include <bts/chain/transfer_evaluator.hpp>
 #include <bts/chain/proposal_evaluator.hpp>
 #include <bts/chain/operation_history_object.hpp>
+#include <bts/chain/global_parameters_evaluator.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/crypto/digest.hpp>
@@ -127,6 +128,7 @@ void database::initialize_evaluators()
    register_evaluator<proposal_create_evaluator>();
    register_evaluator<proposal_update_evaluator>();
    register_evaluator<proposal_delete_evaluator>();
+   register_evaluator<global_parameters_update_evaluator>();
 }
 
 void database::initialize_indexes()
