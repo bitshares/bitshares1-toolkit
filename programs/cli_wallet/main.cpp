@@ -201,7 +201,7 @@ class wallet_api
         vector<string> v_pay_from_account;
         v_pay_from_account.push_back( pay_from_account );
 
-        account_create_op.fee_paying_account = pay_from_account_id;
+        account_create_op.registrar = pay_from_account_id;
 
         relative_key_id_type owner_rkid(0);
         relative_key_id_type active_rkid(1);
