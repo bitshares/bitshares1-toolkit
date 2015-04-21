@@ -1,14 +1,18 @@
+
+#include <algorithm>
+#include <iomanip>
+#include <iostream>
+#include <iterator>
+
+#include <fc/io/json.hpp>
+#include <fc/io/stdio.hpp>
+#include <fc/network/http/websocket.hpp>
+#include <fc/rpc/cli.hpp>
+#include <fc/rpc/websocket_api.hpp>
+
 #include <bts/app/api.hpp>
 #include <bts/chain/address.hpp>
 #include <bts/utilities/key_conversion.hpp>
-#include <fc/io/json.hpp>
-#include <fc/network/http/websocket.hpp>
-#include <fc/rpc/websocket_api.hpp>
-#include <fc/io/stdio.hpp>
-#include <iostream>
-#include <fc/rpc/cli.hpp>
-#include <iomanip>
-
 
 using namespace bts::app;
 using namespace bts::chain;
@@ -18,13 +22,17 @@ using namespace std;
 struct wallet_data
 {
    flat_set<account_id_type> accounts;
+   // map of key_id -> base58 private key
    map<key_id_type, string>  keys;
+   // map of account_name -> base58_private_key for
+   //    incomplete account regs
+   map<string, string> pending_account_registrations;
+
    string                    ws_server = "ws://localhost:8090";
    string                    ws_user;
    string                    ws_password;
 };
-FC_REFLECT( wallet_data, (accounts)(keys)(ws_server)(ws_user)(ws_password) );
-
+FC_REFLECT( wallet_data, (accounts)(keys)(pending_account_registrations)(ws_server)(ws_user)(ws_password) );
 
 /**
  *  This wallet assumes nothing about where the database server is
@@ -66,7 +74,8 @@ class wallet_api
       {
          auto opt_priv_key = wif_to_key(wif_key);
          FC_ASSERT( opt_priv_key.valid() );
-         auto wif_key_address = opt_priv_key->get_public_key();
+         bts::chain::address wif_key_address = bts::chain::address(
+             opt_priv_key->get_public_key() );
 
          auto acnt = get_account( account_name_or_id );
 
@@ -82,9 +91,13 @@ class wallet_api
                 keys.insert( item.first );
          }
          auto opt_keys = _remote_db->get_keys( vector<key_id_type>(keys.begin(),keys.end()) );
-         for( auto opt_key : opt_keys )
+         for( const fc::optional<key_object>& opt_key : opt_keys )
          {
+            // the requested key ID's should all exist because they are
+            //    keys for an account
             FC_ASSERT( opt_key.valid() );
+            // we do this check by address because key objects on the
+            //    blockchain may not contain a key (i.e. are simply an address)
             if( opt_key->key_address() == wif_key_address )
             {
                _wallet.keys[ opt_key->id ] = wif_key;
@@ -165,16 +178,11 @@ class wallet_api
       signed_transaction create_account_with_brain_key(
           string brain_key,
           string account_name,
-          string pay_from_account
+          string registrar_account,
+          string referrer_account,
+          uint8_t referrer_percent
           )
       {
-        // TODO:  process when pay_from_account is ID
-
-        account_object pay_from_account_object =
-            this->get_account( pay_from_account );
-
-        account_id_type pay_from_account_id = pay_from_account_object.id;
-
         string normalized_brain_key = normalize_brain_key( brain_key );
         // TODO:  scan blockchain for accounts that exist with same brain key
         fc::ecc::private_key owner_privkey = derive_private_key( normalized_brain_key, 0 );
@@ -183,13 +191,30 @@ class wallet_api
         bts::chain::public_key_type owner_pubkey = owner_privkey.get_public_key();
         bts::chain::public_key_type active_pubkey = active_privkey.get_public_key();
 
+        account_create_operation account_create_op;
+
+        // TODO:  process when pay_from_account is ID
+
+        account_object registrar_account_object =
+            this->get_account( registrar_account );
+
+        account_id_type registrar_account_id = registrar_account_object.id;
+
+        if( referrer_percent > 0 )
+        {
+            account_object referrer_account_object =
+                this->get_account( referrer_account );
+            account_create_op.referrer = referrer_account_object.id;
+            account_create_op.referrer_percent = referrer_percent;
+        }
+
         // get pay_from_account_id
         key_create_operation owner_key_create_op;
-        owner_key_create_op.fee_paying_account = pay_from_account_id;
+        owner_key_create_op.fee_paying_account = registrar_account_id;
         owner_key_create_op.key_data = owner_pubkey;
 
         key_create_operation active_key_create_op;
-        active_key_create_op.fee_paying_account = pay_from_account_id;
+        active_key_create_op.fee_paying_account = registrar_account_id;
         active_key_create_op.key_data = active_pubkey;
 
         // key_create_op.calculate_fee(db.current_fee_schedule());
@@ -206,6 +231,7 @@ class wallet_api
         relative_key_id_type owner_rkid(0);
         relative_key_id_type active_rkid(1);
 
+        account_create_op.registrar = registrar_account_id;
         account_create_op.name = account_name;
         account_create_op.owner = authority(1, owner_rkid, 1);
         account_create_op.active = authority(1, active_rkid, 1);
@@ -226,7 +252,7 @@ class wallet_api
 
         tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
 
-        vector<key_id_type> paying_keys = pay_from_account_object.active.get_keys();
+        vector<key_id_type> paying_keys = registrar_account_object.active.get_keys();
 
         tx.validate();
 
@@ -244,6 +270,10 @@ class wallet_api
             }
         }
 
+        // we do not insert owner_privkey here because
+        //    it is intended to only be used for key recovery
+        _wallet.pending_account_registrations[ account_name ] = key_to_wif( active_privkey );
+
         return tx;
       }
 
@@ -257,6 +287,56 @@ class wallet_api
         auto opt_asset = _remote_db->lookup_asset_symbols( {asset_symbol} );
         wdump( (opt_asset) );
         return signed_transaction();
+      }
+
+      // methods that start with underscore are not incuded in API
+      void _resync()
+      {
+         // this method is used to update wallet_data annotations
+         //   e.g. wallet has been restarted and was not notified
+         //   of events while it was down
+         //
+         // everything that is done "incremental style" when a push
+         //   notification is received, should also be done here
+         //   "batch style" by querying the blockchain
+
+         if( _wallet.pending_account_registrations.size() > 0 )
+         {
+            std::vector<string> v_names;
+            v_names.reserve( _wallet.pending_account_registrations.size() );
+
+            for( auto it : _wallet.pending_account_registrations )
+               v_names.push_back( it.first );
+
+            std::vector< fc::optional< bts::chain::account_object >>
+                v_accounts = _remote_db->lookup_account_names( v_names );
+
+            for( fc::optional< bts::chain::account_object > opt_account : v_accounts )
+            {
+               if( ! opt_account.valid() )
+                  continue;
+
+               string account_name = opt_account->name;
+               auto it = _wallet.pending_account_registrations.find( account_name );
+               FC_ASSERT( it != _wallet.pending_account_registrations.end() );
+               if( import_key( account_name, it->second ) )
+               {
+                  // somebody else beat our pending registration, there is
+                  //    nothing we can do except log it and move on
+                  ilog( "account ${name} registered by someone else first!",
+                        ("name", account_name) );
+                  // might as well remove it from pending regs,
+                  //    because there is now no way this registration
+                  //    can become valid (even in the extremely rare
+                  //    possibility of migrating to a fork where the
+                  //    name is available, the user can always
+                  //    manually re-register)
+               }
+               _wallet.pending_account_registrations.erase( it );
+            }
+         }
+
+         return;
       }
 
       wallet_data             _wallet;

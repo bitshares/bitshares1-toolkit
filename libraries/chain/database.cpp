@@ -496,7 +496,7 @@ void database::update_active_delegates()
          for( const auto& weight : weights )
          {
             // Ensure that everyone has at least one vote. Zero weights aren't allowed.
-            uint16_t votes = std::max((weight.second.value >> bits_to_drop), 1ll);
+            uint16_t votes = std::max((weight.second.value >> bits_to_drop), int64_t(1) );
             a.owner.auths[weight.first] += votes;
             a.owner.weight_threshold += votes;
          }
