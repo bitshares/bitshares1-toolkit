@@ -419,7 +419,6 @@ struct database_fixture {
 
    void transfer( const account_object& from, const account_object& to, const asset& amount, const asset& fee = asset() )
    { try {
-      FC_ASSERT( amount.asset_id == fee.asset_id );
       trx.operations.push_back(transfer_operation({from.id, to.id, amount, fee, vector<char>() }));
 
       if( fee == asset() )

@@ -204,9 +204,7 @@ void transfer_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( from != to );
-   FC_ASSERT( fee.asset_id == amount.asset_id );
    FC_ASSERT( amount.amount > 0 );
-   //FC_ASSERT( fee.amount <= amount.amount );
 }
 
 void asset_create_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const

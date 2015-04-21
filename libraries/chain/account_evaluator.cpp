@@ -21,7 +21,6 @@ object_id_type account_create_evaluator::do_evaluate( const account_create_opera
    else
    {
       FC_ASSERT( op.referrer == fee_paying_account->referrer );
-      wdump((*fee_paying_account));
       FC_ASSERT( op.referrer_percent == fee_paying_account->referrer_percent, "",
                  ("op",op)
                  ("fee_paying_account->referral_percent",fee_paying_account->referrer_percent) );
