@@ -95,6 +95,7 @@ share_type account_create_operation::calculate_fee( const fee_schedule_type& sch
 }
 share_type account_update_operation::calculate_fee( const fee_schedule_type& schedule )const
 {
+   if( prime ) return schedule.at(prime_upgrade_fee_type);
    return schedule.at(account_create_fee_type);
 }
 void account_update_operation::get_required_auth(flat_set<account_id_type>& active_auth_set,
@@ -152,13 +153,15 @@ void key_create_operation::validate()const
 void account_create_operation::get_required_auth(flat_set<account_id_type>& active_auth_set,
                                                  flat_set<account_id_type>&) const
 {
-   active_auth_set.insert(fee_paying_account);
+   active_auth_set.insert(registrar);
 }
 
 void account_create_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( is_valid_name( name ) );
+   FC_ASSERT( referrer_percent >= 0   );
+   FC_ASSERT( referrer_percent <= 100 );
    auto pos = name.find( '/' );
    if( pos != string::npos )
    {

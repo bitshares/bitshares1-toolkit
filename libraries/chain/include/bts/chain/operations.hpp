@@ -29,7 +29,7 @@ namespace bts { namespace chain {
 
    struct account_create_operation
    {
-      account_id_type fee_paying_account;
+      account_id_type registrar;
       asset           fee;
 
       /**
@@ -38,6 +38,8 @@ namespace bts { namespace chain {
        *  equal fee_paying_account->referrer.
        */
       account_id_type referrer;
+      uint8_t         referrer_percent = 0;
+
       string          name;
       authority       owner;
       authority       active;
@@ -726,8 +728,8 @@ FC_REFLECT( bts::chain::key_create_operation,
           )
 
 FC_REFLECT( bts::chain::account_create_operation,
-            (fee_paying_account)(fee)
-            (referrer)
+            (registrar)(fee)
+            (referrer)(referrer_percent)
             (name)
             (owner)(active)(voting_key)(memo_key)
           )

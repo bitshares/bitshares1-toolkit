@@ -45,3 +45,9 @@
 
 #define BTS_DEFAULT_MAX_PROPOSAL_LIFETIME_SEC            (60*60*24*7*4) // Four weeks
 #define BTS_DEFAULT_GENESIS_PROPOSAL_REVIEW_PERIOD_SEC   (60*60*24*7*2) // Two weeks
+#define BTS_DEFAULT_WITNESS_PERCENT                      (10000/100) // 1% 
+#define BTS_DEFAULT_MAX_BULK_DISCOUNT_PERCENT            (10000/2) // 50% 
+#define BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MIN          (BTS_BLOCKCHAIN_PRECISION*1000)                                              
+#define BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MAX          (BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MIN*100)                                
+
+

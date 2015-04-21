@@ -179,7 +179,7 @@ BOOST_AUTO_TEST_CASE( undo_pending )
          trx.relative_expiration = 1000;
          account_id_type nathan_id = account_idx.get_next_id();
          account_create_operation cop;
-         cop.fee_paying_account = account_id_type(1);
+         cop.registrar = account_id_type(1);
          cop.name = "nathan";
          trx.operations.push_back(cop);
          trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
@@ -230,7 +230,7 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
       trx.relative_expiration = 1000;
       account_id_type nathan_id = account_idx.get_next_id();
       account_create_operation cop;
-      cop.fee_paying_account = account_id_type(1);
+      cop.registrar = account_id_type(1);
       cop.name = "nathan";
       trx.operations.push_back(cop);
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
@@ -343,7 +343,7 @@ BOOST_AUTO_TEST_CASE( tapos )
 
       account_id_type nathan_id = account_idx.get_next_id();
       account_create_operation cop;
-      cop.fee_paying_account = init1.id;
+      cop.registrar = init1.id;
       cop.name = "nathan";
       trx.operations.push_back(cop);
       trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));

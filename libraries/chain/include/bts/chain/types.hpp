@@ -91,7 +91,8 @@ namespace bts { namespace chain {
       transaction_fee_type, ///< a base price for every transaction
       data_fee_type, ///< a price per 1024 bytes of user data
       signature_fee_type, ///< a surcharge on transactions with more than 2 signatures.
-      global_parameters_update_fee_type, ///> the cost to update the global parameters
+      global_parameters_update_fee_type, ///< the cost to update the global parameters
+      prime_upgrade_fee_type, ///< the cost to upgrade an account to prime
       FEE_TYPE_COUNT ///< Sentry value which contains the number of different fee types
    };
 
@@ -264,9 +265,18 @@ namespace bts { namespace chain {
       uint32_t                maximum_proposal_lifetime           = BTS_DEFAULT_MAX_PROPOSAL_LIFETIME_SEC;
       uint32_t                genesis_proposal_review_period      = BTS_DEFAULT_GENESIS_PROPOSAL_REVIEW_PERIOD_SEC;
       uint8_t                 maximum_asset_whitelist_authorities = BTS_DEFAULT_MAX_ASSET_WHITELIST_AUTHORITIES;
+      uint16_t                witness_percent_of_fee              = BTS_DEFAULT_WITNESS_PERCENT;  ///< percent of revenue paid to witnesses
+      uint16_t                max_bulk_discount_percent_of_fee    = BTS_DEFAULT_MAX_BULK_DISCOUNT_PERCENT; ///< the maximum percentage discount for bulk discounts
+      share_type              bulk_discount_threshold_min         = BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MIN; ///< the minimum amount of fees paid to qualify for bulk discounts
+      share_type              bulk_discount_threshold_max         = BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MAX; ///< the amount of fees paid to qualify for the max bulk discount percent
 
       void validate()const
       {
+         FC_ASSERT( witness_percent_of_fee < 10000 );
+         FC_ASSERT( max_bulk_discount_percent_of_fee < 10000 );
+         FC_ASSERT( bulk_discount_threshold_min <= bulk_discount_threshold_max );
+         FC_ASSERT( bulk_discount_threshold_min > 0 );
+
          FC_ASSERT( witness_pay >= 0 );
          FC_ASSERT( block_interval <= BTS_MAX_BLOCK_INTERVAL );
          FC_ASSERT( maintenance_interval > block_interval,
@@ -349,6 +359,7 @@ FC_REFLECT_ENUM( bts::chain::fee_type,
                  (data_fee_type)
                  (signature_fee_type)
                  (global_parameters_update_fee_type)
+                 (prime_upgrade_fee_type)
                  (FEE_TYPE_COUNT)
                )
 
@@ -363,4 +374,8 @@ FC_REFLECT( bts::chain::chain_parameters,
             (maximum_time_until_expiration)
             (maximum_proposal_lifetime)
             (maximum_asset_whitelist_authorities)
+            (witness_percent_of_fee)
+            (max_bulk_discount_percent_of_fee)
+            (bulk_discount_threshold_min)
+            (bulk_discount_threshold_max)
           )
