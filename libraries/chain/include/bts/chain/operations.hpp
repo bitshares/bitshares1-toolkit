@@ -570,7 +570,7 @@ namespace bts { namespace chain {
    struct proposal_delete_operation
    {
       account_id_type   fee_paying_account;
-      bool              using_owner_authority;
+      bool              using_owner_authority = false;
       asset             fee;
       proposal_id_type  proposal;
 
