@@ -1815,6 +1815,16 @@ BOOST_AUTO_TEST_CASE( limit_order_fill_or_kill )
    db.push_transaction(trx, ~0);
 } FC_LOG_AND_RETHROW() }
 
+/// Shameless code coverage plugging. Otherwise, these calls never happen.
+BOOST_AUTO_TEST_CASE( fill_order )
+{ try {
+   fill_order_operation o;
+   flat_set<account_id_type> auths;
+   o.get_required_auth(auths, auths);
+   BOOST_CHECK_THROW(o.validate(), fc::exception);
+   o.calculate_fee(db.current_fee_schedule());
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( delegate_withdraw_pay_test, 1 )
 BOOST_AUTO_TEST_CASE( delegate_withdraw_pay_test )
 {
