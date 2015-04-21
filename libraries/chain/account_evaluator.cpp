@@ -6,7 +6,7 @@
 namespace bts { namespace chain {
 
 object_id_type account_create_evaluator::do_evaluate( const account_create_operation& op )
-{
+{ try {
    auto bts_fee_paid = pay_fee( op.registrar, op.fee );
    auto bts_fee_required = op.calculate_fee( db().current_fee_schedule() );
    FC_ASSERT( bts_fee_paid >= bts_fee_required );
@@ -21,7 +21,10 @@ object_id_type account_create_evaluator::do_evaluate( const account_create_opera
    else
    {
       FC_ASSERT( op.referrer == fee_paying_account->referrer );
-      FC_ASSERT( op.referrer_percent == fee_paying_account->referrer_percent );
+      wdump((*fee_paying_account));
+      FC_ASSERT( op.referrer_percent == fee_paying_account->referrer_percent, "",
+                 ("op",op)
+                 ("fee_paying_account->referral_percent",fee_paying_account->referrer_percent) );
    }
 
    for( auto id : op.owner.auths )
@@ -51,10 +54,10 @@ object_id_type account_create_evaluator::do_evaluate( const account_create_opera
    }
 
    return object_id_type();
-}
+} FC_CAPTURE_AND_RETHROW( (op) ) }
 
 object_id_type account_create_evaluator::do_apply( const account_create_operation& o )
-{
+{ try {
    apply_delta_balances();
    apply_delta_fee_pools();
 
@@ -88,7 +91,7 @@ object_id_type account_create_evaluator::do_apply( const account_create_operatio
    });
 
    return new_acnt_object.id;
-}
+} FC_CAPTURE_AND_RETHROW((o)) }
 
 
 object_id_type account_update_evaluator::do_evaluate( const account_update_operation& o )
@@ -148,6 +151,7 @@ object_id_type account_update_evaluator::do_apply( const account_update_operatio
           {
             a.referrer_percent = 100;
             a.referrer = a.id;
+            a.is_prime = true;
           }
       });
    return object_id_type();

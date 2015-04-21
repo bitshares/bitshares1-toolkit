@@ -206,7 +206,7 @@ struct database_fixture {
                                           const account_object& referrer, 
                                           uint8_t referrer_percent = 100, 
                                           key_id_type key = key_id_type() ) 
-   {
+   { try {
       account_create_operation          create_account;
 
       create_account.registrar          = registrar.id; 
@@ -233,7 +233,7 @@ struct database_fixture {
 
       create_account.fee = create_account.calculate_fee(db.current_fee_schedule());
       return create_account;
-   }
+   } FC_CAPTURE_AND_RETHROW((name)(referrer_percent))}
 
 
 
@@ -320,20 +320,30 @@ struct database_fixture {
       trx.operations.push_back(make_account(name, key));
       trx.validate();
       auto r = db.push_transaction(trx, ~0);
+      auto& result = db.get<account_object>(r.operation_results[0].get<object_id_type>());
       trx.operations.clear();
-      return db.get<account_object>(r.operation_results[0].get<object_id_type>());
+      return result;
    }
    const account_object& create_account( const string& name, 
                                          const account_object& registrar, 
                                          const account_object& referrer, 
+                                         uint8_t referrer_percent = 100,
                                          const key_id_type& key = key_id_type() )
-   {
-      trx.operations.push_back(make_account(name, registrar, referrer, key));
+   { try {
+      trx.operations.resize(1);
+      trx.operations.back() = (make_account(name, registrar, referrer, referrer_percent, key));
+      ilog(".");
+      wdump((trx));
       trx.validate();
+      ilog(".");
       auto r = db.push_transaction(trx, ~0);
+      wdump((r));
+      const auto& result = db.get<account_object>(r.operation_results[0].get<object_id_type>());
+      ilog(".");
       trx.operations.clear();
-      return db.get<account_object>(r.operation_results[0].get<object_id_type>());
-   }
+      ilog(".");
+      return result;
+   } FC_CAPTURE_AND_RETHROW( (name)(registrar)(referrer) ) }
 
    const delegate_object& create_delegate( const account_object& owner )
    {
@@ -403,14 +413,19 @@ struct database_fixture {
    }
 
    void transfer( const account_object& from, const account_object& to, const asset& amount, const asset& fee = asset() )
-   {
+   { try {
+      FC_ASSERT( amount.asset_id == fee.asset_id );
       trx.operations.push_back(transfer_operation({from.id, to.id, amount, fee, vector<char>() }));
 
-      for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
+      if( fee == asset() )
+      {
+         for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
+      }
       trx.validate();
       db.push_transaction(trx, ~0);
       trx.operations.clear();
-   }
+   } FC_CAPTURE_AND_RETHROW( (from.id)(to.id)(amount)(fee) ) }
+
    void fund_fee_pool( const account_object& from, const asset_object& asset_to_fund, const share_type amount )
    {
       trx.operations.push_back(asset_fund_fee_pool_operation({from.id, asset_to_fund.id, amount}));
@@ -429,6 +444,15 @@ struct database_fixture {
       });
 
    }
+   void upgrade_to_prime( const account_object& account )
+   { try {
+      account_update_operation op;
+      op.account = account.id;
+      op.prime = true;
+      trx.operations.emplace_back(operation(op));
+      db.push_transaction( trx, ~0 );
+      FC_ASSERT( account.is_prime );
+   } FC_CAPTURE_AND_RETHROW((account)) }
 
    void print_market( const string& syma, const string&  symb )
    {

@@ -712,7 +712,7 @@ BOOST_AUTO_TEST_CASE( create_buy_uia_multiple_match_new_reverse )
    const account_object& seller_account = create_account( "seller" );
 
    transfer( genesis_account(db), seller_account, asset( 10000 ) );
-   transfer( nathan_account, buyer_account, test_asset.amount(10000) );
+   transfer( nathan_account, buyer_account, test_asset.amount(10000),test_asset.amount(0) );
 
    BOOST_CHECK_EQUAL( get_balance( buyer_account, test_asset ), 10000 );
 
@@ -752,7 +752,7 @@ BOOST_AUTO_TEST_CASE( create_buy_uia_multiple_match_new_reverse_fract )
    const account_object& seller_account = create_account( "seller" );
 
    transfer( genesis_account(db), seller_account, asset( 30 ) );
-   transfer( nathan_account, buyer_account, test_asset.amount(10000) );
+   transfer( nathan_account, buyer_account, test_asset.amount(10000),test_asset.amount(0) );
 
    BOOST_CHECK_EQUAL( get_balance( buyer_account, test_asset ), 10000 );
    BOOST_CHECK_EQUAL( get_balance( buyer_account, core_asset ), 0 );
@@ -801,15 +801,17 @@ BOOST_AUTO_TEST_CASE( uia_fees )
       fund_fee_pool(genesis_account, test_asset, 1000000);
       BOOST_CHECK(asset_dynamic.fee_pool == 1000000);
 
-      transfer_operation op({nathan_account.id, genesis_account.id, test_asset.amount(100)});
+      transfer_operation op({nathan_account.id, genesis_account.id, test_asset.amount(100), test_asset.amount(0)});
       op.fee = asset(op.calculate_fee(db.current_fee_schedule())) * test_asset.core_exchange_rate;
       BOOST_CHECK(op.fee.asset_id == test_asset.id);
       asset old_balance = nathan_account.balances(db).get_balance(test_asset.id);
       asset fee = op.fee;
       BOOST_CHECK(fee.amount > 0);
       asset core_fee = fee*test_asset.core_exchange_rate;
+      idump((op));
       trx.operations.push_back(std::move(op));
       db.push_transaction(trx, ~0);
+      ilog(".");
 
       BOOST_CHECK(nathan_account.balances(db).get_balance(test_asset.id) == old_balance - fee - test_asset.amount(100));
       BOOST_CHECK(genesis_account.balances(db).get_balance(test_asset.id) == test_asset.amount(100));
@@ -817,7 +819,9 @@ BOOST_AUTO_TEST_CASE( uia_fees )
       BOOST_CHECK(asset_dynamic.fee_pool == 1000000 - core_fee.amount);
 
       //Do it again, for good measure.
+      ilog(".");
       db.push_transaction(trx, ~0);
+      ilog(".");
       BOOST_CHECK(nathan_account.balances(db).get_balance(test_asset.id)
                   == old_balance - fee - fee - test_asset.amount(200));
       BOOST_CHECK(genesis_account.balances(db).get_balance(test_asset.id) == test_asset.amount(200));
@@ -830,11 +834,16 @@ BOOST_AUTO_TEST_CASE( uia_fees )
 
       asset genesis_balance_before = genesis_account.balances(db).get_balance(asset_id_type());
       BOOST_CHECK(nathan_account.balances(db).get_balance(asset_id_type()) == asset());
+      ilog(".");
       transfer(genesis_account, nathan_account, asset(20));
+      ilog(".");
       BOOST_CHECK(nathan_account.balances(db).get_balance(asset_id_type()) == asset(20));
+      idump((op));
 
       trx.operations.emplace_back(std::move(op));
+      trx.operations.back().visit( operation_set_fee( db.current_fee_schedule() ) );
       db.push_transaction(trx, ~0);
+      ilog(".");
 
       BOOST_CHECK(nathan_account.balances(db).get_balance(asset_id_type()) == asset());
       BOOST_CHECK(nathan_account.balances(db).get_balance(test_asset.id)
@@ -1186,7 +1195,7 @@ BOOST_AUTO_TEST_CASE( full_cover_test )
 
       BOOST_CHECK(index.find(boost::make_tuple(debt_holder.id, bit_usd.id)) != index.end());
 
-      transfer(usd_holder, debt_holder, bit_usd.amount(100));
+      transfer(usd_holder, debt_holder, bit_usd.amount(100), bit_usd.amount(0));
 
       call_order_update_operation op;
       op.funding_account = debt_holder.id;
@@ -1224,7 +1233,9 @@ BOOST_AUTO_TEST_CASE( partial_cover_test )
 
       BOOST_CHECK(index.find(boost::make_tuple(debt_holder.id, bit_usd.id)) != index.end());
 
-      transfer(usd_holder, debt_holder, bit_usd.amount(50));
+      ilog("..." );
+      transfer(usd_holder, debt_holder, bit_usd.amount(50), bit_usd.amount(0));
+      ilog("..." );
       BOOST_CHECK_EQUAL(get_balance(debt_holder, bit_usd), 50);
 
       trx.operations.clear();
@@ -1245,6 +1256,7 @@ BOOST_AUTO_TEST_CASE( partial_cover_test )
       op.amount_to_cover = bit_usd.amount(0);
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
+      ilog("..." );
 
       BOOST_CHECK(debt.call_price == price(core.amount(339), bit_usd.amount(50)));
 
@@ -1266,7 +1278,10 @@ BOOST_AUTO_TEST_CASE( partial_cover_test )
       BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
 
       trx.operations.clear();
-      transfer(usd_holder, debt_holder, bit_usd.amount(50));
+      ilog("..." );
+      transfer(usd_holder, debt_holder, bit_usd.amount(50), bit_usd.amount(0));
+      trx.operations.clear();
+      op.validate();
       trx.operations.push_back(op);
       db.push_transaction(trx, ~0);
 
@@ -1842,15 +1857,47 @@ BOOST_AUTO_TEST_CASE( witness_pay_test )
    assert( !"not implemneted" );
 }
 
+/**
+ *  Assume the referrer gets 99% of transaction fee
+ */
 BOOST_AUTO_TEST_CASE( transfer_cashback_test )
 {
-   assert( !"not implemneted" );
+   try {
+   const account_object& sam  = create_account( "sam" );
+   transfer(account_id_type()(db), sam, asset(30000));
+   upgrade_to_prime(sam);
+
+   ilog( "Creating alice" );
+   const account_object& alice  = create_account( "alice", sam, sam, 0 );
+   ilog( "Creating bob" );
+   const account_object& bob    = create_account( "bob", sam, sam, 0 );
+
+   transfer(account_id_type()(db), alice, asset(300000));
+
+   enable_fees();
+
+   transfer(alice, bob, asset(100000));
+   wdump((alice)(bob)(sam));
+   wdump((alice.balances(db))(bob.balances(db))(sam.balances(db)));
+
+   BOOST_REQUIRE_EQUAL( bob.balances(db).lifetime_fees_paid.value, BTS_BLOCKCHAIN_PRECISION  );
+
+   const asset_dynamic_data_object& core_asset_data = db.get_core_asset().dynamic_asset_data_id(db);
+   // 1% of fee goes to witnesses
+   BOOST_CHECK_EQUAL(core_asset_data.accumulated_fees.value, BTS_BLOCKCHAIN_PRECISION/100);
+   // 99% of fee goes to referrer / registrar sam
+   BOOST_CHECK_EQUAL( sam.balances(db).cashback_rewards.value,  BTS_BLOCKCHAIN_PRECISION - BTS_BLOCKCHAIN_PRECISION/100 );
+
+   } catch( const fc::exception& e )
+   {
+      edump((e.to_detail_string()));
+      throw;
+   }
 }
 
 BOOST_AUTO_TEST_CASE( bulk_discount_test )
 {
-   const account_object& shorter1  = create_account( "alice" );
-   const account_object& shorter2  = create_account( "bob" );
+
    assert( !"not implemneted" );
 }
 

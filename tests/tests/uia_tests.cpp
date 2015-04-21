@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE( transfer_whitelist_uia )
       const account_object& nathan = get_account("nathan");
       const account_object& dan = create_account("dan");
 
-      transfer_operation op({nathan.id, dan.id, advanced.amount(100)});
+      transfer_operation op({nathan.id, dan.id, advanced.amount(100), advanced.amount(0)});
       trx.operations.push_back(op);
       //Fail because dan is not whitelisted.
       BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
