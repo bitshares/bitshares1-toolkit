@@ -1858,20 +1858,15 @@ BOOST_AUTO_TEST_CASE( cover_with_collateral_test )
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( witness_pay_test, 1 )
 BOOST_AUTO_TEST_CASE( witness_pay_test )
 {
-   assert( !"not implemneted" );
-}
-
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( transfer_cashback_test, 1 )
-BOOST_AUTO_TEST_CASE( transfer_cashback_test )
-{
-   assert( !"not implemneted" );
+   assert( !"not implemented" );
 }
 
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( bulk_discount_test, 1 )
 BOOST_AUTO_TEST_CASE( bulk_discount_test )
 {
-
-   assert( !"not implemneted" );
+   const account_object& shorter1  = create_account( "alice" );
+   const account_object& shorter2  = create_account( "bob" );
+   assert( !"not implemented" );
 }
 
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( margin_call_black_swan, 1 )
