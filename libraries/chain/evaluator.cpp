@@ -24,7 +24,6 @@ namespace bts { namespace chain {
    { try {
       FC_ASSERT( fee.amount >= 0 );
       fee_paying_account = &account_id(db());
-      FC_ASSERT( verify_authority( fee_paying_account, authority::active ) );
       fee_paying_account_balances = &fee_paying_account->balances(db());
 
       fee_asset = &fee.asset_id(db());
@@ -41,7 +40,7 @@ namespace bts { namespace chain {
          fees_paid[fee_asset].to_issuer += fee.amount;
       }
       const auto& gp = db().get_global_properties();
-      auto bulk_cashback  = share_type(0); // fee_from_pool.amount.value * 
+      auto bulk_cashback  = share_type(0); // fee_from_pool.amount.value *
       if( fee_paying_account_balances->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_min &&
           fee_paying_account->is_prime )
       {
@@ -50,10 +49,11 @@ namespace bts { namespace chain {
             bulk_discount_percent = gp.parameters.max_bulk_discount_percent_of_fee;
          else if( fee_paying_account_balances->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_min )
          {
-            bulk_discount_percent = 
-               (gp.parameters.max_bulk_discount_percent_of_fee * 
-               (fee_paying_account_balances->lifetime_fees_paid.value  - gp.parameters.bulk_discount_threshold_min.value)) / 
-               (gp.parameters.bulk_discount_threshold_max.value - gp.parameters.bulk_discount_threshold_min.value);
+            bulk_discount_percent =
+                  (gp.parameters.max_bulk_discount_percent_of_fee *
+                            (fee_paying_account_balances->lifetime_fees_paid.value -
+                             gp.parameters.bulk_discount_threshold_min.value)) /
+                  (gp.parameters.bulk_discount_threshold_max.value - gp.parameters.bulk_discount_threshold_min.value);
          }
          assert( bulk_discount_percent <= 10000 );
          assert( bulk_discount_percent >= 0 );
@@ -93,9 +93,10 @@ namespace bts { namespace chain {
       flat_set<account_id_type> owner_auths;
       op.visit(operation_get_required_auths(active_auths, owner_auths));
       for( auto id : active_auths )
-         FC_ASSERT(verify_authority(&id(db()), authority::active));
+         FC_ASSERT(verify_authority(&id(db()), authority::active) ||
+                   verify_authority(&id(db()), authority::owner), "", ("id", id));
       for( auto id : owner_auths )
-         FC_ASSERT(verify_authority(&id(db()), authority::owner));
+         FC_ASSERT(verify_authority(&id(db()), authority::owner), "", ("id", id));
    }
 
    bool generic_evaluator::verify_signature( const key_object* k )
