@@ -185,6 +185,7 @@ BOOST_AUTO_TEST_CASE( recursive_accounts )
          account_update_operation op;
          op.account = parent1.id;
          op.active = authority(1, account_id_type(grandparent.id), 1);
+         op.owner = *op.active;
          trx.operations.push_back(op);
          op.account = grandparent.id;
          op.active = authority(1, grandparent_key_obj.get_id(), 1);
@@ -573,6 +574,27 @@ BOOST_FIXTURE_TEST_CASE( proposal_delete, database_fixture )
    BOOST_CHECK(!prop.is_authorized_to_execute(&db));
 
    {
+      proposal_update_operation uop;
+      uop.fee_paying_account = nathan.get_id();
+      uop.proposal = prop.id;
+      uop.active_approvals_to_add.insert(nathan.get_id());
+      trx.operations.push_back(uop);
+      trx.sign(nathan_key);
+      db.push_transaction(trx);
+      trx.clear();
+      BOOST_CHECK(!prop.is_authorized_to_execute(&db));
+      BOOST_CHECK_EQUAL(prop.available_active_approvals.size(), 1);
+
+      std::swap(uop.active_approvals_to_add, uop.active_approvals_to_remove);
+      trx.operations.push_back(uop);
+      trx.sign(nathan_key);
+      db.push_transaction(trx);
+      trx.clear();
+      BOOST_CHECK(!prop.is_authorized_to_execute(&db));
+      BOOST_CHECK_EQUAL(prop.available_active_approvals.size(), 0);
+   }
+
+   {
       proposal_id_type pid = prop.id;
       proposal_delete_operation dop;
       dop.fee_paying_account = nathan.get_id();
@@ -582,6 +604,169 @@ BOOST_FIXTURE_TEST_CASE( proposal_delete, database_fixture )
       db.push_transaction(trx);
       BOOST_CHECK(db.find_object(pid) == nullptr);
       BOOST_CHECK_EQUAL(get_balance(nathan, asset_id_type()(db)), 100000);
+   }
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE( proposal_owner_authority_delete, database_fixture )
+{ try {
+   generate_block();
+
+   auto nathan_key = generate_private_key("nathan");
+   auto dan_key = generate_private_key("dan");
+   const account_object& nathan = create_account("nathan", register_key(nathan_key.get_public_key()).get_id());
+   const account_object& dan = create_account("dan", register_key(dan_key.get_public_key()).get_id());
+
+   transfer(account_id_type()(db), nathan, asset(100000));
+   transfer(account_id_type()(db), dan, asset(100000));
+
+   {
+      transfer_operation top;
+      top.from = dan.get_id();
+      top.to = nathan.get_id();
+      top.amount = asset(500);
+
+      account_update_operation uop;
+      uop.account = nathan.get_id();
+      uop.owner = authority(1, register_key(generate_private_key("nathan2").get_public_key()).get_id(), 1);
+
+      proposal_create_operation pop;
+      pop.proposed_ops.emplace_back(top);
+      pop.proposed_ops.emplace_back(uop);
+      std::swap(top.from, top.to);
+      top.amount = asset(6000);
+      pop.proposed_ops.emplace_back(top);
+
+      pop.fee_paying_account = nathan.get_id();
+      pop.expiration_time = db.head_block_time() + fc::days(1);
+      trx.operations.push_back(pop);
+      trx.sign(nathan_key);
+      db.push_transaction(trx);
+      trx.clear();
+   }
+
+   const proposal_object& prop = *db.get_index_type<proposal_index>().indices().begin();
+   BOOST_CHECK_EQUAL(prop.required_active_approvals.size(), 1);
+   BOOST_CHECK_EQUAL(prop.required_owner_approvals.size(), 1);
+   BOOST_CHECK(!prop.is_authorized_to_execute(&db));
+
+   {
+      proposal_update_operation uop;
+      uop.fee_paying_account = nathan.get_id();
+      uop.proposal = prop.id;
+      uop.owner_approvals_to_add.insert(nathan.get_id());
+      trx.operations.push_back(uop);
+      trx.sign(nathan_key);
+      db.push_transaction(trx);
+      trx.clear();
+      BOOST_CHECK(!prop.is_authorized_to_execute(&db));
+      BOOST_CHECK_EQUAL(prop.available_owner_approvals.size(), 1);
+
+      std::swap(uop.owner_approvals_to_add, uop.owner_approvals_to_remove);
+      trx.operations.push_back(uop);
+      trx.sign(nathan_key);
+      db.push_transaction(trx);
+      trx.clear();
+      BOOST_CHECK(!prop.is_authorized_to_execute(&db));
+      BOOST_CHECK_EQUAL(prop.available_owner_approvals.size(), 0);
+   }
+
+   {
+      proposal_id_type pid = prop.id;
+      proposal_delete_operation dop;
+      dop.fee_paying_account = nathan.get_id();
+      dop.proposal = pid;
+      dop.using_owner_authority = true;
+      trx.operations.push_back(dop);
+      trx.sign(nathan_key);
+      db.push_transaction(trx);
+      BOOST_CHECK(db.find_object(pid) == nullptr);
+      BOOST_CHECK_EQUAL(get_balance(nathan, asset_id_type()(db)), 100000);
+   }
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE( proposal_owner_authority_complete, database_fixture )
+{ try {
+   generate_block();
+
+   auto nathan_key = generate_private_key("nathan");
+   auto dan_key = generate_private_key("dan");
+   const account_object& nathan = create_account("nathan", register_key(nathan_key.get_public_key()).get_id());
+   const account_object& dan = create_account("dan", register_key(dan_key.get_public_key()).get_id());
+
+   transfer(account_id_type()(db), nathan, asset(100000));
+   transfer(account_id_type()(db), dan, asset(100000));
+
+   {
+      transfer_operation top;
+      top.from = dan.get_id();
+      top.to = nathan.get_id();
+      top.amount = asset(500);
+
+      account_update_operation uop;
+      uop.account = nathan.get_id();
+      uop.owner = authority(1, register_key(generate_private_key("nathan2").get_public_key()).get_id(), 1);
+
+      proposal_create_operation pop;
+      pop.proposed_ops.emplace_back(top);
+      pop.proposed_ops.emplace_back(uop);
+      std::swap(top.from, top.to);
+      top.amount = asset(6000);
+      pop.proposed_ops.emplace_back(top);
+
+      pop.fee_paying_account = nathan.get_id();
+      pop.expiration_time = db.head_block_time() + fc::days(1);
+      trx.operations.push_back(pop);
+      trx.sign(nathan_key);
+      db.push_transaction(trx);
+      trx.clear();
+   }
+
+   const proposal_object& prop = *db.get_index_type<proposal_index>().indices().begin();
+   BOOST_CHECK_EQUAL(prop.required_active_approvals.size(), 1);
+   BOOST_CHECK_EQUAL(prop.required_owner_approvals.size(), 1);
+   BOOST_CHECK(!prop.is_authorized_to_execute(&db));
+
+   {
+      proposal_id_type pid = prop.id;
+      proposal_update_operation uop;
+      uop.fee_paying_account = nathan.get_id();
+      uop.proposal = prop.id;
+      uop.key_approvals_to_add.insert(dan.active.auths.begin()->first);
+      trx.operations.push_back(uop);
+      trx.sign(nathan_key);
+      trx.sign(dan_key);
+      db.push_transaction(trx);
+      trx.clear();
+      BOOST_CHECK(!prop.is_authorized_to_execute(&db));
+      BOOST_CHECK_EQUAL(prop.available_key_approvals.size(), 1);
+
+      std::swap(uop.key_approvals_to_add, uop.key_approvals_to_remove);
+      trx.operations.push_back(uop);
+      trx.sign(nathan_key);
+      trx.sign(dan_key);
+      db.push_transaction(trx);
+      trx.clear();
+      BOOST_CHECK(!prop.is_authorized_to_execute(&db));
+      BOOST_CHECK_EQUAL(prop.available_key_approvals.size(), 0);
+
+      std::swap(uop.key_approvals_to_add, uop.key_approvals_to_remove);
+      // Survive trx dupe check
+      trx.set_expiration(db.head_block_id());
+      trx.operations.push_back(uop);
+      trx.sign(nathan_key);
+      trx.sign(dan_key);
+      db.push_transaction(trx);
+      trx.clear();
+      BOOST_CHECK(!prop.is_authorized_to_execute(&db));
+      BOOST_CHECK_EQUAL(prop.available_key_approvals.size(), 1);
+
+      uop.key_approvals_to_add.clear();
+      uop.owner_approvals_to_add.insert(nathan.get_id());
+      trx.operations.push_back(uop);
+      trx.sign(nathan_key);
+      db.push_transaction(trx);
+      trx.clear();
+      BOOST_CHECK(db.find_object(pid) == nullptr);
    }
 } FC_LOG_AND_RETHROW() }
 
