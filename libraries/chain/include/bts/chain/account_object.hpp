@@ -52,7 +52,7 @@ namespace bts { namespace chain {
           *  time an order is created or modified.
           */
          share_type            total_core_in_orders;
-         
+
          /**
           *  Tracks the total fees paid by this account for the purpose
           *  of calculating bulk discounts.
@@ -136,7 +136,7 @@ namespace bts { namespace chain {
           */
          flat_set<account_id_type>        blacklisting_accounts;
 
-         /** 
+         /**
           * Tracks whether or not this account has upgraded to prime.
           */
          bool is_prime = false;
@@ -145,6 +145,8 @@ namespace bts { namespace chain {
           * otherwise.
           */
          bool is_authorized_asset(const asset_object& asset_obj)const;
+
+         account_id_type get_id()const { return id; }
    };
 
    /**

@@ -474,4 +474,115 @@ BOOST_FIXTURE_TEST_CASE( fired_delegates, database_fixture )
    BOOST_CHECK_EQUAL(get_balance(*nathan, asset_id_type()(db)), 5000);
 } FC_LOG_AND_RETHROW() }
 
+BOOST_FIXTURE_TEST_CASE( proposal_two_accounts, database_fixture )
+{ try {
+   generate_block();
+
+   auto nathan_key = generate_private_key("nathan");
+   auto dan_key = generate_private_key("dan");
+   const account_object& nathan = create_account("nathan", register_key(nathan_key.get_public_key()).get_id());
+   const account_object& dan = create_account("dan", register_key(dan_key.get_public_key()).get_id());
+
+   transfer(account_id_type()(db), nathan, asset(100000));
+   transfer(account_id_type()(db), dan, asset(100000));
+
+   {
+      transfer_operation top;
+      top.from = dan.get_id();
+      top.to = nathan.get_id();
+      top.amount = asset(500);
+
+      proposal_create_operation pop;
+      pop.proposed_ops.emplace_back(top);
+      std::swap(top.from, top.to);
+      pop.proposed_ops.emplace_back(top);
+
+      pop.fee_paying_account = nathan.get_id();
+      pop.expiration_time = db.head_block_time() + fc::days(1);
+      trx.operations.push_back(pop);
+      trx.sign(nathan_key);
+      db.push_transaction(trx);
+      trx.clear();
+   }
+
+   const proposal_object& prop = *db.get_index_type<proposal_index>().indices().begin();
+   BOOST_CHECK(prop.required_active_approvals.size() == 2);
+   BOOST_CHECK(prop.required_owner_approvals.size() == 0);
+   BOOST_CHECK(!prop.is_authorized_to_execute(&db));
+
+   {
+      proposal_id_type pid = prop.id;
+      proposal_update_operation uop;
+      uop.proposal = prop.id;
+      uop.active_approvals_to_add.insert(nathan.get_id());
+      uop.fee_paying_account = nathan.get_id();
+      trx.operations.push_back(uop);
+      trx.sign(nathan_key);
+      db.push_transaction(trx);
+      trx.clear();
+
+      BOOST_CHECK(db.find_object(pid) != nullptr);
+      BOOST_CHECK(!prop.is_authorized_to_execute(&db));
+
+      uop.active_approvals_to_add = {dan.get_id()};
+      trx.operations.push_back(uop);
+      trx.sign(nathan_key);
+      BOOST_REQUIRE_THROW(db.push_transaction(trx), fc::exception);
+      trx.sign(dan_key);
+      db.push_transaction(trx);
+
+      BOOST_CHECK(db.find_object(pid) == nullptr);
+   }
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE( proposal_delete, database_fixture )
+{ try {
+   generate_block();
+
+   auto nathan_key = generate_private_key("nathan");
+   auto dan_key = generate_private_key("dan");
+   const account_object& nathan = create_account("nathan", register_key(nathan_key.get_public_key()).get_id());
+   const account_object& dan = create_account("dan", register_key(dan_key.get_public_key()).get_id());
+
+   transfer(account_id_type()(db), nathan, asset(100000));
+   transfer(account_id_type()(db), dan, asset(100000));
+
+   {
+      transfer_operation top;
+      top.from = dan.get_id();
+      top.to = nathan.get_id();
+      top.amount = asset(500);
+
+      proposal_create_operation pop;
+      pop.proposed_ops.emplace_back(top);
+      std::swap(top.from, top.to);
+      top.amount = asset(6000);
+      pop.proposed_ops.emplace_back(top);
+
+      pop.fee_paying_account = nathan.get_id();
+      pop.expiration_time = db.head_block_time() + fc::days(1);
+      trx.operations.push_back(pop);
+      trx.sign(nathan_key);
+      db.push_transaction(trx);
+      trx.clear();
+   }
+
+   const proposal_object& prop = *db.get_index_type<proposal_index>().indices().begin();
+   BOOST_CHECK(prop.required_active_approvals.size() == 2);
+   BOOST_CHECK(prop.required_owner_approvals.size() == 0);
+   BOOST_CHECK(!prop.is_authorized_to_execute(&db));
+
+   {
+      proposal_id_type pid = prop.id;
+      proposal_delete_operation dop;
+      dop.fee_paying_account = nathan.get_id();
+      dop.proposal = pid;
+      trx.operations.push_back(dop);
+      trx.sign(nathan_key);
+      db.push_transaction(trx);
+      BOOST_CHECK(db.find_object(pid) == nullptr);
+      BOOST_CHECK_EQUAL(get_balance(nathan, asset_id_type()(db)), 100000);
+   }
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()

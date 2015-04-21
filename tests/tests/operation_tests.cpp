@@ -88,6 +88,8 @@ BOOST_AUTO_TEST_CASE( child_account )
          a.active = authority(1, nathan_key.get_id(), 1);
       });
 
+      BOOST_CHECK(nathan.active.get_keys() == vector<key_id_type>{nathan_key.get_id()});
+
       auto op = make_account("nathan/child");
       op.fee_paying_account = root.id;
       op.owner = authority(1, child_key.get_id(), 1);

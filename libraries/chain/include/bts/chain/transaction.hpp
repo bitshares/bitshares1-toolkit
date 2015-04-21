@@ -87,6 +87,9 @@ namespace bts { namespace chain {
          : transaction(trx){}
       void sign( const private_key_type& key );
       vector<signature_type> signatures;
+
+      /// Removes all operations and signatures
+      void clear() { operations.clear(); signatures.clear(); }
    };
 
    /**
