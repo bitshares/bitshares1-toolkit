@@ -48,6 +48,11 @@ struct database_fixture {
    fc::ecc::private_key delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
    optional<fc::temp_directory> data_dir;
 
+   static fc::ecc::private_key generate_private_key(string seed)
+   {
+      return fc::ecc::private_key::regenerate(fc::sha256::hash(seed));
+   }
+
    void verify_asset_supplies()
    {
       const asset_dynamic_data_object& core_asset_data = db.get_core_asset().dynamic_asset_data_id(db);

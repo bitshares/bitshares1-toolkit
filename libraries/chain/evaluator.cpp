@@ -15,6 +15,7 @@ namespace bts { namespace chain {
    operation_result generic_evaluator::start_evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply )
    {
       trx_state   = &eval_state;
+      check_required_authorities(op);
       auto result = evaluate( op );
       if( apply ) result = this->apply( op );
       return result;
@@ -79,6 +80,16 @@ namespace bts { namespace chain {
    bool generic_evaluator::verify_authority( const account_object* a, authority::classification c )
    {
        return trx_state->check_authority( a, c );
+   }
+   void generic_evaluator::check_required_authorities(const operation& op)
+   {
+      flat_set<account_id_type> active_auths;
+      flat_set<account_id_type> owner_auths;
+      op.visit(operation_get_required_auths(active_auths, owner_auths));
+      for( auto id : active_auths )
+         FC_ASSERT(verify_authority(&id(db()), authority::active));
+      for( auto id : owner_auths )
+         FC_ASSERT(verify_authority(&id(db()), authority::owner));
    }
 
    bool generic_evaluator::verify_signature( const key_object* k )

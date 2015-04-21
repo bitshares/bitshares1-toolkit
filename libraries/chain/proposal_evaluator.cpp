@@ -75,25 +75,15 @@ object_id_type proposal_update_evaluator::do_evaluate(const proposal_update_oper
       FC_ASSERT( o.active_approvals_to_add.empty() && o.owner_approvals_to_add.empty(),
                  "This proposal is in its review period. No new approvals may be added." );
 
-   for( account_id_type id : o.active_approvals_to_add )
-      FC_ASSERT( trx_state->check_authority(&id(d), authority::active) );
-   for( account_id_type id : o.owner_approvals_to_add )
-      FC_ASSERT( trx_state->check_authority(&id(d), authority::owner) );
+   for( account_id_type id : o.active_approvals_to_remove )
+      FC_ASSERT( _proposal->available_active_approvals.find(id) != _proposal->available_active_approvals.end(),
+                 "", ("id", id)("available", _proposal->available_active_approvals) );
+   for( account_id_type id : o.owner_approvals_to_remove )
+      FC_ASSERT( _proposal->available_owner_approvals.find(id) != _proposal->available_owner_approvals.end(),
+                 "", ("id", id)("available", _proposal->available_owner_approvals) );
    for( key_id_type id : o.key_approvals_to_add )
       FC_ASSERT( trx_state->signed_by.find(id(d).key_address()) != trx_state->signed_by.end()
                  || trx_state->_skip_signature_check );
-   for( account_id_type id : o.active_approvals_to_remove )
-   {
-      FC_ASSERT( _proposal->available_active_approvals.find(id) != _proposal->available_active_approvals.end(),
-                 "", ("id", id)("available", _proposal->available_active_approvals) );
-      FC_ASSERT( trx_state->check_authority(&id(d), authority::active) );
-   }
-   for( account_id_type id : o.owner_approvals_to_remove )
-   {
-      FC_ASSERT( _proposal->available_owner_approvals.find(id) != _proposal->available_owner_approvals.end(),
-                 "", ("id", id)("available", _proposal->available_owner_approvals) );
-      FC_ASSERT( trx_state->check_authority(&id(d), authority::owner) );
-   }
    for( key_id_type id : o.key_approvals_to_remove )
       FC_ASSERT( trx_state->signed_by.find(id(d).key_address()) != trx_state->signed_by.end()
                  || trx_state->_skip_signature_check );
@@ -112,12 +102,10 @@ object_id_type proposal_update_evaluator::do_apply(const proposal_update_operati
    // signature checks. This isn't done now because I just wrote all the proposals code, and I'm not yet 100% sure the
    // required approvals are sufficient to authorize the transaction.
    d.modify(*_proposal, [&o, &d](proposal_object& p) {
-      for( account_id_type id : o.active_approvals_to_add )
-         p.available_active_approvals.insert(id);
+      p.available_active_approvals.insert(o.active_approvals_to_add.begin(), o.active_approvals_to_add.end());
+      p.available_owner_approvals.insert(o.owner_approvals_to_add.begin(), o.owner_approvals_to_add.end());
       for( account_id_type id : o.active_approvals_to_remove )
          p.available_active_approvals.erase(id);
-      for( account_id_type id : o.owner_approvals_to_add )
-         p.available_owner_approvals.insert(id);
       for( account_id_type id : o.owner_approvals_to_remove )
          p.available_owner_approvals.erase(id);
       for( key_id_type id : o.key_approvals_to_add )
@@ -157,15 +145,10 @@ object_id_type proposal_delete_evaluator::do_evaluate(const proposal_delete_oper
 
    _proposal = &o.proposal(d);
 
-   if( o.using_owner_authority )
-      FC_ASSERT( (trx_state->check_authority(&o.fee_paying_account(d), authority::owner) &&
-                  (_proposal->required_owner_approvals.find(o.fee_paying_account) != _proposal->required_owner_approvals.end() ||
-                   _proposal->available_owner_approvals.find(o.fee_paying_account) != _proposal->available_owner_approvals.end())),
-                 "Unable to authorize removal of proposed transaction." );
-   else
-      FC_ASSERT( _proposal->required_active_approvals.find(o.fee_paying_account) != _proposal->required_active_approvals.end() ||
-                 _proposal->available_active_approvals.find(o.fee_paying_account) != _proposal->available_active_approvals.end(),
-                 "Unable to authorize removal of proposed transaction." );
+   auto required_approvals = o.using_owner_authority? &_proposal->required_owner_approvals
+                                                    : &_proposal->required_active_approvals;
+   FC_ASSERT( required_approvals->find(o.fee_paying_account) != required_approvals->end(),
+              "Provided authority is not authoritative for this proposal." );
 
    return object_id_type();
 }

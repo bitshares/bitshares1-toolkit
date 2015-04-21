@@ -88,6 +88,8 @@ BOOST_AUTO_TEST_CASE( child_account )
          a.active = authority(1, nathan_key.get_id(), 1);
       });
 
+      BOOST_CHECK(nathan.active.get_keys() == vector<key_id_type>{nathan_key.get_id()});
+
       auto op = make_account("nathan/child");
       op.registrar = root.id;
       op.owner = authority(1, child_key.get_id(), 1);
@@ -184,7 +186,7 @@ BOOST_AUTO_TEST_CASE( transfer_core_asset )
                                                    asset(),
                                                    vector<char>()
                                                   }));
-      for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
+      trx.visit( operation_set_fee( db.current_fee_schedule() ) );
 
       asset fee = trx.operations.front().get<transfer_operation>().fee;
       trx.validate();
@@ -204,7 +206,7 @@ BOOST_AUTO_TEST_CASE( transfer_core_asset )
                                                    asset(),
                                                    vector<char>()
                                                   }));
-      for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
+      trx.visit( operation_set_fee( db.current_fee_schedule() ) );
 
       fee = trx.operations.front().get<transfer_operation>().fee;
       trx.validate();

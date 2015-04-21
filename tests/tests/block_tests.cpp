@@ -3,6 +3,7 @@
 #include <bts/chain/time.hpp>
 #include <bts/chain/key_object.hpp>
 #include <bts/chain/account_object.hpp>
+#include <bts/chain/proposal_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -515,6 +516,53 @@ BOOST_FIXTURE_TEST_CASE( limit_order_expiration, database_fixture )
 
    BOOST_CHECK(db.find_object(id) == nullptr);
    BOOST_CHECK_EQUAL( get_balance(*nathan, *core), 50000 );
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE( change_block_interval, database_fixture )
+{ try {
+   generate_block();
+
+   db.modify(db.get_global_properties(), [](global_property_object& p) {
+      p.parameters.genesis_proposal_review_period = fc::hours(1).to_seconds();
+   });
+
+   {
+      proposal_create_operation cop = proposal_create_operation::genesis_proposal(db);
+      cop.fee_paying_account = account_id_type(1);
+      cop.expiration_time = db.head_block_time() + *cop.review_period_seconds + 10;
+      global_parameters_update_operation uop;
+      uop.new_parameters.block_interval = 1;
+      cop.proposed_ops.emplace_back(uop);
+      trx.operations.push_back(cop);
+      trx.sign(generate_private_key("genesis"));
+      db.push_transaction(trx);
+   }
+   {
+      proposal_update_operation uop;
+      uop.fee_paying_account = account_id_type(1);
+      uop.active_approvals_to_add = {account_id_type(1), account_id_type(2), account_id_type(3), account_id_type(4),
+                                     account_id_type(5), account_id_type(6), account_id_type(7), account_id_type(8)};
+      trx.operations.push_back(uop);
+      trx.sign(generate_private_key("genesis"));
+      db.push_transaction(trx);
+      BOOST_CHECK(proposal_id_type()(db).is_authorized_to_execute(&db));
+   }
+
+   BOOST_CHECK_EQUAL(db.get_global_properties().parameters.block_interval, 5);
+   auto past_time = db.head_block_time().sec_since_epoch();
+   generate_block();
+   BOOST_CHECK_EQUAL(db.head_block_time().sec_since_epoch() - past_time, 5);
+   generate_block();
+   BOOST_CHECK_EQUAL(db.head_block_time().sec_since_epoch() - past_time, 10);
+
+   generate_blocks(proposal_id_type()(db).expiration_time + 5);
+
+   BOOST_CHECK_EQUAL(db.get_global_properties().parameters.block_interval, 1);
+   past_time = db.head_block_time().sec_since_epoch();
+   generate_block();
+   BOOST_CHECK_EQUAL(db.head_block_time().sec_since_epoch() - past_time, 1);
+   generate_block();
+   BOOST_CHECK_EQUAL(db.head_block_time().sec_since_epoch() - past_time, 2);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

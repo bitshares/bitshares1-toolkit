@@ -150,7 +150,7 @@ namespace bts { namespace chain {
    };
 
    /**
-    *  @brief transfers the account to another account while clearing the white/black lists
+    *  @brief transfers the account to another account while clearing the white list
     *
     *  In theory an account can be transferred by simply updating the authorities, but that kind
     *  of transfer lacks semantic meaning and is more often done to rotate keys without transferring
@@ -158,6 +158,8 @@ namespace bts { namespace chain {
     *  a break in the operation history.
     *
     *  The account_id's owner/active/voting/memo authority should be set to new_owner
+    *
+    *  This operation will clear the account's whitelist statuses, but not the blacklist statuses.
     */
    struct account_transfer_operation
    {
@@ -619,7 +621,8 @@ namespace bts { namespace chain {
             proposal_create_operation,
             proposal_update_operation,
             proposal_delete_operation,
-            fill_order_operation
+            fill_order_operation,
+            global_parameters_update_operation
          > operation;
 
    /**
@@ -792,3 +795,4 @@ FC_REFLECT( bts::chain::proposal_update_operation, (fee_paying_account)(fee)(pro
 FC_REFLECT( bts::chain::proposal_delete_operation, (fee_paying_account)(using_owner_authority)(fee)(proposal) )
 FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (from_account)(asset_id)(amount)(fee) );
 
+FC_REFLECT( bts::chain::global_parameters_update_operation, (new_parameters)(fee) )

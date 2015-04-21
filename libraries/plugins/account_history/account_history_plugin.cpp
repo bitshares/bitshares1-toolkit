@@ -8,14 +8,6 @@
 
 namespace bts { namespace account_history {
 
-/**
- * @brief Used to calculate fees in a polymorphic manner
- *
- * If you wish to pay fees in an asset other than CORE, use the core_exchange_rate argument to specify the rate of
- * conversion you wish to use. The operation's fee will be calculated by multiplying the CORE fee by the provided
- * exchange rate. It is up to the caller to ensure that the core_exchange_rate converts to an asset accepted by the
- * delegates at a rate which they will accept.
- */
 struct operation_get_impacted_accounts
 {
    const operation_history_object& _op_history;
@@ -63,7 +55,7 @@ struct operation_get_impacted_accounts
    }
 
    void operator()( const account_create_operation& o )const {
-      _impacted.insert( _op_history.result.get<object_id_type>() ); 
+      _impacted.insert( _op_history.result.get<object_id_type>() );
    }
 
    void operator()( const account_update_operation& o )const {
@@ -127,7 +119,10 @@ struct operation_get_impacted_accounts
 
    void operator()( const fill_order_operation& o )const {
       _impacted.insert( o.account_id );
+   }
 
+   void operator()(const global_parameters_update_operation& )const {
+      _impacted.insert( account_id_type() );
    }
 };
 

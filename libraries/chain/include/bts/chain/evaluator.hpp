@@ -32,7 +32,8 @@ namespace bts { namespace chain {
 
          database& db()const;
 
-      protected:
+         void check_required_authorities(const operation& op);
+   protected:
          /** market helpers */
          
          /**
