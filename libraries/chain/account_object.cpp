@@ -1,5 +1,6 @@
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
+#include <fc/uint128.hpp>
 
 namespace bts { namespace chain {
 
@@ -25,6 +26,23 @@ asset account_balance_object::get_balance( asset_id_type what )const
 share_type account_balance_object::voting_weight() const
 {
    return get_balance(asset_id_type()).amount + total_core_in_orders;
+}
+
+void account_balance_object::adjust_cashback( share_type amount, time_point_sec maturity, time_point_sec current_time )
+{
+   fc::uint128      current_maturity((current_time - cashback_maturity).to_seconds());
+   fc::uint128      add_maturity((current_time - maturity).to_seconds());
+
+   wdump((cashback_rewards));
+   wdump((current_maturity)(add_maturity) );
+   auto new_maturity = (current_maturity * cashback_rewards.value) + (add_maturity * amount.value);
+   cashback_rewards += amount;
+   FC_ASSERT( cashback_rewards.value > 0 );
+   new_maturity /= cashback_rewards.value;
+   wdump((cashback_rewards));
+
+   cashback_maturity = fc::time_point() + fc::seconds( new_maturity.to_uint64() );
+   wdump((cashback_maturity));
 }
 
 void account_balance_object::sub_balance( const asset& a )

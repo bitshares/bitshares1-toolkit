@@ -66,6 +66,19 @@ namespace bts { namespace chain {
          share_type            cashback_rewards;
 
          /**
+          *  Cashback rewards from prime membership upgrades mature
+          *  over X months to prevent abuse of the prime membership
+          *  program.  
+          */
+         time_point_sec        cashback_maturity;
+
+         /**
+          *  When funds are added to the cashback fund they must adjust the average maturity
+          *  weighted by the amount of funds and the maturity of those new funds.  
+          */
+         void adjust_cashback( share_type amount, time_point_sec maturity, time_point_sec current_time );
+
+         /**
           * Keep balances sorted for best performance of lookups in log(n) time,
           * balances need to be moved to their own OBJECT ID because they
           * will change all the time and are much smaller than an account.
@@ -102,6 +115,7 @@ namespace bts { namespace chain {
           *  Any referral fees not paid to referrer are paid to registrar
           */
          uint8_t               referrer_percent = 0;
+
 
          /// The account's name. This name must be unique among all account names on the graph. The name may be empty.
          string                name;
@@ -195,4 +209,11 @@ FC_REFLECT_DERIVED( bts::chain::meta_account_object,
                     (bts::db::object),
                     (memo_key)(delegate_id) )
 
-FC_REFLECT_DERIVED( bts::chain::account_balance_object, (bts::chain::object), (most_recent_op)(total_core_in_orders)(lifetime_fees_paid)(cashback_rewards)(balances) )
+FC_REFLECT_DERIVED( bts::chain::account_balance_object, (bts::chain::object), 
+                    (most_recent_op)
+                    (total_core_in_orders)
+                    (lifetime_fees_paid)
+                    (cashback_rewards)
+                    (cashback_maturity)
+                    (balances) )
+

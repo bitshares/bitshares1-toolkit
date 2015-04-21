@@ -74,7 +74,7 @@ namespace bts { namespace chain {
           *  Pays the fee and returns the number of CORE asset that were provided,
           *  after it is don, the fee_paying_account property will be set.
           */
-         share_type pay_fee( account_id_type account_id, asset fee );
+         share_type pay_fee( account_id_type account_id, asset fee, bool is_prime_upgrade = false );
          bool       verify_authority( const account_object*, authority::classification );
          bool       verify_signature( const key_object* );
 
@@ -105,6 +105,7 @@ namespace bts { namespace chain {
          {
             share_type cash_back;
             share_type total_fees_paid;
+            bool       is_prime_upgrade;
          };
 
          const account_object*            fee_paying_account = nullptr;

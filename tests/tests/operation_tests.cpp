@@ -1915,6 +1915,8 @@ BOOST_AUTO_TEST_CASE( margin_call_black_swan )
 BOOST_AUTO_TEST_CASE( transfer_cashback_test )
 {
    try {
+   generate_blocks(1);
+
    const account_object& sam  = create_account( "sam" );
    transfer(account_id_type()(db), sam, asset(30000));
    upgrade_to_prime(sam);

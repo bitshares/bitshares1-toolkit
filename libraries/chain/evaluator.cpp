@@ -20,7 +20,7 @@ namespace bts { namespace chain {
       if( apply ) result = this->apply( op );
       return result;
    }
-   share_type generic_evaluator::pay_fee( account_id_type account_id, asset fee )
+   share_type generic_evaluator::pay_fee( account_id_type account_id, asset fee, bool is_prime_upgrade )
    { try {
       FC_ASSERT( fee.amount >= 0 );
       fee_paying_account = &account_id(db());
@@ -68,9 +68,11 @@ namespace bts { namespace chain {
 
       fees_paid[fee_asset].to_accumulated_fees += acumulated; //fee_from_pool.amount;
       adjust_balance( fee_paying_account, fee_asset, -fee.amount );
-      cash_back[ &fee_paying_account->referrer(db()) ].cash_back  += referral;
-      cash_back[ fee_paying_account ].cash_back                   += bulk_cashback;
-      cash_back[ fee_paying_account ].total_fees_paid             += after_bulk_discount;
+
+      cash_back[ &fee_paying_account->referrer(db()) ].cash_back         += referral;
+      cash_back[ &fee_paying_account->referrer(db()) ].is_prime_upgrade  |= is_prime_upgrade;
+      cash_back[ fee_paying_account ].cash_back                          += bulk_cashback;
+      cash_back[ fee_paying_account ].total_fees_paid                    += after_bulk_discount;
 
       assert( referral + bulk_cashback + acumulated  == fee_from_pool.amount );
 
@@ -167,11 +169,20 @@ namespace bts { namespace chain {
             });
          }
       }
+      auto current_time = db().head_block_time();
+      auto maturity = current_time - fc::seconds(db().get_global_properties().parameters.cashback_vesting_period_seconds);
+
       for( const auto& cash : cash_back )
       {
          const auto& bal = cash.first->balances(db());
          db().modify( bal, [&]( account_balance_object& obj ){
-             obj.cashback_rewards   += cash.second.cash_back;
+             if( cash.second.cash_back.value )
+             {
+                if( cash.second.is_prime_upgrade )
+                   obj.adjust_cashback( cash.second.cash_back, current_time, current_time );
+                else
+                   obj.adjust_cashback( cash.second.cash_back, maturity, current_time );
+             }
              obj.lifetime_fees_paid += cash.second.total_fees_paid;
          });
       }
