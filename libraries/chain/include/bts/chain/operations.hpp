@@ -148,7 +148,7 @@ namespace bts { namespace chain {
    };
 
    /**
-    *  @brief transfers the account to another account while clearing the white/black lists
+    *  @brief transfers the account to another account while clearing the white list
     *
     *  In theory an account can be transferred by simply updating the authorities, but that kind
     *  of transfer lacks semantic meaning and is more often done to rotate keys without transferring
@@ -156,6 +156,8 @@ namespace bts { namespace chain {
     *  a break in the operation history.
     *
     *  The account_id's owner/active/voting/memo authority should be set to new_owner
+    *
+    *  This operation will clear the account's whitelist statuses, but not the blacklist statuses.
     */
    struct account_transfer_operation
    {
