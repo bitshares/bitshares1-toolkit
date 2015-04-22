@@ -373,6 +373,11 @@ class wallet_api
          return;
       }
 
+      global_property_object get_global_properties()
+      {
+          return _remote_db->get_global_properties();
+      }
+
       wallet_data             _wallet;
 
       fc::api<login_api>      _remote_api;
@@ -389,6 +394,7 @@ FC_API( wallet_api,
         (create_account_with_brain_key)
         (transfer)
         (get_account)
+        (get_global_properties)
         (get_object)
         (normalize_brain_key)
        )
