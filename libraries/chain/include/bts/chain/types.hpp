@@ -255,7 +255,7 @@ namespace bts { namespace chain {
    struct chain_parameters
    {
       fee_schedule_type       current_fees; // indexed by fee_type
-      share_type              witness_pay                         = BTS_DEFAULT_WITNESS_PAY;
+      uint32_t                witness_pay_percent_of_accumulated  = BTS_DEFAULT_WITNESS_PAY_PERCENT_OF_ACCUMULATED;
       uint8_t                 block_interval                      = BTS_DEFAULT_BLOCK_INTERVAL; // seconds
       uint32_t                maintenance_interval                = BTS_DEFAULT_MAINTENANCE_INTERVAL;
       uint32_t                maximum_transaction_size            = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
@@ -265,6 +265,7 @@ namespace bts { namespace chain {
       uint32_t                maximum_proposal_lifetime           = BTS_DEFAULT_MAX_PROPOSAL_LIFETIME_SEC;
       uint32_t                genesis_proposal_review_period      = BTS_DEFAULT_GENESIS_PROPOSAL_REVIEW_PERIOD_SEC;
       uint8_t                 maximum_asset_whitelist_authorities = BTS_DEFAULT_MAX_ASSET_WHITELIST_AUTHORITIES;
+      uint16_t                burn_percent_of_fee                 = BTS_DEFAULT_BURN_PERCENT_OF_FEE; // the percentage of every fee that is taken out of circulation
       uint16_t                witness_percent_of_fee              = BTS_DEFAULT_WITNESS_PERCENT;  ///< percent of revenue paid to witnesses
       uint32_t                cashback_vesting_period_seconds     = BTS_DEFAULT_CASHBACK_VESTING_PERIOD_SEC;
       uint16_t                max_bulk_discount_percent_of_fee    = BTS_DEFAULT_MAX_BULK_DISCOUNT_PERCENT; ///< the maximum percentage discount for bulk discounts
@@ -273,12 +274,15 @@ namespace bts { namespace chain {
 
       void validate()const
       {
-         FC_ASSERT( witness_percent_of_fee < 10000 );
-         FC_ASSERT( max_bulk_discount_percent_of_fee < 10000 );
+         FC_ASSERT( witness_percent_of_fee <= 10000 );
+         FC_ASSERT( burn_percent_of_fee <= 10000 );
+         FC_ASSERT( max_bulk_discount_percent_of_fee <= 10000 );
+         FC_ASSERT( burn_percent_of_fee + witness_percent_of_fee <= 10000 );
          FC_ASSERT( bulk_discount_threshold_min <= bulk_discount_threshold_max );
          FC_ASSERT( bulk_discount_threshold_min > 0 );
 
-         FC_ASSERT( witness_pay >= 0 );
+         FC_ASSERT( witness_pay_percent_of_accumulated >= 0 );
+         FC_ASSERT( witness_pay_percent_of_accumulated < BTS_WITNESS_PAY_PERCENT_PRECISION );
          FC_ASSERT( block_interval <= BTS_MAX_BLOCK_INTERVAL );
          FC_ASSERT( maintenance_interval > block_interval,
                     "Maintenance interval must be longer than block interval" );
@@ -366,7 +370,7 @@ FC_REFLECT_ENUM( bts::chain::fee_type,
 
 FC_REFLECT( bts::chain::chain_parameters,
             (current_fees)
-            (witness_pay)
+            (witness_pay_percent_of_accumulated)
             (block_interval)
             (maintenance_interval)
             (maximum_transaction_size)
@@ -375,6 +379,7 @@ FC_REFLECT( bts::chain::chain_parameters,
             (maximum_time_until_expiration)
             (maximum_proposal_lifetime)
             (maximum_asset_whitelist_authorities)
+            (burn_percent_of_fee)
             (witness_percent_of_fee)
             (max_bulk_discount_percent_of_fee)
             (cashback_vesting_period_seconds)

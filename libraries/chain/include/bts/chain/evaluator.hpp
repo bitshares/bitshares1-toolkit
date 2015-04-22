@@ -100,6 +100,7 @@ namespace bts { namespace chain {
             share_type to_issuer; 
             share_type from_pool;
             share_type to_accumulated_fees;
+            share_type burned;
          };
          struct cash_back_stats
          {

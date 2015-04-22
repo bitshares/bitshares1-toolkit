@@ -1938,9 +1938,9 @@ BOOST_AUTO_TEST_CASE( transfer_cashback_test )
 
    const asset_dynamic_data_object& core_asset_data = db.get_core_asset().dynamic_asset_data_id(db);
    // 1% of fee goes to witnesses
-   BOOST_CHECK_EQUAL(core_asset_data.accumulated_fees.value, BTS_BLOCKCHAIN_PRECISION/100);
+   BOOST_CHECK_EQUAL(core_asset_data.accumulated_fees.value, BTS_BLOCKCHAIN_PRECISION/100/*witness*/ + BTS_BLOCKCHAIN_PRECISION/5 /*burn*/);
    // 99% of fee goes to referrer / registrar sam
-   BOOST_CHECK_EQUAL( sam.balances(db).cashback_rewards.value,  BTS_BLOCKCHAIN_PRECISION - BTS_BLOCKCHAIN_PRECISION/100 );
+   BOOST_CHECK_EQUAL( sam.balances(db).cashback_rewards.value,  BTS_BLOCKCHAIN_PRECISION - BTS_BLOCKCHAIN_PRECISION/100/*witness*/  - BTS_BLOCKCHAIN_PRECISION/5/*burn*/);
 
    } catch( const fc::exception& e )
    {

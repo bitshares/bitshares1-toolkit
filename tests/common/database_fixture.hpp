@@ -56,7 +56,7 @@ struct database_fixture {
    void verify_asset_supplies()
    {
       const asset_dynamic_data_object& core_asset_data = db.get_core_asset().dynamic_asset_data_id(db);
-      BOOST_CHECK(core_asset_data.current_supply == BTS_INITIAL_SUPPLY);
+      BOOST_CHECK(core_asset_data.current_supply +core_asset_data.burned == BTS_INITIAL_SUPPLY);
       BOOST_CHECK(core_asset_data.fee_pool == 0);
 
       const simple_index<account_balance_object>& balance_index = db.get_index_type<simple_index<account_balance_object>>();

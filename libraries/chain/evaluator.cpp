@@ -53,7 +53,7 @@ namespace bts { namespace chain {
             bulk_discount_percent = 
                (gp.parameters.max_bulk_discount_percent_of_fee * 
                (fee_paying_account_balances->lifetime_fees_paid.value  - gp.parameters.bulk_discount_threshold_min.value)) / 
-               (gp.parameters.bulk_discount_threshold_max.value);
+               (gp.parameters.bulk_discount_threshold_max.value - gp.parameters.bulk_discount_threshold_min.value);
          }
          assert( bulk_discount_percent <= 10000 );
          assert( bulk_discount_percent >= 0 );
@@ -64,9 +64,13 @@ namespace bts { namespace chain {
 
       auto after_bulk_discount = fee_from_pool.amount - bulk_cashback;
       auto acumulated = (after_bulk_discount.value  * gp.parameters.witness_percent_of_fee)/10000;
-      auto referral   = after_bulk_discount.value - acumulated;
+      auto burned     = (after_bulk_discount.value  * gp.parameters.burn_percent_of_fee)/10000;
+      auto referral   = after_bulk_discount.value - acumulated - burned;
+
+      assert( acumulated + burned <= after_bulk_discount );
 
       fees_paid[fee_asset].to_accumulated_fees += acumulated; //fee_from_pool.amount;
+      fees_paid[fee_asset].burned += burned; //fee_from_pool.amount;
       adjust_balance( fee_paying_account, fee_asset, -fee.amount );
 
       cash_back[ &fee_paying_account->referrer(db()) ].cash_back         += referral;
@@ -74,7 +78,7 @@ namespace bts { namespace chain {
       cash_back[ fee_paying_account ].cash_back                          += bulk_cashback;
       cash_back[ fee_paying_account ].total_fees_paid                    += after_bulk_discount;
 
-      assert( referral + bulk_cashback + acumulated  == fee_from_pool.amount );
+      assert( referral + bulk_cashback + acumulated + burned == fee_from_pool.amount );
 
       return fee_from_pool.amount;
    } FC_CAPTURE_AND_RETHROW( (account_id)(fee) ) }
@@ -159,7 +163,7 @@ namespace bts { namespace chain {
          const auto& dyn_asst_data = fee.first->dynamic_asset_data_id(db());
          db().modify( dyn_asst_data, [&]( asset_dynamic_data_object& dyn ){
                           dyn.fee_pool         -= fee.second.from_pool;
-                          dyn.accumulated_fees += fee.second.to_issuer;
+                          dyn.accumulated_fees += fee.second.to_issuer + fee.second.burned;
                      });
          if( dyn_asst_data.id != asset_id_type() )
          {
@@ -170,7 +174,7 @@ namespace bts { namespace chain {
          }
       }
       auto current_time = db().head_block_time();
-      auto maturity = current_time - fc::seconds(db().get_global_properties().parameters.cashback_vesting_period_seconds);
+      //auto maturity = current_time - fc::seconds(db().get_global_properties().parameters.cashback_vesting_period_seconds);
 
       for( const auto& cash : cash_back )
       {
@@ -178,10 +182,11 @@ namespace bts { namespace chain {
          db().modify( bal, [&]( account_balance_object& obj ){
              if( cash.second.cash_back.value )
              {
-                if( cash.second.is_prime_upgrade )
+                //  All cashback, referrals, etc must mature
+                //if( cash.second.is_prime_upgrade )
                    obj.adjust_cashback( cash.second.cash_back, current_time, current_time );
-                else
-                   obj.adjust_cashback( cash.second.cash_back, maturity, current_time );
+                //else
+                //   obj.adjust_cashback( cash.second.cash_back, maturity, current_time );
              }
              obj.lifetime_fees_paid += cash.second.total_fees_paid;
          });

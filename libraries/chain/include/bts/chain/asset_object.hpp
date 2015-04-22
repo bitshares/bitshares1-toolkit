@@ -14,6 +14,7 @@ namespace bts { namespace chain {
          static const uint8_t type_id  = impl_asset_dynamic_data_type;
 
          share_type current_supply;
+         share_type burned;
          share_type accumulated_fees; // fees accumulate to be paid out over time
          share_type fee_pool;         // in core asset
    };
@@ -93,7 +94,7 @@ namespace bts { namespace chain {
 
 } } // bts::chain
 FC_REFLECT_DERIVED( bts::chain::asset_dynamic_data_object, (bts::db::object),
-                    (current_supply)(accumulated_fees)(fee_pool) )
+                    (current_supply)(burned)(accumulated_fees)(fee_pool) )
 
 FC_REFLECT_DERIVED( bts::chain::asset_object,
                     (bts::db::annotated_object<bts::chain::asset_object>),

@@ -893,15 +893,28 @@ void database::update_signing_witness(const witness_object& signing_witness, con
 {
    const auto& core_asset = get( asset_id_type() );
    const auto& asset_data = core_asset.dynamic_asset_data_id(*this);
+   auto gparams = get_global_properties().parameters;
 
    // Slowly pay out income averaged over 1M blocks
-   share_type pay = std::min(get_global_properties().parameters.witness_pay, asset_data.accumulated_fees);
-   modify( asset_data, [&]( asset_dynamic_data_object& o ){ o.accumulated_fees -= pay; } );
+   fc::uint128 witness_pay( asset_data.accumulated_fees.value );
+   witness_pay *= gparams.witness_pay_percent_of_accumulated;
+   witness_pay /= BTS_WITNESS_PAY_PERCENT_PRECISION;
+
+   auto burn = witness_pay;
+   burn *= gparams.burn_percent_of_fee;
+   burn /= gparams.witness_percent_of_fee;
+
+   modify( asset_data, [&]( asset_dynamic_data_object& o ){ 
+              o.accumulated_fees -= witness_pay.to_uint64(); 
+              o.accumulated_fees -= burn.to_uint64();
+              o.burned         += burn.to_uint64();
+              o.current_supply -= burn.to_uint64();
+           } );
 
    modify( signing_witness, [&]( witness_object& obj ){
            obj.last_secret = new_block.previous_secret;
            obj.next_secret = new_block.next_secret_hash;
-           obj.accumulated_income += pay;
+           obj.accumulated_income += witness_pay.to_uint64();
            });
 }
 
