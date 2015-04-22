@@ -199,7 +199,8 @@ class wallet_api
           string account_name,
           string registrar_account,
           string referrer_account,
-          uint8_t referrer_percent
+          uint8_t referrer_percent,
+          bool broadcast = false
           )
       {
         string normalized_brain_key = normalize_brain_key( brain_key );
@@ -285,7 +286,8 @@ class wallet_api
         // we do not insert owner_privkey here because
         //    it is intended to only be used for key recovery
         _wallet.pending_account_registrations[ account_name ] = key_to_wif( active_privkey );
-
+        if( broadcast )
+            _remote_net->broadcast_transaction( tx );
         return tx;
       }
 
