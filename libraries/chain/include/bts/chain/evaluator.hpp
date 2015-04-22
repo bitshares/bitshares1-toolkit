@@ -35,12 +35,12 @@ namespace bts { namespace chain {
          void check_required_authorities(const operation& op);
    protected:
          /** market helpers */
-         
+
          /**
-          *  Matches the two orders, 
-          *  
-          *  @return a bit field indicating which orders were filled (and thus removed) 
-          *  
+          *  Matches the two orders,
+          *
+          *  @return a bit field indicating which orders were filled (and thus removed)
+          *
           *  0 - no orders were matched
           *  1 - bid was filled
           *  2 - ask was filled
@@ -54,7 +54,7 @@ namespace bts { namespace chain {
          int match( const call_order_object& ask, const limit_order_object& );
          int match( const call_order_object& ask, const short_order_object& );
          ///@}
-         
+
          /**
           * @return true if the order was completely filled and thus freed.
           */
@@ -79,13 +79,13 @@ namespace bts { namespace chain {
          bool       verify_signature( const key_object* );
 
          /**
-          *  Gets the balance of the account after all modifications that have been applied 
+          *  Gets the balance of the account after all modifications that have been applied
           *  while evaluating this operation.
           */
          asset      get_balance( const account_object* for_account, const asset_object* for_asset )const;
          void       adjust_balance( const account_object* for_account, const asset_object* for_asset, share_type delta );
          void       adjust_votes(const flat_set<vote_tally_id_type>& vote_tallies, share_type delta );
-         
+
          asset      calculate_market_fee( const asset_object& aobj, const asset& trade_amount );
 
          void       apply_delta_balances();
@@ -95,9 +95,9 @@ namespace bts { namespace chain {
 
          authority resolve_relative_ids( const authority& a )const;
 
-         struct fee_stats 
-         { 
-            share_type to_issuer; 
+         struct fee_stats
+         {
+            share_type to_issuer;
             share_type from_pool;
             share_type to_accumulated_fees;
             share_type burned;

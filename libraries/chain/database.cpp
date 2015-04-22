@@ -27,6 +27,7 @@
 #include <bts/chain/operation_history_object.hpp>
 #include <bts/chain/global_parameters_evaluator.hpp>
 #include <bts/chain/witness_object.hpp>
+#include <bts/chain/witness_evaluator.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/crypto/digest.hpp>
@@ -130,6 +131,8 @@ void database::initialize_evaluators()
    register_evaluator<proposal_update_evaluator>();
    register_evaluator<proposal_delete_evaluator>();
    register_evaluator<global_parameters_update_evaluator>();
+   register_evaluator<witness_create_evaluator>();
+   register_evaluator<witness_withdraw_pay_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -933,9 +936,9 @@ void database::update_signing_witness(const witness_object& signing_witness, con
 {
    const auto& core_asset = get( asset_id_type() );
    const auto& asset_data = core_asset.dynamic_asset_data_id(*this);
-   auto gparams = get_global_properties().parameters;
+   const auto& gparams = get_global_properties().parameters;
 
-   // Slowly pay out income averaged over 1M blocks
+   // Slowly pay out income based on configured witness pay rate
    fc::uint128 witness_pay( asset_data.accumulated_fees.value );
    witness_pay *= gparams.witness_pay_percent_of_accumulated;
    witness_pay /= BTS_WITNESS_PAY_PERCENT_PRECISION;

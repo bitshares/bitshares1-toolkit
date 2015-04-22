@@ -1836,7 +1836,7 @@ BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
 
    const asset_object* core = &asset_id_type()(db);
    const account_object* nathan = &get_account("nathan");
-   enable_fees();
+   enable_fees(100000000);
    BOOST_CHECK_GT(db.current_fee_schedule().at(prime_upgrade_fee_type).value, 0);
 
    account_update_operation uop;
@@ -1855,22 +1855,26 @@ BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
    core = &asset_id_type()(db);
    const witness_object* witness = &db.fetch_block_by_number(db.head_block_num())->witness(db);
 
+   BOOST_CHECK_GT(core->dynamic_asset_data_id(db).accumulated_fees.value, 0);
    BOOST_CHECK_GT(witness->accumulated_income.value, 0);
 
    // Withdraw the witness's pay
+   enable_fees(1);
    witness_withdraw_pay_operation wop;
    wop.from_witness = witness->id;
    wop.to_account = witness->witness_account;
    wop.amount = witness->accumulated_income;
    trx.operations.push_back(wop);
    REQUIRE_THROW_WITH_VALUE(wop, amount, witness->accumulated_income.value * 2);
+   trx.operations.back() = wop;
    trx.visit(operation_set_fee(db.current_fee_schedule()));
    trx.validate();
    trx.sign(generate_private_key("genesis"));
    db.push_transaction(trx);
    trx.clear();
 
-   BOOST_CHECK_EQUAL(get_balance(witness->witness_account(db), *core), wop.amount.value);
+   BOOST_CHECK_EQUAL(get_balance(witness->witness_account(db), *core), wop.amount.value - 1/*fee*/);
+   BOOST_CHECK_EQUAL(witness->accumulated_income.value, 0);
 } FC_LOG_AND_RETHROW() }
 
 /**
