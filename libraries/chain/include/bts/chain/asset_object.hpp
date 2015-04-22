@@ -13,7 +13,10 @@ namespace bts { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_asset_dynamic_data_type;
 
+         /// The number of shares currently in existence
          share_type current_supply;
+         /// This tracks how much of the asset has been burned. burned + current_supply should always equal
+         /// initial_supply
          share_type burned;
          share_type accumulated_fees; // fees accumulate to be paid out over time
          share_type fee_pool;         // in core asset

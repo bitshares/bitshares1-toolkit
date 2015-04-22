@@ -1839,6 +1839,7 @@ BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
    enable_fees(100000000);
    BOOST_CHECK_GT(db.current_fee_schedule().at(prime_upgrade_fee_type).value, 0);
 
+   BOOST_CHECK_EQUAL(core->dynamic_asset_data_id(db).accumulated_fees.value, 0);
    account_update_operation uop;
    uop.account = nathan->get_id();
    uop.upgrade_to_prime = true;
@@ -1848,7 +1849,9 @@ BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
    trx.sign(generate_private_key("genesis"));
    db.push_transaction(trx);
    trx.clear();
-   BOOST_CHECK_LT(get_balance(*nathan, *core), 10000000000);
+   BOOST_CHECK_EQUAL(get_balance(*nathan, *core), 9000000000);
+   BOOST_CHECK_EQUAL(core->dynamic_asset_data_id(db).accumulated_fees.value, 210000000);
+   BOOST_CHECK_EQUAL(account_id_type()(db).balances(db).cashback_rewards.value, 1000000000-210000000);
 
    generate_block();
    nathan = &get_account("nathan");
@@ -1873,7 +1876,9 @@ BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
    db.push_transaction(trx);
    trx.clear();
 
-   BOOST_CHECK_EQUAL(get_balance(witness->witness_account(db), *core), wop.amount.value - 1/*fee*/);
+   BOOST_CHECK_EQUAL(get_balance(witness->witness_account(db), *core), 4 - 1/*fee*/);
+   BOOST_CHECK_EQUAL(core->dynamic_asset_data_id(db).burned.value, 80);
+   BOOST_CHECK_EQUAL(core->dynamic_asset_data_id(db).accumulated_fees.value, 210000000 - 84);
    BOOST_CHECK_EQUAL(witness->accumulated_income.value, 0);
 } FC_LOG_AND_RETHROW() }
 
