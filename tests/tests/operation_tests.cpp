@@ -149,11 +149,13 @@ BOOST_AUTO_TEST_CASE( update_account )
       BOOST_CHECK(nathan.owner.auths.at(key_id_type()) == 1);
       BOOST_CHECK(nathan.votes.size() == 2);
 
+      /** these votes are no longer tallied in real time
       BOOST_CHECK(active_delegates[0](db).vote(db).total_votes == 30000);
       BOOST_CHECK(active_delegates[1](db).vote(db).total_votes == 0);
       BOOST_CHECK(active_delegates[4](db).vote(db).total_votes == 0);
       BOOST_CHECK(active_delegates[5](db).vote(db).total_votes == 30000);
       BOOST_CHECK(active_delegates[6](db).vote(db).total_votes == 0);
+      */
 
       transfer(account_id_type()(db), nathan, asset(3000000));
 

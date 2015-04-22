@@ -155,6 +155,7 @@ namespace bts { namespace chain {
          ///@{
          void update_active_witnesses();
          void update_active_delegates();
+         void update_vote_totals();
          void perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props);
          ///@}
          void create_block_summary(const signed_block& next_block);

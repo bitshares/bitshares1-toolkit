@@ -560,6 +560,45 @@ bool database::is_known_transaction( const transaction_id_type& id )const
 }
 
 /**
+ *  For each prime account, adjust the vote total object
+ */
+void database::update_vote_totals()
+{
+    const account_index& account_idx = get_index_type<account_index>();
+    const flat_index< vote_tally_object >& tidx = get_index_type< flat_index< vote_tally_object > >();
+
+    vector<share_type> vote_sums;
+    vote_sums.resize( tidx.size() );
+
+    for( const account_object& account : account_idx.indices() )
+    {
+       if( true || account.is_prime )
+       {
+          for( vote_tally_id_type tally : account.votes )
+          {
+             const auto& bal =  account.balances(*this);
+             vote_sums[tally.instance] += 
+                   bal.total_core_in_orders + bal.cashback_rewards 
+                   + bal.get_balance(asset_id_type()).amount;
+          }
+       }
+    }
+
+    for( uint32_t i = 0; i < vote_sums.size(); ++i )
+    {
+       const auto& current = vote_tally_id_type(i)(*this);
+       // avoid creating unnecessary saved state in the undo history
+       if( current.total_votes != vote_sums[i] )
+       {
+          modify( current, [&]( vote_tally_object& obj ){
+                  idump( (i)(vote_sums[i]) );
+                  obj.total_votes = vote_sums[i]; 
+                  });
+       }
+    }
+}
+
+/**
  *  Push block "may fail" in which case every partial change is unwound.  After
  *  push block is successful the block is appended to the chain database on disk.
  *
@@ -930,6 +969,7 @@ void database::update_pending_block(const signed_block& next_block, uint8_t curr
 
 void database::perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props)
 {
+   update_vote_totals();
    update_active_witnesses();
    update_active_delegates();
 

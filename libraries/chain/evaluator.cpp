@@ -70,7 +70,7 @@ namespace bts { namespace chain {
       assert( acumulated + burned <= after_bulk_discount );
 
       fees_paid[fee_asset].to_accumulated_fees += acumulated; //fee_from_pool.amount;
-      fees_paid[fee_asset].burned += burned; //fee_from_pool.amount;
+      fees_paid[&asset_id_type()(db())].burned += burned; //fee_from_pool.amount;
       adjust_balance( fee_paying_account, fee_asset, -fee.amount );
 
       cash_back[ &fee_paying_account->referrer(db()) ].cash_back         += referral;
@@ -137,6 +137,8 @@ namespace bts { namespace chain {
                      bal.sub_balance( asset(-delta.second,delta.first->id) );
                }
             });
+
+         // TODO: if continious vote tracking enabled...
          auto itr = acnt.second.find( &db().get_core_asset() );
          if( itr != acnt.second.end() )
          {
@@ -147,6 +149,8 @@ namespace bts { namespace chain {
 
    void generic_evaluator::adjust_votes( const flat_set<vote_tally_id_type>& vote_tallies, share_type delta )
    {
+      // TODO: make a config option to enable continious vote tracking
+      return;
       database& d = db();
       for( auto id : vote_tallies )
       {

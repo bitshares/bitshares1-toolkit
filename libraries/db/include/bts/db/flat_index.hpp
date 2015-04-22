@@ -86,6 +86,8 @@ namespace bts { namespace db {
          const_iterator begin()const { return const_iterator(_objects.begin()); }
          const_iterator end()const   { return const_iterator(_objects.end());   }
 
+         size_t size()const{ return _objects.size(); }
+
       private:
          vector< T > _objects;
    };
