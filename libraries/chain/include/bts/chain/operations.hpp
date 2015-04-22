@@ -106,9 +106,10 @@ namespace bts { namespace chain {
       optional<flat_set<vote_tally_id_type>>  vote;
 
       /**
-       *   If set to true, sets the account's referrer to itself.
+       * If set to true, upgrades the account to a prime account by setting the account's referrer to itself. This may
+       * only be set to true when the account being modified is not already a prime account.
        */
-      bool                                    prime = false;
+      bool                                    upgrade_to_prime = false;
 
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>& owner_auth_set)const;
       void       validate()const;
@@ -736,7 +737,7 @@ FC_REFLECT( bts::chain::account_create_operation,
 
 FC_REFLECT_TYPENAME( fc::flat_set<bts::chain::vote_tally_id_type> )
 FC_REFLECT( bts::chain::account_update_operation,
-            (account)(fee)(owner)(active)(voting_key)(memo_key)(vote)(prime)
+            (account)(fee)(owner)(active)(voting_key)(memo_key)(vote)(upgrade_to_prime)
           )
 
 FC_REFLECT_TYPENAME( bts::chain::account_whitelist_operation::account_listing)

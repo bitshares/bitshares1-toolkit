@@ -95,7 +95,7 @@ share_type account_create_operation::calculate_fee( const fee_schedule_type& sch
 }
 share_type account_update_operation::calculate_fee( const fee_schedule_type& schedule )const
 {
-   if( prime ) return schedule.at(prime_upgrade_fee_type);
+   if( upgrade_to_prime ) return schedule.at(prime_upgrade_fee_type);
    return schedule.at(account_create_fee_type);
 }
 void account_update_operation::get_required_auth(flat_set<account_id_type>& active_auth_set,

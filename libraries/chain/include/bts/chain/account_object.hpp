@@ -99,20 +99,20 @@ namespace bts { namespace chain {
          static const uint8_t space_id = protocol_ids;
          static const uint8_t type_id  = account_object_type;
          /**
-          *  The account that paid the fee to register this account, this account is
-          *  known as the primary referrer and is entitled to a percent of transaction
-          *  fees.
+          * The account that paid the fee to register this account, this account is
+          * known as the primary referrer and is entitled to a percent of transaction
+          * fees.
           */
-         account_id_type       registrar; 
+         account_id_type       registrar;
 
          /**
           * The registrar may be a faucet with its own revenue sharing model that allows
-          * users to refer each other.  
+          * users to refer each other.
           */
          account_id_type       referrer;
 
          /**
-          *  Any referral fees not paid to referrer are paid to registrar
+          * Any referral fees not paid to referrer are paid to registrar
           */
          uint8_t               referrer_percent = 0;
 
@@ -120,7 +120,8 @@ namespace bts { namespace chain {
          /// The account's name. This name must be unique among all account names on the graph. The name may be empty.
          string                name;
 
-         /** The owner authority represents absolute control over the account. Usually the keys in this authority will
+         /**
+          * The owner authority represents absolute control over the account. Usually the keys in this authority will
           * be kept in cold storage, as they should not be needed very often and compromise of these keys constitutes
           * complete and irrevocable loss of the account. Generally the only time the owner authority is required is to
           * update the active authority.
@@ -147,14 +148,16 @@ namespace bts { namespace chain {
          /// contains the ID of that object.
          account_balance_id_type          balances;
 
-         /** This is a set of all accounts which have 'whitelisted' this account. Whitelisting is only used in core
+         /**
+          * This is a set of all accounts which have 'whitelisted' this account. Whitelisting is only used in core
           * validation for the purpose of authorizing accounts to hold and transact in whitelisted assets. This
           * account cannot update this set, except by transferring ownership of the account, which will clear it. Other
           * accounts may add or remove their IDs from this set.
           */
          flat_set<account_id_type>        whitelisting_accounts;
 
-         /** This is a set of all accounts which have 'blacklisted' this account. Blacklisting is only used in core
+         /**
+          * This is a set of all accounts which have 'blacklisted' this account. Blacklisting is only used in core
           * validation for the purpose of forbidding accounts from holding and transacting in whitelisted assets. This
           * account cannot update this set, and it will be preserved even if the account is transferred. Other accounts
           * may add or remove their IDs from this set.
@@ -162,11 +165,15 @@ namespace bts { namespace chain {
          flat_set<account_id_type>        blacklisting_accounts;
 
          /**
-          * Tracks whether or not this account has upgraded to prime.
+          * @return true if this is a prime account, false otherwise.
           */
-         bool is_prime = false;
+         bool is_prime()const
+         {
+            return get_id() == referrer;
+         }
 
-         /** @return true if this account is whitelisted and not blacklisted to transact in the provided asset; false
+         /**
+          * @return true if this account is whitelisted and not blacklisted to transact in the provided asset; false
           * otherwise.
           */
          bool is_authorized_asset(const asset_object& asset_obj)const;
@@ -203,7 +210,7 @@ namespace bts { namespace chain {
 FC_REFLECT_DERIVED( bts::chain::account_object,
                     (bts::db::annotated_object<bts::chain::account_object>),
                     (registrar)(referrer)(referrer_percent)(name)(owner)(active)(memo_key)(voting_key)(votes)(balances)
-                    (whitelisting_accounts)(blacklisting_accounts)(is_prime) )
+                    (whitelisting_accounts)(blacklisting_accounts) )
 
 FC_REFLECT_DERIVED( bts::chain::meta_account_object,
                     (bts::db::object),

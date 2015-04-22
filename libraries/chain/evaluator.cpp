@@ -42,7 +42,7 @@ namespace bts { namespace chain {
       const auto& gp = db().get_global_properties();
       auto bulk_cashback  = share_type(0); // fee_from_pool.amount.value *
       if( fee_paying_account_balances->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_min &&
-          fee_paying_account->is_prime )
+          fee_paying_account->is_prime() )
       {
          uint64_t bulk_discount_percent = 0;
          if( fee_paying_account_balances->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_max )

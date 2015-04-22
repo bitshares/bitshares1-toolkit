@@ -160,7 +160,7 @@ BOOST_AUTO_TEST_CASE( update_account )
       transfer(account_id_type()(db), nathan, asset(3000000));
 
       enable_fees();
-      op.prime   = true;
+      op.upgrade_to_prime   = true;
       op.fee     = op.calculate_fee( db.get_global_properties().parameters.current_fees );
       trx.operations.push_back(op);
       db.push_transaction(trx, ~0);
