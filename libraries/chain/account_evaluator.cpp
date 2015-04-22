@@ -97,7 +97,7 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
 {
    database&   d = db();
 
-   auto bts_fee_paid = pay_fee( o.account, o.fee, o.prime );
+   auto bts_fee_paid = pay_fee( o.account, o.fee, o.upgrade_to_prime );
    FC_ASSERT( bts_fee_paid == o.calculate_fee( d.current_fee_schedule() ) );
 
    FC_ASSERT( !o.voting_key || is_relative(*o.voting_key) || db().find_object(*o.voting_key) );
@@ -153,7 +153,6 @@ object_id_type account_update_evaluator::do_apply( const account_update_operatio
           {
             a.referrer_percent = 100;
             a.referrer = a.id;
-            a.is_prime = true;
           }
       });
    return object_id_type();

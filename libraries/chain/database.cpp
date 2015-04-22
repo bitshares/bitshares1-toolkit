@@ -572,13 +572,13 @@ void database::update_vote_totals()
 
     for( const account_object& account : account_idx.indices() )
     {
-       if( true || account.is_prime )
+       if( true || account.is_prime() )
        {
           for( vote_tally_id_type tally : account.votes )
           {
              const auto& bal =  account.balances(*this);
-             vote_sums[tally.instance] += 
-                   bal.total_core_in_orders + bal.cashback_rewards 
+             vote_sums[tally.instance] +=
+                   bal.total_core_in_orders + bal.cashback_rewards
                    + bal.get_balance(asset_id_type()).amount;
           }
        }
@@ -592,7 +592,7 @@ void database::update_vote_totals()
        {
           modify( current, [&]( vote_tally_object& obj ){
                   idump( (i)(vote_sums[i]) );
-                  obj.total_votes = vote_sums[i]; 
+                  obj.total_votes = vote_sums[i];
                   });
        }
     }
@@ -943,8 +943,8 @@ void database::update_signing_witness(const witness_object& signing_witness, con
    burn *= gparams.burn_percent_of_fee;
    burn /= gparams.witness_percent_of_fee;
 
-   modify( asset_data, [&]( asset_dynamic_data_object& o ){ 
-              o.accumulated_fees -= witness_pay.to_uint64(); 
+   modify( asset_data, [&]( asset_dynamic_data_object& o ){
+              o.accumulated_fees -= witness_pay.to_uint64();
               o.accumulated_fees -= burn.to_uint64();
               o.burned         += burn.to_uint64();
               o.current_supply -= burn.to_uint64();
