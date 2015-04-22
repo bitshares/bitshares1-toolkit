@@ -8,6 +8,7 @@
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/delegate_object.hpp>
 #include <bts/chain/time.hpp>
+#include <bts/chain/witness_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 

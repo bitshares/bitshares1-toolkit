@@ -26,6 +26,7 @@
 #include <bts/chain/proposal_evaluator.hpp>
 #include <bts/chain/operation_history_object.hpp>
 #include <bts/chain/global_parameters_evaluator.hpp>
+#include <bts/chain/witness_object.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/crypto/digest.hpp>

@@ -63,7 +63,7 @@ namespace bts { namespace chain {
             return &*itr;
          }
 
-         virtual void inspect_all_objects(std::function<void (const object&)> inspector) override
+         virtual void inspect_all_objects(std::function<void (const object&)> inspector)const override
          {
             try {
                for( const auto& ptr : _indices )

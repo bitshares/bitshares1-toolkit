@@ -18,20 +18,6 @@ namespace bts { namespace chain {
          vote_tally_id_type             vote;
    };
 
-   class witness_object : public abstract_object<witness_object>
-   {
-      public:
-         static const uint8_t space_id = protocol_ids;
-         static const uint8_t type_id = witness_object_type;
-
-         account_id_type                witness_account;
-         key_id_type                    signing_key;
-         secret_hash_type               next_secret;
-         secret_hash_type               last_secret;
-         share_type                     accumulated_income;
-         vote_tally_id_type             vote;
-   };
-
    class vote_tally_object : public abstract_object<vote_tally_object>
    {
       public:
@@ -63,14 +49,6 @@ namespace bts { namespace chain {
 FC_REFLECT_DERIVED( bts::chain::delegate_object, (bts::db::object),
                     (delegate_account)
                     (feeds)
-                    (vote) )
-
-FC_REFLECT_DERIVED( bts::chain::witness_object, (bts::db::object),
-                    (witness_account)
-                    (signing_key)
-                    (next_secret)
-                    (last_secret)
-                    (accumulated_income)
                     (vote) )
 
 FC_REFLECT_DERIVED( bts::chain::vote_tally_object, (bts::db::object), (total_votes) )

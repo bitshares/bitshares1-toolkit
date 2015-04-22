@@ -1825,11 +1825,53 @@ BOOST_AUTO_TEST_CASE( fill_order )
    o.calculate_fee(db.current_fee_schedule());
 } FC_LOG_AND_RETHROW() }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( delegate_withdraw_pay_test, 1 )
-BOOST_AUTO_TEST_CASE( delegate_withdraw_pay_test )
-{
-   assert( !"not implemented" );
-}
+BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
+{ try {
+   generate_block();
+
+   // Make an account and upgrade it to prime, so that witnesses get some pay
+   create_account("nathan");
+   transfer(account_id_type()(db), get_account("nathan"), asset(10000000000));
+   generate_block();
+
+   const asset_object* core = &asset_id_type()(db);
+   const account_object* nathan = &get_account("nathan");
+   enable_fees();
+   BOOST_CHECK_GT(db.current_fee_schedule().at(prime_upgrade_fee_type).value, 0);
+
+   account_update_operation uop;
+   uop.account = nathan->get_id();
+   uop.upgrade_to_prime = true;
+   trx.operations.push_back(uop);
+   trx.visit(operation_set_fee(db.current_fee_schedule()));
+   trx.validate();
+   trx.sign(generate_private_key("genesis"));
+   db.push_transaction(trx);
+   trx.clear();
+   BOOST_CHECK_LT(get_balance(*nathan, *core), 10000000000);
+
+   generate_block();
+   nathan = &get_account("nathan");
+   core = &asset_id_type()(db);
+   const witness_object* witness = &db.fetch_block_by_number(db.head_block_num())->witness(db);
+
+   BOOST_CHECK_GT(witness->accumulated_income.value, 0);
+
+   // Withdraw the witness's pay
+   witness_withdraw_pay_operation wop;
+   wop.from_witness = witness->id;
+   wop.to_account = witness->witness_account;
+   wop.amount = witness->accumulated_income;
+   trx.operations.push_back(wop);
+   REQUIRE_THROW_WITH_VALUE(wop, amount, witness->accumulated_income.value * 2);
+   trx.visit(operation_set_fee(db.current_fee_schedule()));
+   trx.validate();
+   trx.sign(generate_private_key("genesis"));
+   db.push_transaction(trx);
+   trx.clear();
+
+   BOOST_CHECK_EQUAL(get_balance(witness->witness_account(db), *core), wop.amount.value);
+} FC_LOG_AND_RETHROW() }
 
 /**
  *  To have a secure random number we need to ensure that the same

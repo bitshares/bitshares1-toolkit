@@ -543,4 +543,19 @@ share_type global_parameters_update_operation::calculate_fee(const fee_schedule_
    return k.at(global_parameters_update_fee_type);
 }
 
+void witness_create_operation::get_required_auth(flat_set<bts::chain::account_id_type>& active_auth_set, flat_set<bts::chain::account_id_type>&) const
+{
+   active_auth_set.insert(witness_account);
+}
+
+void witness_create_operation::validate() const
+{
+   FC_ASSERT(fee.amount >= 0);
+}
+
+share_type witness_create_operation::calculate_fee(const fee_schedule_type& k) const
+{
+   return k.at(delegate_create_fee_type);
+}
+
 } } // namespace bts::chain

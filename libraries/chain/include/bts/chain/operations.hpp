@@ -198,6 +198,25 @@ namespace bts { namespace chain {
    };
 
    /**
+    * @brief Create a witness object, as a bid to hold a witness position on the network.
+    *
+    * Accounts which wish to become witnesses may use this operation to create a witness object which stakeholders may
+    * vote on to approve its position as a witness.
+    */
+   struct witness_create_operation
+   {
+      /// The account which owns the delegate. This account pays the fee for this operation.
+      account_id_type   witness_account;
+      asset             fee;
+      key_id_type       block_signing_key;
+      secret_hash_type  initial_secret;
+
+      void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
     *  Used to move witness pay from accumulated_income to their account balance.
     */
    struct witness_withdraw_pay_operation
@@ -618,6 +637,7 @@ namespace bts { namespace chain {
             asset_fund_fee_pool_operation,
             delegate_publish_feeds_operation,
             delegate_create_operation,
+            witness_create_operation,
             witness_withdraw_pay_operation,
             proposal_create_operation,
             proposal_update_operation,
@@ -753,6 +773,7 @@ FC_REFLECT( bts::chain::delegate_create_operation,
 FC_REFLECT( bts::chain::delegate_publish_feeds_operation,
             (delegate)(fee)(feeds) )
 
+FC_REFLECT( bts::chain::witness_create_operation, (witness_account)(fee)(block_signing_key)(initial_secret) )
 FC_REFLECT( bts::chain::witness_withdraw_pay_operation, (fee)(from_witness)(to_account)(amount) )
 
 FC_REFLECT( bts::chain::limit_order_create_operation,

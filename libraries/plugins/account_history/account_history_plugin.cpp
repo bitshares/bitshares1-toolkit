@@ -100,6 +100,10 @@ struct operation_get_impacted_accounts
 
    }
 
+   void operator()( const witness_create_operation& o )const {
+      _impacted.insert(o.witness_account);
+   }
+
    void operator()( const witness_withdraw_pay_operation& o )const {
 
    }

@@ -95,7 +95,7 @@ namespace bts { namespace db {
             modify( static_cast<const object&>(obj), std::function<void(object&)>( [&]( object& o ){ l( static_cast<Object&>(o) ); } ) );
          }
 
-         virtual void               inspect_all_objects(std::function<void(const object&)> inspector) = 0;
+         virtual void               inspect_all_objects(std::function<void(const object&)> inspector)const = 0;
          virtual void               add_observer( const shared_ptr<index_observer>& ) = 0;
 
    };
