@@ -556,6 +556,8 @@ BOOST_FIXTURE_TEST_CASE( change_block_interval, database_fixture )
    BOOST_CHECK_EQUAL(db.head_block_time().sec_since_epoch() - past_time, 10);
 
    generate_blocks(proposal_id_type()(db).expiration_time + 5);
+   BOOST_CHECK_EQUAL(db.get_global_properties().parameters.block_interval, 5);
+   generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
 
    BOOST_CHECK_EQUAL(db.get_global_properties().parameters.block_interval, 1);
    past_time = db.head_block_time().sec_since_epoch();

@@ -20,7 +20,7 @@ object_id_type global_parameters_update_evaluator::do_apply(const global_paramet
    apply_delta_fee_pools();
 
    db().modify(db().get_global_properties(), [&o](global_property_object& p) {
-      p.parameters = o.new_parameters;
+      p.pending_parameters = o.new_parameters;
    });
 
    return object_id_type();

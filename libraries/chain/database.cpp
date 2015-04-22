@@ -973,6 +973,13 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
    update_active_witnesses();
    update_active_delegates();
 
+   const global_property_object& global_properties = get_global_properties();
+   if( global_properties.pending_parameters )
+      modify(get_global_properties(), [](global_property_object& p) {
+         p.parameters = std::move(*p.pending_parameters);
+         p.pending_parameters.reset();
+      });
+
    auto new_block_interval = global_props.parameters.block_interval;
 
    // if block interval CHANGED during this block *THEN* we cannot simply
