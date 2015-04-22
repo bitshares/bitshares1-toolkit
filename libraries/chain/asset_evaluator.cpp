@@ -53,6 +53,8 @@ object_id_type asset_create_evaluator::do_apply( const asset_create_operation& o
          a.symbol = op.symbol;
          a.max_supply = op.max_supply;
          a.market_fee_percent = op.market_fee_percent;
+         a.max_market_fee = op.max_market_fee;
+         a.min_market_fee = op.min_market_fee;
          a.flags = op.flags;
          a.issuer_permissions = op.permissions;
          a.short_backing_asset = op.short_backing_asset;
@@ -224,6 +226,10 @@ object_id_type asset_update_evaluator::do_apply(const asset_update_operation& o)
          a.whitelist_authorities = *o.new_whitelist_authorities;
       if( o.new_blacklist_authorities )
          a.blacklist_authorities = *o.new_blacklist_authorities;
+
+      a.market_fee_percent = o.market_fee_percent;
+      a.max_market_fee = o.max_market_fee;
+      a.min_market_fee = o.min_market_fee;
    });
 
    return object_id_type();

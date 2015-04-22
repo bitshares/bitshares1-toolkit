@@ -35,6 +35,8 @@ namespace bts { namespace chain {
          void check_required_authorities(const operation& op);
    protected:
          /** market helpers */
+         void settle_black_swan( const asset_object& bitasset, const price& settle_price );
+         void cancel_order( const limit_order_object& order, bool create_virtual_op = true );
          
          /**
           *  Matches the two orders, 

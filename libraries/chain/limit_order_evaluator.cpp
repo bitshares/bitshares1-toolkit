@@ -178,7 +178,7 @@ asset limit_order_cancel_evaluator::do_evaluate( const limit_order_cancel_operat
    _order = &o.order(d);
    FC_ASSERT( _order->seller == o.fee_paying_account  );
    auto refunded = _order->amount_for_sale();
-   adjust_balance( fee_paying_account, &refunded.asset_id(d),  refunded.amount );
+   //adjust_balance( fee_paying_account, &refunded.asset_id(d),  refunded.amount );
 
   return refunded;
 }
@@ -190,6 +190,12 @@ asset limit_order_cancel_evaluator::do_apply( const limit_order_cancel_operation
    apply_delta_balances();
    apply_delta_fee_pools();
 
+   auto base_asset = _order->sell_price.base.asset_id;
+   auto quote_asset = _order->sell_price.quote.asset_id;
+   auto refunded = _order->amount_for_sale();
+
+   cancel_order( *_order, false /* don't create a virtual op*/ );
+   /*
    auto refunded = _order->amount_for_sale();
    auto base_asset = _order->sell_price.base.asset_id;
    auto quote_asset = _order->sell_price.quote.asset_id;
@@ -206,6 +212,7 @@ asset limit_order_cancel_evaluator::do_apply( const limit_order_cancel_operation
       //did not gain or lose any voting stake. Counteract that adjustment here.
       adjust_votes(fee_paying_account->votes, -refunded.amount);
    }
+   */
 
    // Possible optimization: order can be called by canceling a limit order iff the canceled order was at the top of the book.
    // Do I need to check calls in both assets?

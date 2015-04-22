@@ -125,11 +125,11 @@ namespace bts { namespace chain {
 
    void generic_evaluator::apply_delta_balances()
    {
-      for( const auto& acnt : delta_balance )
+      for( auto& acnt : delta_balance )
       {
          const auto& balances = acnt.first->balances(db());
          db().modify(balances, [&]( account_balance_object& bal ){
-               for( const auto& delta : acnt.second )
+               for( auto& delta : acnt.second )
                {
                   if( delta.second > 0 )
                      bal.add_balance( asset(delta.second,delta.first->id) );
@@ -139,12 +139,15 @@ namespace bts { namespace chain {
             });
 
          // TODO: if continious vote tracking enabled...
+        /*
          auto itr = acnt.second.find( &db().get_core_asset() );
          if( itr != acnt.second.end() )
          {
             adjust_votes( acnt.first->votes, itr->second );
          }
+         */
       }
+      delta_balance.clear();
    }
 
    void generic_evaluator::adjust_votes( const flat_set<vote_tally_id_type>& vote_tallies, share_type delta )
@@ -166,6 +169,7 @@ namespace bts { namespace chain {
       {
          const auto& dyn_asst_data = fee.first->dynamic_asset_data_id(db());
          db().modify( dyn_asst_data, [&]( asset_dynamic_data_object& dyn ){
+                  //idump((fee.second.to_issuer)(fee.second.burned));
                           dyn.fee_pool         -= fee.second.from_pool;
                           dyn.accumulated_fees += fee.second.to_issuer + fee.second.burned;
                      });
@@ -173,6 +177,7 @@ namespace bts { namespace chain {
          {
             db().modify(dynamic_asset_data_id_type()(db()), [&]( asset_dynamic_data_object& dyn) {
                //dyn.accumulated_fees += fee.second.from_pool;
+               //idump((fee.second.to_accumulated_fees));
                dyn.accumulated_fees += fee.second.to_accumulated_fees;
             });
          }
@@ -195,6 +200,8 @@ namespace bts { namespace chain {
              obj.lifetime_fees_paid += cash.second.total_fees_paid;
          });
       }
+      cash_back.clear();
+      fees_paid.clear();
    }
    object_id_type generic_evaluator::get_relative_id( object_id_type rel_id )const
    {
@@ -362,7 +369,8 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
        if( usd_to_buy * match_price > call_itr->get_collateral() )
        {
           elog( "black swan, we do not have enough collateral to cover at this price" );
-          FC_ASSERT( !"BLACK SWAN" );
+          settle_black_swan( mia, call_itr->get_debt() / call_itr->get_collateral() );
+          return true;
        }
 
        asset call_pays, call_receives, order_pays, order_receives;
@@ -404,6 +412,153 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
     return filled_short_or_limit;
 } FC_CAPTURE_AND_RETHROW() }
 
+void generic_evaluator::cancel_order( const limit_order_object& order, bool create_virtual_op  )
+{
+   auto refunded = order.amount_for_sale();
+
+   db().modify( order.seller(db()).balances(db()),[&]( account_balance_object& obj ){
+      obj.add_balance( refunded );
+      if( refunded.asset_id == asset_id_type() )
+      {
+        obj.total_core_in_orders -= refunded.amount;
+        adjust_votes(fee_paying_account->votes, -refunded.amount);
+      }
+   });
+
+   if( create_virtual_op )
+   {
+      // TODO: create a virtual cancel operation 
+   }
+
+   db().remove( order );
+}
+
+/**
+    for each short order, fill it at settlement price and place funds received into a total
+    calculate the USD->BTS price and convert all USD balances to BTS at that price and subtract BTS from total
+       - any fees accumulated by the issuer in the bitasset are forfeit / not redeemed 
+       - cancel all open orders with bitasset in it
+       - any bonds with the bitasset as collateral get converted to BTS as collateral
+       - any bitassets that use this bitasset as collateral are immediately settled at their feed price
+       - convert all balances in bitasset to BTS and subtract from total
+       - any prediction markets with usd as the backing get converted to BTS as the backing
+    any BTS left over due to rounding errors is paid to accumulated fees
+*/
+void generic_evaluator::settle_black_swan( const asset_object& mia, const price& settlement_price )
+{ try {
+   elog( "BLACK SWAN!" );
+   apply_delta_balances();
+   apply_delta_fee_pools();
+   edump( (mia.symbol)(settlement_price) );
+
+    const asset_object& backing_asset = mia.short_backing_asset(db());
+    asset collateral_gathered = backing_asset.amount(0);
+
+    const asset_dynamic_data_object& mia_dyn = mia.dynamic_asset_data_id(db());
+    auto original_mia_supply = mia_dyn.current_supply;
+
+    const call_order_index& call_index = db().get_index_type<call_order_index>();
+    const auto& call_price_index = call_index.indices().get<by_price>();
+
+    auto call_itr = call_price_index.lower_bound( price::min( mia.short_backing_asset, mia.id ) );
+    auto call_end = call_price_index.upper_bound( price::max( mia.short_backing_asset, mia.id ) );
+    while( call_itr != call_end )
+    {
+       auto pays = call_itr->get_debt() * settlement_price;
+       wdump( (call_itr->get_debt() ) );
+       ilog(".");
+       collateral_gathered += pays;
+       ilog(".");
+       const auto&  order = *call_itr;
+       ++call_itr;
+       FC_ASSERT( fill_order( order, pays, order.get_debt() ) );
+       apply_delta_balances();
+       apply_delta_fee_pools();
+    }
+    ilog( "." );
+
+    const limit_order_index& limit_index = db().get_index_type<limit_order_index>();
+    const auto& limit_price_index = limit_index.indices().get<by_price>();
+
+    // cancel all orders selling the market issued asset 
+    auto limit_itr = limit_price_index.lower_bound( price::max( mia.id, mia.short_backing_asset ) );
+    auto limit_end = limit_price_index.upper_bound( ~mia.current_feed.call_limit );
+    //auto limit_end = limit_price_index.upper_bound( price::max( asset_id_type(mia.id.instance()+1), 
+    //                                                            mia.short_backing_asset ) );
+    while( limit_itr != limit_end )
+    {
+       const auto& order = *limit_itr;
+        idump((order));
+       ++limit_itr;
+       cancel_order( order );
+    ilog( "." );
+    }
+
+    limit_itr = limit_price_index.begin();
+    //auto limit_end = limit_price_index.upper_bound( ~mia.current_feed.call_limit );
+    limit_end = limit_price_index.end();
+    while( limit_itr != limit_end )
+    {
+       if( limit_itr->amount_for_sale().asset_id == mia.id )
+       {
+          const auto& order = *limit_itr;
+          edump((order));
+          ++limit_itr;
+          cancel_order( order );
+       }
+    }
+
+    const auto& account_idx = db().get_index_type<account_index>();
+    auto account_itr = account_idx.indices().get<by_id>().begin();
+    auto account_end = account_idx.indices().get<by_id>().end();
+
+    asset total_mia_settled = mia.amount(0);
+    while( account_itr != account_end )
+    {
+    ilog( "." );
+       const auto& bal = account_itr->balances(db());
+       db().modify( bal, [&]( account_balance_object& obj ){
+          auto mia_balance = obj.get_balance( mia.id );
+          wdump((mia_balance) );
+          if( mia_balance.amount > 0 )
+          {
+             obj.sub_balance( mia_balance );
+             auto settled_amount = mia_balance * settlement_price;
+             idump( (mia_balance)(settled_amount)(settlement_price) );
+             obj.add_balance( settled_amount );
+             total_mia_settled += mia_balance;
+             collateral_gathered -= settled_amount;
+          }
+       });
+       // TODO: create virtual operation for settlement 
+       ++account_itr;
+    }
+
+    // TODO: convert collateral held in bonds
+    // TODO: convert payments held in escrow
+    // TODO: convert usd held as prediction market collateral
+
+       ilog(".");
+    db().modify( mia_dyn, [&]( asset_dynamic_data_object& obj ){
+       idump( (total_mia_settled)(obj.accumulated_fees));
+       total_mia_settled.amount += obj.accumulated_fees;
+       ilog(".");
+       obj.accumulated_fees = 0;
+    });
+
+       ilog(".");
+
+    wlog( "====================== AFTER SETTLE BLACK SWAN UNCLAIMED SETTLEMENT FUNDS ==============\n" );
+    wdump((collateral_gathered)(total_mia_settled)(original_mia_supply)(mia_dyn.current_supply));
+    db().modify( mia.short_backing_asset(db()).dynamic_asset_data_id(db()), [&]( asset_dynamic_data_object& obj ){
+       idump((collateral_gathered));
+                 obj.accumulated_fees += collateral_gathered.amount;
+                 idump((obj.accumulated_fees));
+                 });
+
+    FC_ASSERT( total_mia_settled.amount == original_mia_supply, "", ("total_settled",total_mia_settled)("original",original_mia_supply) );
+} FC_CAPTURE_AND_RETHROW( (mia)(settlement_price) ) }
+
 asset generic_evaluator::calculate_market_fee( const asset_object& trade_asset, const asset& trade_amount )
 {
    assert( trade_asset.id == trade_amount.asset_id );
@@ -411,7 +566,14 @@ asset generic_evaluator::calculate_market_fee( const asset_object& trade_asset, 
    fc::uint128 a(trade_amount.amount.value);
    a *= trade_asset.market_fee_percent;
    a /= BTS_MAX_MARKET_FEE_PERCENT;
-   return trade_asset.amount(a.to_uint64());
+   asset percent_fee = trade_asset.amount(a.to_uint64());
+
+   if( percent_fee.amount > trade_asset.max_market_fee )
+      percent_fee.amount = trade_asset.max_market_fee;
+   else if( percent_fee.amount < trade_asset.min_market_fee )
+      percent_fee.amount = trade_asset.min_market_fee;
+
+   return percent_fee;
 }
 
 asset generic_evaluator::pay_market_fees( const asset_object& recv_asset, const asset& receives )
@@ -424,6 +586,7 @@ asset generic_evaluator::pay_market_fees( const asset_object& recv_asset, const 
    {
       const auto& recv_dyn_data = recv_asset.dynamic_asset_data_id(db());
       db().modify( recv_dyn_data, [&]( asset_dynamic_data_object& obj ){
+                   idump((issuer_fees));
          obj.accumulated_fees += issuer_fees.amount;
       });
    }
@@ -512,7 +675,8 @@ bool generic_evaluator::fill_order( const limit_order_object& order, const asset
    }
 }
 bool generic_evaluator::fill_order( const call_order_object& order, const asset& pays, const asset& receives )
-{
+{ try {
+   idump((pays)(receives)(order));
    assert( order.get_debt().asset_id == receives.asset_id );
    assert( order.get_collateral().asset_id == pays.asset_id );
    assert( order.get_collateral() >= pays );
@@ -520,11 +684,14 @@ bool generic_evaluator::fill_order( const call_order_object& order, const asset&
    optional<asset> collateral_freed;
    db().modify( order, [&]( call_order_object& o ){
             o.debt       -= receives.amount;
-            o.collateral -= pays.amount;
             if( o.debt == 0 )
             {
               collateral_freed = o.get_collateral();
               o.collateral = 0;
+            }
+            else
+            {
+               o.collateral -= pays.amount;
             }
        });
    const asset_object& mia = receives.asset_id(db());
@@ -533,6 +700,7 @@ bool generic_evaluator::fill_order( const call_order_object& order, const asset&
    const asset_dynamic_data_object& mia_ddo = mia.dynamic_asset_data_id(db());
 
    db().modify( mia_ddo, [&]( asset_dynamic_data_object& ao ){
+       idump((receives));
         ao.current_supply -= receives.amount;
       });
 
@@ -543,6 +711,7 @@ bool generic_evaluator::fill_order( const call_order_object& order, const asset&
       db().modify( borrower_balances, [&]( account_balance_object& b ){
               if( collateral_freed )
               {
+                idump((*collateral_freed));
                 b.add_balance( *collateral_freed );
                 b.total_core_in_orders -= collateral_freed->amount;
               }
@@ -561,7 +730,7 @@ bool generic_evaluator::fill_order( const call_order_object& order, const asset&
    }
 
    return collateral_freed.valid();
-}
+} FC_CAPTURE_AND_RETHROW( (order)(pays)(receives) ) }
 
 
 bool generic_evaluator::fill_order( const short_order_object& order, const asset& pays, const asset& receives )
@@ -592,6 +761,7 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
    }
 
    db().modify( pays_asset.dynamic_asset_data_id(db()), [&]( asset_dynamic_data_object& obj ){
+                  idump((pays));
                   obj.current_supply += pays.amount;
                 });
 

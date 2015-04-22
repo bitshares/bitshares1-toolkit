@@ -50,6 +50,9 @@ namespace bts { namespace chain {
          /// the issuer. This is a fixed point value, representing hundredths of a percent, i.e. a value of 100 in this
          /// field means a 1% fee is charged on market trades of this asset.
          uint16_t                market_fee_percent = 0;
+         share_type              max_market_fee;
+         share_type              min_market_fee;
+
          /// The flags which the issuer has permission to update. See asset_issuer_permission_flags
          uint16_t                issuer_permissions;
          /// The currently active flags on this permission. See asset_issuer_permission_flags
@@ -101,6 +104,8 @@ FC_REFLECT_DERIVED( bts::chain::asset_object,
                     (symbol)
                     (issuer)
                     (max_supply)
+                    (max_market_fee)
+                    (min_market_fee)
                     (market_fee_percent)
                     (issuer_permissions)
                     (flags)

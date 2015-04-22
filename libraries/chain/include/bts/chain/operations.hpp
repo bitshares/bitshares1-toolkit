@@ -259,6 +259,10 @@ namespace bts { namespace chain {
       uint8_t                 precision = 0;
       /// Expressed in fixed-point notation, where 100 = 1%
       uint16_t                market_fee_percent = 0;
+      /** If the percentage based fee is greater than max_market_fee then the max fee will be used */
+      share_type              max_market_fee = BTS_MAX_SHARE_SUPPLY;
+      /** If the percentage based fee is less than min_market_fee then the min fee will be used */
+      share_type              min_market_fee;
       /// Bitfield specifying the flags the issuer is allowed to set
       uint16_t                permissions = 0;
       /// Bitfield specifying which flags are currently in effect
@@ -302,6 +306,13 @@ namespace bts { namespace chain {
       optional<price>            core_exchange_rate;
       /// If price limits are null, shorts and margin calls are disabled.
       optional<price_feed>       new_price_feed;
+
+      /// Expressed in fixed-point notation, where 100 = 1%
+      uint16_t                market_fee_percent = 0;
+      /** If the percentage based fee is greater than max_market_fee then the max fee will be used */
+      share_type              max_market_fee = BTS_MAX_SHARE_SUPPLY;
+      /** If the percentage based fee is less than min_market_fee then the min fee will be used */
+      share_type              min_market_fee;
 
       optional<flat_set<account_id_type>> new_whitelist_authorities;
       optional<flat_set<account_id_type>> new_blacklist_authorities;
@@ -774,6 +785,8 @@ FC_REFLECT( bts::chain::asset_create_operation,
             (max_supply)
             (precision)
             (market_fee_percent)
+            (min_market_fee)
+            (max_market_fee)
             (permissions)
             (flags)
             (core_exchange_rate)
@@ -781,7 +794,17 @@ FC_REFLECT( bts::chain::asset_create_operation,
           )
 
 FC_REFLECT( bts::chain::asset_update_operation,
-            (issuer)(asset_to_update)(fee)(flags)(permissions)(new_issuer)(core_exchange_rate)(new_price_feed)
+            (issuer)
+            (asset_to_update)
+            (fee)
+            (flags)
+            (permissions)
+            (new_issuer)
+            (core_exchange_rate)
+            (new_price_feed)
+            (market_fee_percent)
+            (min_market_fee)
+            (max_market_fee)
           )
 
 FC_REFLECT( bts::chain::asset_issue_operation,
