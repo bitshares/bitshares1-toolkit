@@ -58,6 +58,11 @@ namespace bts { namespace app {
        return _db.get( global_property_id_type() );
     }
     
+    dynamic_global_property_object database_api::get_dynamic_global_properties()const
+    {
+       return _db.get( dynamic_global_property_id_type() );
+    }
+
     vector<optional<key_object>>      database_api::get_keys( const vector<key_id_type>& key_ids )const
     {
        vector<optional<key_object>> result; result.reserve(key_ids.size());
