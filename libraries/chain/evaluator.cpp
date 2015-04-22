@@ -173,13 +173,11 @@ namespace bts { namespace chain {
          if( dyn_asst_data.id != asset_id_type() )
          {
             db().modify(dynamic_asset_data_id_type()(db()), [&]( asset_dynamic_data_object& dyn) {
-               //dyn.accumulated_fees += fee.second.from_pool;
                dyn.accumulated_fees += fee.second.to_accumulated_fees;
             });
          }
       }
       auto current_time = db().head_block_time();
-      //auto maturity = current_time - fc::seconds(db().get_global_properties().parameters.cashback_vesting_period_seconds);
 
       for( const auto& cash : cash_back )
       {
@@ -187,11 +185,8 @@ namespace bts { namespace chain {
          db().modify( bal, [&]( account_balance_object& obj ){
              if( cash.second.cash_back.value )
              {
-                //  All cashback, referrals, etc must mature
-                //if( cash.second.is_prime_upgrade )
-                   obj.adjust_cashback( cash.second.cash_back, current_time, current_time );
-                //else
-                //   obj.adjust_cashback( cash.second.cash_back, maturity, current_time );
+                // All cashback, referrals, etc must mature
+                obj.adjust_cashback( cash.second.cash_back, current_time, current_time );
              }
              obj.lifetime_fees_paid += cash.second.total_fees_paid;
          });
@@ -347,16 +342,12 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
        }
        else return filled_short_or_limit;
 
-
        match_price.validate();
-       idump((match_price));
 
        if( match_price > ~call_itr->call_price )
        {
           return filled_short_or_limit;
        }
-
-       wdump( (match_price)(usd_for_sale) );
 
        auto usd_to_buy   = call_itr->get_debt();
 
@@ -461,7 +452,6 @@ bool generic_evaluator::convert_fees( const asset_object& mia )
 
 bool generic_evaluator::fill_order( const limit_order_object& order, const asset& pays, const asset& receives )
 {
-   wdump( (order)(pays)(receives) );
    assert( order.amount_for_sale().asset_id == pays.asset_id );
    assert( pays.asset_id != receives.asset_id );
 
@@ -505,7 +495,6 @@ bool generic_evaluator::fill_order( const limit_order_object& order, const asset
             adjust_balance( &seller, &pays_asset, order.for_sale );
          }
 
-         elog("Order has been satisfied, but still has buying power. Deleting it. Is this desirable behavior?");
          db().remove( order );
          return true;
       }

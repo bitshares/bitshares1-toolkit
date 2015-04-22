@@ -25,8 +25,6 @@ object_id_type limit_order_create_evaluator::do_evaluate( const limit_order_crea
 
    FC_ASSERT( get_balance( _seller, _sell_asset ) >= op.amount_to_sell, "insufficient balance", ("balance",get_balance(_seller,_sell_asset))("amount_to_sell",op.amount_to_sell) );
 
-   // adjust_balance( _seller, _sell_asset, -op.amount_to_sell.amount );
-
    return object_id_type();
 }
 template<typename I>
@@ -35,7 +33,6 @@ std::reverse_iterator<I> reverse( const I& itr ) { return std::reverse_iterator<
 object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_operation& op )
 {
    const auto& seller_balance = _seller->balances(db());
-   //wdump( (seller_balance)(op) );
    db().modify( seller_balance, [&]( account_balance_object& bal ){
          if( op.amount_to_sell.asset_id == asset_id_type() )
          {
@@ -72,26 +69,13 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
    // check orders.   For now I just lookup the lower bound and check for equality... this is log(n) vs
    // constant time check. Potential optimization.
 
-   //auto best_limit_itr = limit_price_idx.lower_bound( _sell_asset->amount(0) / op.min_to_receive );
-   //if( best_limit_itr->id != new_order_object.id ) return new_order_object.id;
-
-
    auto max_price  = ~op.get_price(); //op.min_to_receive / op.amount_to_sell;
-   //auto limit_end = reverse(limit_price_idx.lower_bound( max_price ));
-   //auto limit_itr = reverse(limit_price_idx.upper_bound( max_price.max() ));
    auto limit_itr = limit_price_idx.lower_bound( max_price.max() );
    auto limit_end = limit_price_idx.upper_bound( max_price );
-   for( auto itr = limit_price_idx.begin(); itr != limit_price_idx.end(); ++itr )
-   {
-      idump((*itr));
-      if( itr == limit_itr ) wdump((*limit_itr));
-      if( itr == limit_end ) edump((*limit_end));
-   }
 
    for( auto tmp = limit_itr; tmp != limit_end; ++tmp )
    {
       assert( tmp != limit_price_idx.end() );
-      wdump((*tmp));
    }
 
    bool filled = false;
@@ -113,8 +97,6 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
       const auto& sell_price_idx = short_order_idx.indices().get<by_price>();
 
       FC_ASSERT( max_price.max() >= max_price );
-      //auto short_itr = reverse(sell_price_idx.upper_bound( max_price.max() ));
-      //auto short_end = reverse(sell_price_idx.lower_bound( max_price ));
       auto short_itr = sell_price_idx.lower_bound( max_price.max() );
       auto short_end = sell_price_idx.upper_bound( max_price );
 
@@ -124,14 +106,12 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
          {
             if( short_itr != short_end && limit_itr->sell_price < short_itr->sell_price )
             {
-               ilog( "next short with limits" );
                auto old_short_itr = short_itr;
                ++short_itr;
                filled = (match( new_order_object, *old_short_itr, old_short_itr->sell_price ) != 2 );
             }
             else
             {
-               ilog( "next limit" );
                auto old_limit_itr = limit_itr;
                ++limit_itr;
                filled = (match( new_order_object, *old_limit_itr, old_limit_itr->sell_price ) != 2 );
@@ -139,7 +119,6 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
          }
          else if( short_itr != short_end  )
          {
-            wlog( "next short no limits left" );
             auto old_short_itr = short_itr;
             ++short_itr;
             filled = (match( new_order_object, *old_short_itr, old_short_itr->sell_price ) != 2 );

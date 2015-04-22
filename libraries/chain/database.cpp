@@ -595,9 +595,8 @@ void database::update_vote_totals()
        if( current.total_votes != vote_sums[i] )
        {
           modify( current, [&]( vote_tally_object& obj ){
-                  idump( (i)(vote_sums[i]) );
-                  obj.total_votes = vote_sums[i];
-                  });
+             obj.total_votes = vote_sums[i];
+          });
        }
     }
 }
@@ -644,7 +643,8 @@ bool database::push_block( const signed_block& new_block, uint32_t skip )
                 catch ( const fc::exception& e ) { except = e; }
                 if( except )
                 {
-                   edump( ("Encountered error when switching to a longer fork. Going back.")((*ritr)->id) );
+                   elog( "Encountered error when switching to a longer fork at id ${id}. Going back.",
+                          ("id", (*ritr)->id) );
                    // remove the rest of branches.first from the fork_db, those blocks are invalid
                    while( ritr != branches.first.rend() )
                    {

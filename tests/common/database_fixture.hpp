@@ -342,16 +342,10 @@ struct database_fixture {
    { try {
       trx.operations.resize(1);
       trx.operations.back() = (make_account(name, registrar, referrer, referrer_percent, key));
-      ilog(".");
-      wdump((trx));
       trx.validate();
-      ilog(".");
       auto r = db.push_transaction(trx, ~0);
-      wdump((r));
       const auto& result = db.get<account_object>(r.operation_results[0].get<object_id_type>());
-      ilog(".");
       trx.operations.clear();
-      ilog(".");
       return result;
    } FC_CAPTURE_AND_RETHROW( (name)(registrar)(referrer) ) }
 
