@@ -49,8 +49,7 @@ object_id_type proposal_create_evaluator::do_apply(const proposal_create_operati
 
       //Populate the required approval sets
       flat_set<account_id_type> required_active;
-      for( const operation& op : proposal.proposed_transaction.operations )
-         op.visit(operation_get_required_auths(required_active, proposal.required_owner_approvals));
+      _proposed_trx.visit(operation_get_required_auths(required_active, proposal.required_owner_approvals));
       //All accounts which must provide both owner and active authority should be omitted from the active authority set;
       //owner authority approval implies active authority approval.
       std::set_difference(required_active.begin(), required_active.end(),
@@ -148,7 +147,8 @@ object_id_type proposal_delete_evaluator::do_evaluate(const proposal_delete_oper
    auto required_approvals = o.using_owner_authority? &_proposal->required_owner_approvals
                                                     : &_proposal->required_active_approvals;
    FC_ASSERT( required_approvals->find(o.fee_paying_account) != required_approvals->end(),
-              "Provided authority is not authoritative for this proposal." );
+              "Provided authority is not authoritative for this proposal.",
+              ("provided", o.fee_paying_account)("required", *required_approvals));
 
    return object_id_type();
 }

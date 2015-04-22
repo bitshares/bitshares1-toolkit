@@ -160,7 +160,7 @@ BOOST_AUTO_TEST_CASE( update_account )
       transfer(account_id_type()(db), nathan, asset(3000000));
 
       enable_fees();
-      op.prime   = true;
+      op.upgrade_to_prime   = true;
       op.fee     = op.calculate_fee( db.get_global_properties().parameters.current_fees );
       trx.operations.push_back(op);
       db.push_transaction(trx, ~0);
@@ -1815,11 +1815,67 @@ BOOST_AUTO_TEST_CASE( limit_order_fill_or_kill )
    db.push_transaction(trx, ~0);
 } FC_LOG_AND_RETHROW() }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( delegate_withdraw_pay_test, 1 )
-BOOST_AUTO_TEST_CASE( delegate_withdraw_pay_test )
-{
-   assert( !"not implemented" );
-}
+/// Shameless code coverage plugging. Otherwise, these calls never happen.
+BOOST_AUTO_TEST_CASE( fill_order )
+{ try {
+   fill_order_operation o;
+   flat_set<account_id_type> auths;
+   o.get_required_auth(auths, auths);
+   BOOST_CHECK_THROW(o.validate(), fc::exception);
+   o.calculate_fee(db.current_fee_schedule());
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
+{ try {
+   generate_block();
+
+   // Make an account and upgrade it to prime, so that witnesses get some pay
+   create_account("nathan");
+   transfer(account_id_type()(db), get_account("nathan"), asset(10000000000));
+   generate_block();
+
+   const asset_object* core = &asset_id_type()(db);
+   const account_object* nathan = &get_account("nathan");
+   enable_fees(100000000);
+   BOOST_CHECK_GT(db.current_fee_schedule().at(prime_upgrade_fee_type).value, 0);
+
+   account_update_operation uop;
+   uop.account = nathan->get_id();
+   uop.upgrade_to_prime = true;
+   trx.operations.push_back(uop);
+   trx.visit(operation_set_fee(db.current_fee_schedule()));
+   trx.validate();
+   trx.sign(generate_private_key("genesis"));
+   db.push_transaction(trx);
+   trx.clear();
+   BOOST_CHECK_LT(get_balance(*nathan, *core), 10000000000);
+
+   generate_block();
+   nathan = &get_account("nathan");
+   core = &asset_id_type()(db);
+   const witness_object* witness = &db.fetch_block_by_number(db.head_block_num())->witness(db);
+
+   BOOST_CHECK_GT(core->dynamic_asset_data_id(db).accumulated_fees.value, 0);
+   BOOST_CHECK_GT(witness->accumulated_income.value, 0);
+
+   // Withdraw the witness's pay
+   enable_fees(1);
+   witness_withdraw_pay_operation wop;
+   wop.from_witness = witness->id;
+   wop.to_account = witness->witness_account;
+   wop.amount = witness->accumulated_income;
+   trx.operations.push_back(wop);
+   REQUIRE_THROW_WITH_VALUE(wop, amount, witness->accumulated_income.value * 2);
+   trx.operations.back() = wop;
+   trx.visit(operation_set_fee(db.current_fee_schedule()));
+   trx.validate();
+   trx.sign(generate_private_key("genesis"));
+   db.push_transaction(trx);
+   trx.clear();
+
+   BOOST_CHECK_EQUAL(get_balance(witness->witness_account(db), *core), wop.amount.value - 1/*fee*/);
+   BOOST_CHECK_EQUAL(witness->accumulated_income.value, 0);
+} FC_LOG_AND_RETHROW() }
 
 /**
  *  To have a secure random number we need to ensure that the same
@@ -1858,15 +1914,15 @@ BOOST_AUTO_TEST_CASE( cover_with_collateral_test )
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( witness_pay_test, 1 )
 BOOST_AUTO_TEST_CASE( witness_pay_test )
 {
-   assert( !"not implemneted" );
+   assert( !"not implemented" );
 }
-
 
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( bulk_discount_test, 1 )
 BOOST_AUTO_TEST_CASE( bulk_discount_test )
 {
-
-   assert( !"not implemneted" );
+   const account_object& shorter1  = create_account( "alice" );
+   const account_object& shorter2  = create_account( "bob" );
+   assert( !"not implemented" );
 }
 
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( margin_call_black_swan, 1 )

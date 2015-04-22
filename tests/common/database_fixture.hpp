@@ -8,6 +8,7 @@
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/delegate_object.hpp>
 #include <bts/chain/time.hpp>
+#include <bts/chain/witness_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -102,15 +103,12 @@ struct database_fixture {
             BOOST_CHECK_EQUAL(total_balances[asset_obj.id].value, asset_obj.dynamic_asset_data_id(db).current_supply.value);
          total_balances[asset_id_type()] += asset_obj.dynamic_asset_data_id(db).fee_pool;
       }
+      for( const witness_object& witness_obj : db.get_index_type<simple_index<witness_object>>() )
+         total_balances[asset_id_type()] += witness_obj.accumulated_income;
       for( auto item : total_debts )
-      {
-         //wdump( (item.first(db).dynamic_asset_data_id(db).current_supply)(item.second) );
          BOOST_CHECK_EQUAL(item.first(db).dynamic_asset_data_id(db).current_supply.value, item.second.value);
-      }
-      // wdump( (core_in_orders)(reported_core_in_orders) );
-      BOOST_CHECK_EQUAL( core_in_orders.value , reported_core_in_orders.value );
 
-      //wdump( (core_asset_data.current_supply)(total_balances[asset_id_type()]) );
+      BOOST_CHECK_EQUAL( core_in_orders.value , reported_core_in_orders.value );
       BOOST_CHECK_EQUAL( total_balances[asset_id_type()].value , core_asset_data.current_supply.value );
    }
 
@@ -124,8 +122,8 @@ struct database_fixture {
          for( vote_tally_id_type tally : account.votes )
          {
             const auto& bal =  account.balances(db);
-            vote_sums[tally] += 
-                  bal.total_core_in_orders + bal.cashback_rewards 
+            vote_sums[tally] +=
+                  bal.total_core_in_orders + bal.cashback_rewards
                   + bal.get_balance(asset_id_type()).amount;
          }
 
@@ -214,14 +212,14 @@ struct database_fixture {
    }
 
    account_create_operation make_account( const std::string& name,
-                                          const account_object& registrar, 
-                                          const account_object& referrer, 
-                                          uint8_t referrer_percent = 100, 
-                                          key_id_type key = key_id_type() ) 
+                                          const account_object& registrar,
+                                          const account_object& referrer,
+                                          uint8_t referrer_percent = 100,
+                                          key_id_type key = key_id_type() )
    { try {
       account_create_operation          create_account;
 
-      create_account.registrar          = registrar.id; 
+      create_account.registrar          = registrar.id;
       create_account.referrer           = referrer.id;
       create_account.referrer_percent   = referrer_percent;
 
@@ -336,24 +334,18 @@ struct database_fixture {
       trx.operations.clear();
       return result;
    }
-   const account_object& create_account( const string& name, 
-                                         const account_object& registrar, 
-                                         const account_object& referrer, 
+   const account_object& create_account( const string& name,
+                                         const account_object& registrar,
+                                         const account_object& referrer,
                                          uint8_t referrer_percent = 100,
                                          const key_id_type& key = key_id_type() )
    { try {
       trx.operations.resize(1);
       trx.operations.back() = (make_account(name, registrar, referrer, referrer_percent, key));
-      ilog(".");
-      wdump((trx));
       trx.validate();
-      ilog(".");
       auto r = db.push_transaction(trx, ~0);
-      wdump((r));
       const auto& result = db.get<account_object>(r.operation_results[0].get<object_id_type>());
-      ilog(".");
       trx.operations.clear();
-      ilog(".");
       return result;
    } FC_CAPTURE_AND_RETHROW( (name)(registrar)(referrer) ) }
 
@@ -459,10 +451,10 @@ struct database_fixture {
    { try {
       account_update_operation op;
       op.account = account.id;
-      op.prime = true;
+      op.upgrade_to_prime = true;
       trx.operations.emplace_back(operation(op));
       db.push_transaction( trx, ~0 );
-      FC_ASSERT( account.is_prime );
+      FC_ASSERT( account.is_prime() );
    } FC_CAPTURE_AND_RETHROW((account)) }
 
    void print_market( const string& syma, const string&  symb )

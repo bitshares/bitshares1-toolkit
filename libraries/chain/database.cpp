@@ -26,6 +26,8 @@
 #include <bts/chain/proposal_evaluator.hpp>
 #include <bts/chain/operation_history_object.hpp>
 #include <bts/chain/global_parameters_evaluator.hpp>
+#include <bts/chain/witness_object.hpp>
+#include <bts/chain/witness_evaluator.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/crypto/digest.hpp>
@@ -129,6 +131,8 @@ void database::initialize_evaluators()
    register_evaluator<proposal_update_evaluator>();
    register_evaluator<proposal_delete_evaluator>();
    register_evaluator<global_parameters_update_evaluator>();
+   register_evaluator<witness_create_evaluator>();
+   register_evaluator<witness_withdraw_pay_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -572,13 +576,13 @@ void database::update_vote_totals()
 
     for( const account_object& account : account_idx.indices() )
     {
-       if( true || account.is_prime )
+       if( true || account.is_prime() )
        {
           for( vote_tally_id_type tally : account.votes )
           {
              const auto& bal =  account.balances(*this);
-             vote_sums[tally.instance] += 
-                   bal.total_core_in_orders + bal.cashback_rewards 
+             vote_sums[tally.instance] +=
+                   bal.total_core_in_orders + bal.cashback_rewards
                    + bal.get_balance(asset_id_type()).amount;
           }
        }
@@ -591,9 +595,8 @@ void database::update_vote_totals()
        if( current.total_votes != vote_sums[i] )
        {
           modify( current, [&]( vote_tally_object& obj ){
-                  idump( (i)(vote_sums[i]) );
-                  obj.total_votes = vote_sums[i]; 
-                  });
+             obj.total_votes = vote_sums[i];
+          });
        }
     }
 }
@@ -640,7 +643,8 @@ bool database::push_block( const signed_block& new_block, uint32_t skip )
                 catch ( const fc::exception& e ) { except = e; }
                 if( except )
                 {
-                   edump( ("Encountered error when switching to a longer fork. Going back.")((*ritr)->id) );
+                   elog( "Encountered error when switching to a longer fork at id ${id}. Going back.",
+                          ("id", (*ritr)->id) );
                    // remove the rest of branches.first from the fork_db, those blocks are invalid
                    while( ritr != branches.first.rend() )
                    {
@@ -932,9 +936,9 @@ void database::update_signing_witness(const witness_object& signing_witness, con
 {
    const auto& core_asset = get( asset_id_type() );
    const auto& asset_data = core_asset.dynamic_asset_data_id(*this);
-   auto gparams = get_global_properties().parameters;
+   const auto& gparams = get_global_properties().parameters;
 
-   // Slowly pay out income averaged over 1M blocks
+   // Slowly pay out income based on configured witness pay rate
    fc::uint128 witness_pay( asset_data.accumulated_fees.value );
    witness_pay *= gparams.witness_pay_percent_of_accumulated;
    witness_pay /= BTS_WITNESS_PAY_PERCENT_PRECISION;
@@ -943,8 +947,8 @@ void database::update_signing_witness(const witness_object& signing_witness, con
    burn *= gparams.burn_percent_of_fee;
    burn /= gparams.witness_percent_of_fee;
 
-   modify( asset_data, [&]( asset_dynamic_data_object& o ){ 
-              o.accumulated_fees -= witness_pay.to_uint64(); 
+   modify( asset_data, [&]( asset_dynamic_data_object& o ){
+              o.accumulated_fees -= witness_pay.to_uint64();
               o.accumulated_fees -= burn.to_uint64();
               o.burned         += burn.to_uint64();
               o.current_supply -= burn.to_uint64();
@@ -972,6 +976,13 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
    update_vote_totals();
    update_active_witnesses();
    update_active_delegates();
+
+   const global_property_object& global_properties = get_global_properties();
+   if( global_properties.pending_parameters )
+      modify(get_global_properties(), [](global_property_object& p) {
+         p.parameters = std::move(*p.pending_parameters);
+         p.pending_parameters.reset();
+      });
 
    auto new_block_interval = global_props.parameters.block_interval;
 

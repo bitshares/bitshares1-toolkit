@@ -95,7 +95,7 @@ namespace bts { namespace db {
             modify( static_cast<const object&>(obj), std::function<void(object&)>( [&]( object& o ){ l( static_cast<Object&>(o) ); } ) );
          }
 
-         virtual void               inspect_all_objects(std::function<void(const object&)> inspector) = 0;
+         virtual void               inspect_all_objects(std::function<void(const object&)> inspector)const = 0;
          virtual void               add_observer( const shared_ptr<index_observer>& ) = 0;
 
    };
@@ -151,7 +151,7 @@ namespace bts { namespace db {
 
          virtual object_id_type get_next_id()const               { return _next_id;    }
          virtual void           use_next_id()                    { ++_next_id.number;  }
-         virtual void           set_next_id( object_id_type id ) { wdump((id)); _next_id = id;      }
+         virtual void           set_next_id( object_id_type id ) { _next_id = id;      }
 
          virtual const object&  load( const std::vector<char>& data )
          {

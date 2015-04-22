@@ -6,6 +6,7 @@ add_library( bts_chain
              limit_order_evaluator.cpp
              account_evaluator.cpp
              delegate_evaluator.cpp
+             witness_evaluator.cpp
              transfer_evaluator.cpp
              proposal_evaluator.cpp
              global_parameters_evaluator.cpp

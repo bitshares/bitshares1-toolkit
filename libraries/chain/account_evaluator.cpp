@@ -14,9 +14,9 @@ object_id_type account_create_evaluator::do_evaluate( const account_create_opera
    FC_ASSERT( is_relative(op.voting_key) || db().find_object(op.voting_key) );
    FC_ASSERT( is_relative(op.memo_key) || db().find_object(op.memo_key) );
 
-   if( fee_paying_account->is_prime )
+   if( fee_paying_account->is_prime() )
    {
-      FC_ASSERT( op.referrer(db()).is_prime );
+      FC_ASSERT( op.referrer(db()).is_prime() );
    }
    else
    {
@@ -68,7 +68,7 @@ object_id_type account_create_evaluator::do_apply( const account_create_operatio
    });
 
    const auto& new_acnt_object = db().create<account_object>( [&]( account_object& obj ){
-         if( fee_paying_account->is_prime )
+         if( fee_paying_account->is_prime() )
          {
             obj.registrar        = o.registrar;
             obj.referrer         = o.referrer;
@@ -97,7 +97,7 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
 {
    database&   d = db();
 
-   auto bts_fee_paid = pay_fee( o.account, o.fee, o.prime );
+   auto bts_fee_paid = pay_fee( o.account, o.fee, o.upgrade_to_prime );
    FC_ASSERT( bts_fee_paid == o.calculate_fee( d.current_fee_schedule() ) );
 
    FC_ASSERT( !o.voting_key || is_relative(*o.voting_key) || db().find_object(*o.voting_key) );
@@ -111,6 +111,7 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
          FC_ASSERT( is_relative(id.first) || db().find<object>(id.first) );
 
    acnt = &o.account(d);
+   if( o.upgrade_to_prime ) FC_ASSERT( !acnt->is_prime() );
    if( o.owner ) FC_ASSERT( verify_authority( acnt, authority::owner ) );
    else if( o.active || o.voting_key || o.memo_key ) FC_ASSERT( verify_authority( acnt, authority::active ) );
    else if( o.vote ) FC_ASSERT( verify_signature( &acnt->voting_key(d) ) );
@@ -129,6 +130,9 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
 }
 object_id_type account_update_evaluator::do_apply( const account_update_operation& o )
 {
+   apply_delta_balances();
+   apply_delta_fee_pools();
+
    if( remove_votes.size() || add_votes.size() )
    {
       auto core_bal = acnt->balances(db()).get_balance( asset_id_type() ).amount;
@@ -139,18 +143,16 @@ object_id_type account_update_evaluator::do_apply( const account_update_operatio
          adjust_votes( add_votes, core_bal );
       }
    }
-   wdump((o));
    db().modify( *acnt, [&]( account_object& a  ){
           if( o.owner ) a.owner = *o.owner;
           if( o.active ) a.active = *o.active;
           if( o.voting_key ) a.voting_key = *o.voting_key;
           if( o.memo_key ) a.memo_key = *o.memo_key;
           if( o.vote ) a.votes = *o.vote;
-          if( o.prime )
+          if( o.upgrade_to_prime )
           {
             a.referrer_percent = 100;
             a.referrer = a.id;
-            a.is_prime = true;
           }
       });
    return object_id_type();

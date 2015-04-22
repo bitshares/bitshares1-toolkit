@@ -221,13 +221,6 @@ class wallet_api
 
         // TODO:  Check if keys already exist!!!
 
-        account_create_operation account_create_op;
-
-        vector<string> v_pay_from_account;
-        v_pay_from_account.push_back( pay_from_account );
-
-        account_create_op.registrar = pay_from_account_id;
-
         relative_key_id_type owner_rkid(0);
         relative_key_id_type active_rkid(1);
 

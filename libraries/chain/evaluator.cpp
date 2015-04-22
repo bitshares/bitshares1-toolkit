@@ -24,7 +24,6 @@ namespace bts { namespace chain {
    { try {
       FC_ASSERT( fee.amount >= 0 );
       fee_paying_account = &account_id(db());
-      FC_ASSERT( verify_authority( fee_paying_account, authority::active ) );
       fee_paying_account_balances = &fee_paying_account->balances(db());
 
       fee_asset = &fee.asset_id(db());
@@ -41,19 +40,20 @@ namespace bts { namespace chain {
          fees_paid[fee_asset].to_issuer += fee.amount;
       }
       const auto& gp = db().get_global_properties();
-      auto bulk_cashback  = share_type(0); // fee_from_pool.amount.value * 
+      auto bulk_cashback  = share_type(0); // fee_from_pool.amount.value *
       if( fee_paying_account_balances->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_min &&
-          fee_paying_account->is_prime )
+          fee_paying_account->is_prime() )
       {
          uint64_t bulk_discount_percent = 0;
          if( fee_paying_account_balances->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_max )
             bulk_discount_percent = gp.parameters.max_bulk_discount_percent_of_fee;
-         else if( fee_paying_account_balances->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_min )
+         else
          {
-            bulk_discount_percent = 
-               (gp.parameters.max_bulk_discount_percent_of_fee * 
-               (fee_paying_account_balances->lifetime_fees_paid.value  - gp.parameters.bulk_discount_threshold_min.value)) / 
-               (gp.parameters.bulk_discount_threshold_max.value - gp.parameters.bulk_discount_threshold_min.value);
+            bulk_discount_percent =
+                  (gp.parameters.max_bulk_discount_percent_of_fee *
+                            (fee_paying_account_balances->lifetime_fees_paid.value -
+                             gp.parameters.bulk_discount_threshold_min.value)) /
+                  (gp.parameters.bulk_discount_threshold_max.value - gp.parameters.bulk_discount_threshold_min.value);
          }
          assert( bulk_discount_percent <= 10000 );
          assert( bulk_discount_percent >= 0 );
@@ -93,9 +93,10 @@ namespace bts { namespace chain {
       flat_set<account_id_type> owner_auths;
       op.visit(operation_get_required_auths(active_auths, owner_auths));
       for( auto id : active_auths )
-         FC_ASSERT(verify_authority(&id(db()), authority::active));
+         FC_ASSERT(verify_authority(&id(db()), authority::active) ||
+                   verify_authority(&id(db()), authority::owner), "", ("id", id));
       for( auto id : owner_auths )
-         FC_ASSERT(verify_authority(&id(db()), authority::owner));
+         FC_ASSERT(verify_authority(&id(db()), authority::owner), "", ("id", id));
    }
 
    bool generic_evaluator::verify_signature( const key_object* k )
@@ -109,8 +110,8 @@ namespace bts { namespace chain {
       delta_balance[for_account][for_asset] += delta;
    }
    /**
-    *  Gets the balance of the account after all modifications that have been applied
-    *  while evaluating this operation.
+    * Gets the balance of the account after all modifications that have been applied
+    * while evaluating this operation.
     */
    asset  generic_evaluator::get_balance( const account_object* for_account, const asset_object* for_asset )const
    {
@@ -183,7 +184,6 @@ namespace bts { namespace chain {
          }
       }
       auto current_time = db().head_block_time();
-      //auto maturity = current_time - fc::seconds(db().get_global_properties().parameters.cashback_vesting_period_seconds);
 
       for( const auto& cash : cash_back )
       {
@@ -191,11 +191,8 @@ namespace bts { namespace chain {
          db().modify( bal, [&]( account_balance_object& obj ){
              if( cash.second.cash_back.value )
              {
-                //  All cashback, referrals, etc must mature
-                //if( cash.second.is_prime_upgrade )
-                   obj.adjust_cashback( cash.second.cash_back, current_time, current_time );
-                //else
-                //   obj.adjust_cashback( cash.second.cash_back, maturity, current_time );
+                // All cashback, referrals, etc must mature
+                obj.adjust_cashback( cash.second.cash_back, current_time, current_time );
              }
              obj.lifetime_fees_paid += cash.second.total_fees_paid;
          });
@@ -353,16 +350,12 @@ bool generic_evaluator::check_call_orders( const asset_object& mia )
        }
        else return filled_short_or_limit;
 
-
        match_price.validate();
-       idump((match_price));
 
        if( match_price > ~call_itr->call_price )
        {
           return filled_short_or_limit;
        }
-
-       wdump( (match_price)(usd_for_sale) );
 
        auto usd_to_buy   = call_itr->get_debt();
 
@@ -623,7 +616,6 @@ bool generic_evaluator::convert_fees( const asset_object& mia )
 
 bool generic_evaluator::fill_order( const limit_order_object& order, const asset& pays, const asset& receives )
 {
-   wdump( (order)(pays)(receives) );
    assert( order.amount_for_sale().asset_id == pays.asset_id );
    assert( pays.asset_id != receives.asset_id );
 
@@ -667,7 +659,6 @@ bool generic_evaluator::fill_order( const limit_order_object& order, const asset
             adjust_balance( &seller, &pays_asset, order.for_sale );
          }
 
-         elog("Order has been satisfied, but still has buying power. Deleting it. Is this desirable behavior?");
          db().remove( order );
          return true;
       }

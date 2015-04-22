@@ -9,7 +9,7 @@ namespace bts { namespace db {
     *
     *  This index is preferred in situations where the data will never be
     *  removed from main memory and when lots of small objects that
-    *  are accessed in order are required.  
+    *  are accessed in order are required.
     */
    template<typename T>
    class flat_index : public index
@@ -34,7 +34,7 @@ namespace bts { namespace db {
             modify_callback( _objects[obj.id.instance()] );
          }
 
-         virtual const object& insert( object&& obj ) 
+         virtual const object& insert( object&& obj )
          {
             auto instance = obj.id.instance();
             assert( nullptr != dynamic_cast<T*>(&obj) );
@@ -60,7 +60,7 @@ namespace bts { namespace db {
             return &_objects[instance];
          }
 
-         void inspect_all_objects(std::function<void (const object&)> inspector)
+         void inspect_all_objects(std::function<void (const object&)> inspector)const
          {
             try {
                for( const auto& ptr : _objects )

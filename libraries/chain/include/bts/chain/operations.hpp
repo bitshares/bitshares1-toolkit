@@ -106,9 +106,10 @@ namespace bts { namespace chain {
       optional<flat_set<vote_tally_id_type>>  vote;
 
       /**
-       *   If set to true, sets the account's referrer to itself.
+       * If set to true, upgrades the account to a prime account by setting the account's referrer to itself. This may
+       * only be set to true when the account being modified is not already a prime account.
        */
-      bool                                    prime = false;
+      bool                                    upgrade_to_prime = false;
 
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>& owner_auth_set)const;
       void       validate()const;
@@ -193,6 +194,25 @@ namespace bts { namespace chain {
 
       void       get_required_auth( flat_set<account_id_type>&, flat_set<account_id_type>& )const {}
       void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
+    * @brief Create a witness object, as a bid to hold a witness position on the network.
+    *
+    * Accounts which wish to become witnesses may use this operation to create a witness object which stakeholders may
+    * vote on to approve its position as a witness.
+    */
+   struct witness_create_operation
+   {
+      /// The account which owns the delegate. This account pays the fee for this operation.
+      account_id_type   witness_account;
+      asset             fee;
+      key_id_type       block_signing_key;
+      secret_hash_type  initial_secret;
+
+      void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
    };
 
@@ -581,7 +601,7 @@ namespace bts { namespace chain {
    struct proposal_delete_operation
    {
       account_id_type   fee_paying_account;
-      bool              using_owner_authority;
+      bool              using_owner_authority = false;
       asset             fee;
       proposal_id_type  proposal;
 
@@ -628,6 +648,7 @@ namespace bts { namespace chain {
             asset_fund_fee_pool_operation,
             delegate_publish_feeds_operation,
             delegate_create_operation,
+            witness_create_operation,
             witness_withdraw_pay_operation,
             proposal_create_operation,
             proposal_update_operation,
@@ -747,7 +768,7 @@ FC_REFLECT( bts::chain::account_create_operation,
 
 FC_REFLECT_TYPENAME( fc::flat_set<bts::chain::vote_tally_id_type> )
 FC_REFLECT( bts::chain::account_update_operation,
-            (account)(fee)(owner)(active)(voting_key)(memo_key)(vote)(prime)
+            (account)(fee)(owner)(active)(voting_key)(memo_key)(vote)(upgrade_to_prime)
           )
 
 FC_REFLECT_TYPENAME( bts::chain::account_whitelist_operation::account_listing)
@@ -763,6 +784,7 @@ FC_REFLECT( bts::chain::delegate_create_operation,
 FC_REFLECT( bts::chain::delegate_publish_feeds_operation,
             (delegate)(fee)(feeds) )
 
+FC_REFLECT( bts::chain::witness_create_operation, (witness_account)(fee)(block_signing_key)(initial_secret) )
 FC_REFLECT( bts::chain::witness_withdraw_pay_operation, (fee)(from_witness)(to_account)(amount) )
 
 FC_REFLECT( bts::chain::limit_order_create_operation,
