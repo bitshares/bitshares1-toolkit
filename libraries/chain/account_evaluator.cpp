@@ -130,6 +130,9 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
 }
 object_id_type account_update_evaluator::do_apply( const account_update_operation& o )
 {
+   apply_delta_balances();
+   apply_delta_fee_pools();
+
    if( remove_votes.size() || add_votes.size() )
    {
       auto core_bal = acnt->balances(db()).get_balance( asset_id_type() ).amount;

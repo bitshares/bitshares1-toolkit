@@ -47,7 +47,7 @@ namespace bts { namespace chain {
          uint64_t bulk_discount_percent = 0;
          if( fee_paying_account_balances->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_max )
             bulk_discount_percent = gp.parameters.max_bulk_discount_percent_of_fee;
-         else if( fee_paying_account_balances->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_min )
+         else
          {
             bulk_discount_percent =
                   (gp.parameters.max_bulk_discount_percent_of_fee *
@@ -110,8 +110,8 @@ namespace bts { namespace chain {
       delta_balance[for_account][for_asset] += delta;
    }
    /**
-    *  Gets the balance of the account after all modifications that have been applied
-    *  while evaluating this operation.
+    * Gets the balance of the account after all modifications that have been applied
+    * while evaluating this operation.
     */
    asset  generic_evaluator::get_balance( const account_object* for_account, const asset_object* for_asset )const
    {
