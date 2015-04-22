@@ -48,6 +48,25 @@ class wallet_api
          _remote_db  = _remote_api->database();
          _remote_net = _remote_api->network();
       }
+
+      virtual ~wallet_api()
+      {
+         try
+         {
+            if( _resync_loop_task.valid() )
+               _resync_loop_task.cancel_and_wait();
+         }
+         catch(fc::canceled_exception&)
+         {
+            //Expected exception. Move along.
+         }
+         catch(fc::exception& e)
+         {
+            edump((e.to_detail_string()));
+         }
+         return;
+      }
+
       string  help()const;
 
       string  suggest_brain_key()const
@@ -314,9 +333,14 @@ class wallet_api
                FC_ASSERT( it != _wallet.pending_account_registrations.end() );
                if( import_key( account_name, it->second ) )
                {
+                  ilog( "successfully imported account ${name}",
+                        ("name", account_name) );
+               }
+               else
+               {
                   // somebody else beat our pending registration, there is
                   //    nothing we can do except log it and move on
-                  ilog( "account ${name} registered by someone else first!",
+                  elog( "account ${name} registered by someone else first!",
                         ("name", account_name) );
                   // might as well remove it from pending regs,
                   //    because there is now no way this registration
@@ -332,10 +356,30 @@ class wallet_api
          return;
       }
 
+      void _start_resync_loop()
+      {
+         _resync_loop_task = fc::async( [this](){ _resync_loop(); }, "cli_wallet resync loop" );
+         return;
+      }
+
+      void _resync_loop()
+      {
+         // TODO:  Exception handling
+         //    does cancel raise exception?
+         _resync();
+         fc::microseconds resync_interval = fc::seconds(1);
+
+         _resync_loop_task = fc::schedule( [this](){ _resync_loop(); }, fc::time_point::now() + resync_interval, "cli_wallet resync loop" );
+         return;
+      }
+
       wallet_data             _wallet;
+
       fc::api<login_api>      _remote_api;
       fc::api<database_api>   _remote_db;
       fc::api<network_api>    _remote_net;
+
+      fc::future<void>        _resync_loop_task;
 };
 
 FC_API( wallet_api,
@@ -395,6 +439,7 @@ int main( int argc, char** argv )
 
       auto wapiptr = std::make_shared<wallet_api>(remote_api);
       wapiptr->_wallet = wallet;
+      wapiptr->_start_resync_loop();
 
       fc::api<wallet_api> wapi(wapiptr);
 
