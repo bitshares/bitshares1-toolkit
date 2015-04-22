@@ -40,7 +40,7 @@ namespace bts { namespace chain {
          fees_paid[fee_asset].to_issuer += fee.amount;
       }
       const auto& gp = db().get_global_properties();
-      auto bulk_cashback  = share_type(0); // fee_from_pool.amount.value *
+      auto bulk_cashback  = share_type(0);
       if( fee_paying_account_balances->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_min &&
           fee_paying_account->is_prime() )
       {
@@ -63,14 +63,14 @@ namespace bts { namespace chain {
       }
 
       auto after_bulk_discount = fee_from_pool.amount - bulk_cashback;
-      auto acumulated = (after_bulk_discount.value  * gp.parameters.witness_percent_of_fee)/10000;
+      auto accumulated = (after_bulk_discount.value  * gp.parameters.witness_percent_of_fee)/10000;
       auto burned     = (after_bulk_discount.value  * gp.parameters.burn_percent_of_fee)/10000;
-      auto referral   = after_bulk_discount.value - acumulated - burned;
+      auto referral   = after_bulk_discount.value - accumulated - burned;
 
-      assert( acumulated + burned <= after_bulk_discount );
+      assert( accumulated + burned <= after_bulk_discount );
 
-      fees_paid[fee_asset].to_accumulated_fees += acumulated; //fee_from_pool.amount;
-      fees_paid[&asset_id_type()(db())].burned += burned; //fee_from_pool.amount;
+      fees_paid[fee_asset].to_accumulated_fees += accumulated;
+      fees_paid[&asset_id_type()(db())].burned += burned;
       adjust_balance( fee_paying_account, fee_asset, -fee.amount );
 
       cash_back[ &fee_paying_account->referrer(db()) ].cash_back         += referral;
@@ -78,7 +78,7 @@ namespace bts { namespace chain {
       cash_back[ fee_paying_account ].cash_back                          += bulk_cashback;
       cash_back[ fee_paying_account ].total_fees_paid                    += after_bulk_discount;
 
-      assert( referral + bulk_cashback + acumulated + burned == fee_from_pool.amount );
+      assert( referral + bulk_cashback + accumulated + burned == fee_from_pool.amount );
 
       return fee_from_pool.amount;
    } FC_CAPTURE_AND_RETHROW( (account_id)(fee) ) }

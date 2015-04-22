@@ -1906,17 +1906,6 @@ BOOST_AUTO_TEST_CASE( cover_with_collateral_test )
    assert( !"not implemented" );
 }
 
-/**
- *  Make sure witness pay equals a percent of accumulated fees rather than
- *  a fixed amount.  This percentage should be a PARAMTER on the order of
- *  0.00001% of accumulated fees per block.
- */
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( witness_pay_test, 1 )
-BOOST_AUTO_TEST_CASE( witness_pay_test )
-{
-   assert( !"not implemented" );
-}
-
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( bulk_discount_test, 1 )
 BOOST_AUTO_TEST_CASE( bulk_discount_test )
 {
