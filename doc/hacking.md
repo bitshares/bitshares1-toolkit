@@ -66,6 +66,12 @@ The role of the witness node is to broadcast transactions, download blocks, and 
 
 TODO:  How do you get block signing keys into the witness node?
 
+How to use fc async to do recurring tasks
+-----------------------------------------
+
+    _my_task = fc::async( callable, "My Task" );
+    _my_task = fc::schedule( callable, "My Task 2", exec_time );
+
 Stuff to know about the code
 ----------------------------
 
