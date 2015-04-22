@@ -1914,7 +1914,6 @@ BOOST_AUTO_TEST_CASE( bulk_discount_test )
    assert( !"not implemented" );
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( margin_call_black_swan, 1 )
 BOOST_AUTO_TEST_CASE( margin_call_black_swan )
 { try {
       const asset_object& bitusd      = create_bitasset( "BITUSD" );
