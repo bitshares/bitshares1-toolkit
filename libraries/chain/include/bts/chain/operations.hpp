@@ -694,6 +694,10 @@ namespace bts { namespace chain {
    };
 
    /**
+    * Bond offers are objects that exist on the blockchain and can be
+    * filled in full or in part by someone using the accept_bond_offer 
+    * operation.   When the offer is accepted a new bond_object is
+    * created that defines the terms of the loan.
     *  
     *  @return bond_offer_id
     */
@@ -704,7 +708,7 @@ namespace bts { namespace chain {
       bool                    offer_to_borrow; // true if borrowign amount, else lending amount 
       asset                   amount;
       uint32_t                loan_period_sec = 0;
-      uint16_t                interest_apr    = 0;
+      uint16_t                interest_apr    = 0; ///< 10000 == 100% and is max value
       price                   collateral_rate;
 
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
@@ -735,7 +739,7 @@ namespace bts { namespace chain {
       asset               fee;
       account_id_type     claimer;
       bond_offer_id_type  offer_id;
-      asset               amount;
+      asset               amount; ///< the amount withdrawn from claimers account 
 
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
@@ -788,6 +792,12 @@ namespace bts { namespace chain {
             withdraw_with_permission_operation,
             fill_order_operation,
             global_parameters_update_operation
+               /* TODO: once methods on these ops are implemented
+            create_bond_offer_operation,
+            cancel_bond_offer_operation,
+            accept_bond_offer_operation,
+            claim_bond_collateral_operation
+            */
          > operation;
 
    /**
@@ -979,5 +989,9 @@ FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (from_account)(asset_id)(
 FC_REFLECT( bts::chain::global_parameters_update_operation, (new_parameters)(fee) );
 FC_REFLECT( bts::chain::update_withdraw_permission_operation, (fee)(withdraw_permission)(withdraw_from_account)(authorized_account)(withdraw_limit)(period_sec)(starting_time)(recurring) );
 FC_REFLECT( bts::chain::withdraw_with_permission_operation, (fee)(withdraw_permission)(withdraw_from_account)(withdraw_to_account)(amount_to_withdraw)(memo) );
+FC_REFLECT( bts::chain::create_bond_offer_operation, (fee)(creator)(offer_to_borrow)(amount)(loan_period_sec)(interest_apr)(collateral_rate) )
+FC_REFLECT( bts::chain::cancel_bond_offer_operation, (fee)(creator)(offer_id)(refund) )
+FC_REFLECT( bts::chain::accept_bond_offer_operation, (fee)(claimer)(offer_id)(amount) )
+FC_REFLECT( bts::chain::claim_bond_collateral_operation, (fee)(claimer)(bond_id)(payoff_amount) )
 
 
