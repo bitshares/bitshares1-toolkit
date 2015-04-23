@@ -94,6 +94,10 @@ namespace bts { namespace chain {
       global_parameters_update_fee_type, ///< the cost to update the global parameters
       prime_upgrade_fee_type, ///< the cost to upgrade an account to prime
       update_withdraw_permission_fee_type, ///< the cost to create/update a withdraw permission
+      create_bond_offer_fee_type,
+      cancel_bond_offer_fee_type,
+      accept_bond_offer_fee_type,
+      claim_bond_collateral_fee_type,
       FEE_TYPE_COUNT ///< Sentry value which contains the number of different fee types
    };
 
@@ -119,7 +123,9 @@ namespace bts { namespace chain {
       custom_object_type,
       proposal_object_type,
       operation_history_object_type,
-      withdraw_permission_object_type
+      withdraw_permission_object_type,
+      bond_offer_object_type,
+      bond_object_type
    };
 
    enum impl_object_type
@@ -158,6 +164,8 @@ namespace bts { namespace chain {
    class proposal_object;
    class operation_history_object;
    class withdraw_permission_object;
+   class bond_object;
+   class bond_offer_object;
 
 
    typedef object_id< protocol_ids, key_object_type,                key_object>                   key_id_type;
@@ -172,6 +180,8 @@ namespace bts { namespace chain {
    typedef object_id< protocol_ids, proposal_object_type,           proposal_object>              proposal_id_type;
    typedef object_id< protocol_ids, operation_history_object_type,  operation_history_object>     operation_history_id_type;
    typedef object_id< protocol_ids, withdraw_permission_object_type,withdraw_permission_object>   withdraw_permission_id_type;
+   typedef object_id< protocol_ids, bond_offer_object_type, bond_offer_object>                    bond_offer_id_type;
+   typedef object_id< protocol_ids, bond_object_type, bond_object>                                bond_id_type;
 
    typedef object_id< relative_protocol_ids, key_object_type, key_object>           relative_key_id_type;
    typedef object_id< relative_protocol_ids, account_object_type, account_object>   relative_account_id_type;
@@ -333,6 +343,8 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (proposal_object_type)
                  (operation_history_object_type)
                  (withdraw_permission_object_type)
+                 (bond_offer_object_type)
+                 (bond_object_type)
                )
 FC_REFLECT_ENUM( bts::chain::impl_object_type,
                  (impl_global_property_object_type)
@@ -371,6 +383,10 @@ FC_REFLECT_ENUM( bts::chain::fee_type,
                  (global_parameters_update_fee_type)
                  (prime_upgrade_fee_type)
                  (update_withdraw_permission_fee_type)
+                 (create_bond_offer_fee_type)
+                 (cancel_bond_offer_fee_type)
+                 (accept_bond_offer_fee_type)
+                 (claim_bond_collateral_fee_type)
                  (FEE_TYPE_COUNT)
                )
 

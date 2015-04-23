@@ -693,6 +693,73 @@ namespace bts { namespace chain {
       share_type      calculate_fee( const fee_schedule_type& k )const;
    };
 
+   /**
+    *  
+    *  @return bond_offer_id
+    */
+   struct create_bond_offer_operation
+   {
+      asset                   fee;
+      account_id_type         creator;
+      bool                    offer_to_borrow; // true if borrowign amount, else lending amount 
+      asset                   amount;
+      uint32_t                loan_period_sec = 0;
+      uint16_t                interest_apr    = 0;
+      price                   collateral_rate;
+
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
+    *  Subtracts refund from bond_offer.amount and frees bond_offer if refund == bond_offer.amount
+    */
+   struct cancel_bond_offer_operation
+   {
+      asset                 fee;
+      account_id_type       creator;
+      bond_offer_id_type    offer_id;
+      asset                 refund;
+
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
+    *  @return new bond_id
+    */
+   struct accept_bond_offer_operation
+   {
+      asset               fee;
+      account_id_type     claimer;
+      bond_offer_id_type  offer_id;
+      asset               amount;
+
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
+    *  After the loan period the lender can claim
+    *  the collateral, prior to the loan period expiring
+    *  the borrower can claim it by paying off the loan
+    */
+   struct claim_bond_collateral_operation
+   {
+      asset            fee;
+      account_id_type  claimer;
+      bond_id_type     bond_id;
+      asset            payoff_amount;
+
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+   };
+
+
    typedef fc::static_variant<
             transfer_operation,
             limit_order_create_operation,
