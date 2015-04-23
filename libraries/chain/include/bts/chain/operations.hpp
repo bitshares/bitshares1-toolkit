@@ -22,6 +22,7 @@ namespace bts { namespace chain {
       asset            fee;
       static_variant<address,public_key_type> key_data;
 
+      account_id_type fee_payer()const { return fee_paying_account; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       share_type calculate_fee( const fee_schedule_type& k )const{ return k.at( key_create_fee_type ); }
       void       validate()const;
@@ -48,6 +49,7 @@ namespace bts { namespace chain {
 
       flat_set<vote_tally_id_type> vote;
 
+      account_id_type fee_payer()const { return referrer; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -90,6 +92,7 @@ namespace bts { namespace chain {
       /// Paid by authorizing_account
       asset           fee;
 
+      account_id_type fee_payer()const { return authorizing_account; }
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const { FC_ASSERT( fee.amount >= 0 ); FC_ASSERT(new_listing < 0x4); }
       share_type calculate_fee(const fee_schedule_type& k)const { return k.at(account_whitelist_fee_type); }
@@ -111,6 +114,7 @@ namespace bts { namespace chain {
        */
       bool                                    upgrade_to_prime = false;
 
+      account_id_type fee_payer()const { return account; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>& owner_auth_set)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -128,6 +132,7 @@ namespace bts { namespace chain {
       account_id_type                       delegate_account;
       asset                                 fee;
 
+      account_id_type fee_payer()const { return delegate_account; }
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -145,6 +150,7 @@ namespace bts { namespace chain {
       asset           fee;
       share_type      amount;
 
+      account_id_type fee_payer()const { return account; }
       void        get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void        validate()const;
       share_type  calculate_fee( const fee_schedule_type& k )const;
@@ -168,6 +174,7 @@ namespace bts { namespace chain {
       account_id_type new_owner;
       asset           fee;
 
+      account_id_type fee_payer()const { return account_id; }
       void        get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void        validate()const;
       share_type  calculate_fee( const fee_schedule_type& k )const;
@@ -192,6 +199,7 @@ namespace bts { namespace chain {
       asset                  fee; ///< paid for by delegate->delegate_account
       flat_set<price_feed>   feeds; ///< must be sorted with no duplicates
 
+      account_id_type fee_payer()const { return account_id_type(); }
       void       get_required_auth( flat_set<account_id_type>&, flat_set<account_id_type>& )const {}
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -211,6 +219,7 @@ namespace bts { namespace chain {
       key_id_type       block_signing_key;
       secret_hash_type  initial_secret;
 
+      account_id_type fee_payer()const { return witness_account; }
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -227,6 +236,7 @@ namespace bts { namespace chain {
       share_type       amount;
       asset            fee;
 
+      account_id_type fee_payer()const { return to_account; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -247,6 +257,7 @@ namespace bts { namespace chain {
       chain_parameters new_parameters;
       asset fee;
 
+      account_id_type fee_payer()const { return account_id_type(); }
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
       { active_auth_set.insert(account_id_type()); }
       void validate()const;
@@ -261,6 +272,7 @@ namespace bts { namespace chain {
       asset           fee; ///< same asset_id as amount.asset_id
       vector<char>    memo;
 
+      account_id_type fee_payer()const { return from; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -297,6 +309,7 @@ namespace bts { namespace chain {
       /// The set of accounts which manage the blacklist for this asset
       flat_set<account_id_type> blacklist_authorities;
 
+      account_id_type fee_payer()const { return issuer; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -309,6 +322,7 @@ namespace bts { namespace chain {
       share_type      amount; ///< core asset
       asset           fee; ///< core asset
 
+      account_id_type fee_payer()const { return from_account; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& account_set )const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -337,6 +351,7 @@ namespace bts { namespace chain {
       optional<flat_set<account_id_type>> new_whitelist_authorities;
       optional<flat_set<account_id_type>> new_blacklist_authorities;
 
+      account_id_type fee_payer()const { return issuer; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -375,6 +390,7 @@ namespace bts { namespace chain {
        */
       bool            fill_or_kill = false;
 
+      account_id_type fee_payer()const { return seller; }
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
@@ -394,6 +410,7 @@ namespace bts { namespace chain {
       account_id_type     fee_paying_account;
       asset               fee;
 
+      account_id_type fee_payer()const { return fee_paying_account; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -430,6 +447,7 @@ namespace bts { namespace chain {
       /// will automatically be canceled.
       time_point_sec  expiration = time_point_sec::maximum();
 
+      account_id_type fee_payer()const { return seller; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -453,6 +471,7 @@ namespace bts { namespace chain {
       account_id_type     fee_paying_account; ///< Must be order->seller
       asset               fee; ///< paid by order->seller
 
+      account_id_type fee_payer()const { return fee_paying_account; }
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -479,6 +498,7 @@ namespace bts { namespace chain {
       asset               amount_to_cover; ///< the amount of the debt to be paid off
       uint16_t            maintenance_collateral_ratio = 0; ///< 0 means don't change, 1000 means feed
 
+      account_id_type fee_payer()const { return funding_account; }
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -491,6 +511,7 @@ namespace bts { namespace chain {
       asset            fee;
       account_id_type  issue_to_account;
 
+      account_id_type fee_payer()const { return issuer; }
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
@@ -549,6 +570,7 @@ namespace bts { namespace chain {
        /// period set appropriately.
        static proposal_create_operation genesis_proposal(const class database& db);
 
+      account_id_type fee_payer()const { return fee_paying_account; }
       void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
@@ -583,6 +605,7 @@ namespace bts { namespace chain {
       flat_set<key_id_type>      key_approvals_to_add;
       flat_set<key_id_type>      key_approvals_to_remove;
 
+      account_id_type fee_payer()const { return fee_paying_account; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& owner_auth_set)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
@@ -605,6 +628,7 @@ namespace bts { namespace chain {
       asset             fee;
       proposal_id_type  proposal;
 
+      account_id_type fee_payer()const { return fee_paying_account; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& owner_auth_set)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
@@ -624,6 +648,7 @@ namespace bts { namespace chain {
       asset               receives;
       asset               fee; // paid by receiving account
 
+      account_id_type fee_payer()const { return account_id; }
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const{}
       void            validate()const { FC_ASSERT( !"virtual operation" ); }
       share_type      calculate_fee( const fee_schedule_type& k )const { return share_type(); }

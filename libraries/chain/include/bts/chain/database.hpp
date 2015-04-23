@@ -95,6 +95,14 @@ namespace bts { namespace chain {
          void initialize_indexes();
          void init_genesis(const genesis_allocation& initial_allocation = genesis_allocation());
 
+         /**
+          * @brief Helper method to retrieve a particular account's balance in a given asset
+          * @param owner Account whose balance should be retrieved
+          * @param asset_id ID of the asset to get balance in
+          * @return owner's balance in asset
+          */
+         asset get_balance(account_id_type owner, asset_id_type asset_id)const;
+
          template<typename EvaluatorType>
          void register_evaluator()
          {

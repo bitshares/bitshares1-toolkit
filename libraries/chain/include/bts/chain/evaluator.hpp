@@ -37,7 +37,7 @@ namespace bts { namespace chain {
          /** market helpers */
          void settle_black_swan( const asset_object& bitasset, const price& settle_price );
          void cancel_order( const limit_order_object& order, bool create_virtual_op = true );
-         
+
          /**
           *  Matches the two orders,
           *
@@ -67,65 +67,41 @@ namespace bts { namespace chain {
          bool convert_fees( const asset_object& mia );
          bool check_call_orders( const asset_object& mia );
 
-
          // helpers to fill_order
          void pay_order( const account_object& receiver, const asset& receives, const asset& pays );
          asset pay_market_fees( const asset_object& recv_asset, const asset& receives );
 
+         asset get_balance(const account_object* account_obj, const asset_object* asset_obj);
+         void  adjust_balance(account_id_type account, asset delta);
+
          /**
-          *  Pays the fee and returns the number of CORE asset that were provided,
-          *  after it is don, the fee_paying_account property will be set.
+          * @brief Fetch objects relevant to fee payer and set pointer members
+          * @param account_id Account which is paying the fee
+          * @param fee The fee being paid. May be in assets other than core.
+          *
+          * This method verifies that the fee is valid and sets the object pointer members and the fee fields. It should
+          * be called during do_evaluate.
           */
-         share_type pay_fee( account_id_type account_id, asset fee, bool is_prime_upgrade = false );
+         void prepare_fee(account_id_type account_id, asset fee);
+         /// Pays the fee and returns the number of CORE asset that were paid.
+         void pay_fee();
+
          bool       verify_authority( const account_object*, authority::classification );
          bool       verify_signature( const key_object* );
 
-         /**
-          *  Gets the balance of the account after all modifications that have been applied
-          *  while evaluating this operation.
-          */
-         asset      get_balance( const account_object* for_account, const asset_object* for_asset )const;
-         void       adjust_balance( const account_object* for_account, const asset_object* for_asset, share_type delta );
-         void       adjust_votes(const flat_set<vote_tally_id_type>& vote_tallies, share_type delta );
-
          asset      calculate_market_fee( const asset_object& aobj, const asset& trade_amount );
-
-         void       apply_delta_balances();
-         void       apply_delta_fee_pools();
 
          object_id_type get_relative_id( object_id_type rel_id )const;
 
          authority resolve_relative_ids( const authority& a )const;
 
-         struct fee_stats
-         {
-            share_type to_issuer;
-            share_type from_pool;
-            share_type to_accumulated_fees;
-            share_type burned;
-         };
-         struct cash_back_stats
-         {
-            share_type cash_back;
-            share_type total_fees_paid;
-            bool       is_prime_upgrade;
-         };
-
+         asset                            fee_from_account;
+         share_type                       core_fee_paid;
          const account_object*            fee_paying_account = nullptr;
-         const account_balance_object*    fee_paying_account_balances = nullptr;
+         const account_statistics_object* fee_paying_account_statistics = nullptr;
          const asset_object*              fee_asset          = nullptr;
          const asset_dynamic_data_object* fee_asset_dyn_data = nullptr;
-
-         /** Tracks the total fees paid in each asset type and the
-          * total amount taken from the fee pool of that asset.
-          */
-         flat_map<const asset_object*, fee_stats>                                     fees_paid;
-         flat_map< const account_object*, flat_map<const asset_object*, share_type> > delta_balance;
-         flat_map<const account_object*, cash_back_stats>                             cash_back;
-         transaction_evaluation_state*                                                trx_state;
-
-
-
+         transaction_evaluation_state*    trx_state;
    };
 
    class op_evaluator
@@ -158,11 +134,26 @@ namespace bts { namespace chain {
 
          virtual operation_result evaluate( const operation& o ) final override
          {
-            return static_cast<DerivedEvaluator*>(this)->do_evaluate( o.get<typename DerivedEvaluator::operation_type>() );
+            auto* eval = static_cast<DerivedEvaluator*>(this);
+            const auto& op = o.get<typename DerivedEvaluator::operation_type>();
+
+            prepare_fee(op.fee_payer(), op.fee);
+            FC_ASSERT( core_fee_paid >= op.calculate_fee(db().current_fee_schedule()) );
+
+            return eval->do_evaluate( op );
          }
          virtual operation_result apply( const operation& o ) final override
          {
-            return static_cast<DerivedEvaluator*>(this)->do_apply( o.get<typename DerivedEvaluator::operation_type>() );
+            auto* eval = static_cast<DerivedEvaluator*>(this);
+            const auto& op = o.get<typename DerivedEvaluator::operation_type>();
+
+            pay_fee();
+
+            auto result = eval->do_apply( op );
+
+            adjust_balance(op.fee_payer(), -fee_from_account);
+
+            return result;
          }
    };
 } }

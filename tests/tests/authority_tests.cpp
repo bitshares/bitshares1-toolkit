@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE( proposed_single_account )
       proposal_create_operation op = {account_id_type(1), asset(),
                                       {{transfer_operation{nathan.id, account_id_type(1), core.amount(100)}}},
                                       db.head_block_time() + fc::days(1)};
-      asset nathan_start_balance = nathan.balances(db).get_balance(core.id);
+      asset nathan_start_balance = db.get_balance(nathan.get_id(), core.get_id());
       {
          flat_set<account_id_type> active_set, owner_set;
          op.get_required_auth(active_set, owner_set);

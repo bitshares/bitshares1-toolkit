@@ -136,6 +136,7 @@ namespace bts { namespace chain {
       impl_asset_dynamic_data_type,
       impl_delegate_feeds_object_type,
       impl_account_balance_object_type,
+      impl_account_statistics_object_type,
       impl_account_debt_object_type,
       impl_vote_tally_object_type,
       impl_transaction_object_type,
@@ -193,6 +194,7 @@ namespace bts { namespace chain {
    class vote_tally_object;
    class asset_dynamic_data_object;
    class account_balance_object;
+   class account_statistics_object;
    class account_debt_object;
    class transaction_object;
    class delegate_feeds_object;
@@ -203,6 +205,7 @@ namespace bts { namespace chain {
    typedef object_id< implementation_ids, impl_dynamic_global_property_object_type,  dynamic_global_property_object>    dynamic_global_property_id_type;
    typedef object_id< implementation_ids, impl_asset_dynamic_data_type,      asset_dynamic_data_object>                 dynamic_asset_data_id_type;
    typedef object_id< implementation_ids, impl_account_balance_object_type,  account_balance_object>                    account_balance_id_type;
+   typedef object_id< implementation_ids, impl_account_statistics_object_type,account_statistics_object>                account_statistics_id_type;
    typedef object_id< implementation_ids, impl_delegate_feeds_object_type,   delegate_feeds_object>                     delegate_feeds_id_type;
    typedef object_id< implementation_ids, impl_account_debt_object_type,     account_debt_object>                       account_debt_id_type;
    typedef object_id< implementation_ids, impl_vote_tally_object_type,       vote_tally_object>                         vote_tally_id_type;
@@ -353,6 +356,7 @@ FC_REFLECT_ENUM( bts::chain::impl_object_type,
                  (impl_asset_dynamic_data_type)
                  (impl_delegate_feeds_object_type)
                  (impl_account_balance_object_type)
+                 (impl_account_statistics_object_type)
                  (impl_account_debt_object_type)
                  (impl_vote_tally_object_type)
                  (impl_transaction_object_type)

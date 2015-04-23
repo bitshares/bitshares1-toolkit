@@ -20,24 +20,16 @@ object_id_type transfer_evaluator::do_evaluate( const transfer_operation& op )
    if( fee_asset_type.flags & white_list )
       FC_ASSERT( from_account.is_authorized_asset( asset_type ) );
 
-   auto bts_fee_paid = pay_fee( op.from, op.fee );
-   auto bts_fee_required = op.calculate_fee( d.current_fee_schedule() );
-   FC_ASSERT( bts_fee_paid >= bts_fee_required );
-
-   FC_ASSERT( get_balance( &from_account, &asset_type ).amount >= op.amount.amount, 
+   FC_ASSERT( get_balance( &from_account, &asset_type ).amount >= op.amount.amount,
               "", ("total_transfer",op.amount)("balance",get_balance(&from_account, &asset_type).amount) );
-
-   adjust_balance( &from_account, &asset_type, -op.amount.amount );
-   adjust_balance( &to_account, &asset_type, op.amount.amount );
 
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (op) ) }
 
 object_id_type transfer_evaluator::do_apply( const transfer_operation& o )
 { try {
-   apply_delta_balances();
-   apply_delta_fee_pools();
-
+   adjust_balance( o.from, -o.amount );
+   adjust_balance( o.to, o.amount );
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (o) )}
 } } // bts::chain

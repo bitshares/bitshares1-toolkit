@@ -7,10 +7,6 @@ namespace bts { namespace chain {
 
 object_id_type account_create_evaluator::do_evaluate( const account_create_operation& op )
 { try {
-   auto bts_fee_paid = pay_fee( op.registrar, op.fee );
-   auto bts_fee_required = op.calculate_fee( db().current_fee_schedule() );
-   FC_ASSERT( bts_fee_paid >= bts_fee_required );
-
    FC_ASSERT( is_relative(op.voting_key) || db().find_object(op.voting_key) );
    FC_ASSERT( is_relative(op.memo_key) || db().find_object(op.memo_key) );
 
@@ -57,14 +53,10 @@ object_id_type account_create_evaluator::do_evaluate( const account_create_opera
 
 object_id_type account_create_evaluator::do_apply( const account_create_operation& o )
 { try {
-   apply_delta_balances();
-   apply_delta_fee_pools();
-
    auto owner  = resolve_relative_ids( o.owner );
    auto active = resolve_relative_ids( o.active );
 
-   const auto& bal_obj = db().create<account_balance_object>( [&]( account_balance_object& obj ){
-            /* no balances right now */
+   const auto& stats_obj = db().create<account_statistics_object>( [&]( account_statistics_object& ){
    });
 
    const auto& new_acnt_object = db().create<account_object>( [&]( account_object& obj ){
@@ -83,7 +75,7 @@ object_id_type account_create_evaluator::do_apply( const account_create_operatio
          obj.name             = o.name;
          obj.owner            = owner;
          obj.active           = active;
-         obj.balances         = bal_obj.id;
+         obj.statistics       = stats_obj.id;
          obj.memo_key         = get_relative_id(o.memo_key);
          obj.voting_key       = get_relative_id(o.voting_key);
          obj.votes            = o.vote;
@@ -96,9 +88,6 @@ object_id_type account_create_evaluator::do_apply( const account_create_operatio
 object_id_type account_update_evaluator::do_evaluate( const account_update_operation& o )
 {
    database&   d = db();
-
-   auto bts_fee_paid = pay_fee( o.account, o.fee, o.upgrade_to_prime );
-   FC_ASSERT( bts_fee_paid == o.calculate_fee( d.current_fee_schedule() ) );
 
    FC_ASSERT( !o.voting_key || is_relative(*o.voting_key) || db().find_object(*o.voting_key) );
    FC_ASSERT( !o.memo_key || is_relative(*o.memo_key) || db().find_object(*o.memo_key) );
@@ -130,19 +119,6 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
 }
 object_id_type account_update_evaluator::do_apply( const account_update_operation& o )
 {
-   apply_delta_balances();
-   apply_delta_fee_pools();
-
-   if( remove_votes.size() || add_votes.size() )
-   {
-      auto core_bal = acnt->balances(db()).get_balance( asset_id_type() ).amount;
-      // TODO: find all orders and add their CORE ASSET BALANCE to the ACCOUNT BALANCE
-      if( core_bal.value  )
-      {
-         adjust_votes( remove_votes, -core_bal );
-         adjust_votes( add_votes, core_bal );
-      }
-   }
    db().modify( *acnt, [&]( account_object& a  ){
           if( o.owner ) a.owner = *o.owner;
           if( o.active ) a.active = *o.active;
@@ -162,9 +138,6 @@ object_id_type account_whitelist_evaluator::do_evaluate(const account_whitelist_
 { try {
    database& d = db();
 
-   auto bts_fee_paid = pay_fee( o.authorizing_account, o.fee );
-   FC_ASSERT( bts_fee_paid >= o.calculate_fee( d.current_fee_schedule() ) );
-
    listed_account = &o.account_to_list(d);
 
    return object_id_type();
@@ -173,9 +146,6 @@ object_id_type account_whitelist_evaluator::do_evaluate(const account_whitelist_
 object_id_type account_whitelist_evaluator::do_apply(const account_whitelist_operation& o)
 {
    database& d = db();
-
-   apply_delta_balances();
-   apply_delta_fee_pools();
 
    d.modify(*listed_account, [&o](account_object& a) {
       if( o.new_listing & o.white_listed )

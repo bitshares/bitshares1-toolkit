@@ -17,71 +17,84 @@ namespace bts { namespace chain {
       trx_state   = &eval_state;
       check_required_authorities(op);
       auto result = evaluate( op );
+
       if( apply ) result = this->apply( op );
       return result;
    }
-   share_type generic_evaluator::pay_fee( account_id_type account_id, asset fee, bool is_prime_upgrade )
-   { try {
+
+   void generic_evaluator::prepare_fee(account_id_type account_id, asset fee)
+   {
+      fee_from_account = fee;
       FC_ASSERT( fee.amount >= 0 );
       fee_paying_account = &account_id(db());
-      fee_paying_account_balances = &fee_paying_account->balances(db());
+      fee_paying_account_statistics = &fee_paying_account->statistics(db());
 
       fee_asset = &fee.asset_id(db());
       fee_asset_dyn_data = &fee_asset->dynamic_asset_data_id(db());
-      FC_ASSERT( get_balance( fee_paying_account, fee_asset ) >= fee );
 
-      asset fee_from_pool = fee;
-      if( fee.asset_id != asset_id_type() )
-      {
-         fee_from_pool = fee * fee_asset->core_exchange_rate;
+      if( fee_from_account.asset_id == asset_id_type() )
+         core_fee_paid = fee_from_account.amount;
+      else {
+         asset fee_from_pool = fee_from_account * fee_asset->core_exchange_rate;
          FC_ASSERT( fee_from_pool.asset_id == asset_id_type() );
-         FC_ASSERT( fee_from_pool.amount <= fee_asset_dyn_data->fee_pool - fees_paid[fee_asset].from_pool );
-         fees_paid[fee_asset].from_pool += fee_from_pool.amount;
-         fees_paid[fee_asset].to_issuer += fee.amount;
+         core_fee_paid = fee_from_pool.amount;
+         FC_ASSERT( core_fee_paid <= fee_asset_dyn_data->fee_pool );
       }
+   }
+
+   void generic_evaluator::pay_fee()
+   { try {
+      asset core_fee_subtotal(core_fee_paid);
       const auto& gp = db().get_global_properties();
       auto bulk_cashback  = share_type(0);
-      if( fee_paying_account_balances->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_min &&
+      if( fee_paying_account_statistics->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_min &&
           fee_paying_account->is_prime() )
       {
          uint64_t bulk_discount_percent = 0;
-         if( fee_paying_account_balances->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_max )
+         if( fee_paying_account_statistics->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_max )
             bulk_discount_percent = gp.parameters.max_bulk_discount_percent_of_fee;
-         else
+         else if(gp.parameters.bulk_discount_threshold_max.value - gp.parameters.bulk_discount_threshold_min.value != 0)
          {
             bulk_discount_percent =
                   (gp.parameters.max_bulk_discount_percent_of_fee *
-                            (fee_paying_account_balances->lifetime_fees_paid.value -
+                            (fee_paying_account_statistics->lifetime_fees_paid.value -
                              gp.parameters.bulk_discount_threshold_min.value)) /
                   (gp.parameters.bulk_discount_threshold_max.value - gp.parameters.bulk_discount_threshold_min.value);
          }
          assert( bulk_discount_percent <= 10000 );
          assert( bulk_discount_percent >= 0 );
 
-         bulk_cashback = (fee_from_pool.amount.value * bulk_discount_percent) / 10000;
-         assert( bulk_cashback <= fee_from_pool.amount );
+         bulk_cashback = (core_fee_subtotal.amount.value * bulk_discount_percent) / 10000;
+         assert( bulk_cashback <= core_fee_subtotal.amount );
       }
 
-      auto after_bulk_discount = fee_from_pool.amount - bulk_cashback;
-      auto accumulated = (after_bulk_discount.value  * gp.parameters.witness_percent_of_fee)/10000;
-      auto burned     = (after_bulk_discount.value  * gp.parameters.burn_percent_of_fee)/10000;
-      auto referral   = after_bulk_discount.value - accumulated - burned;
+      auto core_fee_total = core_fee_subtotal.amount - bulk_cashback;
+      auto accumulated = (core_fee_total.value  * gp.parameters.witness_percent_of_fee)/10000;
+      auto burned     = (core_fee_total.value  * gp.parameters.burn_percent_of_fee)/10000;
+      auto referral   = core_fee_total.value - accumulated - burned;
+      auto& d = db();
+      auto now = d.head_block_time();
 
-      assert( accumulated + burned <= after_bulk_discount );
+      assert( accumulated + burned <= core_fee_total );
 
-      fees_paid[fee_asset].to_accumulated_fees += accumulated;
-      fees_paid[&asset_id_type()(db())].burned += burned;
-      adjust_balance( fee_paying_account, fee_asset, -fee.amount );
+      if( fee_asset->get_id() != asset_id_type() )
+         d.modify(*fee_asset_dyn_data, [this](asset_dynamic_data_object& d) {
+            d.accumulated_fees += fee_from_account.amount;
+            d.fee_pool -= core_fee_paid;
+         });
+      d.modify(dynamic_asset_data_id_type()(d), [burned,accumulated](asset_dynamic_data_object& d) {
+         d.accumulated_fees += accumulated + burned;
+      });
+      d.modify(fee_paying_account->referrer(d).statistics(d), [referral,now](account_statistics_object& s) {
+         s.adjust_cashback(referral, now, now);
+      });
+      d.modify(fee_paying_account->statistics(d), [bulk_cashback,core_fee_total,now](account_statistics_object& s) {
+         s.lifetime_fees_paid += core_fee_total;
+         s.adjust_cashback(bulk_cashback, now, now);
+      });
 
-      cash_back[ &fee_paying_account->referrer(db()) ].cash_back         += referral;
-      cash_back[ &fee_paying_account->referrer(db()) ].is_prime_upgrade  |= is_prime_upgrade;
-      cash_back[ fee_paying_account ].cash_back                          += bulk_cashback;
-      cash_back[ fee_paying_account ].total_fees_paid                    += after_bulk_discount;
-
-      assert( referral + bulk_cashback + accumulated + burned == fee_from_pool.amount );
-
-      return fee_from_pool.amount;
-   } FC_CAPTURE_AND_RETHROW( (account_id)(fee) ) }
+      assert( referral + bulk_cashback + accumulated + burned == core_fee_subtotal.amount );
+   } FC_CAPTURE_AND_RETHROW() }
 
    bool generic_evaluator::verify_authority( const account_object* a, authority::classification c )
    {
@@ -105,101 +118,6 @@ namespace bts { namespace chain {
       return trx_state->_skip_signature_check || trx_state->signed_by.find( k->key_address() ) != trx_state->signed_by.end();
    }
 
-   void generic_evaluator::adjust_balance( const account_object* for_account, const asset_object* for_asset, share_type delta )
-   {
-      delta_balance[for_account][for_asset] += delta;
-   }
-   /**
-    * Gets the balance of the account after all modifications that have been applied
-    * while evaluating this operation.
-    */
-   asset  generic_evaluator::get_balance( const account_object* for_account, const asset_object* for_asset )const
-   {
-      const auto& current_balance_obj = for_account->balances(db());
-      auto current_balance = current_balance_obj.get_balance( for_asset->id );
-      auto itr = delta_balance.find( for_account );
-      if( itr == delta_balance.end() ) return current_balance;
-      auto aitr = itr->second.find( for_asset );
-      if( aitr == itr->second.end() ) return current_balance;
-      return asset(current_balance.amount + aitr->second,for_asset->id);
-   }
-
-   void generic_evaluator::apply_delta_balances()
-   {
-      for( auto& acnt : delta_balance )
-      {
-         const auto& balances = acnt.first->balances(db());
-         db().modify(balances, [&]( account_balance_object& bal ){
-               for( auto& delta : acnt.second )
-               {
-                  if( delta.second > 0 )
-                     bal.add_balance( asset(delta.second,delta.first->id) );
-                  else if( delta.second < 0 )
-                     bal.sub_balance( asset(-delta.second,delta.first->id) );
-               }
-            });
-
-         // TODO: if continious vote tracking enabled...
-        /*
-         auto itr = acnt.second.find( &db().get_core_asset() );
-         if( itr != acnt.second.end() )
-         {
-            adjust_votes( acnt.first->votes, itr->second );
-         }
-         */
-      }
-      delta_balance.clear();
-   }
-
-   void generic_evaluator::adjust_votes( const flat_set<vote_tally_id_type>& vote_tallies, share_type delta )
-   {
-      // TODO: make a config option to enable continious vote tracking
-      return;
-      database& d = db();
-      for( auto id : vote_tallies )
-      {
-         d.modify( id(d), [&]( vote_tally_object& v ){
-                   v.total_votes += delta;
-            });
-      }
-   }
-
-   void generic_evaluator::apply_delta_fee_pools()
-   {
-      for( const auto& fee : fees_paid )
-      {
-         const auto& dyn_asst_data = fee.first->dynamic_asset_data_id(db());
-         db().modify( dyn_asst_data, [&]( asset_dynamic_data_object& dyn ){
-                  //idump((fee.second.to_issuer)(fee.second.burned));
-                          dyn.fee_pool         -= fee.second.from_pool;
-                          dyn.accumulated_fees += fee.second.to_issuer + fee.second.burned;
-                     });
-         if( dyn_asst_data.id != asset_id_type() )
-         {
-            db().modify(dynamic_asset_data_id_type()(db()), [&]( asset_dynamic_data_object& dyn) {
-               //dyn.accumulated_fees += fee.second.from_pool;
-               //idump((fee.second.to_accumulated_fees));
-               dyn.accumulated_fees += fee.second.to_accumulated_fees;
-            });
-         }
-      }
-      auto current_time = db().head_block_time();
-
-      for( const auto& cash : cash_back )
-      {
-         const auto& bal = cash.first->balances(db());
-         db().modify( bal, [&]( account_balance_object& obj ){
-             if( cash.second.cash_back.value )
-             {
-                // All cashback, referrals, etc must mature
-                obj.adjust_cashback( cash.second.cash_back, current_time, current_time );
-             }
-             obj.lifetime_fees_paid += cash.second.total_fees_paid;
-         });
-      }
-      cash_back.clear();
-      fees_paid.clear();
-   }
    object_id_type generic_evaluator::get_relative_id( object_id_type rel_id )const
    {
       if( rel_id.space() == relative_protocol_ids )
@@ -409,18 +327,15 @@ void generic_evaluator::cancel_order( const limit_order_object& order, bool crea
 {
    auto refunded = order.amount_for_sale();
 
-   db().modify( order.seller(db()).balances(db()),[&]( account_balance_object& obj ){
-      obj.add_balance( refunded );
+   db().modify( order.seller(db()).statistics(db()),[&]( account_statistics_object& obj ){
       if( refunded.asset_id == asset_id_type() )
-      {
-        obj.total_core_in_orders -= refunded.amount;
-        adjust_votes(fee_paying_account->votes, -refunded.amount);
-      }
+         obj.total_core_in_orders -= refunded.amount;
    });
+   adjust_balance(order.seller, refunded);
 
    if( create_virtual_op )
    {
-      // TODO: create a virtual cancel operation 
+      // TODO: create a virtual cancel operation
    }
 
    db().remove( order );
@@ -429,7 +344,7 @@ void generic_evaluator::cancel_order( const limit_order_object& order, bool crea
 /**
     for each short order, fill it at settlement price and place funds received into a total
     calculate the USD->BTS price and convert all USD balances to BTS at that price and subtract BTS from total
-       - any fees accumulated by the issuer in the bitasset are forfeit / not redeemed 
+       - any fees accumulated by the issuer in the bitasset are forfeit / not redeemed
        - cancel all open orders with bitasset in it
        - any bonds with the bitasset as collateral get converted to BTS as collateral
        - any bitassets that use this bitasset as collateral are immediately settled at their feed price
@@ -442,19 +357,16 @@ void generic_evaluator::settle_black_swan( const asset_object& mia, const price&
    elog( "BLACK SWAN!" );
    db().debug_dump();
 
-   apply_delta_balances();
-   apply_delta_fee_pools();
-
    edump( (mia.symbol)(settlement_price) );
 
-    const asset_object& backing_asset = mia.short_backing_asset(db());
-    asset collateral_gathered = backing_asset.amount(0);
+   const asset_object& backing_asset = mia.short_backing_asset(db());
+   asset collateral_gathered = backing_asset.amount(0);
 
-    const asset_dynamic_data_object& mia_dyn = mia.dynamic_asset_data_id(db());
-    auto original_mia_supply = mia_dyn.current_supply;
+   const asset_dynamic_data_object& mia_dyn = mia.dynamic_asset_data_id(db());
+   auto original_mia_supply = mia_dyn.current_supply;
 
-    const call_order_index& call_index = db().get_index_type<call_order_index>();
-    const auto& call_price_index = call_index.indices().get<by_price>();
+   const call_order_index& call_index = db().get_index_type<call_order_index>();
+   const auto& call_price_index = call_index.indices().get<by_price>();
 
     auto call_itr = call_price_index.lower_bound( price::min( mia.short_backing_asset, mia.id ) );
     auto call_end = call_price_index.upper_bound( price::max( mia.short_backing_asset, mia.id ) );
@@ -466,16 +378,15 @@ void generic_evaluator::settle_black_swan( const asset_object& mia, const price&
        const auto&  order = *call_itr;
        ++call_itr;
        FC_ASSERT( fill_order( order, pays, order.get_debt() ) );
-       apply_delta_balances();
     }
 
-    const limit_order_index& limit_index = db().get_index_type<limit_order_index>();
-    const auto& limit_price_index = limit_index.indices().get<by_price>();
+   const limit_order_index& limit_index = db().get_index_type<limit_order_index>();
+   const auto& limit_price_index = limit_index.indices().get<by_price>();
 
-    // cancel all orders selling the market issued asset 
+    // cancel all orders selling the market issued asset
     auto limit_itr = limit_price_index.lower_bound( price::max( mia.id, mia.short_backing_asset ) );
     auto limit_end = limit_price_index.upper_bound( ~mia.current_feed.call_limit );
-    //auto limit_end = limit_price_index.upper_bound( price::max( asset_id_type(mia.id.instance()+1), 
+    //auto limit_end = limit_price_index.upper_bound( price::max( asset_id_type(mia.id.instance()+1),
     //                                                            mia.short_backing_asset ) );
     while( limit_itr != limit_end )
     {
@@ -501,29 +412,35 @@ void generic_evaluator::settle_black_swan( const asset_object& mia, const price&
        }
     }
 
-    const auto& account_idx = db().get_index_type<account_index>();
-    auto account_itr = account_idx.indices().get<by_id>().begin();
-    auto account_end = account_idx.indices().get<by_id>().end();
+   limit_itr = limit_price_index.begin();
+   //auto limit_end = limit_price_index.upper_bound( ~mia.current_feed.call_limit );
+   limit_end = limit_price_index.end();
+   while( limit_itr != limit_end )
+   {
+      if( limit_itr->amount_for_sale().asset_id == mia.id )
+      {
+         const auto& order = *limit_itr;
+         edump((order));
+         ++limit_itr;
+         cancel_order( order );
+      }
+   }
 
     asset total_mia_settled = mia.amount(0);
-    while( account_itr != account_end )
+    auto& index = db().get_index_type<account_balance_index>().indices().get<by_asset>();
+    auto range = index.equal_range(mia.get_id());
+    for( auto itr = range.first; itr != range.second; ++itr )
     {
-       const auto& bal = account_itr->balances(db());
-       db().modify( bal, [&]( account_balance_object& obj ){
-          auto mia_balance = obj.get_balance( mia.id );
-          wdump((mia_balance) );
-          if( mia_balance.amount > 0 )
-          {
-             obj.sub_balance( mia_balance );
-             auto settled_amount = mia_balance * settlement_price;
-             idump( (mia_balance)(settled_amount)(settlement_price) );
-             obj.add_balance( settled_amount );
-             total_mia_settled += mia_balance;
-             collateral_gathered -= settled_amount;
-          }
-       });
-       // TODO: create virtual operation for settlement 
-       ++account_itr;
+       auto mia_balance = itr->get_balance();
+       if( mia_balance.amount > 0 )
+       {
+          adjust_balance(itr->owner, -mia_balance);
+          auto settled_amount = mia_balance * settlement_price;
+          idump( (mia_balance)(settled_amount)(settlement_price) );
+          adjust_balance(itr->owner, settled_amount);
+          total_mia_settled += mia_balance;
+          collateral_gathered -= settled_amount;
+       }
     }
 
     // TODO: convert collateral held in bonds
@@ -581,22 +498,47 @@ asset generic_evaluator::pay_market_fees( const asset_object& recv_asset, const 
    return issuer_fees;
 }
 
-void generic_evaluator::pay_order( const account_object& receiver, const asset& receives, const asset& pays )
+asset generic_evaluator::get_balance(const account_object* account_obj, const asset_object* asset_obj)
 {
-   const auto& balances = receiver.balances(db());
-   db().modify( balances, [&]( account_balance_object& b ){
-         if( pays.asset_id == asset_id_type() )
-            b.total_core_in_orders -= pays.amount;
-         b.add_balance( receives );
-   });
-
-   if( receives.asset_id == asset_id_type() )
-      adjust_votes( receiver.votes, receives.amount );
-
-   if( pays.asset_id == asset_id_type() )
-      adjust_votes( receiver.votes, -pays.amount );
+   auto& index = db().get_index_type<account_balance_index>().indices().get<by_balance>();
+   auto itr = index.find(boost::make_tuple(account_obj->get_id(), asset_obj->get_id()));
+   if( itr == index.end() )
+      return asset_obj->amount(0);
+   return itr->get_balance();
 }
 
+void generic_evaluator::adjust_balance(account_id_type account, asset delta)
+{ try {
+   if( delta.amount == 0 )
+      return;
+
+   auto& index = db().get_index_type<account_balance_index>().indices().get<by_balance>();
+   auto itr = index.find(boost::make_tuple(account, delta.asset_id));
+   if(itr == index.end())
+   {
+      FC_ASSERT(delta.amount > 0);
+      db().create<account_balance_object>([account,&delta](account_balance_object& b) {
+         b.owner = account;
+         b.asset_type = delta.asset_id;
+         b.balance = delta.amount;
+      });
+   } else {
+      FC_ASSERT(delta.amount > 0 || itr->get_balance() >= -delta);
+      db().modify(*itr, [delta](account_balance_object& b) {
+         b.adjust_balance(delta);
+      });
+   }
+} FC_CAPTURE_AND_RETHROW( (account)(delta) ) }
+
+void generic_evaluator::pay_order( const account_object& receiver, const asset& receives, const asset& pays )
+{
+   const auto& balances = receiver.statistics(db());
+   db().modify( balances, [&]( account_statistics_object& b ){
+         if( pays.asset_id == asset_id_type() )
+            b.total_core_in_orders -= pays.amount;
+   });
+   adjust_balance(receiver.get_id(), receives);
+}
 
 /**
  *  For Market Issued assets Managed by Delegates, any fees collected in the MIA need
@@ -614,7 +556,6 @@ bool generic_evaluator::fill_order( const limit_order_object& order, const asset
    assert( pays.asset_id != receives.asset_id );
 
    const account_object& seller = order.seller(db());
-   const asset_object& pays_asset = pays.asset_id(db());
    const asset_object& recv_asset = receives.asset_id(db());
 
    auto issuer_fees = pay_market_fees( recv_asset, receives );
@@ -640,20 +581,7 @@ bool generic_evaluator::fill_order( const limit_order_object& order, const asset
        */
       if( order.amount_to_receive().amount == 0 )
       {
-         if( pays.asset_id == asset_id_type() )
-         {
-            //This is core asset. We need to manually update the balances to preserve voting invariants.
-            const auto& balances = seller.balances(db());
-            db().modify( balances, [&]( account_balance_object& b ){
-                 b.total_core_in_orders -= order.for_sale;
-                 b.add_balance(order.amount_for_sale());
-            });
-         } else {
-            //If we're not dealing with core asset, adjust_balance is sufficient.
-            adjust_balance( &seller, &pays_asset, order.for_sale );
-         }
-
-         db().remove( order );
+         cancel_order(order);
          return true;
       }
       return false;
@@ -689,22 +617,17 @@ bool generic_evaluator::fill_order( const call_order_object& order, const asset&
    const account_object& borrower = order.borrower(db());
    if( collateral_freed || pays.asset_id == asset_id_type() )
    {
-      const account_balance_object& borrower_balances = borrower.balances(db());
-      db().modify( borrower_balances, [&]( account_balance_object& b ){
+      const account_statistics_object& borrower_statistics = borrower.statistics(db());
+      if( collateral_freed )
+         adjust_balance(borrower.get_id(), *collateral_freed);
+      db().modify( borrower_statistics, [&]( account_statistics_object& b ){
               if( collateral_freed && collateral_freed->amount > 0 )
-              {
-                idump((*collateral_freed));
-                b.add_balance( *collateral_freed );
                 b.total_core_in_orders -= collateral_freed->amount;
-              }
               else if( pays.asset_id == asset_id_type() )
                 b.total_core_in_orders -= pays.amount;
               assert( b.total_core_in_orders >= 0 );
            });
    }
-
-   if( pays.asset_id == asset_id_type() )
-      adjust_votes( borrower.votes, -pays.amount );
 
    if( collateral_freed )
    {
@@ -735,17 +658,15 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
 
    if( receives.asset_id == asset_id_type() )
    {
-      const auto& balances = seller.balances(db());
-      db().modify( balances, [&]( account_balance_object& b ){
+      const auto& statistics = seller.statistics(db());
+      db().modify( statistics, [&]( account_statistics_object& b ){
              b.total_core_in_orders += buyer_to_collateral.amount;
       });
-      adjust_votes( seller.votes, buyer_to_collateral.amount );
    }
 
    db().modify( pays_asset.dynamic_asset_data_id(db()), [&]( asset_dynamic_data_object& obj ){
-                  idump((pays));
-                  obj.current_supply += pays.amount;
-                });
+      obj.current_supply += pays.amount;
+   });
 
    const auto& call_account_index = call_index.indices().get<by_account>();
    auto call_itr = call_account_index.find(  boost::make_tuple(order.seller, pays.asset_id) );
@@ -777,11 +698,11 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
    else
    {
       db().modify( order, [&]( short_order_object& b ) {
-                   b.for_sale -= pays.amount;
-                   b.available_collateral -= seller_to_collateral.amount;
-                   assert( b.available_collateral > 0 );
-                   assert( b.for_sale > 0 );
-                });
+         b.for_sale -= pays.amount;
+         b.available_collateral -= seller_to_collateral.amount;
+         assert( b.available_collateral > 0 );
+         assert( b.for_sale > 0 );
+      });
 
       /**
        *  There are times when the AMOUNT_FOR_SALE * SALE_PRICE == 0 which means that we
@@ -791,11 +712,11 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
        */
       if( order.amount_to_receive().amount == 0 )
       {
-         adjust_balance( &seller, &recv_asset, order.available_collateral);
+         adjust_balance(seller.get_id(), order.get_collateral());
          if( order.get_collateral().asset_id == asset_id_type() )
          {
-            const auto& balances = seller.balances(db());
-            db().modify( balances, [&]( account_balance_object& b ){
+            const auto& statistics = seller.statistics(db());
+            db().modify( statistics, [&]( account_statistics_object& b ){
                  b.total_core_in_orders -= order.available_collateral;
             });
          }

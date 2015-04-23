@@ -2,34 +2,29 @@
 #include <bts/chain/authority.hpp>
 #include <bts/chain/asset.hpp>
 #include <bts/db/generic_index.hpp>
+#include <boost/multi_index/composite_key.hpp>
 
 namespace bts { namespace chain {
 
    /**
-    *  @class account_balance_object
-    *  @ingroup implementation
+    * @class account_statistics_object
+    * @ingroup implementation
     *
-    *  This object is provided for the purpose of separating the account data that
-    *  changes frequently from the account data that is mostly static.  This will
-    *  minimize the amount of data that must be backed up as part of the undo
-    *  history everytime a transfer is made.
-    *
-    *  Note: a single account with 1000 different asset types will require
-    *  16KB in the undo buffer... this could significantly degrade performance
-    *  at a large scale.  A future optimization would be to have a balance
-    *  object for each asset type or at the very least group assets into
-    *  smaller numbers.
+    * This object contains regularly updated statistical data about an account. It is provided for the purpose of
+    * separating the account data that changes frequently from the account data that is mostly static, which will
+    * minimize the amount of data that must be backed up as part of the undo history everytime a transfer is made.
     */
-   class account_balance_object : public bts::db::abstract_object<account_balance_object>
+   class account_statistics_object : public bts::db::abstract_object<account_statistics_object>
    {
       public:
          static const uint8_t space_id = implementation_ids;
-         static const uint8_t type_id  = impl_account_balance_object_type;
+         static const uint8_t type_id  = impl_account_statistics_object_type;
 
-         void                  add_balance( const asset& a );
-         void                  sub_balance( const asset& a );
-         asset                 get_balance( asset_id_type asset_id )const;
-         share_type            voting_weight()const;
+         /**
+          *  When funds are added to the cashback fund they must adjust the average maturity
+          *  weighted by the amount of funds and the maturity of those new funds.
+          */
+         void adjust_cashback( share_type amount, time_point_sec maturity, time_point_sec current_time );
 
          /**
           * Keep the most recent operation as a root pointer to
@@ -68,22 +63,24 @@ namespace bts { namespace chain {
          /**
           *  Cashback rewards from prime membership upgrades mature
           *  over X months to prevent abuse of the prime membership
-          *  program.  
+          *  program.
           */
          time_point_sec        cashback_maturity;
+   };
 
-         /**
-          *  When funds are added to the cashback fund they must adjust the average maturity
-          *  weighted by the amount of funds and the maturity of those new funds.  
-          */
-         void adjust_cashback( share_type amount, time_point_sec maturity, time_point_sec current_time );
+   class account_balance_object : public abstract_object<account_balance_object>
+   {
+      public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_account_balance_object_type;
 
-         /**
-          * Keep balances sorted for best performance of lookups in log(n) time,
-          * balances need to be moved to their own OBJECT ID because they
-          * will change all the time and are much smaller than an account.
-          */
-         vector<pair<asset_id_type,share_type> > balances;
+         //Hashed-non-unique index on owner, on asset_type, and hashed-unique on <owner,asset_type>
+         account_id_type   owner;
+         asset_id_type     asset_type;
+         share_type        balance;
+
+         asset get_balance()const { return asset(balance, asset_type); }
+         void  adjust_balance(const asset& delta);
    };
 
    /**
@@ -144,9 +141,9 @@ namespace bts { namespace chain {
          /// account's balance of core asset.
          flat_set<vote_tally_id_type> votes;
 
-         /// The reference BitShares implementation records the account's balances in a separate object. This field
-         /// contains the ID of that object.
-         account_balance_id_type          balances;
+         /// The reference implementation records the account's statistics in a separate object. This field contains the
+         /// ID of that object.
+         account_statistics_id_type statistics;
 
          /**
           * This is a set of all accounts which have 'whitelisted' this account. Whitelisting is only used in core
@@ -195,6 +192,26 @@ namespace bts { namespace chain {
          delegate_id_type    delegate_id; // optional
    };
 
+   struct by_asset;
+   struct by_account;
+   struct by_balance;
+   typedef multi_index_container<
+      account_balance_object,
+      indexed_by<
+         hashed_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
+         //TODO: make these ordered_... indices hashed instead
+         ordered_unique< tag<by_balance>, composite_key<
+            account_balance_object,
+            member<account_balance_object, account_id_type, &account_balance_object::owner>,
+            member<account_balance_object, asset_id_type, &account_balance_object::asset_type> >
+         >,
+         ordered_non_unique< tag<by_account>, member<account_balance_object, account_id_type, &account_balance_object::owner> >,
+         ordered_non_unique< tag<by_asset>, member<account_balance_object, asset_id_type, &account_balance_object::asset_type> >
+      >
+   > account_balance_object_multi_index_type;
+
+   typedef generic_index<account_balance_object, account_balance_object_multi_index_type> account_balance_index;
+
    struct by_name{};
    typedef multi_index_container<
       account_object,
@@ -209,18 +226,22 @@ namespace bts { namespace chain {
 }}
 FC_REFLECT_DERIVED( bts::chain::account_object,
                     (bts::db::annotated_object<bts::chain::account_object>),
-                    (registrar)(referrer)(referrer_percent)(name)(owner)(active)(memo_key)(voting_key)(votes)(balances)
-                    (whitelisting_accounts)(blacklisting_accounts) )
+                    (registrar)(referrer)(referrer_percent)(name)(owner)(active)(memo_key)(voting_key)(votes)
+                    (statistics)(whitelisting_accounts)(blacklisting_accounts) )
+
+FC_REFLECT_DERIVED( bts::chain::account_balance_object,
+                    (bts::db::object),
+                    (owner)(asset_type)(balance) )
 
 FC_REFLECT_DERIVED( bts::chain::meta_account_object,
                     (bts::db::object),
                     (memo_key)(delegate_id) )
 
-FC_REFLECT_DERIVED( bts::chain::account_balance_object, (bts::chain::object), 
+FC_REFLECT_DERIVED( bts::chain::account_statistics_object, (bts::chain::object),
                     (most_recent_op)
                     (total_core_in_orders)
                     (lifetime_fees_paid)
                     (cashback_rewards)
                     (cashback_maturity)
-                    (balances) )
+                  )
 

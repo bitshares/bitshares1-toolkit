@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
          //accounts = db.get_account_index().size();
          //BOOST_CHECK(accounts >= account_count);
          for( int i = 11; i < account_count + 11; ++i)
-            BOOST_CHECK(account_id_type(i)(db).balances(db).get_balance(asset_id_type()).amount == BTS_INITIAL_SUPPLY / account_count);
+            BOOST_CHECK(db.get_balance(account_id_type(i), asset_id_type()).amount == BTS_INITIAL_SUPPLY / account_count);
 
          fc::time_point start_time = fc::time_point::now();
          db.close();
@@ -65,7 +65,7 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
 
          //BOOST_CHECK(db.get_account_index().size() == accounts);
          for( int i = 11; i < account_count + 11; ++i)
-            BOOST_CHECK(account_id_type(i)(db).balances(db).get_balance(asset_id_type()).amount == BTS_INITIAL_SUPPLY / account_count);
+            BOOST_CHECK(db.get_balance(account_id_type(i), asset_id_type()).amount == BTS_INITIAL_SUPPLY / account_count);
 
          start_simulated_time( bts::chain::now() );
 
@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
 
          //BOOST_CHECK(db.get_account_index().size() == accounts);
          for( int i = 0; i < blocks_to_produce; ++i )
-            BOOST_CHECK(account_id_type(i + 11)(db).balances(db).get_balance(asset_id_type()).amount == BTS_INITIAL_SUPPLY / account_count - 2);
+            BOOST_CHECK(db.get_balance(account_id_type(i + 11), asset_id_type()).amount == BTS_INITIAL_SUPPLY / account_count - 2);
       }
 
    } catch(fc::exception& e) {

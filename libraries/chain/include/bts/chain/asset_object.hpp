@@ -85,6 +85,8 @@ namespace bts { namespace chain {
          /// its account_object::blacklisting_accounts field. If the account is blacklisted, it may not transact in
          /// this asset even if it is also whitelisted.
          flat_set<account_id_type> blacklist_authorities;
+
+         asset_id_type get_id()const { return id; }
    };
 
    struct by_symbol{};

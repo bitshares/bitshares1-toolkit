@@ -10,10 +10,6 @@ object_id_type proposal_create_evaluator::do_evaluate(const proposal_create_oper
    const database& d = db();
    const auto& global_parameters = d.get_global_properties().parameters;
 
-   auto bts_fee_required = o.calculate_fee(d.current_fee_schedule());
-   auto bts_fee_paid = pay_fee(o.fee_paying_account, o.fee);
-   FC_ASSERT( bts_fee_paid >= bts_fee_required );
-
    FC_ASSERT( o.expiration_time > d.head_block_time(), "Proposal has already expired on creation." );
    FC_ASSERT( o.expiration_time <= d.head_block_time() + global_parameters.maximum_proposal_lifetime,
               "Proposal expiration time is too far in the future.");
@@ -64,10 +60,6 @@ object_id_type proposal_update_evaluator::do_evaluate(const proposal_update_oper
 {
    database& d = db();
 
-   auto bts_fee_required = o.calculate_fee(d.current_fee_schedule());
-   auto bts_fee_paid = pay_fee(o.fee_paying_account, o.fee);
-   FC_ASSERT( bts_fee_paid >= bts_fee_required );
-
    _proposal = &o.proposal(d);
 
    if( _proposal->review_period_time && d.head_block_time() >= *_proposal->review_period_time )
@@ -93,9 +85,6 @@ object_id_type proposal_update_evaluator::do_evaluate(const proposal_update_oper
 object_id_type proposal_update_evaluator::do_apply(const proposal_update_operation& o)
 {
    database& d = db();
-
-   apply_delta_balances();
-   apply_delta_fee_pools();
 
    // Potential optimization: if _executed_proposal is true, we can skip the modify step and make push_proposal skip
    // signature checks. This isn't done now because I just wrote all the proposals code, and I'm not yet 100% sure the
@@ -138,10 +127,6 @@ object_id_type proposal_delete_evaluator::do_evaluate(const proposal_delete_oper
 {
    database& d = db();
 
-   auto bts_fee_required = o.calculate_fee(d.current_fee_schedule());
-   auto bts_fee_paid = pay_fee(o.fee_paying_account, o.fee);
-   FC_ASSERT( bts_fee_paid >= bts_fee_required );
-
    _proposal = &o.proposal(d);
 
    auto required_approvals = o.using_owner_authority? &_proposal->required_owner_approvals
@@ -155,9 +140,6 @@ object_id_type proposal_delete_evaluator::do_evaluate(const proposal_delete_oper
 
 object_id_type proposal_delete_evaluator::do_apply(const proposal_delete_operation&)
 {
-   apply_delta_balances();
-   apply_delta_fee_pools();
-
    db().remove(*_proposal);
 
    return object_id_type();

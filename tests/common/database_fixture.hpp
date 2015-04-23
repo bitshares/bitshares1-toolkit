@@ -60,22 +60,19 @@ struct database_fixture {
       BOOST_CHECK(core_asset_data.current_supply +core_asset_data.burned == BTS_INITIAL_SUPPLY);
       BOOST_CHECK(core_asset_data.fee_pool == 0);
 
-      const simple_index<account_balance_object>& balance_index = db.get_index_type<simple_index<account_balance_object>>();
+      const simple_index<account_statistics_object>& statistics_index = db.get_index_type<simple_index<account_statistics_object>>();
+      const auto& balance_index = db.get_index_type<account_balance_index>().indices();
       map<asset_id_type,share_type> total_balances;
       map<asset_id_type,share_type> total_debts;
       share_type core_in_orders;
       share_type reported_core_in_orders;
-      share_type cash_back_rewards;
 
-      for( const account_balance_object& a : balance_index )
+      for( const account_balance_object& b : balance_index )
+         total_balances[b.asset_type] += b.balance;
+      for( const account_statistics_object& a : statistics_index )
       {
-         for( const auto& balance : a.balances )
-         {
-            total_balances[balance.first] += balance.second;
-         }
          total_balances[asset_id_type()] += a.cashback_rewards;
          reported_core_in_orders += a.total_core_in_orders;
-         //cash_back_rewards       += a.cashback_rewards;
       }
       for( const limit_order_object& o : db.get_index_type<limit_order_index>().indices() )
       {
@@ -114,26 +111,6 @@ struct database_fixture {
       BOOST_CHECK_EQUAL( total_balances[asset_id_type()].value , core_asset_data.current_supply.value );
    }
 
-   void verify_vote_totals() {
-      return;
-      /*
-      const account_index& account_idx = db.get_index_type<account_index>();
-      map<vote_tally_id_type, share_type> vote_sums;
-
-      for( const account_object& account : account_idx.indices() )
-         for( vote_tally_id_type tally : account.votes )
-         {
-            const auto& bal =  account.balances(db);
-            vote_sums[tally] +=
-                  bal.total_core_in_orders + bal.cashback_rewards
-                  + bal.get_balance(asset_id_type()).amount;
-         }
-
-      for( const auto& sum : vote_sums )
-         BOOST_CHECK_EQUAL(sum.second.value, sum.first(db).total_votes.value);
-         */
-   }
-
    database_fixture()
    {
       db.init_genesis();
@@ -144,7 +121,6 @@ struct database_fixture {
    }
    ~database_fixture(){
       verify_asset_supplies();
-      verify_vote_totals();
       shutdown_ntp_time();
 
       if( data_dir )
@@ -612,7 +588,7 @@ struct database_fixture {
 
    int64_t get_balance( const account_object& account, const asset_object& a )const
    {
-      return account.balances(db).get_balance( a.id ).amount.value;
+      return db.get_balance(account.get_id(), a.get_id()).amount.value;
    }
 };
 

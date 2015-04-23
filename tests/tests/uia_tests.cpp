@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE( issue_whitelist_uia )
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
 
-      BOOST_CHECK(nathan.balances(db).get_balance(advanced.id).amount == 1000);
+      BOOST_CHECK_EQUAL(get_balance(nathan, advanced), 1000);
    } catch(fc::exception& e) {
       edump((e.to_detail_string()));
       throw;

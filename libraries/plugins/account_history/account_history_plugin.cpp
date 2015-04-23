@@ -137,12 +137,12 @@ void account_history_plugin::update_account_histories( const signed_block& b )
          for( auto& account_id : impacted )
          {
             // add history
-            const auto& bal_obj = account_id(db).balances(db);
+            const auto& stats_obj = account_id(db).statistics(db);
             const auto& ath = db.create<account_transaction_history_object>( [&]( account_transaction_history_object& obj ){
                 obj.operation_id = oho.id;
-                obj.next = bal_obj.most_recent_op;
+                obj.next = stats_obj.most_recent_op;
             });
-            db.modify( bal_obj, [&]( account_balance_object& obj ){
+            db.modify( stats_obj, [&]( account_statistics_object& obj ){
                 obj.most_recent_op = ath.id;
             });
          }
@@ -154,12 +154,12 @@ void account_history_plugin::update_account_histories( const signed_block& b )
             if( impacted.find( account_id ) != impacted.end() )
             {
                // add history
-               const auto& bal_obj = account_id(db).balances(db);
+               const auto& stats_obj = account_id(db).statistics(db);
                const auto& ath = db.create<account_transaction_history_object>( [&]( account_transaction_history_object& obj ){
                    obj.operation_id = oho.id;
-                   obj.next = bal_obj.most_recent_op;
+                   obj.next = stats_obj.most_recent_op;
                });
-               db.modify( bal_obj, [&]( account_balance_object& obj ){
+               db.modify( stats_obj, [&]( account_statistics_object& obj ){
                    obj.most_recent_op = ath.id;
                });
             }

@@ -27,7 +27,7 @@ BOOST_AUTO_TEST_CASE( share_supply )
          genesis.push_back(std::make_pair(public_key_type(the_key.get_public_key()), BTS_INITIAL_SUPPLY / count));
       db.init_genesis(genesis);
 
-      BOOST_CHECK( account_id_type()(db).balances(db).get_balance(asset_id_type()).amount == 0 );
+      BOOST_CHECK( db.get_balance(account_id_type(), asset_id_type()).amount == 0 );
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;

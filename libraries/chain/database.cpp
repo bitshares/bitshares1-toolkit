@@ -157,9 +157,10 @@ void database::initialize_indexes()
 
    //Implementation object indexes
    add_index< primary_index< transaction_index                             > >();
+   add_index< primary_index< account_balance_index                         > >();
    add_index< primary_index< simple_index< global_property_object         >> >();
    add_index< primary_index< simple_index< dynamic_global_property_object >> >();
-   add_index< primary_index< simple_index< account_balance_object         >> >();
+   add_index< primary_index< simple_index< account_statistics_object      >> >();
    add_index< primary_index< simple_index< asset_dynamic_data_object      >> >();
    add_index< primary_index< flat_index<   vote_tally_object              >> >();
    add_index< primary_index< flat_index<   delegate_feeds_object          >> >();
@@ -175,10 +176,12 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
       create<key_object>( [&genesis_private_key](key_object& k) {
          k.key_data = public_key_type(genesis_private_key.get_public_key());
       });
-   const account_balance_object& genesis_balance =
-      create<account_balance_object>( [&](account_balance_object& b){
-         b.add_balance(asset(BTS_INITIAL_SUPPLY));
+   const account_statistics_object& genesis_statistics =
+      create<account_statistics_object>( [&](account_statistics_object& b){
       });
+   create<account_balance_object>( [](account_balance_object& b) {
+      b.balance = BTS_INITIAL_SUPPLY;
+   });
    const account_object& genesis_account =
       create<account_object>( [&](account_object& n) {
          n.owner.add_authority(genesis_key.get_id(), 1);
@@ -186,7 +189,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          n.active = n.owner;
          n.voting_key = genesis_key.id;
          n.memo_key = genesis_key.id;
-         n.balances = genesis_balance.id;
+         n.statistics = genesis_statistics.id;
       });
 
    vector<delegate_id_type> init_delegates;
@@ -194,15 +197,15 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
 
    for( int i = 0; i < BTS_MIN_DELEGATE_COUNT; ++i )
    {
-      const account_balance_object& balance_obj =
-         create<account_balance_object>( [&](account_balance_object& b){
+      const account_statistics_object& stats_obj =
+         create<account_statistics_object>( [&](account_statistics_object& b){
             (void)b;
          });
       const account_object& delegate_account =
          create<account_object>( [&](account_object& a) {
             a.active = a.owner = genesis_account.owner;
             a.name = string("init") + fc::to_string(i);
-            a.balances = balance_obj.id;
+            a.statistics = stats_obj.id;
          });
       const vote_tally_object& vote =
          create<vote_tally_object>( [&](vote_tally_object&) {
@@ -263,7 +266,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          a.dynamic_asset_data_id = dyn_asset.id;
       });
    assert( asset_id_type(core_asset.id) == asset().asset_id );
-   assert( genesis_balance.get_balance(core_asset.id) == asset(dyn_asset.current_supply) );
+   assert( get_balance(account_id_type(), asset_id_type()) == asset(dyn_asset.current_supply) );
    (void)core_asset;
 
    if( !initial_allocation.empty() )
@@ -311,11 +314,12 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          apply_transaction(trx, ~0);
       }
 
-      if( genesis_balance.get_balance(asset_id_type()).amount > 0 )
+      asset leftovers = get_balance(account_id_type(), asset_id_type());
+      if( leftovers.amount > 0 )
       {
-         asset leftovers = genesis_balance.get_balance(asset_id_type());
-         modify(genesis_balance, [](account_balance_object& b) {
-            b.balances.clear();
+         modify(*get_index_type<account_balance_index>().indices().get<by_balance>().find(boost::make_tuple(account_id_type(), asset_id_type())),
+                [](account_balance_object& b) {
+            b.adjust_balance(-b.get_balance());
          });
          modify(core_asset.dynamic_asset_data_id(*this), [&leftovers](asset_dynamic_data_object& d) {
             d.accumulated_fees += leftovers.amount;
@@ -327,6 +331,15 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
            ("n", initial_allocation.size())("t", duration.count() / 1000));
    }
    _undo_db.enable();
+}
+
+asset database::get_balance(account_id_type owner, asset_id_type asset_id) const
+{
+   auto& index = get_index_type<account_balance_index>().indices().get<by_balance>();
+   auto itr = index.find(boost::make_tuple(owner, asset_id));
+   if( itr == index.end() )
+      return asset(0, asset_id);
+   return itr->get_balance();
 }
 
 /**
@@ -585,10 +598,10 @@ void database::update_vote_totals()
        {
           for( vote_tally_id_type tally : account.votes )
           {
-             const auto& bal =  account.balances(*this);
+             const auto& stats =  account.statistics(*this);
              vote_sums[tally.instance] +=
-                   bal.total_core_in_orders + bal.cashback_rewards
-                   + bal.get_balance(asset_id_type()).amount;
+                   stats.total_core_in_orders + stats.cashback_rewards
+                   + get_balance(account.get_id(), asset_id_type()).amount;
           }
        }
     }
@@ -1102,23 +1115,23 @@ void database::debug_dump()
 //   BOOST_CHECK(core_asset_data.current_supply +core_asset_data.burned == BTS_INITIAL_SUPPLY);
 //   BOOST_CHECK(core_asset_data.fee_pool == 0);
 
-   const simple_index<account_balance_object>& balance_index = db.get_index_type<simple_index<account_balance_object>>();
+   const auto& balance_index = db.get_index_type<account_balance_index>().indices();
+   const simple_index<account_statistics_object>& statistics_index = db.get_index_type<simple_index<account_statistics_object>>();
    map<asset_id_type,share_type> total_balances;
    map<asset_id_type,share_type> total_debts;
    share_type core_in_orders;
    share_type reported_core_in_orders;
-   share_type cash_back_rewards;
 
    for( const account_balance_object& a : balance_index )
    {
       idump(("balance")(a));
-      for( const auto& balance : a.balances )
-      {
-         total_balances[balance.first] += balance.second;
-      }
-      total_balances[asset_id_type()] += a.cashback_rewards;
-      reported_core_in_orders += a.total_core_in_orders;
-      //cash_back_rewards       += a.cashback_rewards;
+      total_balances[a.asset_type] += a.balance;
+   }
+   for( const account_statistics_object& s : statistics_index )
+   {
+      idump(("statistics")(s));
+      total_balances[asset_id_type()] += s.cashback_rewards;
+      reported_core_in_orders += s.total_core_in_orders;
    }
    for( const limit_order_object& o : db.get_index_type<limit_order_index>().indices() )
    {

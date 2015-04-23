@@ -22,13 +22,8 @@ object_id_type asset_create_evaluator::do_evaluate( const asset_create_operation
    auto asset_symbol_itr = asset_indx.indices().get<by_symbol>().find( op.symbol );
    FC_ASSERT( asset_symbol_itr == asset_indx.indices().get<by_symbol>().end() );
 
-   auto bts_fee_paid = pay_fee( op.issuer, op.fee );
-   bts_fee_required = op.calculate_fee( d.current_fee_schedule() );
-   FC_ASSERT( bts_fee_paid >= bts_fee_required );
-
-   const asset_object& core_asset = d.get_core_asset();
-   fees_paid[&core_asset].to_issuer -= bts_fee_required.value/2;
-   assert( fees_paid[&core_asset].to_issuer >= 0 );
+   core_fee_paid -= op.calculate_fee(d.current_fee_schedule()).value/2;
+   assert( core_fee_paid >= 0 );
 
    FC_ASSERT( d.find_object(op.short_backing_asset) != nullptr );
 
@@ -37,13 +32,10 @@ object_id_type asset_create_evaluator::do_evaluate( const asset_create_operation
 
 object_id_type asset_create_evaluator::do_apply( const asset_create_operation& op )
 {
-   apply_delta_balances();
-   apply_delta_fee_pools();
-
    const asset_dynamic_data_object& dyn_asset =
       db().create<asset_dynamic_data_object>( [&]( asset_dynamic_data_object& a ) {
          a.current_supply = 0;
-         a.fee_pool = bts_fee_required.value / 2;
+         a.fee_pool = op.calculate_fee(db().current_fee_schedule()).value / 2;
       });
 
    auto next_asset_id = db().get_index_type<asset_index>().get_next_id();
@@ -79,10 +71,6 @@ object_id_type asset_issue_evaluator::do_evaluate( const asset_issue_operation& 
    FC_ASSERT( o.issuer == a.issuer );
    FC_ASSERT( !(a.issuer_permissions & market_issued) );
 
-   auto bts_fee_paid = pay_fee( a.issuer, o.fee );
-   bts_fee_required = o.calculate_fee( d.current_fee_schedule() );
-   FC_ASSERT( bts_fee_paid >= bts_fee_required );
-
    to_account = &o.issue_to_account(d);
 
    if( a.flags & white_list )
@@ -93,16 +81,12 @@ object_id_type asset_issue_evaluator::do_evaluate( const asset_issue_operation& 
    asset_dyn_data = &a.dynamic_asset_data_id(d);
    FC_ASSERT( (asset_dyn_data->current_supply + o.asset_to_issue.amount) <= a.max_supply );
 
-   adjust_balance( to_account, &a, o.asset_to_issue.amount );
-
    return object_id_type();
-
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
 object_id_type asset_issue_evaluator::do_apply( const asset_issue_operation& o )
 {
-   apply_delta_balances();
-   apply_delta_fee_pools();
+   adjust_balance( o.issue_to_account, o.asset_to_issue );
 
    db().modify( *asset_dyn_data, [&]( asset_dynamic_data_object& data ){
         data.current_supply += o.asset_to_issue.amount;
@@ -117,20 +101,14 @@ object_id_type asset_fund_fee_pool_evaluator::do_evaluate(const asset_fund_fee_p
 
    const asset_object& a = o.asset_id(d);
 
-   auto bts_fee_paid = pay_fee( a.issuer, o.fee );
-   bts_fee_required = o.calculate_fee( d.current_fee_schedule() );
-   FC_ASSERT( bts_fee_paid >= bts_fee_required );
-
    asset_dyn_data = &a.dynamic_asset_data_id(d);
-   adjust_balance(&o.from_account(d), &d.get_core_asset(), -o.amount);
 
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
 object_id_type asset_fund_fee_pool_evaluator::do_apply(const asset_fund_fee_pool_operation& o)
 {
-   apply_delta_balances();
-   apply_delta_fee_pools();
+   adjust_balance(o.from_account, -o.amount);
 
    db().modify( *asset_dyn_data, [&]( asset_dynamic_data_object& data ) {
       data.fee_pool += o.amount;
@@ -165,10 +143,6 @@ object_id_type asset_update_evaluator::do_evaluate(const asset_update_operation&
    {
       FC_ASSERT( a.enforce_white_list() || o.flags && *o.flags & white_list );
    }
-
-   auto bts_fee_paid = pay_fee( a.issuer, o.fee );
-   bts_fee_required = o.calculate_fee( d.current_fee_schedule() );
-   FC_ASSERT( bts_fee_paid >= bts_fee_required );
 
    if( o.new_issuer )
    {
@@ -208,9 +182,6 @@ object_id_type asset_update_evaluator::do_evaluate(const asset_update_operation&
 
 object_id_type asset_update_evaluator::do_apply(const asset_update_operation& o)
 {
-   apply_delta_balances();
-   apply_delta_fee_pools();
-
    db().modify(*asset_to_update, [&o](asset_object& a) {
       if( o.new_issuer )
          a.issuer = *o.new_issuer;

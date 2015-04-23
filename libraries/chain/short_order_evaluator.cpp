@@ -12,11 +12,6 @@ object_id_type short_order_create_evaluator::do_evaluate( const short_order_crea
 
    FC_ASSERT( op.expiration >= d.head_block_time() );
 
-   auto bts_fee_paid = pay_fee( op.seller, op.fee );
-   auto bts_fee_required = op.calculate_fee( d.current_fee_schedule() );
-   FC_ASSERT( bts_fee_paid >= bts_fee_required, "", ("bts_fee_paid",bts_fee_paid)("bts_fee_required",bts_fee_required) );
-   //_priority_fee = bts_fee_paid - bts_fee_required;
-
    const asset_object& base_asset  = op.amount_to_sell.asset_id(d);
    const asset_object& quote_asset = op.collateral.asset_id(d);
 
@@ -35,10 +30,7 @@ object_id_type short_order_create_evaluator::do_evaluate( const short_order_crea
 
 object_id_type short_order_create_evaluator::do_apply( const short_order_create_operation& op )
 {
-   const auto& seller_balance = _seller->balances(db());
-   db().modify( seller_balance, [&]( account_balance_object& bal ){
-         bal.sub_balance( op.collateral );
-   });
+   adjust_balance(op.seller, -op.collateral);
 
    const auto& new_order_object = db().create<short_order_object>( [&]( short_order_object& obj ){
        obj.seller                       = _seller->id;
@@ -54,8 +46,8 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
 
    if( op.collateral.asset_id == asset_id_type() )
    {
-      auto& bal_obj = fee_paying_account->balances(db());
-      db().modify( bal_obj, [&]( account_balance_object& obj ){
+      auto& bal_obj = fee_paying_account->statistics(db());
+      db().modify( bal_obj, [&]( account_statistics_object& obj ){
           obj.total_core_in_orders += op.collateral.amount;
       });
    }
@@ -66,29 +58,18 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
    check_call_orders(*_sell_asset);
 
    if( !db().find(new_id) ) // then we were filled by call order
-   {
-      apply_delta_balances();
-      apply_delta_fee_pools();
       return new_id;
-   }
-
 
    const auto& limit_order_idx = db().get_index_type<limit_order_index>();
    const auto& limit_price_idx = limit_order_idx.indices().get<by_price>();
 
-   //wdump( (op.sell_price().to_real()) );
    auto min_limit_price  = ~op.sell_price();
-   //wdump( (min_limit_price.to_real()) );
 
-   //auto itr = limit_price_idx.lower_bound( min_limit_price );
-   //auto end = limit_price_idx.upper_bound( min_limit_price.max() );
    auto itr = limit_price_idx.lower_bound( min_limit_price.max() );
    auto end = limit_price_idx.upper_bound( min_limit_price );
 
    while( itr != end )
    {
-      //wdump( (itr->sell_price)(max_price) );
-      //wdump( (itr->sell_price.to_real())(max_price.to_real()) );
       auto old_itr = itr;
       ++itr;
       if( match( *old_itr, new_order_object, old_itr->sell_price ) != 1 )
@@ -100,9 +81,6 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
    check_call_orders(*_sell_asset);
    check_call_orders(*_receive_asset);
 
-   apply_delta_balances();
-   apply_delta_fee_pools();
-
    return new_id;
 } // short_order_evaluator::do_apply
 
@@ -111,58 +89,42 @@ asset short_order_cancel_evaluator::do_evaluate( const short_order_cancel_operat
 {
    database&    d = db();
 
-   auto bts_fee_paid      = pay_fee( o.fee_paying_account, o.fee );
-   auto bts_fee_required  = o.calculate_fee( d.current_fee_schedule() );
-   FC_ASSERT( bts_fee_paid >= bts_fee_required );
-
    _order = &o.order(d);
    FC_ASSERT( _order->seller == o.fee_paying_account  );
-   auto refunded = _order->get_collateral();
-   adjust_balance( fee_paying_account, &refunded.asset_id(d),  refunded.amount );
 
-  return refunded;
+  return _order->get_collateral();
 }
 
 asset short_order_cancel_evaluator::do_apply( const short_order_cancel_operation& o )
 {
-  database&   d = db();
+   database&   d = db();
 
-  apply_delta_balances();
-  apply_delta_fee_pools();
+   auto refunded = _order->get_collateral();
+   adjust_balance(o.fee_paying_account, refunded);
+   auto base_asset = _order->sell_price.base.asset_id;
+   auto quote_asset = _order->sell_price.quote.asset_id;
 
-  auto refunded = _order->get_collateral();
-  auto base_asset = _order->sell_price.base.asset_id;
-  auto quote_asset = _order->sell_price.quote.asset_id;
+   d.remove( *_order );
 
-  d.remove( *_order );
+   if( refunded.asset_id == asset_id_type() )
+   {
+      auto& stats_obj = fee_paying_account->statistics(d);
+      d.modify( stats_obj, [&]( account_statistics_object& obj ){
+          obj.total_core_in_orders -= refunded.amount;
+      });
+   }
 
-  if( refunded.asset_id == asset_id_type() )
-  {
-     auto& bal_obj = fee_paying_account->balances(d);
-     d.modify( bal_obj, [&]( account_balance_object& obj ){
-         obj.total_core_in_orders -= refunded.amount;
-     });
-     //do_evaluate adjusted balance by refunded.amount, which adds votes. This is undesirable, as the account
-     //did not gain or lose any voting stake. Counteract that adjustment here.
-     //Future optimization: don't change the votes in the first place; it's expensive to change it twice for no reason
-     adjust_votes(fee_paying_account->votes, -refunded.amount);
-  }
+   // Possible optimization: order can be called by canceling a short order iff the canceled order was at the top of the book.
+   // Do I need to check calls in both assets?
+   check_call_orders(base_asset(d));
+   check_call_orders(quote_asset(d));
 
-  // Possible optimization: order can be called by canceling a short order iff the canceled order was at the top of the book.
-  // Do I need to check calls in both assets?
-  check_call_orders(base_asset(d));
-  check_call_orders(quote_asset(d));
-
-  return refunded;
+   return refunded;
 }
 
 asset call_order_update_evaluator::do_evaluate(const call_order_update_operation& o)
 { try {
    database& d = db();
-
-   auto fee_paid = pay_fee( o.funding_account, o.fee );
-   auto fee_required = o.calculate_fee( d.current_fee_schedule() );
-   FC_ASSERT( fee_paid >= fee_required );
 
    _paying_account = &o.funding_account(d);
 
@@ -186,7 +148,6 @@ asset call_order_update_evaluator::do_evaluate(const call_order_update_operation
    _order = &*itr;
 
    FC_ASSERT( o.amount_to_cover.asset_id == _order->debt_type() );
-   adjust_balance(_paying_account, _debt_asset, -o.amount_to_cover.amount);
 
    if( o.amount_to_cover.amount != _order->get_debt().amount )
    {
@@ -210,8 +171,7 @@ asset call_order_update_evaluator::do_apply(const call_order_update_operation& o
 {
    database& d = db();
 
-   apply_delta_balances();
-   apply_delta_fee_pools();
+   adjust_balance(_paying_account->get_id(), -o.amount_to_cover);
 
    // Deduct the debt paid from the total supply of the debt asset.
    d.modify(_debt_asset->dynamic_asset_data_id(d), [&](asset_dynamic_data_object& dynamic_asset) {
@@ -224,10 +184,10 @@ asset call_order_update_evaluator::do_apply(const call_order_update_operation& o
    {
       collateral_returned = _order->get_collateral();
       // Credit the account's balances for his returned collateral.
-      d.modify(_paying_account->balances(d), [&](account_balance_object& bals) {
-         bals.add_balance(collateral_returned);
+      adjust_balance(_paying_account->get_id(), collateral_returned);
+      d.modify(_paying_account->statistics(d), [&](account_statistics_object& stats) {
          if( _order->get_collateral().asset_id == asset_id_type() )
-            bals.total_core_in_orders -= collateral_returned.amount;
+            stats.total_core_in_orders -= collateral_returned.amount;
       });
       // Remove the call order.
       d.remove(*_order);
@@ -242,10 +202,10 @@ asset call_order_update_evaluator::do_apply(const call_order_update_operation& o
       });
       if( o.collateral_to_add.amount > 0 )
          // Deduct the added collateral from the account.
-         d.modify(_paying_account->balances(d), [&](account_balance_object& bals) {
-            bals.sub_balance(o.collateral_to_add);
+         adjust_balance(_paying_account->get_id(), -o.collateral_to_add);
+         d.modify(_paying_account->statistics(d), [&](account_statistics_object& stats) {
             if( o.collateral_to_add.asset_id == asset_id_type() )
-               bals.total_core_in_orders += o.collateral_to_add.amount;
+               stats.total_core_in_orders += o.collateral_to_add.amount;
          });
    }
 

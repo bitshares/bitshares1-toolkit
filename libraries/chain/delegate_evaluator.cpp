@@ -6,20 +6,11 @@
 namespace bts { namespace chain {
 object_id_type delegate_create_evaluator::do_evaluate( const delegate_create_operation& op )
 {
-   database& d = db();
-
-   auto bts_fee_paid = pay_fee( op.delegate_account, op.fee );
-   auto bts_fee_required = op.calculate_fee( d.current_fee_schedule() );
-   FC_ASSERT( bts_fee_paid >= bts_fee_required );
-
    return object_id_type();
 }
 
 object_id_type delegate_create_evaluator::do_apply( const delegate_create_operation& op )
 {
-   apply_delta_balances();
-   apply_delta_fee_pools();
-
    const auto& vote_obj = db().create<vote_tally_object>( [&]( vote_tally_object& ){
          // initial vote is 0
    });
@@ -38,10 +29,6 @@ object_id_type delegate_publish_feeds_evaluator::do_evaluate(const delegate_publ
    database& d = db();
    const delegate_object& del = o.delegate(d);
 
-   auto bts_fee_paid = pay_fee(del.delegate_account, o.fee);
-   auto bts_fee_required = o.calculate_fee(d.current_fee_schedule());
-   FC_ASSERT( bts_fee_paid >= bts_fee_required );
-
    for( const price_feed& feed : o.feeds )
    {
       const asset_object& quote = feed.call_limit.quote.asset_id(d);
@@ -58,9 +45,6 @@ object_id_type delegate_publish_feeds_evaluator::do_evaluate(const delegate_publ
 
 object_id_type delegate_publish_feeds_evaluator::do_apply(const delegate_publish_feeds_operation& o)
 { try {
-   apply_delta_balances();
-   apply_delta_fee_pools();
-
    database& d = db();
 
    d.modify<delegate_feeds_object>( *feed_box, [this,o]( delegate_feeds_object& fobj) {

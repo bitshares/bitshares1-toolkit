@@ -202,9 +202,9 @@ BOOST_AUTO_TEST_CASE( undo_pending )
          trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
          db.push_transaction(trx);
 
-         BOOST_CHECK(nathan_id(db).balances(db).get_balance(asset_id_type()).amount == 10000);
+         BOOST_CHECK(db.get_balance(nathan_id, asset_id_type()).amount == 10000);
          db.clear_pending();
-         BOOST_CHECK(nathan_id(db).balances(db).get_balance(asset_id_type()).amount == 0);
+         BOOST_CHECK(db.get_balance(nathan_id, asset_id_type()).amount == 0);
       }
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
@@ -308,8 +308,8 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
 
       BOOST_CHECK_THROW(db1.push_transaction(trx, skip_sigs), fc::exception);
       BOOST_CHECK_THROW(db2.push_transaction(trx, skip_sigs), fc::exception);
-      BOOST_CHECK_EQUAL(nathan_id(db1).balances(db1).get_balance(asset_id_type()).amount.value, 500);
-      BOOST_CHECK_EQUAL(nathan_id(db2).balances(db2).get_balance(asset_id_type()).amount.value, 500);
+      BOOST_CHECK_EQUAL(db1.get_balance(nathan_id, asset_id_type()).amount.value, 500);
+      BOOST_CHECK_EQUAL(db2.get_balance(nathan_id, asset_id_type()).amount.value, 500);
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
