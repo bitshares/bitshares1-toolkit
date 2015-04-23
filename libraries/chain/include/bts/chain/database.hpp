@@ -128,6 +128,7 @@ namespace bts { namespace chain {
           */
          fc::signal<void(const signed_block&)> applied_block;
 
+         void debug_dump();
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
          void pop_undo() { object_database::pop_undo(); }

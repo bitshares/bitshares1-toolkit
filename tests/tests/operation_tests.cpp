@@ -1919,6 +1919,10 @@ BOOST_AUTO_TEST_CASE( bulk_discount_test )
    assert( !"not implemented" );
 }
 
+/**
+ *  This test sets up the minimum condition for a black swan to occur but does
+ *  not test the full range of cases that may be possible during a black swan.
+ */
 BOOST_AUTO_TEST_CASE( margin_call_black_swan )
 { try {
       const asset_object& bitusd      = create_bitasset( "BITUSD" );
@@ -1942,6 +1946,7 @@ BOOST_AUTO_TEST_CASE( margin_call_black_swan )
       BOOST_REQUIRE( !create_short( shorter1, bitusd.amount(1000), asset(1000) )   );
       BOOST_REQUIRE_EQUAL( get_balance(buyer1, bitusd), 990 ); // 1000 - 1% fee
 
+      verify_asset_supplies();
       ilog( "=================================== START===================================\n\n");
       // this should cause the highest bid to below the margin call threshold
       // which means it should be filled by the cover, except the cover does not
@@ -1959,6 +1964,28 @@ BOOST_AUTO_TEST_CASE( margin_call_black_swan )
       throw;
    }
 }
+/**
+ *  This test sets up a far more complex blackswan scenerio where the
+ *  BitUSD exists in the following places:
+ *
+ *  0) Limit Orders for the BitAsset
+ *  1) Limit Orders for UIA Assets 
+ *  2) Short Orders for BitAsset backed by BitUSD 
+ *  3) Call Orders for BitAsset backed by BitUSD
+ *  4) Issuer Fees 
+ *  5) Bond Market Collateral 
+ *
+ *  This test should fail until the black swan handling code can
+ *  perform a recursive blackswan for any other BitAssets that use
+ *  BitUSD as collateral.
+ */
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( advanced_black_swan, 1 )
+BOOST_AUTO_TEST_CASE( advanced_black_swan )
+{ try {
+  FC_ASSERT( !"Advanced BlackSwan Not Implemented" );
+} FC_LOG_AND_RETHROW() }
+
+
 
 /**
  *  Assume the referrer gets 99% of transaction fee

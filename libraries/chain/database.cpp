@@ -1086,4 +1086,77 @@ void database::clear_expired_orders()
    }
 }
 
+/**
+ *  This method dumps the state of the blockchain in a semi-human readable form for the
+ *  purpose of tracking down funds and mismatches in currency allocation
+ */
+void database::debug_dump()
+{
+   const auto& db = *this;
+   const asset_dynamic_data_object& core_asset_data = db.get_core_asset().dynamic_asset_data_id(db);
+//   BOOST_CHECK(core_asset_data.current_supply +core_asset_data.burned == BTS_INITIAL_SUPPLY);
+//   BOOST_CHECK(core_asset_data.fee_pool == 0);
+
+   const simple_index<account_balance_object>& balance_index = db.get_index_type<simple_index<account_balance_object>>();
+   map<asset_id_type,share_type> total_balances;
+   map<asset_id_type,share_type> total_debts;
+   share_type core_in_orders;
+   share_type reported_core_in_orders;
+   share_type cash_back_rewards;
+
+   for( const account_balance_object& a : balance_index )
+   {
+      idump(("balance")(a));
+      for( const auto& balance : a.balances )
+      {
+         total_balances[balance.first] += balance.second;
+      }
+      total_balances[asset_id_type()] += a.cashback_rewards;
+      reported_core_in_orders += a.total_core_in_orders;
+      //cash_back_rewards       += a.cashback_rewards;
+   }
+   for( const limit_order_object& o : db.get_index_type<limit_order_index>().indices() )
+   {
+      idump(("limit_order")(o));
+      auto for_sale = o.amount_for_sale();
+      if( for_sale.asset_id == asset_id_type() ) core_in_orders += for_sale.amount;
+      total_balances[for_sale.asset_id] += for_sale.amount;
+   }
+   for( const short_order_object& o : db.get_index_type<short_order_index>().indices() )
+   {
+      idump(("short_order")(o));
+      auto col = o.get_collateral();
+      if( col.asset_id == asset_id_type() ) core_in_orders += col.amount;
+      total_balances[col.asset_id] += col.amount;
+   }
+   for( const call_order_object& o : db.get_index_type<call_order_index>().indices() )
+   {
+      idump(("call_order")(o));
+      auto col = o.get_collateral();
+      if( col.asset_id == asset_id_type() ) core_in_orders += col.amount;
+      total_balances[col.asset_id] += col.amount;
+      total_debts[o.get_debt().asset_id] += o.get_debt().amount;
+   }
+   for( const asset_object& asset_obj : db.get_index_type<asset_index>().indices() )
+   {
+      total_balances[asset_obj.id] += asset_obj.dynamic_asset_data_id(db).accumulated_fees;
+//      if( asset_obj.id != asset_id_type() )
+//         BOOST_CHECK_EQUAL(total_balances[asset_obj.id].value, asset_obj.dynamic_asset_data_id(db).current_supply.value);
+      total_balances[asset_id_type()] += asset_obj.dynamic_asset_data_id(db).fee_pool;
+   }
+   for( const witness_object& witness_obj : db.get_index_type<simple_index<witness_object>>() )
+   {
+      idump((witness_obj));
+      total_balances[asset_id_type()] += witness_obj.accumulated_income;
+   }
+//   for( auto item : total_debts )
+//      BOOST_CHECK_EQUAL(item.first(db).dynamic_asset_data_id(db).current_supply.value, item.second.value);
+
+//   BOOST_CHECK_EQUAL( core_in_orders.value , reported_core_in_orders.value );
+   if( total_balances[asset_id_type()].value != core_asset_data.current_supply.value )
+   {
+      edump( (total_balances[asset_id_type()].value)(core_asset_data.current_supply.value ));
+   }
+}
+
 } } // namespace bts::chain

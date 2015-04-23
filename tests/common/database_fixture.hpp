@@ -104,7 +104,9 @@ struct database_fixture {
          total_balances[asset_id_type()] += asset_obj.dynamic_asset_data_id(db).fee_pool;
       }
       for( const witness_object& witness_obj : db.get_index_type<simple_index<witness_object>>() )
+      {
          total_balances[asset_id_type()] += witness_obj.accumulated_income;
+      }
       for( auto item : total_debts )
          BOOST_CHECK_EQUAL(item.first(db).dynamic_asset_data_id(db).current_supply.value, item.second.value);
 

@@ -440,8 +440,11 @@ void generic_evaluator::cancel_order( const limit_order_object& order, bool crea
 void generic_evaluator::settle_black_swan( const asset_object& mia, const price& settlement_price )
 { try {
    elog( "BLACK SWAN!" );
+   db().debug_dump();
+
    apply_delta_balances();
    apply_delta_fee_pools();
+
    edump( (mia.symbol)(settlement_price) );
 
     const asset_object& backing_asset = mia.short_backing_asset(db());
@@ -459,16 +462,12 @@ void generic_evaluator::settle_black_swan( const asset_object& mia, const price&
     {
        auto pays = call_itr->get_debt() * settlement_price;
        wdump( (call_itr->get_debt() ) );
-       ilog(".");
        collateral_gathered += pays;
-       ilog(".");
        const auto&  order = *call_itr;
        ++call_itr;
        FC_ASSERT( fill_order( order, pays, order.get_debt() ) );
        apply_delta_balances();
-       apply_delta_fee_pools();
     }
-    ilog( "." );
 
     const limit_order_index& limit_index = db().get_index_type<limit_order_index>();
     const auto& limit_price_index = limit_index.indices().get<by_price>();
@@ -481,10 +480,10 @@ void generic_evaluator::settle_black_swan( const asset_object& mia, const price&
     while( limit_itr != limit_end )
     {
        const auto& order = *limit_itr;
+       ilog( "CANCEL LIMIT ORDER" );
         idump((order));
        ++limit_itr;
        cancel_order( order );
-    ilog( "." );
     }
 
     limit_itr = limit_price_index.begin();
@@ -495,6 +494,7 @@ void generic_evaluator::settle_black_swan( const asset_object& mia, const price&
        if( limit_itr->amount_for_sale().asset_id == mia.id )
        {
           const auto& order = *limit_itr;
+          ilog( "CANCEL_AGAIN" );
           edump((order));
           ++limit_itr;
           cancel_order( order );
@@ -508,7 +508,6 @@ void generic_evaluator::settle_black_swan( const asset_object& mia, const price&
     asset total_mia_settled = mia.amount(0);
     while( account_itr != account_end )
     {
-    ilog( "." );
        const auto& bal = account_itr->balances(db());
        db().modify( bal, [&]( account_balance_object& obj ){
           auto mia_balance = obj.get_balance( mia.id );
@@ -531,15 +530,10 @@ void generic_evaluator::settle_black_swan( const asset_object& mia, const price&
     // TODO: convert payments held in escrow
     // TODO: convert usd held as prediction market collateral
 
-       ilog(".");
     db().modify( mia_dyn, [&]( asset_dynamic_data_object& obj ){
-       idump( (total_mia_settled)(obj.accumulated_fees));
        total_mia_settled.amount += obj.accumulated_fees;
-       ilog(".");
        obj.accumulated_fees = 0;
     });
-
-       ilog(".");
 
     wlog( "====================== AFTER SETTLE BLACK SWAN UNCLAIMED SETTLEMENT FUNDS ==============\n" );
     wdump((collateral_gathered)(total_mia_settled)(original_mia_supply)(mia_dyn.current_supply));
@@ -675,14 +669,11 @@ bool generic_evaluator::fill_order( const call_order_object& order, const asset&
    optional<asset> collateral_freed;
    db().modify( order, [&]( call_order_object& o ){
             o.debt       -= receives.amount;
+            o.collateral -= pays.amount;
             if( o.debt == 0 )
             {
               collateral_freed = o.get_collateral();
               o.collateral = 0;
-            }
-            else
-            {
-               o.collateral -= pays.amount;
             }
        });
    const asset_object& mia = receives.asset_id(db());
@@ -700,7 +691,7 @@ bool generic_evaluator::fill_order( const call_order_object& order, const asset&
    {
       const account_balance_object& borrower_balances = borrower.balances(db());
       db().modify( borrower_balances, [&]( account_balance_object& b ){
-              if( collateral_freed )
+              if( collateral_freed && collateral_freed->amount > 0 )
               {
                 idump((*collateral_freed));
                 b.add_balance( *collateral_freed );
