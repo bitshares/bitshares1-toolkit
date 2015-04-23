@@ -31,28 +31,12 @@ struct operation_get_impacted_accounts
       _impacted.insert( o.to );
    }
 
-   void operator()( const limit_order_create_operation& o )const {
-   }
-
-   void operator()( const short_order_create_operation& o )const {
-
-   }
-
-   void operator()( const limit_order_cancel_operation& o )const {
-
-   }
-
-   void operator()( const short_order_cancel_operation& o )const {
-
-   }
-
-   void operator()( const call_order_update_operation& o )const {
-
-   }
-
-   void operator()( const key_create_operation& o )const {
-
-   }
+   void operator()( const limit_order_create_operation& o )const { }
+   void operator()( const short_order_create_operation& o )const { }
+   void operator()( const limit_order_cancel_operation& o )const { }
+   void operator()( const short_order_cancel_operation& o )const { }
+   void operator()( const call_order_update_operation& o )const { }
+   void operator()( const key_create_operation& o )const { }
 
    void operator()( const account_create_operation& o )const {
       _impacted.insert( _op_history.result.get<object_id_type>() );
@@ -88,38 +72,29 @@ struct operation_get_impacted_accounts
        _impacted.insert( o.issue_to_account );
    }
 
-   void operator()( const asset_fund_fee_pool_operation& o )const {
-
+   void operator()( const asset_fund_fee_pool_operation& o )const { }
+   void operator()( const delegate_publish_feeds_operation& o )const { }
+   void operator()( const delegate_create_operation& o )const { }
+   void operator()( const withdraw_with_permission_operation& o )const{
+      _impacted.insert( o.withdraw_from_account );
    }
-
-   void operator()( const delegate_publish_feeds_operation& o )const {
-
-   }
-
-   void operator()( const delegate_create_operation& o )const {
-
+   void operator()( const update_withdraw_permission_operation& o )const{
+      _impacted.insert( o.authorized_account );
    }
 
    void operator()( const witness_create_operation& o )const {
       _impacted.insert(o.witness_account);
    }
 
-   void operator()( const witness_withdraw_pay_operation& o )const {
-
-   }
+   void operator()( const witness_withdraw_pay_operation& o )const { }
 
    void operator()( const proposal_create_operation& o )const {
        for( auto op : o.proposed_ops )
           op.op.visit( operation_get_required_auths( _impacted, _impacted ) );
    }
 
-   void operator()( const proposal_update_operation& o )const {
-
-   }
-
-   void operator()( const proposal_delete_operation& o )const {
-
-   }
+   void operator()( const proposal_update_operation& o )const { }
+   void operator()( const proposal_delete_operation& o )const { }
 
    void operator()( const fill_order_operation& o )const {
       _impacted.insert( o.account_id );

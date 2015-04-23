@@ -93,6 +93,7 @@ namespace bts { namespace chain {
       signature_fee_type, ///< a surcharge on transactions with more than 2 signatures.
       global_parameters_update_fee_type, ///< the cost to update the global parameters
       prime_upgrade_fee_type, ///< the cost to upgrade an account to prime
+      update_withdraw_permission_fee_type, ///< the cost to create/update a withdraw permission
       FEE_TYPE_COUNT ///< Sentry value which contains the number of different fee types
    };
 
@@ -117,7 +118,8 @@ namespace bts { namespace chain {
       call_order_object_type,
       custom_object_type,
       proposal_object_type,
-      operation_history_object_type
+      operation_history_object_type,
+      withdraw_permission_object_type
    };
 
    enum impl_object_type
@@ -155,19 +157,21 @@ namespace bts { namespace chain {
    class custom_object;
    class proposal_object;
    class operation_history_object;
+   class withdraw_permission_object;
 
 
-   typedef object_id< protocol_ids, key_object_type,          key_object>                          key_id_type;
-   typedef object_id< protocol_ids, account_object_type,      account_object>                      account_id_type;
-   typedef object_id< protocol_ids, asset_object_type,        asset_object>                        asset_id_type;
-   typedef object_id< protocol_ids, delegate_object_type,     delegate_object>                     delegate_id_type;
-   typedef object_id< protocol_ids, witness_object_type,      witness_object>                      witness_id_type;
-   typedef object_id< protocol_ids, limit_order_object_type,  limit_order_object>                  limit_order_id_type;
-   typedef object_id< protocol_ids, short_order_object_type,  short_order_object>                  short_order_id_type;
-   typedef object_id< protocol_ids, call_order_object_type,   call_order_object>                   call_order_id_type;
-   typedef object_id< protocol_ids, custom_object_type,       custom_object>                       custom_id_type;
-   typedef object_id< protocol_ids, proposal_object_type,     proposal_object>                     proposal_id_type;
-   typedef object_id< protocol_ids, operation_history_object_type,     operation_history_object>   operation_history_id_type;
+   typedef object_id< protocol_ids, key_object_type,                key_object>                   key_id_type;
+   typedef object_id< protocol_ids, account_object_type,            account_object>               account_id_type;
+   typedef object_id< protocol_ids, asset_object_type,              asset_object>                 asset_id_type;
+   typedef object_id< protocol_ids, delegate_object_type,           delegate_object>              delegate_id_type;
+   typedef object_id< protocol_ids, witness_object_type,            witness_object>               witness_id_type;
+   typedef object_id< protocol_ids, limit_order_object_type,        limit_order_object>           limit_order_id_type;
+   typedef object_id< protocol_ids, short_order_object_type,        short_order_object>           short_order_id_type;
+   typedef object_id< protocol_ids, call_order_object_type,         call_order_object>            call_order_id_type;
+   typedef object_id< protocol_ids, custom_object_type,             custom_object>                custom_id_type;
+   typedef object_id< protocol_ids, proposal_object_type,           proposal_object>              proposal_id_type;
+   typedef object_id< protocol_ids, operation_history_object_type,  operation_history_object>     operation_history_id_type;
+   typedef object_id< protocol_ids, withdraw_permission_object_type,withdraw_permission_object>   withdraw_permission_id_type;
 
    typedef object_id< relative_protocol_ids, key_object_type, key_object>           relative_key_id_type;
    typedef object_id< relative_protocol_ids, account_object_type, account_object>   relative_account_id_type;
@@ -328,6 +332,7 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (custom_object_type)
                  (proposal_object_type)
                  (operation_history_object_type)
+                 (withdraw_permission_object_type)
                )
 FC_REFLECT_ENUM( bts::chain::impl_object_type,
                  (impl_global_property_object_type)
@@ -365,6 +370,7 @@ FC_REFLECT_ENUM( bts::chain::fee_type,
                  (signature_fee_type)
                  (global_parameters_update_fee_type)
                  (prime_upgrade_fee_type)
+                 (update_withdraw_permission_fee_type)
                  (FEE_TYPE_COUNT)
                )
 

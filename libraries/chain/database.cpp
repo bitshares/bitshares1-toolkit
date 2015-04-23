@@ -10,6 +10,7 @@
 #include <bts/chain/short_order_object.hpp>
 #include <bts/chain/block_summary_object.hpp>
 #include <bts/chain/proposal_object.hpp>
+#include <bts/chain/withdraw_permission_object.hpp>
 #include <bts/db/simple_index.hpp>
 #include <bts/db/flat_index.hpp>
 
@@ -149,6 +150,7 @@ void database::initialize_indexes()
    add_index< primary_index< short_order_index > >();
    add_index< primary_index< call_order_index > >();
    add_index< primary_index< proposal_index > >();
+   add_index< primary_index< withdraw_permission_index > >();
 
    //Implementation object indexes
    add_index< primary_index< transaction_index                             > >();

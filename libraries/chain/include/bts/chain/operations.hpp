@@ -629,6 +629,70 @@ namespace bts { namespace chain {
       share_type      calculate_fee( const fee_schedule_type& k )const { return share_type(); }
    };
 
+   /**
+    *  Creates and configures a withdraw permission which allows one account to
+    *  authorize another account to withdraw at a certain frequency.
+    *
+    *  Fee is paid by withdraw_from_account which is required to authorize this operation
+    *
+    *  If withdraw_permission is not 0 then withdraw_from_account and authorized_account
+    *  must match those stored in the existing withdraw_permission_object.
+    *
+    *  To remove a permission set the recurring count to 0
+    *
+    *  @return the withdraw_permission id
+    */
+   struct update_withdraw_permission_operation
+   {
+      asset                       fee;
+      /** if this id is 0 then it will create a new permission */
+      withdraw_permission_id_type withdraw_permission;
+      account_id_type             withdraw_from_account;
+      account_id_type             authorized_account;
+      asset                       withdraw_limit;
+      uint32_t                    period_sec;
+      /**
+       *  Tracks the start of the first withdraw period
+       */
+      time_point_sec     starting_time;
+
+      /**
+       *  The maximum number of withdraws authorized, set to 0 to remove the permission
+       */
+      uint32_t           recurring;
+
+
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
+    *  Requires signature of withdraw_to_account
+    *  Subtracts fee from withdraw_to_account
+    *  Subtracts amount from withdraw_from_account
+    *  Adds amount to withdraw_to_account
+    *  Updates last_withdraw_time on withdraw_permission to head block time
+    *  Updates the start_time to the first multiple of period after last_withdraw_time
+    *  Decrements recurring count on withdraw_permission
+    */
+   struct withdraw_with_permission_operation
+   {
+      /** paid by withdraw_to_account */
+      asset                       fee;
+      withdraw_permission_id_type withdraw_permission;
+      /** must match withdraw_permision->authorized_account */
+      account_id_type             withdraw_from_account;
+      account_id_type             withdraw_to_account;
+      asset                       amount_to_withdraw;
+      /** encrypted to withdraw_from_account->memo_key */
+      vector<char>                memo;
+
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+   };
+
    typedef fc::static_variant<
             transfer_operation,
             limit_order_create_operation,
@@ -653,6 +717,8 @@ namespace bts { namespace chain {
             proposal_create_operation,
             proposal_update_operation,
             proposal_delete_operation,
+            update_withdraw_permission_operation,
+            withdraw_with_permission_operation,
             fill_order_operation,
             global_parameters_update_operation
          > operation;
@@ -716,6 +782,7 @@ namespace bts { namespace chain {
       template<typename T>
       share_type operator()( const T& v )const { return (v.calculate_fee(fees) * core_exchange_rate).amount; }
    };
+
    /**
     * @brief Used to set fees in a polymorphic manner
     *
@@ -736,6 +803,8 @@ namespace bts { namespace chain {
       template<typename T>
       asset operator()( T& v )const { return v.fee = asset(v.calculate_fee(fees)) * core_exchange_rate; }
    };
+
+
 
    struct op_wrapper
    {
@@ -840,4 +909,8 @@ FC_REFLECT( bts::chain::proposal_update_operation, (fee_paying_account)(fee)(pro
 FC_REFLECT( bts::chain::proposal_delete_operation, (fee_paying_account)(using_owner_authority)(fee)(proposal) )
 FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (from_account)(asset_id)(amount)(fee) );
 
-FC_REFLECT( bts::chain::global_parameters_update_operation, (new_parameters)(fee) )
+FC_REFLECT( bts::chain::global_parameters_update_operation, (new_parameters)(fee) );
+FC_REFLECT( bts::chain::update_withdraw_permission_operation, (fee)(withdraw_permission)(withdraw_from_account)(authorized_account)(withdraw_limit)(period_sec)(starting_time)(recurring) );
+FC_REFLECT( bts::chain::withdraw_with_permission_operation, (fee)(withdraw_permission)(withdraw_from_account)(withdraw_to_account)(amount_to_withdraw)(memo) );
+
+
