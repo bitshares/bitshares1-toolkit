@@ -282,6 +282,7 @@ namespace bts { namespace chain {
       uint32_t                maximum_proposal_lifetime           = BTS_DEFAULT_MAX_PROPOSAL_LIFETIME_SEC;
       uint32_t                genesis_proposal_review_period      = BTS_DEFAULT_GENESIS_PROPOSAL_REVIEW_PERIOD_SEC;
       uint8_t                 maximum_asset_whitelist_authorities = BTS_DEFAULT_MAX_ASSET_WHITELIST_AUTHORITIES;
+      uint16_t                maximum_authority_membership        = BTS_DEFAULT_MAX_AUTHORITY_MEMBERSHIP;    ///< largest number of keys/accounts an authority can have
       uint16_t                burn_percent_of_fee                 = BTS_DEFAULT_BURN_PERCENT_OF_FEE; // the percentage of every fee that is taken out of circulation
       uint16_t                witness_percent_of_fee              = BTS_DEFAULT_WITNESS_PERCENT;  ///< percent of revenue paid to witnesses
       uint32_t                cashback_vesting_period_seconds     = BTS_DEFAULT_CASHBACK_VESTING_PERIOD_SEC;
@@ -405,6 +406,7 @@ FC_REFLECT( bts::chain::chain_parameters,
             (maximum_time_until_expiration)
             (maximum_proposal_lifetime)
             (maximum_asset_whitelist_authorities)
+            (maximum_authority_membership)
             (burn_percent_of_fee)
             (witness_percent_of_fee)
             (max_bulk_discount_percent_of_fee)
