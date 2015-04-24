@@ -173,7 +173,7 @@ namespace bts { namespace chain {
       share_type  calculate_fee( const fee_schedule_type& k )const;
 
       void get_balance_delta( balance_accumulator& acc )const {
-         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( fee_payer(), -fee );
          acc.adjust( account, asset(amount) );
       }
    };
@@ -269,9 +269,9 @@ namespace bts { namespace chain {
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
 
-      void get_balance_delta( balance_accumulator& acc )const 
-      { 
-         acc.adjust( fee_payer(), -fee ); 
+      void get_balance_delta( balance_accumulator& acc )const
+      {
+         acc.adjust( fee_payer(), -fee );
          acc.adjust( to_account, amount );
       }
    };
@@ -311,9 +311,9 @@ namespace bts { namespace chain {
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
-      void get_balance_delta( balance_accumulator& acc )const 
-      { 
-         acc.adjust( fee_payer(), -fee ); 
+      void get_balance_delta( balance_accumulator& acc )const
+      {
+         acc.adjust( fee_payer(), -fee );
          acc.adjust( from, -amount );
          acc.adjust( to, amount );
       }
@@ -342,6 +342,10 @@ namespace bts { namespace chain {
       uint16_t                flags = 0;
       /// Rate at which core asset from fee pool may be exhcanged for this asset
       price                   core_exchange_rate;
+      /// The delay between the request and processing of a forced settlement
+      uint32_t                force_settlement_delay_sec = BTS_DEFAULT_FORCE_SETTLEMENT_DELAY;
+      /// Offset to apply to feed price when evaluating forced settlements
+      uint16_t                force_settlement_offset_percent = BTS_DEFAULT_FORCE_SETTLEMENT_OFFSET;
       /// Only for market-issued assets; this speicifies which asset type is used to collateralize short sales
       asset_id_type           short_backing_asset;
 
@@ -358,16 +362,27 @@ namespace bts { namespace chain {
    };
 
    /**
-    *  Schedules a bitasset for automatic settlement at the price feed
+    * @brief Schedules a market-issued asset for automatic settlement
+    *
+    * Holders of market-issued assests may request a forced settlement for some amount of their asset. This means that
+    * the specified sum will be locked by the chain and held for the settlement period, after which time the chain will
+    * choose a margin posision holder and buy the settled asset using the margin's collateral. The price of this sale
+    * will be based on the feed price for the market-issued asset being settled. The exact settlement price will be the
+    * feed price at the time of settlement with an offset in favor of the margin position, where the offset is a
+    * blockchain parameter set in the global_property_object.
+    *
+    * The fee is paid by account, and account must authorize this operation
     */
    struct asset_settle_operation
    {
       asset           fee;
+      /// Account requesting the force settlement. This account pays the fee
       account_id_type account;
+      /// Amount of asset to force settle. This must be a market-issued asset
       asset           amount;
 
       account_id_type fee_payer()const { return account; }
-      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const { active_auth_set.insert( account ); }
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
    };
@@ -380,12 +395,12 @@ namespace bts { namespace chain {
       asset           fee; ///< core asset
 
       account_id_type fee_payer()const { return from_account; }
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& account_set )const;
+      void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
-      void       get_balance_delta( balance_accumulator& acc )const 
-      { 
-         acc.adjust( fee_payer(), -fee ); 
+      void       get_balance_delta( balance_accumulator& acc )const
+      {
+         acc.adjust( fee_payer(), -fee );
          acc.adjust( fee_payer(), -amount );
       }
    };
@@ -409,6 +424,10 @@ namespace bts { namespace chain {
       share_type              max_market_fee = BTS_MAX_SHARE_SUPPLY;
       /** If the percentage based fee is less than min_market_fee then the min fee will be used */
       share_type              min_market_fee;
+      /// The delay between the request and processing of a forced settlement
+      uint32_t                force_settlement_delay_sec = BTS_DEFAULT_FORCE_SETTLEMENT_DELAY;
+      /// Offset to apply to feed price when evaluating forced settlements
+      uint16_t                force_settlement_offset_percent = BTS_DEFAULT_FORCE_SETTLEMENT_OFFSET;
 
       optional<flat_set<account_id_type>> new_whitelist_authorities;
       optional<flat_set<account_id_type>> new_blacklist_authorities;
@@ -419,6 +438,24 @@ namespace bts { namespace chain {
       share_type      calculate_fee( const fee_schedule_type& k )const;
       void            get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
+
+   struct asset_issue_operation
+   {
+      account_id_type  issuer; ///< Must be asset_to_issue->asset_id->issuer
+      asset            asset_to_issue;
+      asset            fee;
+      account_id_type  issue_to_account;
+
+      account_id_type fee_payer()const { return issuer; }
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+      void            get_balance_delta( balance_accumulator& acc )const
+      {
+         acc.adjust( fee_payer(), -fee );
+         acc.adjust( issue_to_account, asset_to_issue );
+      }
+};
 
    /**
     *  @class limit_order_create_operation
@@ -458,9 +495,9 @@ namespace bts { namespace chain {
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
       price           get_price()const { return amount_to_sell / min_to_receive; }
-      void            get_balance_delta( balance_accumulator& acc )const 
-      { 
-         acc.adjust( fee_payer(), -fee ); 
+      void            get_balance_delta( balance_accumulator& acc )const
+      {
+         acc.adjust( fee_payer(), -fee );
          acc.adjust( seller, -amount_to_sell );
       }
    };
@@ -484,9 +521,9 @@ namespace bts { namespace chain {
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
 
-      void            get_balance_delta( balance_accumulator& acc, const operation_result& result )const 
-      { 
-         acc.adjust( fee_payer(), -fee ); 
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result )const
+      {
+         acc.adjust( fee_payer(), -fee );
          acc.adjust( fee_payer(), result.get<asset>() );
       }
    };
@@ -535,9 +572,9 @@ namespace bts { namespace chain {
        **/
       price call_price() const { return price::call_price(amount_to_sell, collateral, maintenance_collateral_ratio); }
 
-      void            get_balance_delta( balance_accumulator& acc )const 
-      { 
-         acc.adjust( fee_payer(), -fee ); 
+      void            get_balance_delta( balance_accumulator& acc )const
+      {
+         acc.adjust( fee_payer(), -fee );
          acc.adjust( seller, -collateral );
       }
    };
@@ -556,10 +593,10 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-                      
-      void            get_balance_delta( balance_accumulator& acc, const operation_result& result )const 
-      { 
-         acc.adjust( fee_payer(), -fee ); 
+
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result )const
+      {
+         acc.adjust( fee_payer(), -fee );
          acc.adjust( fee_payer(), result.get<asset>() );
       }
    };
@@ -589,30 +626,11 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-      void            get_balance_delta( balance_accumulator& acc )const 
-      { 
-         acc.adjust( fee_payer(), -fee ); 
+      void            get_balance_delta( balance_accumulator& acc )const
+      {
+         acc.adjust( fee_payer(), -fee );
          acc.adjust( funding_account, -collateral_to_add );
          acc.adjust( funding_account, -amount_to_cover );
-      }
-   };
-
-   struct asset_issue_operation
-   {
-      account_id_type  issuer; ///< Must be asset_to_issue->asset_id->issuer
-      asset            asset_to_issue;
-      asset            fee;
-      account_id_type  issue_to_account;
-
-      account_id_type fee_payer()const { return issuer; }
-      void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
-      void validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-
-      void            get_balance_delta( balance_accumulator& acc )const 
-      { 
-         acc.adjust( fee_payer(), -fee ); 
-         acc.adjust( issue_to_account, asset_to_issue );
       }
    };
 
@@ -755,7 +773,7 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const{}
       void            validate()const { FC_ASSERT( !"virtual operation" ); }
       share_type      calculate_fee( const fee_schedule_type& k )const { return share_type(); }
-      void            get_balance_delta( balance_accumulator& acc )const { 
+      void            get_balance_delta( balance_accumulator& acc )const {
          // acc.adjust( fee_payer(), -fee );  fee never actually entered the account, this is a virtual operation
          acc.adjust( account_id, receives );
       }
@@ -890,10 +908,10 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-                      
-      void            get_balance_delta( balance_accumulator& acc )const 
-      { 
-         acc.adjust( fee_payer(), -fee ); 
+
+      void            get_balance_delta( balance_accumulator& acc )const
+      {
+         acc.adjust( fee_payer(), -fee );
       }
    };
 
@@ -922,9 +940,9 @@ namespace bts { namespace chain {
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
 
-      void        get_balance_delta( balance_accumulator& acc )const 
-      { 
-         acc.adjust( fee_payer(), -fee ); 
+      void        get_balance_delta( balance_accumulator& acc )const
+      {
+         acc.adjust( fee_payer(), -fee );
          acc.adjust( creator, -amount );
       }
    };
@@ -944,9 +962,9 @@ namespace bts { namespace chain {
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
 
-      void            get_balance_delta( balance_accumulator& acc )const 
-      { 
-         acc.adjust( fee_payer(), -fee ); 
+      void            get_balance_delta( balance_accumulator& acc )const
+      {
+         acc.adjust( fee_payer(), -fee );
          acc.adjust( creator, refund );
       }
    };
@@ -966,9 +984,9 @@ namespace bts { namespace chain {
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
 
-      void            get_balance_delta( balance_accumulator& acc )const 
-      { 
-         acc.adjust( fee_payer(), -fee ); 
+      void            get_balance_delta( balance_accumulator& acc )const
+      {
+         acc.adjust( fee_payer(), -fee );
          acc.adjust( claimer, -amount );
       }
    };
@@ -991,14 +1009,13 @@ namespace bts { namespace chain {
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
 
-      void            get_balance_delta( balance_accumulator& acc )const 
-      { 
-         acc.adjust( fee_payer(), -fee ); 
+      void            get_balance_delta( balance_accumulator& acc )const
+      {
+         acc.adjust( fee_payer(), -fee );
          acc.adjust( claimer, -payoff_amount );
          acc.adjust( claimer, collateral_claimed );
       }
    };
-
 
    typedef fc::static_variant<
             transfer_operation,
@@ -1017,6 +1034,7 @@ namespace bts { namespace chain {
             asset_update_operation,
             asset_issue_operation,
             asset_fund_fee_pool_operation,
+            asset_settle_operation,
             delegate_publish_feeds_operation,
             delegate_create_operation,
             witness_create_operation,
@@ -1117,8 +1135,6 @@ namespace bts { namespace chain {
       asset operator()( T& v )const { return v.fee = asset(v.calculate_fee(fees)) * core_exchange_rate; }
    };
 
-
-
    struct op_wrapper
    {
       public:
@@ -1195,8 +1211,8 @@ FC_REFLECT( bts::chain::asset_create_operation,
             (flags)
             (core_exchange_rate)
             (short_backing_asset)
+            (force_settlement_offset_percent)
           )
-
 FC_REFLECT( bts::chain::asset_update_operation,
             (issuer)
             (asset_to_update)
@@ -1209,7 +1225,11 @@ FC_REFLECT( bts::chain::asset_update_operation,
             (market_fee_percent)
             (min_market_fee)
             (max_market_fee)
+            (force_settlement_offset_percent)
+//            (new_whitelist_authorities)
+//            (new_blacklist_authorities)
           )
+FC_REFLECT( bts::chain::asset_settle_operation, (fee)(account)(amount) )
 
 FC_REFLECT( bts::chain::asset_issue_operation,
             (issuer)(asset_to_issue)(fee)(issue_to_account) )

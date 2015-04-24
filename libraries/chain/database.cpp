@@ -121,6 +121,7 @@ void database::initialize_evaluators()
    register_evaluator<asset_create_evaluator>();
    register_evaluator<asset_issue_evaluator>();
    register_evaluator<asset_update_evaluator>();
+   register_evaluator<asset_settle_evaluator>();
    register_evaluator<limit_order_create_evaluator>();
    register_evaluator<limit_order_cancel_evaluator>();
    register_evaluator<short_order_create_evaluator>();
@@ -143,6 +144,7 @@ void database::initialize_indexes()
 
    //Protocol object indexes
    add_index< primary_index< asset_index> >();
+   add_index< primary_index< force_settlement_index> >();
    add_index< primary_index< account_index> >();
    add_index< primary_index< simple_index<key_object>> >();
    add_index< primary_index< simple_index<delegate_object>> >();

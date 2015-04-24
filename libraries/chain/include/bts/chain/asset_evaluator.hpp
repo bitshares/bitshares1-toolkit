@@ -33,7 +33,7 @@ namespace bts { namespace chain {
          object_id_type do_evaluate( const asset_update_operation& o );
          object_id_type do_apply( const asset_update_operation& o );
 
-         const asset_object* asset_to_update;
+         const asset_object* asset_to_update = nullptr;
    };
 
    class asset_fund_fee_pool_evaluator : public evaluator<asset_fund_fee_pool_evaluator>
@@ -45,6 +45,17 @@ namespace bts { namespace chain {
          object_id_type do_apply(const asset_fund_fee_pool_operation& op);
 
          const asset_dynamic_data_object* asset_dyn_data = nullptr;
+   };
+
+   class asset_settle_evaluator : public evaluator<asset_settle_evaluator>
+   {
+      public:
+         typedef asset_settle_operation operation_type;
+
+         object_id_type do_evaluate(const operation_type& op);
+         object_id_type do_apply(const operation_type& op);
+
+         const asset_object* asset_to_settle = nullptr;
    };
 
 } } // bts::chain

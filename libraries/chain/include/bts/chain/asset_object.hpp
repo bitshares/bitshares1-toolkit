@@ -72,6 +72,10 @@ namespace bts { namespace chain {
          price core_exchange_rate;
          /// This is the currently active price feed. Only relevant for market-issued assets.
          price_feed current_feed;
+         /// This is the delay between the time a long requests settlement and the chain evaluates the settlement
+         uint32_t force_settlement_delay_sec;
+         /// This is the percent to adjust the feed price in the short's favor in the event of a forced settlement
+         uint16_t force_settlement_offset_percent;
 
          /// Current supply, fee pool, and collected fees are stored in a separate object as they change frequently.
          dynamic_asset_data_id_type  dynamic_asset_data_id;
@@ -89,6 +93,17 @@ namespace bts { namespace chain {
          asset_id_type get_id()const { return id; }
    };
 
+   class force_settlement_object : public bts::db::annotated_object<force_settlement_object>
+   {
+      public:
+         static const uint8_t space_id = protocol_ids;
+         static const uint8_t type_id  = force_settlement_object_type;
+
+         account_id_type   owner;
+         asset             balance;
+         time_point_sec    settlement_date;
+   };
+
    struct by_symbol{};
    typedef multi_index_container<
       asset_object,
@@ -99,6 +114,22 @@ namespace bts { namespace chain {
    > asset_object_multi_index_type;
 
    typedef generic_index<asset_object, asset_object_multi_index_type> asset_index;
+
+   struct by_account;
+   struct by_expiration;
+   typedef multi_index_container<
+      force_settlement_object,
+      indexed_by<
+         hashed_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
+         ordered_non_unique< tag<by_account>,
+            member<force_settlement_object, account_id_type, &force_settlement_object::owner>
+         >,
+         ordered_non_unique< tag<by_expiration>,
+            member<force_settlement_object, time_point_sec, &force_settlement_object::settlement_date>
+         >
+      >
+   > force_settlement_object_multi_index_type;
+   typedef generic_index<force_settlement_object, force_settlement_object_multi_index_type> force_settlement_index;
 
 } } // bts::chain
 FC_REFLECT_DERIVED( bts::chain::asset_dynamic_data_object, (bts::db::object),
@@ -119,3 +150,5 @@ FC_REFLECT_DERIVED( bts::chain::asset_object,
                     (current_feed)
                     (dynamic_asset_data_id)
                   )
+
+FC_REFLECT( bts::chain::force_settlement_object, (owner)(balance)(settlement_date) )

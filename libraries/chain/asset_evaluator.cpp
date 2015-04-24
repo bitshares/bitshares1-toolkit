@@ -55,6 +55,8 @@ object_id_type asset_create_evaluator::do_apply( const asset_create_operation& o
          a.core_exchange_rate.base.asset_id = 0;
          a.core_exchange_rate.quote.asset_id = next_asset_id;
          a.dynamic_asset_data_id = dyn_asset.id;
+         a.force_settlement_delay_sec = op.force_settlement_delay_sec;
+         a.force_settlement_offset_percent = op.force_settlement_offset_percent;
          a.whitelist_authorities = op.whitelist_authorities;
          a.blacklist_authorities = op.blacklist_authorities;
       });
@@ -201,9 +203,32 @@ object_id_type asset_update_evaluator::do_apply(const asset_update_operation& o)
       a.market_fee_percent = o.market_fee_percent;
       a.max_market_fee = o.max_market_fee;
       a.min_market_fee = o.min_market_fee;
+      a.force_settlement_delay_sec = o.force_settlement_delay_sec;
+      a.force_settlement_offset_percent = o.force_settlement_offset_percent;
    });
 
    return object_id_type();
+}
+
+object_id_type asset_settle_evaluator::do_evaluate(const asset_settle_evaluator::operation_type& op)
+{
+   const database& d = db();
+   asset_to_settle = &op.amount.asset_id(d);
+   FC_ASSERT(asset_to_settle->is_market_issued());
+   FC_ASSERT(get_balance(d.find(op.account), asset_to_settle) >= op.amount);
+
+   return d.get_index_type<force_settlement_index>().get_next_id();
+}
+
+object_id_type asset_settle_evaluator::do_apply(const asset_settle_evaluator::operation_type& op)
+{
+   database& d = db();
+   adjust_balance(op.account, -op.amount);
+   return d.create<force_settlement_object>([&](force_settlement_object& s) {
+      s.owner = op.account;
+      s.balance = op.amount;
+      s.settlement_date = d.head_block_time() + asset_to_settle->force_settlement_delay_sec;
+   }).id;
 }
 
 } } // bts::chain

@@ -71,6 +71,8 @@ struct operation_get_impacted_accounts
    void operator()( const asset_issue_operation& o )const {
        _impacted.insert( o.issue_to_account );
    }
+   void operator()( const asset_settle_operation& o )const {
+   }
 
    void operator()( const asset_fund_fee_pool_operation& o )const { }
    void operator()( const delegate_publish_feeds_operation& o )const { }

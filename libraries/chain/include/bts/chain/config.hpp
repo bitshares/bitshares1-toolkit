@@ -32,6 +32,9 @@
 #define BTS_MAX_INSTANCE_ID                                (uint64_t(-1)>>16)
 /** NOTE: making this a power of 2 (say 2^15) would greatly accelerate fee calcs */
 #define BTS_MAX_MARKET_FEE_PERCENT                         10000
+#define BTS_DEFAULT_FORCE_SETTLEMENT_DELAY                 (60*60*24) ///< 1 day
+#define BTS_DEFAULT_FORCE_SETTLEMENT_OFFSET                100 ///< 1%
+#define BTS_MAX_FORCE_SETTLEMENT_OFFSET                    10000 ///< 100%
 #define BTS_MAX_FEED_PRODUCERS                             200
 #define BTS_DEFAULT_MAX_AUTHORITY_MEMBERSHIP               10
 #define BTS_DEFAULT_MAX_ASSET_WHITELIST_AUTHORITIES        10

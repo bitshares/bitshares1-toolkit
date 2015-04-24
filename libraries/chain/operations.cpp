@@ -221,6 +221,7 @@ void  asset_create_operation::validate()const
    FC_ASSERT( market_fee_percent <= BTS_MAX_MARKET_FEE_PERCENT );
    FC_ASSERT( permissions <= ASSET_ISSUER_PERMISSION_MASK );
    FC_ASSERT( flags <= ASSET_ISSUER_PERMISSION_MASK );
+   FC_ASSERT( force_settlement_offset_percent <= BTS_MAX_FORCE_SETTLEMENT_OFFSET );
    FC_ASSERT( core_exchange_rate.quote.asset_id == asset_id_type() );
    FC_ASSERT( core_exchange_rate.base.asset_id == asset_id_type() );
    FC_ASSERT( core_exchange_rate.base.amount > 0 );
@@ -271,6 +272,7 @@ void asset_update_operation::validate()const
          FC_ASSERT(new_price_feed->call_limit.base.asset_id < asset_to_update);
       }
    }
+   FC_ASSERT( force_settlement_offset_percent <= BTS_MAX_FORCE_SETTLEMENT_OFFSET );
 }
 
 share_type asset_update_operation::calculate_fee( const fee_schedule_type& k )const
@@ -629,6 +631,22 @@ void withdraw_permission_create_operation::validate() const
 share_type withdraw_permission_create_operation::calculate_fee(const fee_schedule_type& k) const
 {
    return k.at(withdraw_permission_update_fee_type);
+}
+
+void asset_settle_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
+{
+   active_auth_set.insert( account );
+}
+
+void asset_settle_operation::validate() const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( amount.amount >= 0 );
+}
+
+share_type asset_settle_operation::calculate_fee(const fee_schedule_type& k) const
+{
+   return k.at(asset_settle_fee_type);
 }
 
 

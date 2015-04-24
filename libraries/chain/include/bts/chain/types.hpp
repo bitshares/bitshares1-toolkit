@@ -87,6 +87,7 @@ namespace bts { namespace chain {
       asset_update_fee_type, ///< the cost to modify a registered asset
       asset_issue_fee_type, ///< the cost to modify a registered asset
       asset_fund_fee_pool_fee_type, ///< the cost to add funds to an asset's fee pool
+      asset_settle_fee_type, ///< the cost to trigger a forced settlement of a market-issued asset
       market_fee_type, ///< a percentage charged on market orders
       transaction_fee_type, ///< a base price for every transaction
       data_fee_type, ///< a price per 1024 bytes of user data
@@ -115,6 +116,7 @@ namespace bts { namespace chain {
       key_object_type,
       account_object_type,
       asset_object_type,
+      force_settlement_object_type,
       delegate_object_type,
       witness_object_type,
       vote_tally_object_type,
@@ -183,8 +185,8 @@ namespace bts { namespace chain {
    typedef object_id< protocol_ids, proposal_object_type,           proposal_object>              proposal_id_type;
    typedef object_id< protocol_ids, operation_history_object_type,  operation_history_object>     operation_history_id_type;
    typedef object_id< protocol_ids, withdraw_permission_object_type,withdraw_permission_object>   withdraw_permission_id_type;
-   typedef object_id< protocol_ids, bond_offer_object_type, bond_offer_object>                    bond_offer_id_type;
-   typedef object_id< protocol_ids, bond_object_type, bond_object>                                bond_id_type;
+   typedef object_id< protocol_ids, bond_offer_object_type,         bond_offer_object>            bond_offer_id_type;
+   typedef object_id< protocol_ids, bond_object_type,               bond_object>                  bond_id_type;
 
    typedef object_id< relative_protocol_ids, key_object_type, key_object>           relative_key_id_type;
    typedef object_id< relative_protocol_ids, account_object_type, account_object>   relative_account_id_type;
@@ -337,6 +339,7 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (base_object_type)
                  (key_object_type)
                  (account_object_type)
+                 (force_settlement_object_type)
                  (asset_object_type)
                  (delegate_object_type)
                  (witness_object_type)
@@ -381,6 +384,7 @@ FC_REFLECT_ENUM( bts::chain::fee_type,
                  (asset_update_fee_type)
                  (asset_issue_fee_type)
                  (asset_fund_fee_pool_fee_type)
+                 (asset_settle_fee_type)
                  (market_fee_type)
                  (transaction_fee_type)
                  (data_fee_type)
