@@ -112,6 +112,8 @@ struct operation_get_impacted_accounts
    void operator()(const global_parameters_update_operation& )const {
       _impacted.insert( account_id_type() );
    }
+
+   void operator()( const create_bond_offer_operation& o )const { }
 };
 
 

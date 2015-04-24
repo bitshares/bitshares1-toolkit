@@ -918,7 +918,7 @@ namespace bts { namespace chain {
    /**
     * Bond offers are objects that exist on the blockchain and can be
     * filled in full or in part by someone using the accept_bond_offer
-    * operation.   When the offer is accepted a new bond_object is
+    * operation. When the offer is accepted a new bond_object is
     * created that defines the terms of the loan.
     *
     *  @return bond_offer_id
@@ -927,20 +927,19 @@ namespace bts { namespace chain {
    {
       asset                   fee;
       account_id_type         creator;
-      bool                    offer_to_borrow; // true if borrowign amount, else lending amount
-      asset                   amount;
+      bool                    offer_to_borrow = false; // Offer to borrow if true, and offer to lend otherwise
+      asset                   amount; // Amount to lend or secure depending on above
+      price                   collateral_rate; // To derive amount of collateral or principle based on above
       /** after this time the lender can let the loan float or collect the collateral at will */
-      uint32_t                loan_period_sec = 0;
       uint32_t                min_loan_period_sec = 0; ///< the earliest the loan may be paid off
-      uint16_t                interest_apr    = 0; ///< 10000 == 100% and is max value
-      price                   collateral_rate;
+      uint32_t                loan_period_sec = 0;
+      uint16_t                interest_apr = 0; ///< MAX_INTEREST_APR == 100% and is max value
 
-      account_id_type fee_payer()const { return creator; }
-      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
-      void            validate()const;
-      share_type      calculate_fee( const fee_schedule_type& k )const;
-
-      void        get_balance_delta( balance_accumulator& acc )const
+      account_id_type   fee_payer()const { return creator; }
+      void              get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void              validate()const;
+      share_type        calculate_fee( const fee_schedule_type& k )const;
+      void              get_balance_delta( balance_accumulator& acc )const
       {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( creator, -amount );
@@ -957,12 +956,11 @@ namespace bts { namespace chain {
       bond_offer_id_type    offer_id;
       asset                 refund;
 
-      account_id_type fee_payer()const { return creator; }
-      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
-      void            validate()const;
-      share_type      calculate_fee( const fee_schedule_type& k )const;
-
-      void            get_balance_delta( balance_accumulator& acc )const
+      account_id_type   fee_payer()const { return creator; }
+      void              get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void              validate()const;
+      share_type        calculate_fee( const fee_schedule_type& k )const;
+      void              get_balance_delta( balance_accumulator& acc )const
       {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( creator, refund );
@@ -979,12 +977,11 @@ namespace bts { namespace chain {
       bond_offer_id_type  offer_id;
       asset               amount; ///< the amount withdrawn from claimers account
 
-      account_id_type fee_payer()const { return claimer; }
-      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
-      void            validate()const;
-      share_type      calculate_fee( const fee_schedule_type& k )const;
-
-      void            get_balance_delta( balance_accumulator& acc )const
+      account_id_type   fee_payer()const { return claimer; }
+      void              get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void              validate()const;
+      share_type        calculate_fee( const fee_schedule_type& k )const;
+      void              get_balance_delta( balance_accumulator& acc )const
       {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( claimer, -amount );
@@ -1004,12 +1001,11 @@ namespace bts { namespace chain {
       asset            payoff_amount;
       asset            collateral_claimed;
 
-      account_id_type fee_payer()const { return claimer; }
-      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
-      void            validate()const;
-      share_type      calculate_fee( const fee_schedule_type& k )const;
-
-      void            get_balance_delta( balance_accumulator& acc )const
+      account_id_type   fee_payer()const { return claimer; }
+      void              get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void              validate()const;
+      share_type        calculate_fee( const fee_schedule_type& k )const;
+      void              get_balance_delta( balance_accumulator& acc )const
       {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( claimer, -payoff_amount );
@@ -1045,9 +1041,10 @@ namespace bts { namespace chain {
             withdraw_permission_update_operation,
             withdraw_permission_claim_operation,
             fill_order_operation,
-            global_parameters_update_operation
-               /* TODO: once methods on these ops are implemented
-            create_bond_offer_operation,
+            global_parameters_update_operation,
+            create_bond_offer_operation
+            /*
+            * TODO: once methods on these ops are implemented
             cancel_bond_offer_operation,
             accept_bond_offer_operation,
             claim_bond_collateral_operation
@@ -1250,7 +1247,7 @@ FC_REFLECT( bts::chain::withdraw_permission_update_operation, (fee)(withdraw_fro
 FC_REFLECT( bts::chain::withdraw_permission_claim_operation, (fee)(withdraw_permission)(withdraw_from_account)(withdraw_to_account)(amount_to_withdraw)(memo) );
 FC_REFLECT( bts::chain::withdraw_permission_delete_operation, (fee)(withdraw_from_account)(authorized_account)
             (withdrawal_permission) )
-FC_REFLECT( bts::chain::create_bond_offer_operation, (fee)(creator)(offer_to_borrow)(amount)(loan_period_sec)(min_loan_period_sec)(interest_apr)(collateral_rate) )
+FC_REFLECT( bts::chain::create_bond_offer_operation, (fee)(creator)(offer_to_borrow)(amount)(collateral_rate)(min_loan_period_sec)(loan_period_sec)(interest_apr) )
 FC_REFLECT( bts::chain::cancel_bond_offer_operation, (fee)(creator)(offer_id)(refund) )
 FC_REFLECT( bts::chain::accept_bond_offer_operation, (fee)(claimer)(offer_id)(amount) )
 FC_REFLECT( bts::chain::claim_bond_collateral_operation, (fee)(claimer)(bond_id)(payoff_amount)(collateral_claimed) )

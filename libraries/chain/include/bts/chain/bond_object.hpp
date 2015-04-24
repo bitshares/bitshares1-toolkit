@@ -35,11 +35,11 @@ namespace bts { namespace chain {
         asset_id_type asset_type()const { return amount.asset_id; }
 
         account_id_type offered_by_account;
-        bool            offer_to_borrow = false;
+        bool            offer_to_borrow = false; // Offer to borrow if true, and offer to lend otherwise
         asset           amount;
         price           collateral_rate;
-        uint32_t        loan_period_sec = 0;
         uint32_t        min_loan_period_sec = 0;
+        uint32_t        loan_period_sec = 0;
         uint16_t        interest_apr    = 0;
   };
 
@@ -75,10 +75,8 @@ namespace bts { namespace chain {
   > bond_offer_object_multi_index_type;
 
   typedef generic_index<bond_offer_object, bond_offer_object_multi_index_type> bond_offer_index;
-  
+
 }} // bts::chain
 
 FC_REFLECT_DERIVED( bts::chain::bond_object,       (bts::db::object), (borrower)(lender)(borrowed)(collateral)(interest_apr)(due_date)(earliest_payoff_date) )
-FC_REFLECT_DERIVED( bts::chain::bond_offer_object, (bts::db::object), (offered_by_account)(offer_to_borrow)(amount)(collateral_rate)(interest_apr)(loan_period_sec) )
-
-
+FC_REFLECT_DERIVED( bts::chain::bond_offer_object, (bts::db::object), (offered_by_account)(offer_to_borrow)(amount)(collateral_rate)(min_loan_period_sec)(loan_period_sec)(interest_apr) )

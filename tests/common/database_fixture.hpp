@@ -9,6 +9,7 @@
 #include <bts/chain/delegate_object.hpp>
 #include <bts/chain/time.hpp>
 #include <bts/chain/witness_object.hpp>
+#include <bts/chain/bond_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -21,6 +22,29 @@
 using std::cout;
 using namespace bts::db;
 
+// See below
+#define REQUIRE_OP_VALIDATION_SUCCESS( op, field, value ) \
+{ \
+   const auto temp = op.field; \
+   op.field = value; \
+   op.validate(); \
+   op.field = temp; \
+}
+#define REQUIRE_OP_VALIDATION_FAILURE( op, field, value ) \
+{ \
+   const auto temp = op.field; \
+   op.field = value; \
+   BOOST_REQUIRE_THROW( op.validate(), fc::exception ); \
+   op.field = temp; \
+}
+#define REQUIRE_OP_EVALUATION_SUCCESS( op, field, value ) \
+{ \
+   const auto temp = op.field; \
+   op.field = value; \
+   trx.operations.back() = op; \
+   op.field = temp; \
+   db.push_transaction( trx, ~0 ); \
+}
 ///Shortcut to require an exception when processing a transaction with an operation containing an expected bad value
 /// Uses require insteach of check, because these transactions are expected to fail. If they don't, subsequent tests
 /// may spuriously succeed or fail due to unexpected database state.
@@ -103,6 +127,10 @@ struct database_fixture {
       for( const witness_object& witness_obj : db.get_index_type<simple_index<witness_object>>() )
       {
          total_balances[asset_id_type()] += witness_obj.accumulated_income;
+      }
+      for( const auto& bond_offer : db.get_index_type<bond_offer_index>().indices() )
+      {
+         total_balances[ bond_offer.amount.asset_id ] += bond_offer.amount.amount;
       }
       for( auto item : total_debts )
          BOOST_CHECK_EQUAL(item.first(db).dynamic_asset_data_id(db).current_supply.value, item.second.value);

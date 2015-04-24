@@ -30,6 +30,7 @@
 #include <bts/chain/global_parameters_evaluator.hpp>
 #include <bts/chain/witness_object.hpp>
 #include <bts/chain/witness_evaluator.hpp>
+#include <bts/chain/bond_evaluator.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/crypto/digest.hpp>
@@ -136,6 +137,7 @@ void database::initialize_evaluators()
    register_evaluator<global_parameters_update_evaluator>();
    register_evaluator<witness_create_evaluator>();
    register_evaluator<witness_withdraw_pay_evaluator>();
+   register_evaluator<create_bond_offer_evaluator>();
 }
 
 void database::initialize_indexes()

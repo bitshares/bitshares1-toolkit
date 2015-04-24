@@ -55,3 +55,5 @@
 #define BTS_DEFAULT_BURN_PERCENT_OF_FEE                  (10000/5) // 20%
 #define BTS_DEFAULT_WITNESS_PAY_PERCENT_OF_ACCUMULATED   20  /// gives a half life of 1 year assuming 1 second blocks
 #define BTS_WITNESS_PAY_PERCENT_PRECISION                1000000000
+
+#define MAX_INTEREST_APR                                uint16_t( 10000 )

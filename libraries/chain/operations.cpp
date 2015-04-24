@@ -404,7 +404,7 @@ void call_order_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( collateral_to_add.amount > 0 || amount_to_cover.amount > 0 || maintenance_collateral_ratio > 0 );
-   if( amount_to_cover.amount == 0 )   FC_ASSERT( collateral_to_add.amount >= 0 ); 
+   if( amount_to_cover.amount == 0 )   FC_ASSERT( collateral_to_add.amount >= 0 );
    if( collateral_to_add.amount.value <= 0 ) FC_ASSERT( amount_to_cover.amount.value > 0 );
 
    FC_ASSERT( amount_to_cover.amount >= 0 );
@@ -649,7 +649,25 @@ share_type asset_settle_operation::calculate_fee(const fee_schedule_type& k) con
    return k.at(asset_settle_fee_type);
 }
 
+void create_bond_offer_operation::get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const
+{
+   active_auth_set.insert( creator );
+}
 
+void create_bond_offer_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( amount.amount > 0 );
+   FC_ASSERT( amount.asset_id == collateral_rate.base.asset_id || amount.asset_id == collateral_rate.quote.asset_id );
+   collateral_rate.validate();
+   FC_ASSERT( min_loan_period_sec > 0 );
+   FC_ASSERT( loan_period_sec >= min_loan_period_sec );
+   FC_ASSERT( interest_apr <= MAX_INTEREST_APR );
+}
 
+share_type create_bond_offer_operation::calculate_fee( const fee_schedule_type& schedule )const
+{
+   return schedule.at( create_bond_offer_fee_type );
+}
 
 } } // namespace bts::chain

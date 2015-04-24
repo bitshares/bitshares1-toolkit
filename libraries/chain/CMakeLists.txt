@@ -1,31 +1,38 @@
 file(GLOB HEADERS "include/bts/chain/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
-add_library( bts_chain 
-             short_order_evaluator.cpp
-             limit_order_evaluator.cpp
+add_library( bts_chain
+
+             types.cpp
+             address.cpp
+             asset.cpp
+
+             operations.cpp
+
+             evaluator.cpp
+             global_parameters_evaluator.cpp
              account_evaluator.cpp
-             delegate_evaluator.cpp
              witness_evaluator.cpp
+             delegate_evaluator.cpp
+             asset_evaluator.cpp
              transfer_evaluator.cpp
              proposal_evaluator.cpp
-             global_parameters_evaluator.cpp
-             evaluator.cpp
-             fork_database.cpp
-             database.cpp
-             operations.cpp
-             asset_evaluator.cpp
+             short_order_evaluator.cpp
+             limit_order_evaluator.cpp
+             bond_evaluator.cpp
+
+             key_object.cpp
              account_object.cpp
              delegate_object.cpp
              proposal_object.cpp
-             key_object.cpp
-             types.cpp
-             block.cpp 
-             address.cpp
+
              transaction.cpp
-             transaction_evaluation_state.cpp
+             block.cpp
+
              time.cpp
-             asset.cpp
+             transaction_evaluation_state.cpp
+             database.cpp
+             fork_database.cpp
            )
 
 target_link_libraries( bts_chain fc bts_db leveldb )
