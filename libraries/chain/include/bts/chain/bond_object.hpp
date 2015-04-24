@@ -20,7 +20,10 @@ namespace bts { namespace chain {
         asset             borrowed;
         asset             collateral;
         uint16_t          interest_apr = 0;
+        /** after this date the lender can collect the collateral at will or let it float */
         time_point_sec    due_date;
+        /** the loan cannot be paid off before this date */
+        time_point_sec    earliest_payoff_date;
   };
 
   class bond_offer_object : public bts::db::abstract_object<bond_offer_object>
@@ -36,6 +39,7 @@ namespace bts { namespace chain {
         asset           amount;
         price           collateral_rate;
         uint32_t        loan_period_sec = 0;
+        uint32_t        min_loan_period_sec = 0;
         uint16_t        interest_apr    = 0;
   };
 
@@ -74,7 +78,7 @@ namespace bts { namespace chain {
   
 }} // bts::chain
 
-FC_REFLECT_DERIVED( bts::chain::bond_object,       (bts::db::object), (borrower)(lender)(borrowed)(collateral)(interest_apr)(due_date) )
+FC_REFLECT_DERIVED( bts::chain::bond_object,       (bts::db::object), (borrower)(lender)(borrowed)(collateral)(interest_apr)(due_date)(earliest_payoff_date) )
 FC_REFLECT_DERIVED( bts::chain::bond_offer_object, (bts::db::object), (offered_by_account)(offer_to_borrow)(amount)(collateral_rate)(interest_apr)(loan_period_sec) )
 
 

@@ -310,9 +310,24 @@ namespace bts { namespace chain {
       flat_set<account_id_type> blacklist_authorities;
 
       account_id_type fee_payer()const { return issuer; }
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
-      void       validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
+    *  Schedules a bitasset for automatic settlement at the price feed
+    */
+   struct asset_settle_operation
+   {
+      asset           fee;
+      account_id_type account;
+      asset           amount;
+
+      account_id_type fee_payer()const { return account; }
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const { active_auth_set.insert( account ); }
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
    };
 
    struct asset_fund_fee_pool_operation
@@ -732,7 +747,9 @@ namespace bts { namespace chain {
       account_id_type         creator;
       bool                    offer_to_borrow; // true if borrowign amount, else lending amount 
       asset                   amount;
+      /** after this time the lender can let the loan float or collect the collateral at will */
       uint32_t                loan_period_sec = 0;
+      uint32_t                min_loan_period_sec = 0; ///< the earliest the loan may be paid off
       uint16_t                interest_apr    = 0; ///< 10000 == 100% and is max value
       price                   collateral_rate;
 
@@ -1014,7 +1031,7 @@ FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (from_account)(asset_id)(
 FC_REFLECT( bts::chain::global_parameters_update_operation, (new_parameters)(fee) );
 FC_REFLECT( bts::chain::update_withdraw_permission_operation, (fee)(withdraw_permission)(withdraw_from_account)(authorized_account)(withdraw_limit)(period_sec)(starting_time)(recurring) );
 FC_REFLECT( bts::chain::withdraw_with_permission_operation, (fee)(withdraw_permission)(withdraw_from_account)(withdraw_to_account)(amount_to_withdraw)(memo) );
-FC_REFLECT( bts::chain::create_bond_offer_operation, (fee)(creator)(offer_to_borrow)(amount)(loan_period_sec)(interest_apr)(collateral_rate) )
+FC_REFLECT( bts::chain::create_bond_offer_operation, (fee)(creator)(offer_to_borrow)(amount)(loan_period_sec)(min_loan_period_sec)(interest_apr)(collateral_rate) )
 FC_REFLECT( bts::chain::cancel_bond_offer_operation, (fee)(creator)(offer_id)(refund) )
 FC_REFLECT( bts::chain::accept_bond_offer_operation, (fee)(claimer)(offer_id)(amount) )
 FC_REFLECT( bts::chain::claim_bond_collateral_operation, (fee)(claimer)(bond_id)(payoff_amount) )
