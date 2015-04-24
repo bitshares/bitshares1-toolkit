@@ -64,6 +64,7 @@ namespace bts { namespace chain {
         asset get_debt()const { return asset( debt, debt_type() ); }
         asset amount_to_receive()const { return get_debt(); }
         asset_id_type debt_type()const { return call_price.quote.asset_id; }
+        price collateralization()const { return get_collateral() / get_debt(); }
 
         void update_call_price() { call_price = price::call_price(get_debt(), get_collateral(), maintenance_collateral_ratio); }
 
@@ -78,6 +79,7 @@ namespace bts { namespace chain {
   struct by_price;
   struct by_account;
   struct by_expiration;
+  struct by_collateral;
   typedef multi_index_container<
      short_order_object,
      indexed_by<
@@ -110,6 +112,12 @@ namespace bts { namespace chain {
             composite_key< call_order_object,
                member< call_order_object, account_id_type, &call_order_object::borrower >,
                const_mem_fun< call_order_object, asset_id_type, &call_order_object::debt_type>
+            >
+         >,
+         ordered_unique< tag<by_collateral>,
+            composite_key< call_order_object,
+               const_mem_fun< call_order_object, price, &call_order_object::collateralization >,
+               member< object, object_id_type, &object::id >
             >
          >
       >

@@ -160,6 +160,7 @@ namespace bts { namespace chain {
    class witness_object;
    class vote_tally_object;
    class asset_object;
+   class force_settlement_object;
    class key_object;
    class limit_order_object;
    class short_order_object;
@@ -175,6 +176,7 @@ namespace bts { namespace chain {
    typedef object_id< protocol_ids, key_object_type,                key_object>                   key_id_type;
    typedef object_id< protocol_ids, account_object_type,            account_object>               account_id_type;
    typedef object_id< protocol_ids, asset_object_type,              asset_object>                 asset_id_type;
+   typedef object_id< protocol_ids, force_settlement_object_type,   force_settlement_object>      force_settlement_id_type;
    typedef object_id< protocol_ids, delegate_object_type,           delegate_object>              delegate_id_type;
    typedef object_id< protocol_ids, witness_object_type,            witness_object>               witness_id_type;
    typedef object_id< protocol_ids, vote_tally_object_type,         vote_tally_object>            vote_tally_id_type;

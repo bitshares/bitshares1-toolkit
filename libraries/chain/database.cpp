@@ -1104,6 +1104,26 @@ void database::clear_expired_orders()
       canceler.order = order.id;
       apply_operation(cancel_context, canceler);
    }
+
+   //Process expired force settlement orders
+   auto& settlement_index = get_index_type<force_settlement_index>().indices().get<by_expiration>();
+   while( !settlement_index.empty() && settlement_index.begin()->settlement_date <= head_block_time() )
+   {
+      const force_settlement_object& order = *settlement_index.begin();
+      const asset_object mia = get(order.balance.asset_id);
+      fill_order_operation settler;
+      settler.account_id = order.owner;
+      settler.order_id = order.id;
+      settler.pays = order.balance;
+      settler.receives = (order.balance * mia.current_feed.short_limit);
+      settler.receives.amount = (fc::uint128_t(settler.receives.amount.value) *
+                                 (10000 - mia.force_settlement_offset_percent) / 100).to_uint64();
+      assert(settler.receives < order.balance * mia.current_feed.short_limit);
+
+      price settlement_price = settler.pays / settler.receives;
+
+      //TODO: Create a force_settlement_operation (virtual op) which enters a matching loop until the settlement is complete.
+   }
 }
 
 /**

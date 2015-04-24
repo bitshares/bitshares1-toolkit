@@ -54,6 +54,7 @@ namespace bts { namespace chain {
          int match( const limit_order_object& bid, const limit_order_object& ask, const price& trade_price );
          int match( const limit_order_object& bid, const short_order_object& ask, const price& trade_price );
          int match( const call_order_object& ask, const limit_order_object& );
+         int match( const call_order_object& call, const force_settlement_object& settle , const price& match_price );
          int match( const call_order_object& ask, const short_order_object& );
          ///@}
 
@@ -63,6 +64,7 @@ namespace bts { namespace chain {
          bool fill_order( const limit_order_object& order, const asset& pays, const asset& receives );
          bool fill_order( const short_order_object& order, const asset& pays, const asset& receives );
          bool fill_order( const call_order_object& order, const asset& pays, const asset& receives );
+         bool fill_order( const force_settlement_object& settle, const asset& pays, const asset& receives );
 
          bool convert_fees( const asset_object& mia );
          bool check_call_orders( const asset_object& mia );

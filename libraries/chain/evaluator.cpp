@@ -197,6 +197,39 @@ int generic_evaluator::match( const limit_order_object& usd, const OrderType& co
    return result;
 }
 
+int generic_evaluator::match( const call_order_object& call, const force_settlement_object& settle, const price& match_price )
+{
+   assert(call.get_debt().asset_id == settle.balance.asset_id );
+   assert(call.debt > 0 && call.collateral > 0 && settle.balance.amount > 0);
+
+   auto settle_for_sale = settle.balance;
+   auto call_for_sale = call.collateral;
+
+   asset call_pays, call_receives, settle_pays, settle_receives;
+
+   if( settle_for_sale <= call_for_sale * match_price )
+   {
+      // We are finishing off the settle
+      call_receives = settle_for_sale;
+      settle_receives = settle_for_sale * match_price;
+   } else {
+      // We are finishing off the call
+      settle_receives = call_for_sale;
+      call_receives = call_for_sale * match_price;
+   }
+
+   call_pays = settle_receives;
+   settle_pays = call_receives;
+
+   assert( settle_pays == settle.balance || call_pays == call.get_collateral() );
+
+   int result = 0;
+   result |= fill_order(call, call_pays, call_receives);
+   result |= fill_order(settle, settle_pays, settle_receives) << 1;
+
+   assert(result != 0);
+   return result;
+}
 
 int generic_evaluator::match( const limit_order_object& bid, const limit_order_object& ask, const price& match_price )
 {
@@ -727,5 +760,24 @@ bool generic_evaluator::fill_order( const short_order_object& order, const asset
    }
    return filled;
 } FC_CAPTURE_AND_RETHROW( (order)(pays)(receives) ) }
+
+bool generic_evaluator::fill_order(const force_settlement_object& settle, const asset& pays, const asset& receives)
+{ try {
+   bool filled = false;
+
+   if( pays < settle.balance )
+   {
+      db().modify(settle, [&pays](force_settlement_object& s) {
+         s.balance -= pays;
+      });
+      filled = false;
+   } else {
+      db().remove(settle);
+      filled = true;
+   }
+   adjust_balance(settle.owner, receives);
+
+   return filled;
+} FC_CAPTURE_AND_RETHROW( (settle)(pays)(receives) ) }
 
 } }
