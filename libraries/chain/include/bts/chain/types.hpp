@@ -117,6 +117,7 @@ namespace bts { namespace chain {
       asset_object_type,
       delegate_object_type,
       witness_object_type,
+      vote_tally_object_type,
       limit_order_object_type,
       short_order_object_type,
       call_order_object_type,
@@ -138,7 +139,6 @@ namespace bts { namespace chain {
       impl_account_balance_object_type,
       impl_account_statistics_object_type,
       impl_account_debt_object_type,
-      impl_vote_tally_object_type,
       impl_transaction_object_type,
       impl_block_summary_object_type,
       impl_account_transaction_history_object_type
@@ -156,6 +156,7 @@ namespace bts { namespace chain {
    class account_object;
    class delegate_object;
    class witness_object;
+   class vote_tally_object;
    class asset_object;
    class key_object;
    class limit_order_object;
@@ -174,6 +175,7 @@ namespace bts { namespace chain {
    typedef object_id< protocol_ids, asset_object_type,              asset_object>                 asset_id_type;
    typedef object_id< protocol_ids, delegate_object_type,           delegate_object>              delegate_id_type;
    typedef object_id< protocol_ids, witness_object_type,            witness_object>               witness_id_type;
+   typedef object_id< protocol_ids, vote_tally_object_type,         vote_tally_object>            vote_tally_id_type;
    typedef object_id< protocol_ids, limit_order_object_type,        limit_order_object>           limit_order_id_type;
    typedef object_id< protocol_ids, short_order_object_type,        short_order_object>           short_order_id_type;
    typedef object_id< protocol_ids, call_order_object_type,         call_order_object>            call_order_id_type;
@@ -191,7 +193,6 @@ namespace bts { namespace chain {
    class global_property_object;
    class dynamic_global_property_object;
    class index_meta_object;
-   class vote_tally_object;
    class asset_dynamic_data_object;
    class account_balance_object;
    class account_statistics_object;
@@ -208,7 +209,6 @@ namespace bts { namespace chain {
    typedef object_id< implementation_ids, impl_account_statistics_object_type,account_statistics_object>                account_statistics_id_type;
    typedef object_id< implementation_ids, impl_delegate_feeds_object_type,   delegate_feeds_object>                     delegate_feeds_id_type;
    typedef object_id< implementation_ids, impl_account_debt_object_type,     account_debt_object>                       account_debt_id_type;
-   typedef object_id< implementation_ids, impl_vote_tally_object_type,       vote_tally_object>                         vote_tally_id_type;
    typedef object_id< implementation_ids, impl_transaction_object_type,      transaction_object>                        transaction_obj_id_type;
    typedef object_id< implementation_ids, impl_block_summary_object_type,    block_summary_object>                      block_summary_id_type;
 
@@ -340,6 +340,7 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (asset_object_type)
                  (delegate_object_type)
                  (witness_object_type)
+                 (vote_tally_object_type)
                  (limit_order_object_type)
                  (short_order_object_type)
                  (call_order_object_type)
@@ -359,7 +360,6 @@ FC_REFLECT_ENUM( bts::chain::impl_object_type,
                  (impl_account_balance_object_type)
                  (impl_account_statistics_object_type)
                  (impl_account_debt_object_type)
-                 (impl_vote_tally_object_type)
                  (impl_transaction_object_type)
                  (impl_block_summary_object_type)
                  (impl_account_transaction_history_object_type)

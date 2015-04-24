@@ -21,8 +21,8 @@ namespace bts { namespace chain {
    class vote_tally_object : public abstract_object<vote_tally_object>
    {
       public:
-         static const uint8_t space_id = implementation_ids;
-         static const uint8_t  type_id = impl_vote_tally_object_type;
+         static const uint8_t space_id = protocol_ids;
+         static const uint8_t  type_id = vote_tally_object_type;
 
          share_type  total_votes;
    };
