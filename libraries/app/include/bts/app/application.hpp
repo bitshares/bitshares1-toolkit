@@ -49,6 +49,15 @@ namespace bts { namespace app {
          }
          std::shared_ptr<abstract_plugin> get_plugin( const string& name )const;
 
+         template<typename PluginType>
+         std::shared_ptr<PluginType> get_plugin( const string& name ) const
+         {
+            std::shared_ptr<abstract_plugin> abs_plugin = get_plugin( name );
+            std::shared_ptr<PluginType> result = std::dynamic_pointer_cast<PluginType>( abs_plugin );
+            FC_ASSERT( result != std::shared_ptr<PluginType>() );
+            return result;
+         }
+
          config&        configuration();
          const config&  configuration()const;
          void           apply_configuration();
