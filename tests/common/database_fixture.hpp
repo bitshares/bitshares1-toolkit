@@ -327,6 +327,41 @@ struct database_fixture {
       return result;
    } FC_CAPTURE_AND_RETHROW( (name)(registrar)(referrer) ) }
 
+   const account_object& create_account( const string& name,
+                                         const private_key_type& key,
+                                         const account_id_type& registrar_id = account_id_type(),
+                                         const account_id_type& referrer_id = account_id_type(),
+                                         uint8_t referrer_percent = 100
+                                       )
+   { try {
+      trx.operations.clear();
+
+      key_create_operation key_op;
+      key_op.fee_paying_account = registrar_id;
+      key_op.key_data = public_key_type( key.get_public_key() );
+      trx.operations.push_back( key_op );
+
+      account_create_operation account_create_op;
+      relative_key_id_type key_rkid(0);
+
+      account_create_op.registrar = registrar_id;
+      account_create_op.name = name;
+      account_create_op.owner = authority(1234, key_rkid, 1234);
+      account_create_op.active = authority(5678, key_rkid, 5678);
+      account_create_op.memo_key = key_rkid;
+      account_create_op.voting_key = key_rkid;
+      account_create_op.vote = flat_set<vote_tally_id_type>();
+      trx.operations.push_back( account_create_op );
+
+      trx.validate();
+
+      processed_transaction ptx = db.push_transaction(trx, ~0);
+      wdump( (ptx) );
+      const account_object& result = db.get<account_object>(ptx.operation_results[1].get<object_id_type>());
+      trx.operations.clear();
+      return result;
+   } FC_CAPTURE_AND_RETHROW( (name)(registrar_id)(referrer_id) ) }
+
    const delegate_object& create_delegate( const account_object& owner )
    {
       delegate_create_operation op;
