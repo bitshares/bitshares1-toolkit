@@ -83,6 +83,23 @@ Tests also show the way to do many things, but are often cluttered with code tha
 
 Visitors are at the end of `operations.hpp` after the large typedef for `operation` as a `static_variant`.  TODO:  They should be refactored into a separate header.
 
+Downcasting stuff
+-----------------
+
+- You have an `object_id_type` and want to downcast it to a `key_id_type` : `key_id_type( object_id )`
+- You have an `operation_result` and want to downcast it to an `object_id_type` : `op_result.get<object_id_type>()`
+- Since `operation_result` is a `static_variant`, the above is also how you downcast `static_variant`
+
+Running specific tests
+----------------------
+
+- `tests/chain_tests -t block_tests/name_of_test`
+
+Debugging FC exceptions with GDB
+--------------------------------
+
+- `catch throw`
+
 TODO: Questions
 ---------------
 
@@ -91,4 +108,3 @@ This section contains questions for more experienced developers to answer.
 Is there a way to generate help with parameter names and method descriptions?
 
 Is there a way to allow external program to drive `cli_wallet` via websocket, JSONRPC, or HTTP?
-
