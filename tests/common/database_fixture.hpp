@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bts/account_history/account_history_plugin.hpp>
 #include <bts/app/application.hpp>
 #include <bts/chain/database.hpp>
 #include <bts/db/simple_index.hpp>
@@ -67,6 +68,8 @@ using namespace bts::db;
 namespace bts { namespace chain {
 
 struct database_fixture {
+   // the reason we use an app is to exercise the indexes of built-in
+   //   plugins
    bts::app::application app;
    chain::database &db;
    signed_transaction trx;
@@ -141,10 +144,19 @@ struct database_fixture {
       BOOST_CHECK_EQUAL( total_balances[asset_id_type()].value , core_asset_data.current_supply.value );
    }
 
+   void verify_account_history_plugin_index()
+   {
+      const std::shared_ptr<bts::account_history::account_history_plugin> pin =
+         app.get_plugin<bts::account_history::account_history_plugin>( "account_history" );
+
+      return;
+   }
+
    database_fixture()
       : app(), db( *app.chain_database() )
    {
       db.init_genesis();
+      app.register_plugin<bts::account_history::account_history_plugin>();
       genesis_key(db); // attempt to deref
       trx.relative_expiration = 1000;
 
@@ -152,6 +164,7 @@ struct database_fixture {
    }
    ~database_fixture(){
       verify_asset_supplies();
+      verify_account_history_plugin_index();
       shutdown_ntp_time();
 
       if( data_dir )
