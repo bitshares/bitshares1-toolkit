@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bts/app/application.hpp>
 #include <bts/chain/database.hpp>
 #include <bts/db/simple_index.hpp>
 #include <bts/chain/limit_order_object.hpp>
@@ -66,7 +67,8 @@ using namespace bts::db;
 namespace bts { namespace chain {
 
 struct database_fixture {
-   database db;
+   bts::app::application app;
+   chain::database &db;
    signed_transaction trx;
    key_id_type genesis_key;
    fc::ecc::private_key private_key = fc::ecc::private_key::generate();
@@ -140,6 +142,7 @@ struct database_fixture {
    }
 
    database_fixture()
+      : app(), db( *app.chain_database() )
    {
       db.init_genesis();
       genesis_key(db); // attempt to deref
