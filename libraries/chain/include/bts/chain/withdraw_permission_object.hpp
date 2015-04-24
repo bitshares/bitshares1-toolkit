@@ -19,7 +19,7 @@ namespace bts { namespace chain {
 
         account_id_type    withdraw_from_account;
         account_id_type    authorized_account;
-        asset              withdraw_limit;
+        asset              withdrawal_limit;
         uint32_t           period_sec;
         /**
          *  The maximum number of withdraws authorized
@@ -39,7 +39,7 @@ namespace bts { namespace chain {
    struct by_from{};
    struct by_authorized{};
 
-   /// TODO: implement boost::hash for account_id_type and switch ot hashed_non_unique 
+   /// TODO: implement boost::hash for account_id_type and switch ot hashed_non_unique
    typedef multi_index_container<
       withdraw_permission_object,
       indexed_by<
@@ -54,10 +54,10 @@ namespace bts { namespace chain {
 
 } } // bts::chain
 
-FC_REFLECT_DERIVED( bts::chain::withdraw_permission_object, (bts::db::object), 
+FC_REFLECT_DERIVED( bts::chain::withdraw_permission_object, (bts::db::object),
                    (withdraw_from_account)
                    (authorized_account)
-                   (withdraw_limit)
+                   (withdrawal_limit)
                    (period_sec)
                    (recurring)
                    (starting_time)

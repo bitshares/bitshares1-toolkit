@@ -560,42 +560,75 @@ share_type witness_create_operation::calculate_fee(const fee_schedule_type& k) c
    return k.at(delegate_create_fee_type);
 }
 
-void    update_withdraw_permission_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
+void withdraw_permission_update_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
 {
    active_auth_set.insert( withdraw_from_account );
 }
 
-void       update_withdraw_permission_operation::validate()const 
-{ 
-   FC_ASSERT( authorized_account != withdraw_from_account );
-   FC_ASSERT( withdraw_limit.amount > 0 );
-   FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( period_sec > 0 );
-}
-
-share_type update_withdraw_permission_operation::calculate_fee( const fee_schedule_type& schedule )const 
+void withdraw_permission_update_operation::validate()const
 {
-   return schedule.at( update_withdraw_permission_fee_type );
+   FC_ASSERT( withdrawal_limit.amount > 0 );
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( withdrawal_period_sec > 0 );
 }
 
-void       withdraw_with_permission_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
+share_type withdraw_permission_update_operation::calculate_fee( const fee_schedule_type& schedule )const
+{
+   return schedule.at( withdraw_permission_update_fee_type );
+}
+
+void withdraw_permission_claim_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
 {
    active_auth_set.insert( withdraw_to_account );
 }
 
-void       withdraw_with_permission_operation::validate()const 
-{ 
+void withdraw_permission_claim_operation::validate()const
+{
    FC_ASSERT( withdraw_to_account != withdraw_from_account );
    FC_ASSERT( amount_to_withdraw.amount > 0 );
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( withdraw_permission.instance.value != 0 );
 }
 
-share_type withdraw_with_permission_operation::calculate_fee( const fee_schedule_type& schedule )const 
+share_type withdraw_permission_claim_operation::calculate_fee( const fee_schedule_type& schedule )const
 {
    auto bts_fee_required = schedule.at( transfer_fee_type );
    bts_fee_required += share_type((memo.size() * schedule.at( data_fee_type ).value)/1024);
    return bts_fee_required;
+}
+
+void withdraw_permission_delete_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
+{
+   active_auth_set.insert(withdraw_from_account);
+}
+
+void withdraw_permission_delete_operation::validate() const
+{
+   FC_ASSERT( fee.amount >= 0 );
+}
+
+share_type withdraw_permission_delete_operation::calculate_fee(const fee_schedule_type& k) const
+{
+   return k.at(withdraw_permission_update_fee_type);
+}
+
+void withdraw_permission_create_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
+{
+   active_auth_set.insert(withdraw_from_account);
+}
+
+void withdraw_permission_create_operation::validate() const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( withdrawal_limit.amount > 0 );
+   //TODO: better bounds checking on these values
+   FC_ASSERT( withdrawal_period_sec > 0 );
+   FC_ASSERT( periods_until_expiration > 0 );
+}
+
+share_type withdraw_permission_create_operation::calculate_fee(const fee_schedule_type& k) const
+{
+   return k.at(withdraw_permission_update_fee_type);
 }
 
 

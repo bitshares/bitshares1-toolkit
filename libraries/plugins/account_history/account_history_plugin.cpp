@@ -75,10 +75,17 @@ struct operation_get_impacted_accounts
    void operator()( const asset_fund_fee_pool_operation& o )const { }
    void operator()( const delegate_publish_feeds_operation& o )const { }
    void operator()( const delegate_create_operation& o )const { }
-   void operator()( const withdraw_with_permission_operation& o )const{
+
+   void operator()( const withdraw_permission_create_operation& o )const{
+      _impacted.insert(o.authorized_account);
+   }
+   void operator()( const withdraw_permission_claim_operation& o )const{
       _impacted.insert( o.withdraw_from_account );
    }
-   void operator()( const update_withdraw_permission_operation& o )const{
+   void operator()( const withdraw_permission_update_operation& o )const{
+      _impacted.insert( o.authorized_account );
+   }
+   void operator()( const withdraw_permission_delete_operation& o )const{
       _impacted.insert( o.authorized_account );
    }
 

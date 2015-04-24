@@ -770,4 +770,104 @@ BOOST_FIXTURE_TEST_CASE( proposal_owner_authority_complete, database_fixture )
    }
 } FC_LOG_AND_RETHROW() }
 
+BOOST_FIXTURE_TEST_CASE( max_authority_membership, database_fixture )
+{
+   try
+   {
+      //Get a sane head block time
+      generate_block();
+
+      db.modify(db.get_global_properties(), [](global_property_object& p) {
+         p.parameters.genesis_proposal_review_period = fc::hours(1).to_seconds();
+      });
+
+      transaction tx;
+      processed_transaction ptx;
+
+      private_key_type genesis_key = generate_private_key("genesis");
+      // Sam is the creator of accounts
+      private_key_type sam_key = generate_private_key("sam");
+
+      account_object sam_account_object = create_account( "sam", sam_key );
+      account_object genesis_account_object = genesis_account(db);
+
+      const asset_object& core = asset_id_type()(db);
+
+      transfer(genesis_account_object, sam_account_object, core.amount(100000));
+
+      // have Sam create some keys
+
+      int keys_to_create = 2*BTS_DEFAULT_MAX_AUTHORITY_MEMBERSHIP;
+      vector<private_key_type> private_keys;
+
+      tx = transaction();
+      private_keys.reserve( keys_to_create );
+      for( int i=0; i<keys_to_create; i++ )
+      {
+         string seed = "this_is_a_key_" + std::to_string(i);
+         private_key_type privkey = generate_private_key( seed );
+         private_keys.push_back( privkey );
+
+         key_create_operation kc_op;
+         kc_op.fee_paying_account = sam_account_object.id;
+         kc_op.key_data = public_key_type( privkey.get_public_key() );
+         tx.operations.push_back( kc_op );
+      }
+      ptx = db.push_transaction(tx, ~0);
+
+      vector<key_id_type> key_ids;
+
+      key_ids.reserve( keys_to_create );
+      for( int i=0; i<keys_to_create; i++ )
+          key_ids.push_back( key_id_type( ptx.operation_results[i].get<object_id_type>() ) );
+
+      // now try registering unnamed accounts with n keys, 0 < n < 20
+
+      // TODO:  Make sure it throws / accepts properly when
+      //   max_account_authority is changed in global parameteres
+
+      for( int num_keys=0; num_keys<=keys_to_create; num_keys++ )
+      {
+         // try registering unnamed account with n keys
+
+         authority test_authority;
+         test_authority.weight_threshold = num_keys;
+
+         for( int i=0; i<num_keys; i++ )
+            test_authority.auths[ key_ids[i] ] = 1;
+
+         auto check_tx = [&]( const authority& owner_auth,
+                              const authority& active_auth,
+                              uint16_t max_authority_membership = BTS_DEFAULT_MAX_AUTHORITY_MEMBERSHIP )
+         {
+             account_create_operation anon_create_op;
+             transaction tx;
+
+             anon_create_op.owner = owner_auth;
+             anon_create_op.active = active_auth;
+             anon_create_op.registrar = sam_account_object.id;
+             anon_create_op.memo_key = sam_account_object.memo_key;
+             anon_create_op.voting_key = sam_account_object.voting_key;
+
+             tx.operations.push_back( anon_create_op );
+
+             if( num_keys > max_authority_membership )
+             {
+                BOOST_REQUIRE_THROW(db.push_transaction(tx, ~0), fc::exception);
+             }
+             else
+             {
+                db.push_transaction(tx, ~0);
+             }
+             return;
+         };
+
+         check_tx( sam_account_object.owner, test_authority  );
+         check_tx( test_authority, sam_account_object.active );
+         check_tx( test_authority, test_authority );
+      }
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()

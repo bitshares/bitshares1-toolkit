@@ -22,6 +22,9 @@ object_id_type account_create_evaluator::do_evaluate( const account_create_opera
                  ("fee_paying_account->referral_percent",fee_paying_account->referrer_percent) );
    }
 
+   const auto& chain_params = db().get_global_properties().parameters;
+   FC_ASSERT( op.owner.auths.size() <= chain_params.maximum_authority_membership );
+   FC_ASSERT( op.active.auths.size() <= chain_params.maximum_authority_membership );
    for( auto id : op.owner.auths )
       FC_ASSERT( is_relative(id.first) || db().find<object>(id.first) );
    for( auto id : op.active.auths )
@@ -92,12 +95,19 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
    FC_ASSERT( !o.voting_key || is_relative(*o.voting_key) || db().find_object(*o.voting_key) );
    FC_ASSERT( !o.memo_key || is_relative(*o.memo_key) || db().find_object(*o.memo_key) );
 
+   const auto& chain_params = db().get_global_properties().parameters;
    if( o.owner )
+   {
+      FC_ASSERT( o.owner->auths.size() <= chain_params.maximum_authority_membership );
       for( auto id : o.owner->auths )
          FC_ASSERT( is_relative(id.first) || db().find<object>(id.first) );
+   }
    if( o.active )
+   {
+      FC_ASSERT( o.active->auths.size() <= chain_params.maximum_authority_membership );
       for( auto id : o.active->auths )
          FC_ASSERT( is_relative(id.first) || db().find<object>(id.first) );
+   }
 
    acnt = &o.account(d);
    if( o.upgrade_to_prime ) FC_ASSERT( !acnt->is_prime() );
