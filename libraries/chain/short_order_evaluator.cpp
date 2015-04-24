@@ -149,7 +149,9 @@ asset call_order_update_evaluator::do_evaluate(const call_order_update_operation
 
    FC_ASSERT( o.amount_to_cover.asset_id == _order->debt_type() );
 
-   if( o.amount_to_cover.amount != _order->get_debt().amount )
+   FC_ASSERT( o.amount_to_cover.amount <= _order->get_debt().amount );
+
+   if( o.amount_to_cover.amount < _order->get_debt().amount )
    {
       FC_ASSERT( (_order->get_debt() - o.amount_to_cover) *
                  price::call_price(_order->get_debt() - o.amount_to_cover,
@@ -161,7 +163,7 @@ asset call_order_update_evaluator::do_evaluate(const call_order_update_operation
       FC_ASSERT( o.amount_to_cover < _order->get_debt(), "Cover amount is greater than debt." );
    } else {
       _closing_order = true;
-      FC_ASSERT( o.collateral_to_add.amount == 0 );
+      FC_ASSERT( o.collateral_to_add.amount == -_order->get_collateral().amount, "", ("collateral", _order->get_collateral()) );
       return _order->get_collateral();
    }
    return asset();

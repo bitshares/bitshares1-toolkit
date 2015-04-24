@@ -1191,7 +1191,7 @@ BOOST_AUTO_TEST_CASE( full_cover_test )
 
       call_order_update_operation op;
       op.funding_account = debt_holder.id;
-      op.collateral_to_add = core.amount(0);
+      op.collateral_to_add = core.amount(-400);
       op.amount_to_cover = bit_usd.amount(100);
 
       trx.operations.push_back(op);
@@ -1273,7 +1273,9 @@ BOOST_AUTO_TEST_CASE( partial_cover_test )
       ilog("..." );
       transfer(usd_holder, debt_holder, bit_usd.amount(50), bit_usd.amount(0));
       trx.operations.clear();
+      op.collateral_to_add.amount = -460;
       op.validate();
+      ilog("..." );
       trx.operations.push_back(op);
       db.push_transaction(trx, ~0);
 

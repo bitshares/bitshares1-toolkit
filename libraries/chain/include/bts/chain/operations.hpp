@@ -16,6 +16,15 @@ namespace bts { namespace chain {
 
    typedef fc::static_variant<object_id_type,asset> operation_result;
 
+   struct balance_accumulator
+   {
+      void  adjust( account_id_type account, const asset& delta )
+      {
+         balance[ std::make_pair(account, delta.asset_id) ] += delta.amount;
+      }
+      flat_map< pair<account_id_type, asset_id_type>, share_type > balance;
+   };
+
    struct key_create_operation
    {
       account_id_type  fee_paying_account;
@@ -23,9 +32,11 @@ namespace bts { namespace chain {
       static_variant<address,public_key_type> key_data;
 
       account_id_type fee_payer()const { return fee_paying_account; }
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
-      share_type calculate_fee( const fee_schedule_type& k )const{ return k.at( key_create_fee_type ); }
-      void       validate()const;
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
+      share_type      calculate_fee( const fee_schedule_type& k )const{ return k.at( key_create_fee_type ); }
+      void            validate()const;
+
+      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
 
    struct account_create_operation
@@ -53,6 +64,8 @@ namespace bts { namespace chain {
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
+
+      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -96,6 +109,8 @@ namespace bts { namespace chain {
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const { FC_ASSERT( fee.amount >= 0 ); FC_ASSERT(new_listing < 0x4); }
       share_type calculate_fee(const fee_schedule_type& k)const { return k.at(account_whitelist_fee_type); }
+
+      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
 
    struct account_update_operation
@@ -118,6 +133,7 @@ namespace bts { namespace chain {
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>& owner_auth_set)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
+      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -136,6 +152,7 @@ namespace bts { namespace chain {
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
+      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -154,6 +171,11 @@ namespace bts { namespace chain {
       void        get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void        validate()const;
       share_type  calculate_fee( const fee_schedule_type& k )const;
+
+      void get_balance_delta( balance_accumulator& acc )const {
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( account, asset(amount) );
+      }
    };
 
    /**
@@ -178,6 +200,8 @@ namespace bts { namespace chain {
       void        get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void        validate()const;
       share_type  calculate_fee( const fee_schedule_type& k )const;
+
+      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -203,6 +227,8 @@ namespace bts { namespace chain {
       void       get_required_auth( flat_set<account_id_type>&, flat_set<account_id_type>& )const {}
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
+
+      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -223,6 +249,8 @@ namespace bts { namespace chain {
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
+
+      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -240,6 +268,12 @@ namespace bts { namespace chain {
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
+
+      void get_balance_delta( balance_accumulator& acc )const 
+      { 
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( to_account, amount );
+      }
    };
 
    /**
@@ -262,6 +296,7 @@ namespace bts { namespace chain {
       { active_auth_set.insert(account_id_type()); }
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
+      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
 
    struct transfer_operation
@@ -276,6 +311,12 @@ namespace bts { namespace chain {
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
+      void get_balance_delta( balance_accumulator& acc )const 
+      { 
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( from, -amount );
+         acc.adjust( to, amount );
+      }
    };
 
    struct asset_create_operation
@@ -313,6 +354,7 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
+      void            get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -341,6 +383,11 @@ namespace bts { namespace chain {
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& account_set )const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
+      void       get_balance_delta( balance_accumulator& acc )const 
+      { 
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( fee_payer(), -amount );
+      }
    };
 
    struct asset_update_operation
@@ -367,9 +414,10 @@ namespace bts { namespace chain {
       optional<flat_set<account_id_type>> new_blacklist_authorities;
 
       account_id_type fee_payer()const { return issuer; }
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
-      void validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+      void            get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -410,6 +458,11 @@ namespace bts { namespace chain {
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
       price           get_price()const { return amount_to_sell / min_to_receive; }
+      void            get_balance_delta( balance_accumulator& acc )const 
+      { 
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( seller, -amount_to_sell );
+      }
    };
 
 
@@ -422,13 +475,20 @@ namespace bts { namespace chain {
    struct limit_order_cancel_operation
    {
       limit_order_id_type order;
+      /** must be order->seller */
       account_id_type     fee_paying_account;
       asset               fee;
 
       account_id_type fee_payer()const { return fee_paying_account; }
-      void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
-      void validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result )const 
+      { 
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( fee_payer(), result.get<asset>() );
+      }
    };
 
    /**
@@ -474,6 +534,12 @@ namespace bts { namespace chain {
        * selling collateral to receive debt
        **/
       price call_price() const { return price::call_price(amount_to_sell, collateral, maintenance_collateral_ratio); }
+
+      void            get_balance_delta( balance_accumulator& acc )const 
+      { 
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( seller, -collateral );
+      }
    };
 
    /**
@@ -487,9 +553,15 @@ namespace bts { namespace chain {
       asset               fee; ///< paid by order->seller
 
       account_id_type fee_payer()const { return fee_paying_account; }
-      void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
-      void validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+                      
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result )const 
+      { 
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( fee_payer(), result.get<asset>() );
+      }
    };
 
 
@@ -514,9 +586,15 @@ namespace bts { namespace chain {
       uint16_t            maintenance_collateral_ratio = 0; ///< 0 means don't change, 1000 means feed
 
       account_id_type fee_payer()const { return funding_account; }
-      void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
-      void validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+      void            get_balance_delta( balance_accumulator& acc )const 
+      { 
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( funding_account, -collateral_to_add );
+         acc.adjust( funding_account, -amount_to_cover );
+      }
    };
 
    struct asset_issue_operation
@@ -530,6 +608,12 @@ namespace bts { namespace chain {
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
+
+      void            get_balance_delta( balance_accumulator& acc )const 
+      { 
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( issue_to_account, asset_to_issue );
+      }
    };
 
    /**
@@ -589,6 +673,8 @@ namespace bts { namespace chain {
       void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
+
+      void            get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -624,6 +710,7 @@ namespace bts { namespace chain {
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& owner_auth_set)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
+      void       get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -647,6 +734,7 @@ namespace bts { namespace chain {
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& owner_auth_set)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
+      void       get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
    ///@}
 
@@ -667,6 +755,10 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const{}
       void            validate()const { FC_ASSERT( !"virtual operation" ); }
       share_type      calculate_fee( const fee_schedule_type& k )const { return share_type(); }
+      void            get_balance_delta( balance_accumulator& acc )const { 
+         // acc.adjust( fee_payer(), -fee );  fee never actually entered the account, this is a virtual operation
+         acc.adjust( account_id, receives );
+      }
    };
 
    /**
@@ -701,10 +793,11 @@ namespace bts { namespace chain {
        */
       uint32_t           recurring;
 
-
+      account_id_type fee_payer()const { return withdraw_from_account; }
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
+      void       get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -728,9 +821,17 @@ namespace bts { namespace chain {
       /** encrypted to withdraw_from_account->memo_key */
       vector<char>                memo;
 
+      account_id_type fee_payer()const { return withdraw_to_account; }
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
+                      
+      void            get_balance_delta( balance_accumulator& acc )const 
+      { 
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( withdraw_from_account, -amount_to_withdraw );
+         acc.adjust( withdraw_to_account, amount_to_withdraw );
+      }
    };
 
    /**
@@ -753,9 +854,16 @@ namespace bts { namespace chain {
       uint16_t                interest_apr    = 0; ///< 10000 == 100% and is max value
       price                   collateral_rate;
 
+      account_id_type fee_payer()const { return creator; }
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
+
+      void        get_balance_delta( balance_accumulator& acc )const 
+      { 
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( creator, -amount );
+      }
    };
 
    /**
@@ -768,9 +876,16 @@ namespace bts { namespace chain {
       bond_offer_id_type    offer_id;
       asset                 refund;
 
+      account_id_type fee_payer()const { return creator; }
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
+
+      void            get_balance_delta( balance_accumulator& acc )const 
+      { 
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( creator, refund );
+      }
    };
 
    /**
@@ -783,9 +898,16 @@ namespace bts { namespace chain {
       bond_offer_id_type  offer_id;
       asset               amount; ///< the amount withdrawn from claimers account 
 
+      account_id_type fee_payer()const { return claimer; }
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
+
+      void            get_balance_delta( balance_accumulator& acc )const 
+      { 
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( claimer, -amount );
+      }
    };
 
    /**
@@ -799,10 +921,19 @@ namespace bts { namespace chain {
       account_id_type  claimer;
       bond_id_type     bond_id;
       asset            payoff_amount;
+      asset            collateral_claimed;
 
+      account_id_type fee_payer()const { return claimer; }
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
+
+      void            get_balance_delta( balance_accumulator& acc )const 
+      { 
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( claimer, -payoff_amount );
+         acc.adjust( claimer, collateral_claimed );
+      }
    };
 
 
@@ -1034,6 +1165,6 @@ FC_REFLECT( bts::chain::withdraw_with_permission_operation, (fee)(withdraw_permi
 FC_REFLECT( bts::chain::create_bond_offer_operation, (fee)(creator)(offer_to_borrow)(amount)(loan_period_sec)(min_loan_period_sec)(interest_apr)(collateral_rate) )
 FC_REFLECT( bts::chain::cancel_bond_offer_operation, (fee)(creator)(offer_id)(refund) )
 FC_REFLECT( bts::chain::accept_bond_offer_operation, (fee)(claimer)(offer_id)(amount) )
-FC_REFLECT( bts::chain::claim_bond_collateral_operation, (fee)(claimer)(bond_id)(payoff_amount) )
+FC_REFLECT( bts::chain::claim_bond_collateral_operation, (fee)(claimer)(bond_id)(payoff_amount)(collateral_claimed) )
 
 

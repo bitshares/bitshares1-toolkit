@@ -402,7 +402,9 @@ void call_order_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( collateral_to_add.amount > 0 || amount_to_cover.amount > 0 || maintenance_collateral_ratio > 0 );
-   FC_ASSERT( collateral_to_add.amount >= 0 );
+   if( amount_to_cover.amount == 0 )   FC_ASSERT( collateral_to_add.amount >= 0 ); 
+   if( collateral_to_add.amount.value <= 0 ) FC_ASSERT( amount_to_cover.amount.value > 0 );
+
    FC_ASSERT( amount_to_cover.amount >= 0 );
    FC_ASSERT( amount_to_cover.asset_id != collateral_to_add.asset_id );
    FC_ASSERT( maintenance_collateral_ratio == 0 || maintenance_collateral_ratio >= 1000 );
