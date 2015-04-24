@@ -93,7 +93,7 @@ namespace bts { namespace chain {
       signature_fee_type, ///< a surcharge on transactions with more than 2 signatures.
       global_parameters_update_fee_type, ///< the cost to update the global parameters
       prime_upgrade_fee_type, ///< the cost to upgrade an account to prime
-      update_withdraw_permission_fee_type, ///< the cost to create/update a withdraw permission
+      withdraw_permission_update_fee_type, ///< the cost to create/update a withdraw permission
       create_bond_offer_fee_type,
       cancel_bond_offer_fee_type,
       accept_bond_offer_fee_type,
@@ -386,7 +386,7 @@ FC_REFLECT_ENUM( bts::chain::fee_type,
                  (signature_fee_type)
                  (global_parameters_update_fee_type)
                  (prime_upgrade_fee_type)
-                 (update_withdraw_permission_fee_type)
+                 (withdraw_permission_update_fee_type)
                  (create_bond_offer_fee_type)
                  (cancel_bond_offer_fee_type)
                  (accept_bond_offer_fee_type)

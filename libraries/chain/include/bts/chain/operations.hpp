@@ -651,9 +651,9 @@ namespace bts { namespace chain {
    ///@}
 
    /**
-    *  This is a virtual operation that is created while matching orders and
-    *  emited for the purpose of accurately tracking account history, acclerating
-    *  reindex.
+    * This is a virtual operation that is created while matching orders and
+    * emited for the purpose of accurately tracking account history, acclerating
+    * reindex.
     */
    struct fill_order_operation
    {
@@ -670,64 +670,128 @@ namespace bts { namespace chain {
    };
 
    /**
-    *  Creates and configures a withdraw permission which allows one account to
-    *  authorize another account to withdraw at a certain frequency.
+    * @brief Create a new withdrawal permission
     *
-    *  Fee is paid by withdraw_from_account which is required to authorize this operation
+    * This operation creates a withdrawal permission, which allows some authorized account to withdraw from an
+    * authorizing account. This operation is primarily useful for scheduling recurring payments.
     *
-    *  If withdraw_permission is not 0 then withdraw_from_account and authorized_account
-    *  must match those stored in the existing withdraw_permission_object.
+    * Withdrawal permissions define withdrawal periods, which is a span of time during which the authorized account may
+    * make a withdrawal. Only one withdrawal may occur per period for a given permission. Any subsequent withdrawals
+    * will fail until the next period begins, even if the sum of all withdrawals within a given period does not exceed
+    * the withdrawal limit.
     *
-    *  To remove a permission set the recurring count to 0
+    * Withdrawal permissions authorize only a specific pairing, i.e. a permission only authorizes one specified
+    * authorized account to withdraw from one specified authorizing account. Withdrawals are limited and may not exceet
+    * the withdrawal limit. The withdrawal must be made in the same asset as the limit; attempts with withdraw any other
+    * asset type will be rejected.
     *
-    *  @return the withdraw_permission id
+    * The fee for this operation is paid by withdraw_from_account, and this account is required to authorize this
+    * operation.
     */
-   struct update_withdraw_permission_operation
+   struct withdraw_permission_create_operation
    {
-      asset                       fee;
-      /** if this id is 0 then it will create a new permission */
-      withdraw_permission_id_type withdraw_permission;
-      account_id_type             withdraw_from_account;
-      account_id_type             authorized_account;
-      asset                       withdraw_limit;
-      uint32_t                    period_sec;
-      /**
-       *  Tracks the start of the first withdraw period
-       */
-      time_point_sec     starting_time;
+      asset             fee;
+      /// The account authorizing withdrawals from its balances
+      account_id_type   withdraw_from_account;
+      /// The account authorized to make withdrawals from withdraw_from_account
+      account_id_type   authorized_account;
+      /// The maximum amount authorized_account is allowed to withdraw in a given withdrawal period
+      asset             withdrawal_limit;
+      /// Length of the withdrawal period in seconds
+      uint32_t          withdrawal_period_sec;
+      /// The number of withdrawal periods this permission is valid for
+      uint32_t          periods_until_expiration;
+      /// Time at which the first withdrawal period begins
+      time_point_sec    period_start_time;
 
-      /**
-       *  The maximum number of withdraws authorized, set to 0 to remove the permission
-       */
-      uint32_t           recurring;
-
-
+      account_id_type fee_payer()const { return withdraw_from_account; }
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
    };
 
    /**
-    *  Requires signature of withdraw_to_account
-    *  Subtracts fee from withdraw_to_account
-    *  Subtracts amount from withdraw_from_account
-    *  Adds amount to withdraw_to_account
-    *  Updates last_withdraw_time on withdraw_permission to head block time
-    *  Updates the start_time to the first multiple of period after last_withdraw_time
-    *  Decrements recurring count on withdraw_permission
+    * @brief Update an existing withdraw permission
+    *
+    * This oeration is used to update the settings for an existing withdrawal permission.
+    *
+    * Fee is paid by withdraw_from_account, which is required to authorize this operation
     */
-   struct withdraw_with_permission_operation
+   struct withdraw_permission_update_operation
    {
-      /** paid by withdraw_to_account */
+      asset                         fee;
+      /// This account pays the fee. Must match permission_to_update->withdraw_from_account
+      account_id_type               withdraw_from_account;
+      /// The account authorized to make withdrawals. Must match permission_to_update->authorized_account
+      account_id_type               authorized_account;
+      /// ID of the permission which is being updated
+      withdraw_permission_id_type   permission_to_update;
+      /// New maximum amount the withdrawer is allowed to charge per withdrawal period
+      asset                         withdrawal_limit;
+      /// New length of the period between withdrawals
+      uint32_t                      withdrawal_period_sec;
+      /// New beginning of the next withdrawal period
+      time_point_sec                starting_time;
+      /// The new number of withdrawal periods for which this permission will be valid
+      uint32_t                      periods_until_expiration;
+
+      account_id_type fee_payer()const { return withdraw_from_account; }
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
+    * @brief Withdraw from an account which has published a withdrawal permission
+    *
+    * This operation is used to withdraw from an account which has authorized such a withdrawal. It may be executed at
+    * most once per withdrawal period for the given permission. On execution, amount_to_withdraw is transferred from
+    * withdraw_from_account to withdraw_to_account, assuming amount_to_withdraw is within the withdrawal limit. The
+    * withdrawal permission will be updated to note that the withdrawal for the current period has occurred, and
+    * further withdrawals will not be permitted until the next withdrawal period, assuming the permission has not
+    * expired. This operation may be executed at any time within the current withdrawal period.
+    *
+    * Fee is paid by withdraw_to_account, which is required to authorize this operation
+    */
+   struct withdraw_permission_claim_operation
+   {
+      /// Paid by withdraw_to_account
       asset                       fee;
+      /// ID of the permission authorizing this withdrawal
       withdraw_permission_id_type withdraw_permission;
-      /** must match withdraw_permision->authorized_account */
+      /// Must match withdraw_permission->withdraw_from_account
       account_id_type             withdraw_from_account;
+      /// Must match withdraw_permision->authorized_account
       account_id_type             withdraw_to_account;
+      /// Amount to withdraw. Must not exceed withdraw_permission->withdrawal_limit
       asset                       amount_to_withdraw;
-      /** encrypted to withdraw_from_account->memo_key */
+      /// Memo for withdraw_from_account. Should generally be encrypted with withdraw_from_account->memo_key
       vector<char>                memo;
 
+      account_id_type fee_payer()const { return withdraw_to_account; }
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+   };
+
+   /**
+    * @brief Delete an existing withdrawal permission
+    *
+    * This operation cancels a withdrawal permission, thus preventing any future withdrawals using that permission.
+    *
+    * Fee is paid by withdraw_from_account, which is required to authorize this operation
+    */
+   struct withdraw_permission_delete_operation
+   {
+      asset                         fee;
+      /// Must match withdrawal_permission->withdraw_from_account. This account pays the fee.
+      account_id_type               withdraw_from_account;
+      /// The account previously authorized to make withdrawals. Must match withdrawal_permission->authorized_account
+      account_id_type               authorized_account;
+      /// ID of the permission to be revoked.
+      withdraw_permission_id_type   withdrawal_permission;
+
+      account_id_type fee_payer()const { return withdraw_from_account; }
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
@@ -735,17 +799,17 @@ namespace bts { namespace chain {
 
    /**
     * Bond offers are objects that exist on the blockchain and can be
-    * filled in full or in part by someone using the accept_bond_offer 
+    * filled in full or in part by someone using the accept_bond_offer
     * operation.   When the offer is accepted a new bond_object is
     * created that defines the terms of the loan.
-    *  
+    *
     *  @return bond_offer_id
     */
    struct create_bond_offer_operation
    {
       asset                   fee;
       account_id_type         creator;
-      bool                    offer_to_borrow; // true if borrowign amount, else lending amount 
+      bool                    offer_to_borrow; // true if borrowign amount, else lending amount
       asset                   amount;
       /** after this time the lender can let the loan float or collect the collateral at will */
       uint32_t                loan_period_sec = 0;
@@ -781,7 +845,7 @@ namespace bts { namespace chain {
       asset               fee;
       account_id_type     claimer;
       bond_offer_id_type  offer_id;
-      asset               amount; ///< the amount withdrawn from claimers account 
+      asset               amount; ///< the amount withdrawn from claimers account
 
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
@@ -830,8 +894,8 @@ namespace bts { namespace chain {
             proposal_create_operation,
             proposal_update_operation,
             proposal_delete_operation,
-            update_withdraw_permission_operation,
-            withdraw_with_permission_operation,
+            withdraw_permission_update_operation,
+            withdraw_permission_claim_operation,
             fill_order_operation,
             global_parameters_update_operation
                /* TODO: once methods on these ops are implemented
@@ -1029,8 +1093,13 @@ FC_REFLECT( bts::chain::proposal_delete_operation, (fee_paying_account)(using_ow
 FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (from_account)(asset_id)(amount)(fee) );
 
 FC_REFLECT( bts::chain::global_parameters_update_operation, (new_parameters)(fee) );
-FC_REFLECT( bts::chain::update_withdraw_permission_operation, (fee)(withdraw_permission)(withdraw_from_account)(authorized_account)(withdraw_limit)(period_sec)(starting_time)(recurring) );
-FC_REFLECT( bts::chain::withdraw_with_permission_operation, (fee)(withdraw_permission)(withdraw_from_account)(withdraw_to_account)(amount_to_withdraw)(memo) );
+FC_REFLECT( bts::chain::withdraw_permission_create_operation, (fee)(withdraw_from_account)(authorized_account)
+            (withdrawal_limit)(withdrawal_period_sec)(periods_until_expiration)(period_start_time) )
+FC_REFLECT( bts::chain::withdraw_permission_update_operation, (fee)(withdraw_from_account)(authorized_account)
+            (permission_to_update)(withdrawal_limit)(withdrawal_period_sec)(starting_time)(periods_until_expiration) )
+FC_REFLECT( bts::chain::withdraw_permission_claim_operation, (fee)(withdraw_permission)(withdraw_from_account)(withdraw_to_account)(amount_to_withdraw)(memo) );
+FC_REFLECT( bts::chain::withdraw_permission_delete_operation, (fee)(withdraw_from_account)(authorized_account)
+            (withdrawal_permission) )
 FC_REFLECT( bts::chain::create_bond_offer_operation, (fee)(creator)(offer_to_borrow)(amount)(loan_period_sec)(min_loan_period_sec)(interest_apr)(collateral_rate) )
 FC_REFLECT( bts::chain::cancel_bond_offer_operation, (fee)(creator)(offer_id)(refund) )
 FC_REFLECT( bts::chain::accept_bond_offer_operation, (fee)(claimer)(offer_id)(amount) )
