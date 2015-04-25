@@ -8,11 +8,43 @@ namespace bts { namespace chain {
    class generic_evaluator;
    class transaction_evaluation_state;
 
-   class post_evaluator
+   /**
+    * Observes evaluation events, providing
+    * pre- and post-evaluation hooks.
+    *
+    * Every call to pre_evaluate() is followed by
+    * a call to either post_evaluate() or evaluation_failed().
+    *
+    * A subclass which needs to do a "diff" can gather some
+    * "before" state into its members in pre_evaluate(),
+    * then post_evaluate() will have both "before"
+    * and "after" state, and will be able to do the diff.
+    *
+    * evaluation_failed() is a cleanup method which notifies
+    * the subclass to "throw away" the diff.
+    */
+   class evaluation_observer
    {
       public:
-         virtual ~post_evaluator(){}
-         virtual void post_evaluate( generic_evaluator& ge )const = 0;
+         virtual ~evaluation_observer(){}
+
+         virtual void pre_evaluate(
+             const transaction_evaluation_state& eval_state,
+             const operation& op,
+             bool apply,
+             generic_evaluator* ge ) {}
+
+         virtual void post_evaluate(
+             const transaction_evaluation_state& eval_state,
+             const operation& op,
+             bool apply,
+             generic_evaluator* ge ) {}
+
+         virtual void evaluation_failed(
+             const transaction_evaluation_state& eval_state,
+             const operation& op,
+             bool apply,
+             generic_evaluator* ge ) {}
    };
 
    class generic_evaluator
@@ -112,7 +144,7 @@ namespace bts { namespace chain {
          virtual ~op_evaluator(){}
          virtual operation_result evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply ) = 0;
 
-         vector< shared_ptr<post_evaluator> > post_evals;
+         vector< evaluation_observer* > eval_observers;
    };
 
    template<typename T>
@@ -121,9 +153,57 @@ namespace bts { namespace chain {
       public:
          virtual operation_result evaluate( transaction_evaluation_state& eval_state, const operation& op, bool apply = true ) override
          {
+             // fc::exception from observers are suppressed.
+             // fc::exception from evaluation is deferred (re-thrown
+             // after all observers receive evaluation_failed)
+
              T eval;
-             auto result = eval.start_evaluate( eval_state, op, apply );
-             for( const auto& pe : post_evals ) pe->post_evaluate( eval );
+             optional< fc::exception > evaluation_exception;
+             size_t observer_count = 0;
+             decltype( eval.start_evaluate( eval_state, op, apply ) ) result;
+
+             for( const auto& obs : eval_observers )
+             {
+                try
+                {
+                   obs->pre_evaluate( eval_state, op, apply, &eval );
+                }
+                catch( const fc::exception& e )
+                {
+                   elog( "suppressed exception in observer pre method:\n{e}", ( "e", e.to_detail_string() ) );
+                }
+                observer_count++;
+             }
+
+             try
+             {
+                result = eval.start_evaluate( eval_state, op, apply );
+             }
+             catch( const fc::exception& e )
+             {
+                evaluation_exception = e;
+                elog( "deferred evaluation_exception:\n{e}", ( "e", e.to_detail_string() ) );
+             }
+
+             while( observer_count > 0 )
+             {
+                --observer_count;
+                const auto& obs = eval_observers[ observer_count ];
+                try
+                {
+                   if( !evaluation_exception.valid() )
+                      obs->post_evaluate( eval_state, op, apply, &eval );
+                   else
+                      obs->evaluation_failed( eval_state, op, apply, &eval );
+                }
+                catch( const fc::exception& e )
+                {
+                   elog( "suppressed exception in observer post method:\n{e}", ( "e", e.to_detail_string() ) );
+                }
+             }
+
+             if( evaluation_exception.valid() )
+                throw *evaluation_exception;
              return result;
          }
    };
