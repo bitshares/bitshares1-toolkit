@@ -7,22 +7,21 @@
 #include <bts/chain/exceptions.hpp>
 
 namespace bts { namespace chain {
-   bool transaction_evaluation_state::check_authority( const account_object* account, authority::classification auth_class, int depth )
+   bool transaction_evaluation_state::check_authority( const account_object& account, authority::classification auth_class, int depth )
    {
-      FC_ASSERT( account != nullptr );
-      FC_ASSERT( account->id.instance() != 0 || _is_proposed_trx || _skip_signature_check );
+      FC_ASSERT( account.id.instance() != 0 || _is_proposed_trx || _skip_signature_check );
 
-      if( _skip_signature_check || approved_by.find(make_pair(account->id, auth_class)) != approved_by.end() )
+      if( _skip_signature_check || approved_by.find(make_pair(account.id, auth_class)) != approved_by.end() )
          return true;
 
       const authority* au = nullptr;
       switch( auth_class )
       {
          case authority::owner:
-            au = &account->owner;
+            au = &account.owner;
             break;
          case authority::active:
-            au = &account->active;
+            au = &account.active;
             break;
          default:
             FC_ASSERT( false, "Invalid Account Auth Class" );
@@ -45,7 +44,7 @@ namespace bts { namespace chain {
                      elog("Failing authority verification due to recursion depth.");
                      return false;
                   }
-                  if( check_authority( dynamic_cast<const account_object*>( &auth_item ), auth_class, depth + 1 ) )
+                  if( check_authority( *dynamic_cast<const account_object*>( &auth_item ), auth_class, depth + 1 ) )
                   {
                      approved_by.insert( std::make_pair(auth_item.id,auth_class) );
                      total_weight += auth.second;
@@ -69,7 +68,7 @@ namespace bts { namespace chain {
          }
          if( total_weight >= au->weight_threshold )
          {
-            approved_by.insert( std::make_pair(account->id, auth_class) );
+            approved_by.insert( std::make_pair(account.id, auth_class) );
             return true;
          }
       }

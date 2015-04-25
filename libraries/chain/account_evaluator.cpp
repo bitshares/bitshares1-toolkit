@@ -47,7 +47,7 @@ object_id_type account_create_evaluator::do_evaluate( const account_create_opera
       // this should be a constant time lookup rather than log(N)
       auto parent_account_itr = acnt_indx.indices().get<by_name>().find( op.name.substr(0,pos) );
       FC_ASSERT( parent_account_itr != acnt_indx.indices().get<by_name>().end() );
-      FC_ASSERT( verify_authority( &*parent_account_itr, authority::owner ) );
+      FC_ASSERT( verify_authority( *parent_account_itr, authority::owner ) );
       FC_ASSERT( op.owner.auths.find( parent_account_itr->id ) != op.owner.auths.end() );
    }
 
@@ -111,9 +111,9 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
 
    acnt = &o.account(d);
    if( o.upgrade_to_prime ) FC_ASSERT( !acnt->is_prime() );
-   if( o.owner ) FC_ASSERT( verify_authority( acnt, authority::owner ) );
-   else if( o.active || o.voting_key || o.memo_key ) FC_ASSERT( verify_authority( acnt, authority::active ) );
-   else if( o.vote ) FC_ASSERT( verify_signature( &acnt->voting_key(d) ) );
+   if( o.owner ) FC_ASSERT( verify_authority( *acnt, authority::owner ) );
+   else if( o.active || o.voting_key || o.memo_key ) FC_ASSERT( verify_authority( *acnt, authority::active ) );
+   else if( o.vote ) FC_ASSERT( verify_signature( acnt->voting_key(d) ) );
 
    if( o.vote )
    {

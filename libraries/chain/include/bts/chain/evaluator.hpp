@@ -12,7 +12,7 @@ namespace bts { namespace chain {
    {
       public:
          virtual ~post_evaluator(){}
-         virtual void post_evaluate( generic_evaluator* ge )const = 0;
+         virtual void post_evaluate( generic_evaluator& ge )const = 0;
    };
 
    class generic_evaluator
@@ -73,7 +73,7 @@ namespace bts { namespace chain {
          void pay_order( const account_object& receiver, const asset& receives, const asset& pays );
          asset pay_market_fees( const asset_object& recv_asset, const asset& receives );
 
-         asset get_balance(const account_object* account_obj, const asset_object* asset_obj);
+         asset get_balance(const account_object& account_obj, const asset_object& asset_obj);
          void  adjust_balance(account_id_type account, asset delta);
 
          /**
@@ -88,8 +88,8 @@ namespace bts { namespace chain {
          /// Pays the fee and returns the number of CORE asset that were paid.
          void pay_fee();
 
-         bool       verify_authority( const account_object*, authority::classification );
-         bool       verify_signature( const key_object* );
+         bool       verify_authority( const account_object&, authority::classification );
+         bool       verify_signature( const key_object& );
 
          asset      calculate_market_fee( const asset_object& aobj, const asset& trade_amount );
 
@@ -123,7 +123,7 @@ namespace bts { namespace chain {
          {
              T eval;
              auto result = eval.start_evaluate( eval_state, op, apply );
-             for( const auto& pe : post_evals ) pe->post_evaluate( &eval );
+             for( const auto& pe : post_evals ) pe->post_evaluate( eval );
              return result;
          }
    };

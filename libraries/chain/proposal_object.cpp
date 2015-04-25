@@ -20,10 +20,10 @@ bool proposal_object::is_authorized_to_execute(database* db) const
 
    // Check all required approvals. If any of them are unsatisfied, return false.
    for( const auto& id : required_active_approvals )
-      if( !dry_run_eval.check_authority(&id(*db), authority::active) )
+      if( !dry_run_eval.check_authority(id(*db), authority::active) )
          return false;
    for( const auto& id : required_owner_approvals )
-      if( !dry_run_eval.check_authority(&id(*db), authority::owner) )
+      if( !dry_run_eval.check_authority(id(*db), authority::owner) )
          return false;
 
    return true;

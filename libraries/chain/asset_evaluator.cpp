@@ -215,7 +215,7 @@ object_id_type asset_settle_evaluator::do_evaluate(const asset_settle_evaluator:
    const database& d = db();
    asset_to_settle = &op.amount.asset_id(d);
    FC_ASSERT(asset_to_settle->is_market_issued());
-   FC_ASSERT(get_balance(d.find(op.account), asset_to_settle) >= op.amount);
+   FC_ASSERT(get_balance(*d.find(op.account), *asset_to_settle) >= op.amount);
 
    return d.get_index_type<force_settlement_index>().get_next_id();
 }

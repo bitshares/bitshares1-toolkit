@@ -17,7 +17,7 @@ object_id_type create_bond_offer_evaluator::do_evaluate( const create_bond_offer
 
     const auto& amount_asset = (op.amount.asset_id == op.collateral_rate.base.asset_id) ? base_asset : quote_asset;
 
-    FC_ASSERT( get_balance( &creator_account, &amount_asset ) >= op.amount );
+    FC_ASSERT( get_balance( creator_account, amount_asset ) >= op.amount );
 
     return object_id_type();
 }

@@ -19,7 +19,7 @@ namespace bts { namespace chain {
          transaction_evaluation_state( database* db = nullptr, bool skip_sig_check = false )
          :_db(db),_skip_signature_check(skip_sig_check){}
 
-         bool check_authority( const account_object*, authority::classification auth_class = authority::active, int depth = 0 );
+         bool check_authority( const account_object&, authority::classification auth_class = authority::active, int depth = 0 );
 
          database& db()const { FC_ASSERT( _db ); return *_db; }
 

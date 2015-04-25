@@ -96,7 +96,7 @@ namespace bts { namespace chain {
       assert( referral + bulk_cashback + accumulated + burned == core_fee_subtotal.amount );
    } FC_CAPTURE_AND_RETHROW() }
 
-   bool generic_evaluator::verify_authority( const account_object* a, authority::classification c )
+   bool generic_evaluator::verify_authority( const account_object& a, authority::classification c )
    {
        return trx_state->check_authority( a, c );
    }
@@ -106,16 +106,15 @@ namespace bts { namespace chain {
       flat_set<account_id_type> owner_auths;
       op.visit(operation_get_required_auths(active_auths, owner_auths));
       for( auto id : active_auths )
-         FC_ASSERT(verify_authority(&id(db()), authority::active) ||
-                   verify_authority(&id(db()), authority::owner), "", ("id", id));
+         FC_ASSERT(verify_authority(id(db()), authority::active) ||
+                   verify_authority(id(db()), authority::owner), "", ("id", id));
       for( auto id : owner_auths )
-         FC_ASSERT(verify_authority(&id(db()), authority::owner), "", ("id", id));
+         FC_ASSERT(verify_authority(id(db()), authority::owner), "", ("id", id));
    }
 
-   bool generic_evaluator::verify_signature( const key_object* k )
+   bool generic_evaluator::verify_signature( const key_object& k )
    {
-      FC_ASSERT( k != nullptr );
-      return trx_state->_skip_signature_check || trx_state->signed_by.find( k->key_address() ) != trx_state->signed_by.end();
+      return trx_state->_skip_signature_check || trx_state->signed_by.find( k.key_address() ) != trx_state->signed_by.end();
    }
 
    object_id_type generic_evaluator::get_relative_id( object_id_type rel_id )const
@@ -531,12 +530,12 @@ asset generic_evaluator::pay_market_fees( const asset_object& recv_asset, const 
    return issuer_fees;
 }
 
-asset generic_evaluator::get_balance(const account_object* account_obj, const asset_object* asset_obj)
+asset generic_evaluator::get_balance(const account_object& account_obj, const asset_object& asset_obj)
 {
    auto& index = db().get_index_type<account_balance_index>().indices().get<by_balance>();
-   auto itr = index.find(boost::make_tuple(account_obj->get_id(), asset_obj->get_id()));
+   auto itr = index.find(boost::make_tuple(account_obj.get_id(), asset_obj.get_id()));
    if( itr == index.end() )
-      return asset_obj->amount(0);
+      return asset_obj.amount(0);
    return itr->get_balance();
 }
 

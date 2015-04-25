@@ -20,8 +20,8 @@ object_id_type transfer_evaluator::do_evaluate( const transfer_operation& op )
    if( fee_asset_type.flags & white_list )
       FC_ASSERT( from_account.is_authorized_asset( asset_type ) );
 
-   FC_ASSERT( get_balance( &from_account, &asset_type ).amount >= op.amount.amount,
-              "", ("total_transfer",op.amount)("balance",get_balance(&from_account, &asset_type).amount) );
+   FC_ASSERT( get_balance( from_account, asset_type ).amount >= op.amount.amount,
+              "", ("total_transfer",op.amount)("balance",get_balance(from_account, asset_type).amount) );
 
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (op) ) }

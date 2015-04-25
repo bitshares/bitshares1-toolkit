@@ -134,12 +134,12 @@ asset call_order_update_evaluator::do_evaluate(const call_order_update_operation
    FC_ASSERT( o.collateral_to_add.asset_id == _debt_asset->short_backing_asset );
    FC_ASSERT( o.maintenance_collateral_ratio == 0 ||
               o.maintenance_collateral_ratio > _debt_asset->current_feed.required_maintenance_collateral );
-   FC_ASSERT( get_balance(_paying_account, _debt_asset) >= o.amount_to_cover,
+   FC_ASSERT( get_balance(*_paying_account, *_debt_asset) >= o.amount_to_cover,
               "Cannot cover by ${c} when payer has ${b}",
-              ("c", o.amount_to_cover.amount)("b", get_balance(_paying_account, _debt_asset).amount) );
-   FC_ASSERT( get_balance(_paying_account, &_debt_asset->short_backing_asset(d)) >= o.collateral_to_add,
+              ("c", o.amount_to_cover.amount)("b", get_balance(*_paying_account, *_debt_asset).amount) );
+   FC_ASSERT( get_balance(*_paying_account, _debt_asset->short_backing_asset(d)) >= o.collateral_to_add,
               "Cannot increase collateral by ${c} when payer has ${b}", ("c", o.amount_to_cover.amount)
-              ("b", get_balance(_paying_account, &_debt_asset->short_backing_asset(d)).amount) );
+              ("b", get_balance(*_paying_account, _debt_asset->short_backing_asset(d)).amount) );
 
    auto& call_idx = d.get_index_type<call_order_index>().indices().get<by_account>();
    auto itr = call_idx.find( boost::make_tuple(o.funding_account, o.amount_to_cover.asset_id) );
