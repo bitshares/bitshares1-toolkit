@@ -86,7 +86,7 @@ class account_history_plugin_impl
       //  you know what you doing for great justice
       bts::chain::database& database()
       {
-         FC_ASSERT( _chain_db != nullptr );
+         assert( _chain_db != nullptr );
          return *_chain_db;
       }
 
