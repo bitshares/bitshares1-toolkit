@@ -66,12 +66,11 @@ class account_history_plugin_impl
 {
    public:
       account_history_plugin_impl(
-         account_history_plugin& _plugin,
-         bts::chain::database& chain_db
+         account_history_plugin& _plugin
          ) : _self( _plugin ),
              _observer( _plugin ),
-             _chain_db( chain_db )
-         {}
+             _chain_db( nullptr )
+         { }
       virtual ~account_history_plugin_impl();
 
       flat_set<key_id_type> get_keys_for_account(
@@ -85,11 +84,15 @@ class account_history_plugin_impl
       // protected in abstract_plugin interface,
       //  we publish it here...if you can see this impl class,
       //  you know what you doing for great justice
-      bts::chain::database& database() { return _chain_db; }
+      bts::chain::database& database()
+      {
+         FC_ASSERT( _chain_db != nullptr );
+         return *_chain_db;
+      }
 
       account_history_plugin& _self;
       account_observer _observer;
-      bts::chain::database& _chain_db;
+      bts::chain::database* _chain_db;
 };
 
 struct operation_get_impacted_accounts
@@ -465,7 +468,7 @@ void account_history_plugin_impl::update_account_histories( const signed_block& 
 } // end namespace detail
 
 account_history_plugin::account_history_plugin() :
-   _my( new detail::account_history_plugin_impl(*this, database()) )
+   _my( new detail::account_history_plugin_impl(*this) )
 {
    return;
 }
@@ -492,5 +495,12 @@ void account_history_plugin::configure(const account_history_plugin::plugin_conf
    // database().register_evaluation_observer<account_create_evaluator>( _my->_observer );
    database().register_evaluation_observer< bts::chain::account_update_evaluator >( _my->_observer );
 }
+
+void account_history_plugin::init()
+{
+   _my->_chain_db = &database();
+   return;
+}
+
 
 } }

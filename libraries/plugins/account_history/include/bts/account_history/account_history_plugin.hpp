@@ -75,6 +75,7 @@ class account_history_plugin : public bts::app::plugin<account_history_plugin>
       };
 
       void configure( const plugin_config& cfg );
+      virtual void init() override;
 
       plugin_config _config;
       std::unique_ptr<detail::account_history_plugin_impl> _my;
