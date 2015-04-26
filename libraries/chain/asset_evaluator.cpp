@@ -143,7 +143,7 @@ object_id_type asset_update_evaluator::do_evaluate(const asset_update_operation&
    }
    if( o.new_whitelist_authorities || o.new_blacklist_authorities )
    {
-      FC_ASSERT( a.enforce_white_list() || o.flags && *o.flags & white_list );
+      FC_ASSERT( a.enforce_white_list() || (o.flags && (*o.flags & white_list)) );
    }
 
    if( o.new_issuer )
