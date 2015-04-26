@@ -170,7 +170,7 @@ namespace bts { namespace chain {
                 }
                 catch( const fc::exception& e )
                 {
-                   elog( "suppressed exception in observer pre method:\n{e}", ( "e", e.to_detail_string() ) );
+                   elog( "suppressed exception in observer pre method:\n${e}", ( "e", e.to_detail_string() ) );
                 }
                 observer_count++;
              }
@@ -182,7 +182,7 @@ namespace bts { namespace chain {
              catch( const fc::exception& e )
              {
                 evaluation_exception = e;
-                elog( "deferred evaluation_exception:\n{e}", ( "e", e.to_detail_string() ) );
+                elog( "deferred evaluation_exception:\n${e}", ( "e", e.to_detail_string() ) );
              }
 
              while( observer_count > 0 )
@@ -198,7 +198,7 @@ namespace bts { namespace chain {
                 }
                 catch( const fc::exception& e )
                 {
-                   elog( "suppressed exception in observer post method:\n{e}", ( "e", e.to_detail_string() ) );
+                   elog( "suppressed exception in observer post method:\n${e}", ( "e", e.to_detail_string() ) );
                 }
              }
 
