@@ -8,6 +8,34 @@
 
 namespace bts { namespace account_history {
 
+namespace detail
+{
+
+class account_history_plugin_impl
+{
+   public:
+      account_history_plugin_impl(
+         account_history_plugin& _plugin,
+         bts::chain::database& chain_db
+         ) : _self( _plugin ),
+             _chain_db( chain_db )
+         {}
+      virtual ~account_history_plugin_impl();
+
+      /** this method is called as a callback after a block is applied
+       * and will process/index all operations that were applied in the block.
+       */
+      void update_account_histories( const signed_block& b );
+      // protected in abstract_plugin interface,
+      //  we publish it here...if you can see this impl class,
+      //  you know what you doing for great justice
+      bts::chain::database& database() { return _chain_db; }
+
+      account_history_plugin& _self;
+      bts::chain::database& _chain_db;
+};
+
+
 struct operation_get_impacted_accounts
 {
    const operation_history_object& _op_history;
@@ -118,17 +146,14 @@ struct operation_get_impacted_accounts
 
 
 
-void account_history_plugin::configure(const account_history_plugin::plugin_config& cfg)
+account_history_plugin_impl::~account_history_plugin_impl()
 {
-   _config = cfg;
-   database().applied_block.connect( [&]( const signed_block& b){ update_account_histories(b); } );
-   database().add_index< primary_index< simple_index< operation_history_object > > >();
-   database().add_index< primary_index< simple_index< account_transaction_history_object > > >();
+   return;
 }
 
-void account_history_plugin::update_account_histories( const signed_block& b )
+void account_history_plugin_impl::update_account_histories( const signed_block& b )
 {
-   chain::database& db = database();
+   bts::chain::database& db = database();
    const vector<operation_history_object>& hist = db.get_applied_operations();
    for( auto op : hist )
    {
@@ -140,10 +165,10 @@ void account_history_plugin::update_account_histories( const signed_block& b )
       // get the set of accounts this operation applies to
       flat_set<account_id_type> impacted;
       op.op.visit( operation_get_required_auths( impacted, impacted ) );
-      op.op.visit( operation_get_impacted_accounts( oho, *this, impacted ) );
+      op.op.visit( operation_get_impacted_accounts( oho, _self, impacted ) );
 
       // for each operation this account applies to that is in the config link it into the history
-      if( _config.accounts.size() == 0 )
+      if( _self._config.accounts.size() == 0 )
       {
          for( auto& account_id : impacted )
          {
@@ -160,7 +185,7 @@ void account_history_plugin::update_account_histories( const signed_block& b )
       }
       else
       {
-         for( auto account_id : _config.accounts )
+         for( auto account_id : _self._config.accounts )
          {
             if( impacted.find( account_id ) != impacted.end() )
             {
@@ -178,4 +203,25 @@ void account_history_plugin::update_account_histories( const signed_block& b )
       }
    }
 }
+} // end namespace detail
+
+account_history_plugin::account_history_plugin() :
+   _my( new detail::account_history_plugin_impl(*this, database()) )
+{
+   return;
+}
+
+account_history_plugin::~account_history_plugin()
+{
+   return;
+}
+
+void account_history_plugin::configure(const account_history_plugin::plugin_config& cfg)
+{
+   _config = cfg;
+   database().applied_block.connect( [&]( const signed_block& b){ _my->update_account_histories(b); } );
+   database().add_index< primary_index< simple_index< operation_history_object > > >();
+   database().add_index< primary_index< simple_index< account_transaction_history_object > > >();
+}
+
 } }

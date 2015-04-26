@@ -8,9 +8,17 @@
 namespace bts { namespace account_history {
 using namespace chain;
 
+namespace detail
+{
+    class account_history_plugin_impl;
+}
+
 class account_history_plugin : public bts::app::plugin<account_history_plugin> 
 {
    public:
+      account_history_plugin();
+      virtual ~account_history_plugin();
+
       const std::string& plugin_name()const override {
          static std::string name = "account_history";
          return name;
@@ -25,13 +33,8 @@ class account_history_plugin : public bts::app::plugin<account_history_plugin>
 
       void configure( const plugin_config& cfg );
 
-   private:
-      /** this method is called as a callback after a block is applied
-       * and will process/index all operations that were applied in the block.
-       */
-      void update_account_histories( const signed_block& b );
-
       plugin_config _config;
+      std::unique_ptr<detail::account_history_plugin_impl> _my;
 };
 
 } } //bts::account_history
