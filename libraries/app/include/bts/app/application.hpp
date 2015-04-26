@@ -29,6 +29,13 @@ namespace bts { namespace app {
 
          void configure( const fc::path& data_dir );
          void configure( const fc::path& data_dir, const daemon_configuration& config );
+         /**
+          * Partial initialization for testing.
+          *
+          * - Doesn't intialize network
+          * - Doesn't have datadir (everything is in memory)
+          */
+         void configure_without_network( const application::daemon_configuration& config );
 
          template<typename PluginType>
          std::shared_ptr<PluginType> register_plugin()

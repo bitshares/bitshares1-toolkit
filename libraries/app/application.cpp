@@ -127,6 +127,15 @@ namespace detail {
          reset_websocket_server(config);
       }
 
+      void configure_without_network( const application::daemon_configuration& config )
+      {
+         _configuration["daemon"] = config;
+         _chain_db->init_genesis( config.initial_allocation );
+         for( const auto& p : _plugins )
+            p.second->init();
+         return;
+      }
+
       void apply_configuration()
       { try {
          save_configuration();
@@ -380,6 +389,11 @@ void application::configure( const fc::path& data_dir )
 void application::configure(const fc::path& data_dir, const application::daemon_configuration& config)
 {
    my->configure(data_dir, config);
+}
+
+void application::configure_without_network( const application::daemon_configuration& config )
+{
+   my->configure_without_network( config );
 }
 
 std::shared_ptr<abstract_plugin> application::get_plugin(const string& name) const

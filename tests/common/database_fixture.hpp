@@ -155,8 +155,11 @@ struct database_fixture {
    database_fixture()
       : app(), db( *app.chain_database() )
    {
-      db.init_genesis();
       app.register_plugin<bts::account_history::account_history_plugin>();
+      bts::app::application::daemon_configuration cfg;
+      cfg.initial_allocation = genesis_allocation();
+      app.configure_without_network( cfg );
+
       genesis_key(db); // attempt to deref
       trx.relative_expiration = 1000;
 
