@@ -8,11 +8,30 @@
 namespace bts { namespace account_history {
 using namespace chain;
 
+//
+// Plugins should #define their SPACE_ID's so plugins with
+// conflicting SPACE_ID assignments can be compiled into the
+// same binary (by simply re-assigning some of the conflicting #defined
+// SPACE_ID's in a build script).
+//
+// Assignment of SPACE_ID's cannot be done at run-time because
+// various template automagic depends on them being known at compile
+// time.
+//
+#ifndef ACCOUNT_HISTORY_SPACE_ID
+#define ACCOUNT_HISTORY_SPACE_ID 5
+#endif
+
+enum account_history_object_type
+{
+   key_account_object_type
+};
+
 class key_account_object : public abstract_object<key_account_object>
 {
    public:
-      static const uint8_t space_id = 5;   // namespace for this plugin object type
-      static const uint8_t type_id  = 0;
+      static const uint8_t space_id = ACCOUNT_HISTORY_SPACE_ID;
+      static const uint8_t type_id  = key_account_object_type;
 
       key_account_object() {}
       key_account_object( const address& a ) : key(a) {}
