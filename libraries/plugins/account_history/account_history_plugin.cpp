@@ -396,14 +396,29 @@ void account_history_plugin_impl::index_account_keys( const account_id_type& acc
    for( const key_id_type& key_id : key_id_set )
       address_set.insert( key_id(db).key_address() );
 
-   // add mappings to the given index
+   // add mappings for the given account
    for( const address& addr : address_set )
    {
-       db.create<key_account_object>( [&]( key_account_object& ka )
+       auto& idx = db.get_index_type<key_account_index>().indices().get<by_key>();
+       auto it = idx.find( addr );
+       if( it == idx.end() )
        {
-          ka.key = addr;
-          ka.account_ids.insert( account_id );
-       });
+          // if unknown, we need to create a new object
+          db.create<key_account_object>( [&]( key_account_object& ka )
+          {
+             ka.key = addr;
+             ka.account_ids.insert( account_id );
+          });
+       }
+       else
+       {
+          // if known, we need to add to existing object
+          db.modify<key_account_object>( *it,
+             [&]( key_account_object& ka )
+             {
+                ka.account_ids.insert( account_id );
+             });
+       }
    }
 
    return;
