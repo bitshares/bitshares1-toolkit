@@ -4,18 +4,35 @@
 
 #include <fc/thread/thread.hpp>
 
-void bts::witness_plugin::witness_plugin::configure(const bts::witness_plugin::witness_plugin::plugin_config& cfg)
+using namespace bts::witness_plugin;
+
+void witness_plugin::configure(const bts::witness_plugin::witness_plugin::plugin_config& cfg)
 {
    _config = cfg;
 
    if( !_config.witness_keys.empty() )
-      _block_production_task = fc::async([this]{block_production_loop();}, "Witness Block Production");
+      schedule_next_production(database().get_global_properties().parameters);
    else
       elog("No witnesses configured! Please add delegate IDs and private keys to configuration.");
    _production_enabled = cfg.allow_production_on_stale_chain;
 }
 
-void bts::witness_plugin::witness_plugin::block_production_loop()
+void witness_plugin::schedule_next_production(const bts::chain::chain_parameters& global_parameters)
+{
+   //Get next production time for *any* delegate
+   auto block_interval = global_parameters.block_interval;
+   fc::time_point next_block_time = fc::time_point_sec() +
+         (chain::now().sec_since_epoch() / block_interval + 1) * block_interval;
+
+   if( chain::ntp_time().valid() )
+      next_block_time -= chain::ntp_error();
+
+   //Sleep until the next production time for *any* delegate
+   _block_production_task = fc::schedule([this]{block_production_loop();},
+                                         next_block_time, "Witness Block Production");
+}
+
+void witness_plugin::block_production_loop()
 {
    chain::database& db = database();
    std::set<chain::witness_id_type> witnesses;
@@ -52,15 +69,5 @@ void bts::witness_plugin::witness_plugin::block_production_loop()
       }
    }
 
-   //Get next production time for *any* delegate
-   auto block_interval = global_parameters.block_interval;
-   fc::time_point next_block_time = fc::time_point_sec() +
-         (chain::now().sec_since_epoch() / block_interval + 1) * block_interval;
-
-   if( chain::ntp_time().valid() )
-      next_block_time -= chain::ntp_error();
-
-   //Sleep until the next production time for *any* delegate
-   _block_production_task = fc::schedule([this]{block_production_loop();},
-                                         next_block_time, "Witness Block Production");
+   schedule_next_production(global_parameters);
 }

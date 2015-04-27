@@ -47,6 +47,7 @@ public:
    void configure( const plugin_config& cfg );
 
 private:
+   void schedule_next_production(const bts::chain::chain_parameters& global_parameters);
    void block_production_loop();
 
    /// This will be set to false until we see a head block at time now (give or take an interval)
