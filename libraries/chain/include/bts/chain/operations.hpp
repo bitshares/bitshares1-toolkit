@@ -659,8 +659,6 @@ namespace bts { namespace chain {
      * leverages on-chain notification of all relevant parties that their approval is required. Off-chain
      * multi-signature approval requires some off-chain mechanism for acquiring several signatures on a single
      * transaction. This off-chain syncrhonization can be avoided using proposals.
-     *
-     * TODO: Support owner authorities, not just active
      * @{
      */
    /**
