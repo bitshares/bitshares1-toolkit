@@ -293,9 +293,8 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
 
          signed_transaction trx;
          trx.operations.emplace_back(key_create_operation({genesis_account.id, asset(), handout.first}));
-         object_id_type key_id(relative_protocol_ids, 0, 0);
-         authority account_authority;
-         account_authority.add_authority(key_id_type(key_id), 1);
+         relative_key_id_type key_id(0);
+         authority account_authority(1, key_id, 1);
          account_create_operation cop;
          cop.registrar = account_id_type(1);
          cop.active = account_authority;
@@ -493,8 +492,6 @@ void database::update_active_witnesses()
       gp.active_witnesses = std::move(ids);
    });
 }
-
-
 
 void database::update_active_delegates()
 {
