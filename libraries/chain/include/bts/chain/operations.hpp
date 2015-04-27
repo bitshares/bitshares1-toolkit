@@ -407,6 +407,10 @@ namespace bts { namespace chain {
 
    struct asset_update_operation
    {
+      asset_update_operation(){}
+      /// Initializes the update to make no changes to the provided asset
+      asset_update_operation(const asset_object& old);
+
       account_id_type issuer; ///< must be asset_to_update->issuer
       asset_id_type   asset_to_update;
       asset           fee;

@@ -235,6 +235,17 @@ void  asset_create_operation::validate()const
    }
 }
 
+asset_update_operation::asset_update_operation(const asset_object& old)
+{
+   issuer = old.issuer;
+   asset_to_update = old.get_id();
+   market_fee_percent = old.market_fee_percent;
+   max_market_fee = old.max_market_fee;
+   min_market_fee = old.min_market_fee;
+   force_settlement_delay_sec = old.force_settlement_delay_sec;
+   force_settlement_offset_percent = old.force_settlement_offset_percent;
+}
+
 void asset_update_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
 {
    active_auth_set.insert(issuer);

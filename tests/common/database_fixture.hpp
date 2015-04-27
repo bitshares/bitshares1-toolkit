@@ -289,7 +289,7 @@ struct database_fixture {
    const asset_object& create_bitasset( const string& name )
    {
       asset_create_operation creator;
-      creator.issuer = account_id_type();
+      creator.issuer = account_id_type(1);
       creator.fee = asset();
       creator.symbol = name;
       creator.max_supply = 0;
@@ -668,6 +668,10 @@ struct database_fixture {
       }
    }
 
+   int64_t get_balance( account_id_type account, asset_id_type a )const
+   {
+      return db.get_balance(account, a).amount.value;
+   }
    int64_t get_balance( const account_object& account, const asset_object& a )const
    {
       return db.get_balance(account.get_id(), a.get_id()).amount.value;

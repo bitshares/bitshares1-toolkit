@@ -1743,10 +1743,10 @@ void database::clear_expired_orders()
       settle_op.account_id = order.owner;
       settle_op.order_id = order.id;
       settle_op.pays = order.balance;
-      settle_op.receives = (order.balance * mia.current_feed.short_limit);
+      settle_op.receives = (order.balance * mia.current_feed.settlement_price);
       settle_op.receives.amount = (fc::uint128_t(settle_op.receives.amount.value) *
-                                 (10000 - mia.force_settlement_offset_percent) / 100).to_uint64();
-      assert(settle_op.receives < order.balance * mia.current_feed.short_limit);
+                                 (10000 - mia.force_settlement_offset_percent) / 10000).to_uint64();
+      assert(settle_op.receives <= order.balance * mia.current_feed.settlement_price);
 
       price settlement_price = settle_op.pays / settle_op.receives;
 

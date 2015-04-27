@@ -119,6 +119,10 @@ namespace bts { namespace chain {
        */
       price short_limit;
       /**
+       * Forced settlements will evaluate using this price.
+       */
+      price settlement_price;
+      /**
        * Maximum number of seconds margin positions should be able to remain open.
        */
       uint32_t max_margin_period_sec = BTS_DEFAULT_MARGIN_PERIOD_SEC;
