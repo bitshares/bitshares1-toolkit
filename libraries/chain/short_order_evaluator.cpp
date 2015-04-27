@@ -30,7 +30,7 @@ object_id_type short_order_create_evaluator::do_evaluate( const short_order_crea
 
 object_id_type short_order_create_evaluator::do_apply( const short_order_create_operation& op )
 {
-   adjust_balance(op.seller, -op.collateral);
+   db().adjust_balance(op.seller, -op.collateral);
 
    const auto& new_order_object = db().create<short_order_object>( [&]( short_order_object& obj ){
        obj.seller                       = _seller->id;
@@ -55,7 +55,7 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
    // Possible optimization: We only need to check calls if both are true:
    //  - The new order is at the front of the book
    //  - The new order is below the call limit price
-   check_call_orders(*_sell_asset);
+   db().check_call_orders(*_sell_asset);
 
    if( !db().find(new_id) ) // then we were filled by call order
       return new_id;
@@ -72,14 +72,14 @@ object_id_type short_order_create_evaluator::do_apply( const short_order_create_
    {
       auto old_itr = itr;
       ++itr;
-      if( match( *old_itr, new_order_object, old_itr->sell_price ) != 1 )
+      if( db().match( *old_itr, new_order_object, old_itr->sell_price ) != 1 )
          break; // 1 means ONLY old iter filled
    }
 
    //Possible optimization: only check calls if the new order completely filled some old order
    //Do I need to check both assets?
-   check_call_orders(*_sell_asset);
-   check_call_orders(*_receive_asset);
+   db().check_call_orders(*_sell_asset);
+   db().check_call_orders(*_receive_asset);
 
    return new_id;
 } // short_order_evaluator::do_apply
@@ -100,7 +100,7 @@ asset short_order_cancel_evaluator::do_apply( const short_order_cancel_operation
    database&   d = db();
 
    auto refunded = _order->get_collateral();
-   adjust_balance(o.fee_paying_account, refunded);
+   d.adjust_balance(o.fee_paying_account, refunded);
    auto base_asset = _order->sell_price.base.asset_id;
    auto quote_asset = _order->sell_price.quote.asset_id;
 
@@ -116,8 +116,8 @@ asset short_order_cancel_evaluator::do_apply( const short_order_cancel_operation
 
    // Possible optimization: order can be called by canceling a short order iff the canceled order was at the top of the book.
    // Do I need to check calls in both assets?
-   check_call_orders(base_asset(d));
-   check_call_orders(quote_asset(d));
+   db().check_call_orders(base_asset(d));
+   db().check_call_orders(quote_asset(d));
 
    return refunded;
 }
@@ -134,12 +134,12 @@ asset call_order_update_evaluator::do_evaluate(const call_order_update_operation
    FC_ASSERT( o.collateral_to_add.asset_id == _debt_asset->short_backing_asset );
    FC_ASSERT( o.maintenance_collateral_ratio == 0 ||
               o.maintenance_collateral_ratio > _debt_asset->current_feed.required_maintenance_collateral );
-   FC_ASSERT( get_balance(*_paying_account, *_debt_asset) >= o.amount_to_cover,
+   FC_ASSERT( d.get_balance(*_paying_account, *_debt_asset) >= o.amount_to_cover,
               "Cannot cover by ${c} when payer has ${b}",
-              ("c", o.amount_to_cover.amount)("b", get_balance(*_paying_account, *_debt_asset).amount) );
-   FC_ASSERT( get_balance(*_paying_account, _debt_asset->short_backing_asset(d)) >= o.collateral_to_add,
+              ("c", o.amount_to_cover.amount)("b", d.get_balance(*_paying_account, *_debt_asset).amount) );
+   FC_ASSERT( d.get_balance(*_paying_account, _debt_asset->short_backing_asset(d)) >= o.collateral_to_add,
               "Cannot increase collateral by ${c} when payer has ${b}", ("c", o.amount_to_cover.amount)
-              ("b", get_balance(*_paying_account, _debt_asset->short_backing_asset(d)).amount) );
+              ("b", d.get_balance(*_paying_account, _debt_asset->short_backing_asset(d)).amount) );
 
    auto& call_idx = d.get_index_type<call_order_index>().indices().get<by_account>();
    auto itr = call_idx.find( boost::make_tuple(o.funding_account, o.amount_to_cover.asset_id) );
@@ -163,7 +163,8 @@ asset call_order_update_evaluator::do_evaluate(const call_order_update_operation
       FC_ASSERT( o.amount_to_cover < _order->get_debt(), "Cover amount is greater than debt." );
    } else {
       _closing_order = true;
-      FC_ASSERT( o.collateral_to_add.amount == -_order->get_collateral().amount, "", ("collateral", _order->get_collateral()) );
+      FC_ASSERT( o.collateral_to_add.amount == -_order->get_collateral().amount, "",
+                 ("collateral", _order->get_collateral()) );
       return _order->get_collateral();
    }
    return asset();
@@ -173,7 +174,7 @@ asset call_order_update_evaluator::do_apply(const call_order_update_operation& o
 {
    database& d = db();
 
-   adjust_balance(_paying_account->get_id(), -o.amount_to_cover);
+   d.adjust_balance(_paying_account->get_id(), -o.amount_to_cover);
 
    // Deduct the debt paid from the total supply of the debt asset.
    d.modify(_debt_asset->dynamic_asset_data_id(d), [&](asset_dynamic_data_object& dynamic_asset) {
@@ -186,7 +187,7 @@ asset call_order_update_evaluator::do_apply(const call_order_update_operation& o
    {
       collateral_returned = _order->get_collateral();
       // Credit the account's balances for his returned collateral.
-      adjust_balance(_paying_account->get_id(), collateral_returned);
+      d.adjust_balance(_paying_account->get_id(), collateral_returned);
       d.modify(_paying_account->statistics(d), [&](account_statistics_object& stats) {
          if( _order->get_collateral().asset_id == asset_id_type() )
             stats.total_core_in_orders -= collateral_returned.amount;
@@ -204,7 +205,7 @@ asset call_order_update_evaluator::do_apply(const call_order_update_operation& o
       });
       if( o.collateral_to_add.amount > 0 )
          // Deduct the added collateral from the account.
-         adjust_balance(_paying_account->get_id(), -o.collateral_to_add);
+         d.adjust_balance(_paying_account->get_id(), -o.collateral_to_add);
          d.modify(_paying_account->statistics(d), [&](account_statistics_object& stats) {
             if( o.collateral_to_add.asset_id == asset_id_type() )
                stats.total_core_in_orders += o.collateral_to_add.amount;

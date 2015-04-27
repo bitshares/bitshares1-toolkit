@@ -43,7 +43,7 @@ object_id_type witness_withdraw_pay_evaluator::do_apply(const witness_withdraw_p
 {
    database& d = db();
 
-   adjust_balance(o.to_account, asset(o.amount));
+   d.adjust_balance(o.to_account, asset(o.amount));
 
    d.modify(*witness, [&o](witness_object& w) {
       w.accumulated_income -= o.amount;

@@ -88,7 +88,7 @@ object_id_type asset_issue_evaluator::do_evaluate( const asset_issue_operation& 
 
 object_id_type asset_issue_evaluator::do_apply( const asset_issue_operation& o )
 {
-   adjust_balance( o.issue_to_account, o.asset_to_issue );
+   db().adjust_balance( o.issue_to_account, o.asset_to_issue );
 
    db().modify( *asset_dyn_data, [&]( asset_dynamic_data_object& data ){
         data.current_supply += o.asset_to_issue.amount;
@@ -110,7 +110,7 @@ object_id_type asset_fund_fee_pool_evaluator::do_evaluate(const asset_fund_fee_p
 
 object_id_type asset_fund_fee_pool_evaluator::do_apply(const asset_fund_fee_pool_operation& o)
 {
-   adjust_balance(o.from_account, -o.amount);
+   db().adjust_balance(o.from_account, -o.amount);
 
    db().modify( *asset_dyn_data, [&]( asset_dynamic_data_object& data ) {
       data.fee_pool += o.amount;
@@ -215,7 +215,7 @@ object_id_type asset_settle_evaluator::do_evaluate(const asset_settle_evaluator:
    const database& d = db();
    asset_to_settle = &op.amount.asset_id(d);
    FC_ASSERT(asset_to_settle->is_market_issued());
-   FC_ASSERT(get_balance(*d.find(op.account), *asset_to_settle) >= op.amount);
+   FC_ASSERT(d.get_balance(d.get(op.account), *asset_to_settle) >= op.amount);
 
    return d.get_index_type<force_settlement_index>().get_next_id();
 }
@@ -223,7 +223,7 @@ object_id_type asset_settle_evaluator::do_evaluate(const asset_settle_evaluator:
 object_id_type asset_settle_evaluator::do_apply(const asset_settle_evaluator::operation_type& op)
 {
    database& d = db();
-   adjust_balance(op.account, -op.amount);
+   d.adjust_balance(op.account, -op.amount);
    return d.create<force_settlement_object>([&](force_settlement_object& s) {
       s.owner = op.account;
       s.balance = op.amount;

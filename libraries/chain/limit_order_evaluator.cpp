@@ -19,7 +19,8 @@ object_id_type limit_order_create_evaluator::do_evaluate( const limit_order_crea
    if( _sell_asset->flags & white_list ) FC_ASSERT( _seller->is_authorized_asset( *_sell_asset ) );
    if( _receive_asset->flags & white_list ) FC_ASSERT( _seller->is_authorized_asset( *_receive_asset ) );
 
-   FC_ASSERT( get_balance( *_seller, *_sell_asset ) >= op.amount_to_sell, "insufficient balance", ("balance",get_balance(*_seller,*_sell_asset))("amount_to_sell",op.amount_to_sell) );
+   FC_ASSERT( d.get_balance( _seller, _sell_asset ) >= op.amount_to_sell, "insufficient balance",
+              ("balance",d.get_balance(_seller,_sell_asset))("amount_to_sell",op.amount_to_sell) );
 
    return object_id_type();
 }
@@ -36,7 +37,7 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
          }
    });
 
-   adjust_balance(op.seller, -op.amount_to_sell);
+   db().adjust_balance(op.seller, -op.amount_to_sell);
 
    const auto& new_order_object = db().create<limit_order_object>( [&]( limit_order_object& obj ){
        obj.seller   = _seller->id;
@@ -49,8 +50,8 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
    // Possible optimization: We only need to check calls if both are true:
    //  - The new order is at the front of the book
    //  - The new order is below the call limit price
-   bool called_some = check_call_orders(*_sell_asset);
-   called_some |= check_call_orders(*_receive_asset);
+   bool called_some = db().check_call_orders(*_sell_asset);
+   called_some |= db().check_call_orders(*_receive_asset);
    if( called_some && !db().find(result) ) // then we were filled by call order
       return result;
 
@@ -77,7 +78,7 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
    { // then we may also match against shorts
       if( _receive_asset->short_backing_asset == asset_id_type() )
       {
-         bool converted_some = convert_fees( *_receive_asset );
+         bool converted_some = db().convert_fees( *_receive_asset );
          // just incase the new order was completely filled from fees
          if( converted_some && !db().find(result) ) // then we were filled by call order
             return result;
@@ -97,20 +98,20 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
             {
                auto old_short_itr = short_itr;
                ++short_itr;
-               filled = (match( new_order_object, *old_short_itr, old_short_itr->sell_price ) != 2 );
+               filled = (db().match( new_order_object, *old_short_itr, old_short_itr->sell_price ) != 2 );
             }
             else
             {
                auto old_limit_itr = limit_itr;
                ++limit_itr;
-               filled = (match( new_order_object, *old_limit_itr, old_limit_itr->sell_price ) != 2 );
+               filled = (db().match( new_order_object, *old_limit_itr, old_limit_itr->sell_price ) != 2 );
             }
          }
          else if( short_itr != short_end  )
          {
             auto old_short_itr = short_itr;
             ++short_itr;
-            filled = (match( new_order_object, *old_short_itr, old_short_itr->sell_price ) != 2 );
+            filled = (db().match( new_order_object, *old_short_itr, old_short_itr->sell_price ) != 2 );
          }
          else break;
       }
@@ -119,13 +120,13 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
    {
          auto old_itr = limit_itr;
          ++limit_itr;
-         filled = (match( new_order_object, *old_itr, old_itr->sell_price ) != 2);
+         filled = (db().match( new_order_object, *old_itr, old_itr->sell_price ) != 2);
    }
 
    //Possible optimization: only check calls if the new order completely filled some old order
    //Do I need to check both assets?
-   check_call_orders(*_sell_asset);
-   check_call_orders(*_receive_asset);
+   db().check_call_orders(*_sell_asset);
+   db().check_call_orders(*_receive_asset);
 
    FC_ASSERT( !op.fill_or_kill || db().find_object(result) == nullptr );
 
@@ -152,12 +153,12 @@ asset limit_order_cancel_evaluator::do_apply( const limit_order_cancel_operation
    auto quote_asset = _order->sell_price.quote.asset_id;
    auto refunded = _order->amount_for_sale();
 
-   cancel_order( *_order, false /* don't create a virtual op*/ );
+   db().cancel_order( *_order, false /* don't create a virtual op*/ );
 
    // Possible optimization: order can be called by canceling a limit order iff the canceled order was at the top of the book.
    // Do I need to check calls in both assets?
-   check_call_orders(base_asset(d));
-   check_call_orders(quote_asset(d));
+   db().check_call_orders(base_asset(d));
+   db().check_call_orders(quote_asset(d));
 
    return refunded;
 }

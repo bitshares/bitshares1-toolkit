@@ -66,48 +66,6 @@ namespace bts { namespace chain {
 
          void check_required_authorities(const operation& op);
    protected:
-         /** market helpers */
-         void settle_black_swan( const asset_object& bitasset, const price& settle_price );
-         void cancel_order( const limit_order_object& order, bool create_virtual_op = true );
-
-         /**
-          *  Matches the two orders,
-          *
-          *  @return a bit field indicating which orders were filled (and thus removed)
-          *
-          *  0 - no orders were matched
-          *  1 - bid was filled
-          *  2 - ask was filled
-          *  3 - both were filled
-          */
-         ///@{
-         template<typename OrderType>
-         int match( const limit_order_object& bid, const OrderType& ask, const price& match_price );
-         int match( const limit_order_object& bid, const limit_order_object& ask, const price& trade_price );
-         int match( const limit_order_object& bid, const short_order_object& ask, const price& trade_price );
-         int match( const call_order_object& ask, const limit_order_object& );
-         int match( const call_order_object& call, const force_settlement_object& settle , const price& match_price );
-         int match( const call_order_object& ask, const short_order_object& );
-         ///@}
-
-         /**
-          * @return true if the order was completely filled and thus freed.
-          */
-         bool fill_order( const limit_order_object& order, const asset& pays, const asset& receives );
-         bool fill_order( const short_order_object& order, const asset& pays, const asset& receives );
-         bool fill_order( const call_order_object& order, const asset& pays, const asset& receives );
-         bool fill_order( const force_settlement_object& settle, const asset& pays, const asset& receives );
-
-         bool convert_fees( const asset_object& mia );
-         bool check_call_orders( const asset_object& mia );
-
-         // helpers to fill_order
-         void pay_order( const account_object& receiver, const asset& receives, const asset& pays );
-         asset pay_market_fees( const asset_object& recv_asset, const asset& receives );
-
-         asset get_balance(const account_object& account_obj, const asset_object& asset_obj);
-         void  adjust_balance(account_id_type account, asset delta);
-
          /**
           * @brief Fetch objects relevant to fee payer and set pointer members
           * @param account_id Account which is paying the fee
@@ -122,8 +80,6 @@ namespace bts { namespace chain {
 
          bool       verify_authority( const account_object&, authority::classification );
          bool       verify_signature( const key_object& );
-
-         asset      calculate_market_fee( const asset_object& aobj, const asset& trade_amount );
 
          object_id_type get_relative_id( object_id_type rel_id )const;
 
@@ -233,7 +189,7 @@ namespace bts { namespace chain {
 
             auto result = eval->do_apply( op );
 
-            adjust_balance(op.fee_payer(), -fee_from_account);
+            db().adjust_balance(op.fee_payer(), -fee_from_account);
 
             return result;
          }

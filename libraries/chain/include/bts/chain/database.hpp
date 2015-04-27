@@ -95,14 +95,6 @@ namespace bts { namespace chain {
          void initialize_indexes();
          void init_genesis(const genesis_allocation& initial_allocation = genesis_allocation());
 
-         /**
-          * @brief Helper method to retrieve a particular account's balance in a given asset
-          * @param owner Account whose balance should be retrieved
-          * @param asset_id ID of the asset to get balance in
-          * @return owner's balance in asset
-          */
-         asset get_balance(account_id_type owner, asset_id_type asset_id)const;
-
          template<typename EvaluatorType>
          void register_evaluator()
          {
@@ -145,6 +137,84 @@ namespace bts { namespace chain {
          fc::signal<void(const signed_block&)> applied_block;
 
          void debug_dump();
+
+         /**
+          * @{
+          * @group High Level Database Queries
+          *
+          * These methods implement higher-level operations on the database, which involve constructs such as accounts,
+          * balances, and other semantic interpretations of the data in the database.
+          */
+
+         /**
+          * @brief Retrieve a particular account's balance in a given asset
+          * @param owner Account whose balance should be retrieved
+          * @param asset_id ID of the asset to get balance in
+          * @return owner's balance in asset
+          */
+         asset get_balance(account_id_type owner, asset_id_type asset_id)const;
+         /// This is an overloaded method.
+         asset get_balance(const account_object& owner, const asset_object& asset_obj)const;
+         /// This is an overloaded method.
+         asset get_balance(const account_object* owner, const asset_object* asset_obj)const
+         { return get_balance(*owner, *asset_obj); }
+         /**
+          * @brief Adjust a particular account's balance in a given asset by a delta
+          * @param account ID of account whose balance should be adjusted
+          * @param delta Asset ID and amount to adjust balance by
+          */
+         void adjust_balance(account_id_type account, asset delta);
+         /// This is an overloaded method.
+         void adjust_balance(const account_object& account, asset delta);
+         /// This is an overloaded method.
+         void adjust_balance(const account_object* account, asset delta) { adjust_balance(*account, delta); }
+
+         /// @{ @group Market Helpers
+         void settle_black_swan( const asset_object& bitasset, const price& settle_price );
+         void cancel_order( const limit_order_object& order, bool create_virtual_op = true );
+
+         /**
+          *  Matches the two orders,
+          *
+          *  @return a bit field indicating which orders were filled (and thus removed)
+          *
+          *  0 - no orders were matched
+          *  1 - bid was filled
+          *  2 - ask was filled
+          *  3 - both were filled
+          */
+         ///@{
+         template<typename OrderType>
+         int match( const limit_order_object& bid, const OrderType& ask, const price& match_price );
+         int match( const limit_order_object& bid, const limit_order_object& ask, const price& trade_price );
+         int match( const limit_order_object& bid, const short_order_object& ask, const price& trade_price );
+         int match( const call_order_object& ask, const limit_order_object& );
+         int match( const call_order_object& call, const force_settlement_object& settle , const price& match_price );
+         int match( const call_order_object& ask, const short_order_object& );
+         ///@}
+
+         /**
+          * @return true if the order was completely filled and thus freed.
+          */
+         bool fill_order( const limit_order_object& order, const asset& pays, const asset& receives );
+         bool fill_order( const short_order_object& order, const asset& pays, const asset& receives );
+         bool fill_order( const call_order_object& order, const asset& pays, const asset& receives );
+         bool fill_order( const force_settlement_object& settle, const asset& pays, const asset& receives );
+
+         bool convert_fees( const asset_object& mia );
+         bool check_call_orders( const asset_object& mia );
+
+         // helpers to fill_order
+         void pay_order( const account_object& receiver, const asset& receives, const asset& pays );
+         asset pay_market_fees( const asset_object& recv_asset, const asset& receives );
+
+         asset calculate_market_fee( const asset_object& aobj, const asset& trade_amount );
+
+         ///@}
+
+         /**
+          * @}
+          */
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
          void pop_undo() { object_database::pop_undo(); }
