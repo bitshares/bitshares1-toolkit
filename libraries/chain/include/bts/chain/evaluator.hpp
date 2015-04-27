@@ -138,7 +138,6 @@ namespace bts { namespace chain {
              catch( const fc::exception& e )
              {
                 evaluation_exception = e;
-                elog( "deferred evaluation_exception:\n${e}", ( "e", e.to_detail_string() ) );
              }
 
              while( observer_count > 0 )
