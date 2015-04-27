@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_CASE( create_account_test )
       REQUIRE_THROW_WITH_VALUE(op, name, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
       REQUIRE_THROW_WITH_VALUE(op, name, "aaaa.");
       REQUIRE_THROW_WITH_VALUE(op, name, ".aaaa");
-      REQUIRE_THROW_WITH_VALUE(op, voting_key, key_id_type(999999999));
+      REQUIRE_THROW_WITH_VALUE(op, voting_account, account_id_type(999999999));
       REQUIRE_THROW_WITH_VALUE(op, memo_key, key_id_type(999999999));
 
       auto auth_bak = op.owner;
@@ -59,7 +59,7 @@ BOOST_AUTO_TEST_CASE( create_account_test )
       BOOST_CHECK(nathan_account.owner.auths.at(genesis_key) == 123);
       BOOST_REQUIRE(nathan_account.active.auths.size() == 1);
       BOOST_CHECK(nathan_account.active.auths.at(genesis_key) == 321);
-      BOOST_CHECK(nathan_account.voting_key == genesis_key);
+      BOOST_CHECK(nathan_account.voting_account == account_id_type());
       BOOST_CHECK(nathan_account.memo_key == genesis_key);
 
       const account_statistics_object& statistics = nathan_account.statistics(db);
@@ -131,12 +131,12 @@ BOOST_AUTO_TEST_CASE( update_account )
       op.account = nathan.id;
       op.owner = authority(2, key_id, 1, key_id_type(), 1);
       op.active = authority(2, key_id, 1, key_id_type(), 1);
-      op.voting_key = key_id;
+      //op.voting_account = key_id;
       op.vote = flat_set<vote_tally_id_type>({active_delegates[0](db).vote, active_delegates[5](db).vote});
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
 
-      BOOST_CHECK(nathan.voting_key == key_id);
+      //BOOST_CHECK(nathan.voting_key == key_id);
       BOOST_CHECK(nathan.memo_key == key_id_type());
       BOOST_CHECK(nathan.active.weight_threshold == 2);
       BOOST_CHECK(nathan.active.auths.size() == 2);
@@ -290,7 +290,10 @@ BOOST_AUTO_TEST_CASE( update_mia )
       REQUIRE_THROW_WITH_VALUE(op, new_price_feed->max_margin_period_sec, 0);
       REQUIRE_THROW_WITH_VALUE(op, new_price_feed->required_maintenance_collateral, 0);
       REQUIRE_THROW_WITH_VALUE(op, new_price_feed->required_initial_collateral, 500);
+
+      /* TODO: why shouldn't we be able to update the issuer to genesis?
       REQUIRE_THROW_WITH_VALUE(op, new_issuer, account_id_type());
+      */
 
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);

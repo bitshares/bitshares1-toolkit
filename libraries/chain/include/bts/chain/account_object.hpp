@@ -135,7 +135,11 @@ namespace bts { namespace chain {
          key_id_type           memo_key;
 
          /// The voting key may be used to update the account's votes.
-         key_id_type           voting_key;
+         account_id_type       voting_account;
+
+
+         uint16_t              num_witness = BTS_DEFUALT_NUM_WITNESSES;
+         uint16_t              num_committee = BTS_DEFUALT_NUM_COMMITTEE;
 
          /// This is the list of vote tallies this account votes for. The weight of these votes is determined by this
          /// account's balance of core asset.
@@ -226,7 +230,7 @@ namespace bts { namespace chain {
 }}
 FC_REFLECT_DERIVED( bts::chain::account_object,
                     (bts::db::annotated_object<bts::chain::account_object>),
-                    (registrar)(referrer)(referrer_percent)(name)(owner)(active)(memo_key)(voting_key)(votes)
+                    (registrar)(referrer)(referrer_percent)(name)(owner)(active)(memo_key)(voting_account)(num_witness)(num_committee)(votes)
                     (statistics)(whitelisting_accounts)(blacklisting_accounts) )
 
 FC_REFLECT_DERIVED( bts::chain::account_balance_object,

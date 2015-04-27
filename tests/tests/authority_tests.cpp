@@ -847,7 +847,6 @@ BOOST_FIXTURE_TEST_CASE( max_authority_membership, database_fixture )
              anon_create_op.active = active_auth;
              anon_create_op.registrar = sam_account_object.id;
              anon_create_op.memo_key = sam_account_object.memo_key;
-             anon_create_op.voting_key = sam_account_object.voting_key;
 
              tx.operations.push_back( anon_create_op );
 

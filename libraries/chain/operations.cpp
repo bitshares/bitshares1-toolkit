@@ -111,7 +111,7 @@ void account_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( account != account_id_type() );
-   FC_ASSERT( owner || active || voting_key || memo_key || vote );
+   FC_ASSERT( owner || active || voting_account || memo_key || vote );
 }
 
 

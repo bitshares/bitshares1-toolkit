@@ -7,7 +7,7 @@ namespace bts { namespace chain {
 
 object_id_type account_create_evaluator::do_evaluate( const account_create_operation& op )
 { try {
-   FC_ASSERT( is_relative(op.voting_key) || db().find_object(op.voting_key) );
+   FC_ASSERT( db().find_object(op.voting_account) );
    FC_ASSERT( is_relative(op.memo_key) || db().find_object(op.memo_key) );
 
    if( fee_paying_account->is_prime() )
@@ -80,8 +80,10 @@ object_id_type account_create_evaluator::do_apply( const account_create_operatio
          obj.active           = active;
          obj.statistics       = stats_obj.id;
          obj.memo_key         = get_relative_id(o.memo_key);
-         obj.voting_key       = get_relative_id(o.voting_key);
+         obj.voting_account   = o.voting_account;
          obj.votes            = o.vote;
+         obj.num_witness      = o.num_witness;
+         obj.num_committee    = o.num_committee;
    });
 
    return new_acnt_object.id;
@@ -92,7 +94,6 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
 {
    database&   d = db();
 
-   FC_ASSERT( !o.voting_key || is_relative(*o.voting_key) || db().find_object(*o.voting_key) );
    FC_ASSERT( !o.memo_key || is_relative(*o.memo_key) || db().find_object(*o.memo_key) );
 
    const auto& chain_params = db().get_global_properties().parameters;
@@ -111,9 +112,6 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
 
    acnt = &o.account(d);
    if( o.upgrade_to_prime ) FC_ASSERT( !acnt->is_prime() );
-   if( o.owner ) FC_ASSERT( verify_authority( *acnt, authority::owner ) );
-   else if( o.active || o.voting_key || o.memo_key ) FC_ASSERT( verify_authority( *acnt, authority::active ) );
-   else if( o.vote ) FC_ASSERT( verify_signature( acnt->voting_key(d) ) );
 
    if( o.vote )
    {
@@ -132,7 +130,7 @@ object_id_type account_update_evaluator::do_apply( const account_update_operatio
    db().modify( *acnt, [&]( account_object& a  ){
           if( o.owner ) a.owner = *o.owner;
           if( o.active ) a.active = *o.active;
-          if( o.voting_key ) a.voting_key = *o.voting_key;
+          if( o.voting_account ) a.voting_account = *o.voting_account;
           if( o.memo_key ) a.memo_key = *o.memo_key;
           if( o.vote ) a.votes = *o.vote;
           if( o.upgrade_to_prime )
@@ -140,6 +138,8 @@ object_id_type account_update_evaluator::do_apply( const account_update_operatio
             a.referrer_percent = 100;
             a.referrer = a.id;
           }
+          a.num_witness = o.num_witness;
+          a.num_committee = o.num_committee;
       });
    return object_id_type();
 }

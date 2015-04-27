@@ -218,7 +218,6 @@ struct database_fixture {
       create_account.owner = authority(123, key, 123);
       create_account.active = authority(321, key, 321);
       create_account.memo_key = key;
-      create_account.voting_key = key;
 
       auto& active_delegates = db.get_global_properties().active_delegates;
       if( active_delegates.size() > 0 )
@@ -252,7 +251,6 @@ struct database_fixture {
       create_account.owner = authority(123, key, 123);
       create_account.active = authority(321, key, 321);
       create_account.memo_key = key;
-      create_account.voting_key = key;
 
       auto& active_delegates = db.get_global_properties().active_delegates;
       if( active_delegates.size() > 0 )
@@ -396,7 +394,6 @@ struct database_fixture {
       account_create_op.owner = authority(1234, key_rkid, 1234);
       account_create_op.active = authority(5678, key_rkid, 5678);
       account_create_op.memo_key = key_rkid;
-      account_create_op.voting_key = key_rkid;
       account_create_op.vote = flat_set<vote_tally_id_type>();
       trx.operations.push_back( account_create_op );
 

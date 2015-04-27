@@ -45,6 +45,8 @@
 #define BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO   1750
 #define BTS_DEFAULT_MARGIN_PERIOD_SEC              (30*60*60*24)
 
+#define BTS_DEFUALT_NUM_WITNESSES                        (101)
+#define BTS_DEFUALT_NUM_COMMITTEE                        (11)
 #define BTS_DEFAULT_MAX_PROPOSAL_LIFETIME_SEC            (60*60*24*7*4) // Four weeks
 #define BTS_DEFAULT_GENESIS_PROPOSAL_REVIEW_PERIOD_SEC   (60*60*24*7*2) // Two weeks
 #define BTS_DEFAULT_WITNESS_PERCENT                      (10000/100) // 1%

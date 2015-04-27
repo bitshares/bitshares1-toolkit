@@ -55,9 +55,11 @@ namespace bts { namespace chain {
       string          name;
       authority       owner;
       authority       active;
-      object_id_type  voting_key = key_id_type();
+      account_id_type voting_account;
       object_id_type  memo_key = key_id_type();
 
+      uint16_t        num_witness = BTS_DEFUALT_NUM_WITNESSES;
+      uint16_t        num_committee = BTS_DEFUALT_NUM_COMMITTEE;
       flat_set<vote_tally_id_type> vote;
 
       account_id_type fee_payer()const { return referrer; }
@@ -119,9 +121,11 @@ namespace bts { namespace chain {
       asset                                   fee;
       optional<authority>                     owner;
       optional<authority>                     active;
-      optional<object_id_type>                voting_key = key_id_type();
+      optional<account_id_type>               voting_account;
       optional<object_id_type>                memo_key = key_id_type();
       optional<flat_set<vote_tally_id_type>>  vote;
+      uint16_t                                num_witness = BTS_DEFUALT_NUM_WITNESSES;
+      uint16_t                                num_committee = BTS_DEFUALT_NUM_COMMITTEE;
 
       /**
        * If set to true, upgrades the account to a prime account by setting the account's referrer to itself. This may
@@ -1160,12 +1164,13 @@ FC_REFLECT( bts::chain::account_create_operation,
             (registrar)(fee)
             (referrer)(referrer_percent)
             (name)
-            (owner)(active)(voting_key)(memo_key)
-          )
+            (owner)(active)(voting_account)(memo_key)
+            (num_witness)(num_committee)(vote) 
+           )
 
 FC_REFLECT_TYPENAME( fc::flat_set<bts::chain::vote_tally_id_type> )
 FC_REFLECT( bts::chain::account_update_operation,
-            (account)(fee)(owner)(active)(voting_key)(memo_key)(vote)(upgrade_to_prime)
+            (account)(fee)(owner)(active)(voting_account)(memo_key)(num_witness)(num_committee)(vote)(upgrade_to_prime)
           )
 
 FC_REFLECT_TYPENAME( bts::chain::account_whitelist_operation::account_listing)

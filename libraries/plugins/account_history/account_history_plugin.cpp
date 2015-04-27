@@ -219,8 +219,6 @@ void account_observer::get_updatable_account_keys(
    const bts::chain::database& db = _plugin._my->database();
    const account_object& acct = update_op.account(db);
 
-   if( update_op.voting_key.valid() )
-      result.insert( acct.voting_key );
    if( update_op.memo_key.valid() )
       result.insert( acct.memo_key );
    if( update_op.owner.valid() )
@@ -359,7 +357,6 @@ flat_set<key_id_type> account_history_plugin_impl::get_keys_for_account( const a
    key_id_set.reserve(owner_auths.size() + active_auths.size() + 2);
 
    key_id_set.insert(acct.memo_key);
-   key_id_set.insert(acct.voting_key);
 
    // we don't use get_keys() here to avoid an intermediate copy operation
    for( const pair<object_id_type, weight_type>& item : active_auths )

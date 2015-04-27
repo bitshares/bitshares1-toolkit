@@ -191,7 +191,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          n.owner.add_authority(genesis_key.get_id(), 1);
          n.owner.weight_threshold = 1;
          n.active = n.owner;
-         n.voting_key = genesis_key.id;
          n.memo_key = genesis_key.id;
          n.statistics = genesis_statistics.id;
       });
@@ -299,7 +298,6 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          cop.registrar = account_id_type(1);
          cop.active = account_authority;
          cop.owner = account_authority;
-         cop.voting_key = key_id;
          cop.memo_key = key_id;
          trx.operations.push_back(cop);
          trx.validate();
