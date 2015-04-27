@@ -1739,18 +1739,24 @@ void database::clear_expired_orders()
    {
       const force_settlement_object& order = *settlement_index.begin();
       const asset_object mia = get(order.balance.asset_id);
-      fill_order_operation settler;
-      settler.account_id = order.owner;
-      settler.order_id = order.id;
-      settler.pays = order.balance;
-      settler.receives = (order.balance * mia.current_feed.short_limit);
-      settler.receives.amount = (fc::uint128_t(settler.receives.amount.value) *
+      fill_order_operation settle_op;
+      settle_op.account_id = order.owner;
+      settle_op.order_id = order.id;
+      settle_op.pays = order.balance;
+      settle_op.receives = (order.balance * mia.current_feed.short_limit);
+      settle_op.receives.amount = (fc::uint128_t(settle_op.receives.amount.value) *
                                  (10000 - mia.force_settlement_offset_percent) / 100).to_uint64();
-      assert(settler.receives < order.balance * mia.current_feed.short_limit);
+      assert(settle_op.receives < order.balance * mia.current_feed.short_limit);
 
-      price settlement_price = settler.pays / settler.receives;
+      price settlement_price = settle_op.pays / settle_op.receives;
 
-      //TODO: Create a force_settlement_operation (virtual op) which enters a matching loop until the settlement is complete.
+      auto& call_index = get_index_type<call_order_index>().indices().get<by_collateral>();
+      // Match against the least collateralized short until the settlement is finished
+      while( !call_index.empty() && !(match(*call_index.begin(), order, settlement_price) & 2) );
+      // Under no circumstances should the settlement not be finished now
+      assert(find_object(settle_op.order_id) == nullptr);
+
+      set_applied_operation_result(push_applied_operation(settle_op), object_id_type());
    }
 }
 

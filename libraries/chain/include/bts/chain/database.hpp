@@ -174,23 +174,21 @@ namespace bts { namespace chain {
          void cancel_order( const limit_order_object& order, bool create_virtual_op = true );
 
          /**
-          *  Matches the two orders,
+          * Matches the two orders,
           *
-          *  @return a bit field indicating which orders were filled (and thus removed)
+          * @return a bit field indicating which orders were filled (and thus removed)
           *
-          *  0 - no orders were matched
-          *  1 - bid was filled
-          *  2 - ask was filled
-          *  3 - both were filled
+          * 0 - no orders were matched
+          * 1 - bid was filled
+          * 2 - ask was filled
+          * 3 - both were filled
           */
          ///@{
          template<typename OrderType>
          int match( const limit_order_object& bid, const OrderType& ask, const price& match_price );
          int match( const limit_order_object& bid, const limit_order_object& ask, const price& trade_price );
          int match( const limit_order_object& bid, const short_order_object& ask, const price& trade_price );
-         int match( const call_order_object& ask, const limit_order_object& );
          int match( const call_order_object& call, const force_settlement_object& settle , const price& match_price );
-         int match( const call_order_object& ask, const short_order_object& );
          ///@}
 
          /**
