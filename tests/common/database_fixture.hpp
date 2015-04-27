@@ -503,6 +503,14 @@ struct database_fixture {
       return new_key(db);
    }
 
+   const key_object& register_address( const address& addr )
+   {
+      trx.operations.push_back(key_create_operation({account_id_type(), asset(), addr}));
+      key_id_type new_key = db.push_transaction(trx, ~0).operation_results[0].get<object_id_type>();
+      trx.operations.clear();
+      return new_key(db);
+   }
+
    uint64_t fund(const account_object& account, const asset& amount = asset(500000))
    {
       transfer(account_id_type()(db), account, amount);
