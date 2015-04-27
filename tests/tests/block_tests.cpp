@@ -649,4 +649,166 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    BOOST_CHECK(db.get_index_type<call_order_index>().indices().empty());
 } FC_LOG_AND_RETHROW() }
 
+BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
+{
+   try
+   {
+      const asset_object& core = asset_id_type()(db);
+
+      // Sam is the creator of accounts
+      private_key_type genesis_key = generate_private_key("genesis");
+      private_key_type sam_key = generate_private_key("sam");
+
+      //
+      // A = old key set
+      // B = new key set
+      //
+      // we measure how many times we test following four cases:
+      //
+      //                                     A-B        B-A
+      // alice     case_count[0]   A == B    empty      empty
+      // bob       case_count[1]   A  < B    empty      nonempty
+      // charlie   case_count[2]   B  < A    nonempty   empty
+      // dan       case_count[3]   A nc B    nonempty   nonempty
+      //
+      // and assert that all four cases were tested at least once
+      //
+      account_object sam_account_object = create_account( "sam", sam_key );
+
+      //Get a sane head block time
+      generate_block();
+
+      db.modify(db.get_global_properties(), [](global_property_object& p) {
+         p.parameters.genesis_proposal_review_period = fc::hours(1).to_seconds();
+      });
+
+      transaction tx;
+      processed_transaction ptx;
+
+      account_object genesis_account_object = genesis_account(db);
+      // transfer from genesis account to Sam account
+      transfer(genesis_account_object, sam_account_object, core.amount(100000));
+
+      const int num_keys = 5;
+      vector< private_key_type > numbered_private_keys;
+      vector< vector< key_id_type > > numbered_key_id;
+      numbered_private_keys.reserve( num_keys );
+      numbered_key_id.push_back( vector<key_id_type>() );
+      numbered_key_id.push_back( vector<key_id_type>() );
+
+      for( int i=0; i<num_keys; i++ )
+      {
+         private_key_type privkey = generate_private_key(
+            std::string("key_") + std::to_string(i));
+         public_key_type pubkey = privkey.get_public_key();
+         address addr( pubkey );
+
+         key_id_type public_key_id = register_key( pubkey ).id;
+         key_id_type addr_id = register_address( addr ).id;
+
+         numbered_private_keys.push_back( privkey );
+         numbered_key_id[0].push_back( public_key_id );
+         numbered_key_id[1].push_back( addr_id );
+      }
+
+      // each element of possible_key_sched is a list of exactly num_keys
+      // indices into numbered_key_id[use_address].  they are defined
+      // by repeating selected elements of
+      // numbered_private_keys given by a different selector.
+      vector< vector< int > > possible_key_sched;
+      const int num_key_sched = (1 << num_keys)-1;
+      possible_key_sched.reserve( num_key_sched );
+
+      for( int s=1; s<=num_key_sched; s++ )
+      {
+         vector< int > v;
+         int i = 0;
+         v.reserve( num_keys );
+         while( v.size() < num_keys )
+         {
+            if( s & (1 << i) )
+               v.push_back( i );
+            i++;
+            if( i >= num_keys )
+               i = 0;
+         }
+         possible_key_sched.push_back( v );
+      }
+
+      // we can only undo in blocks
+      generate_block();
+
+      for( int use_addresses=0; use_addresses<2; use_addresses++ )
+      {
+         vector< key_id_type > key_ids = numbered_key_id[ use_addresses ];
+         for( int num_owner_keys=1; num_owner_keys<=2; num_owner_keys++ )
+         {
+            for( int num_active_keys=1; num_active_keys<=2; num_active_keys++ )
+            {
+               for( const vector< int >& key_sched_before : possible_key_sched )
+               {
+                  auto it = key_sched_before.begin();
+
+                  trx.clear();
+                  account_create_operation create_op;
+                  create_op.name = "alice";
+
+                  for( int owner_index=0; owner_index<num_owner_keys; owner_index++ )
+                     create_op.owner.auths[ key_ids[ *(it++) ] ] = 1;
+                  create_op.owner.weight_threshold = num_owner_keys;
+
+                  for( int active_index=0; active_index<num_active_keys; active_index++ )
+                     create_op.active.auths[ key_ids[ *(it++) ] ] = 1;
+                  create_op.owner.weight_threshold = num_active_keys;
+
+                  create_op.memo_key = key_ids[ *(it++) ] ;
+                  trx.operations.push_back( create_op );
+
+                  processed_transaction ptx_create = db.push_transaction( trx );
+                  account_id_type alice_account_id =
+                     ptx_create.operation_results[0]
+                     .get< object_id_type >();
+
+                  generate_block();
+                  for( const vector< int >& key_sched_after : possible_key_sched )
+                  {
+                     auto it = key_sched_after.begin();
+
+                     trx.clear();
+                     account_update_operation update_op;
+                     update_op.account = alice_account_id;
+                     update_op.owner = authority();
+                     update_op.active = authority();
+
+                     for( int owner_index=0; owner_index<num_owner_keys; owner_index++ )
+                        update_op.owner->auths[ key_ids[ *(it++) ] ] = 1;
+                     update_op.owner->weight_threshold = num_owner_keys;
+                     for( int active_index=0; active_index<num_active_keys; active_index++ )
+                        update_op.active->auths[ key_ids[ *(it++) ] ] = 1;
+                     update_op.active->weight_threshold = num_active_keys;
+                     update_op.memo_key = key_ids[ *(it++) ] ;
+
+                     trx.operations.push_back( update_op );
+                     db.push_transaction( trx );
+                     verify_account_history_plugin_index();
+                     generate_block();
+
+                     verify_account_history_plugin_index();
+                     db.pop_block();
+                     verify_account_history_plugin_index();
+                  }
+                  db.pop_block();
+                  verify_account_history_plugin_index();
+               }
+            }
+         }
+      }
+   }
+   catch( const fc::exception& e )
+   {
+      edump( (e.to_detail_string()) );
+      throw;
+   }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
