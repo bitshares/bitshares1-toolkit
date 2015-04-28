@@ -130,7 +130,7 @@ void database::initialize_evaluators()
    register_evaluator<call_order_update_evaluator>();
    register_evaluator<transfer_evaluator>();
    register_evaluator<asset_fund_fee_pool_evaluator>();
-   register_evaluator<delegate_publish_feeds_evaluator>();
+   register_evaluator<asset_publish_feeds_evaluator>();
    register_evaluator<proposal_create_evaluator>();
    register_evaluator<proposal_update_evaluator>();
    register_evaluator<proposal_delete_evaluator>();
@@ -167,7 +167,6 @@ void database::initialize_indexes()
    add_index< primary_index< simple_index< account_statistics_object      >> >();
    add_index< primary_index< simple_index< asset_dynamic_data_object      >> >();
    add_index< primary_index< flat_index<   vote_tally_object              >> >();
-   add_index< primary_index< flat_index<   delegate_feeds_object          >> >();
    add_index< primary_index< flat_index<   block_summary_object           >> >();
 }
 
@@ -214,11 +213,9 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          create<vote_tally_object>( [&](vote_tally_object&) {
             // Nothing to do here...
          });
-      const delegate_feeds_object& delegate_feeds = create<delegate_feeds_object>([](delegate_feeds_object&){});
       const delegate_object& init_delegate = create<delegate_object>( [&](delegate_object& d) {
          d.delegate_account = delegate_account.id;
          d.vote = vote.id;
-         d.feeds = delegate_feeds.id;
       });
       init_delegates.push_back(init_delegate.id);
 
@@ -1108,6 +1105,12 @@ void database::update_active_witnesses()
 
    modify( get_global_properties(), [&]( global_property_object& gp ){
       gp.active_witnesses = std::move(ids);
+      gp.witness_accounts.clear();
+      std::transform(gp.active_witnesses.begin(), gp.active_witnesses.end(),
+                     std::inserter(gp.witness_accounts, gp.witness_accounts.end()),
+                     [this](witness_id_type w) {
+         return get(w).witness_account;
+      });
    });
 }
 
@@ -1723,6 +1726,7 @@ void database::clear_expired_orders()
    }
 
    //Process expired force settlement orders
+   //TODO: Do this on an asset-by-asset basis, and skip the current asset if it's maximally settled or has settlements disabled
    auto& settlement_index = get_index_type<force_settlement_index>().indices().get<by_expiration>();
    while( !settlement_index.empty() && settlement_index.begin()->settlement_date <= head_block_time() )
    {
@@ -1747,6 +1751,16 @@ void database::clear_expired_orders()
 
       set_applied_operation_result(push_applied_operation(settle_op), object_id_type());
    }
+}
+
+void database::update_expired_feeds()
+{
+   auto& asset_idx = get_index_type<asset_index>().indices().get<by_feed_expiration>();
+   if( asset_idx.empty() ) return;
+   while( asset_idx.begin()->feed_is_expired(head_block_time()) )
+      modify(*asset_idx.begin(), [this](asset_object& a) {
+         a.update_median_feeds(head_block_time());
+      });
 }
 
 /**

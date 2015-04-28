@@ -3,16 +3,21 @@
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/database.hpp>
 
+#include <functional>
+
 namespace bts { namespace chain {
 object_id_type asset_create_evaluator::do_evaluate( const asset_create_operation& op )
 { try {
    database& d = db();
 
    const auto& chain_parameters = d.get_global_properties().parameters;
+   FC_ASSERT( op.feed_publishers.size() <= chain_parameters.maximum_asset_feed_publishers );
    FC_ASSERT( op.whitelist_authorities.size() <= chain_parameters.maximum_asset_whitelist_authorities );
    FC_ASSERT( op.blacklist_authorities.size() <= chain_parameters.maximum_asset_whitelist_authorities );
 
    // Check that all authorities do exist
+   for( auto id : op.feed_publishers )
+      d.get_object(id);
    for( auto id : op.whitelist_authorities )
       d.get_object(id);
    for( auto id : op.blacklist_authorities )
@@ -27,6 +32,7 @@ object_id_type asset_create_evaluator::do_evaluate( const asset_create_operation
 
    FC_ASSERT( d.find_object(op.short_backing_asset) != nullptr );
 
+   FC_ASSERT( op.feed_lifetime_seconds > chain_parameters.block_interval );
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (op) ) }
 
@@ -57,6 +63,12 @@ object_id_type asset_create_evaluator::do_apply( const asset_create_operation& o
          a.dynamic_asset_data_id = dyn_asset.id;
          a.force_settlement_delay_sec = op.force_settlement_delay_sec;
          a.force_settlement_offset_percent = op.force_settlement_offset_percent;
+         a.feed_lifetime_sec = op.feed_lifetime_seconds;
+         std::transform(op.feed_publishers.begin(), op.feed_publishers.end(),
+                        std::inserter(a.feeds, a.feeds.end()),
+                        [this](account_id_type id) {
+                           return make_pair(id, make_pair(db().head_block_time(), price_feed()));
+                        });
          a.whitelist_authorities = op.whitelist_authorities;
          a.blacklist_authorities = op.blacklist_authorities;
       });
@@ -129,6 +141,16 @@ object_id_type asset_update_evaluator::do_evaluate(const asset_update_operation&
 
    const auto& chain_parameters = d.get_global_properties().parameters;
 
+   if( o.new_feed_publishers )
+   {
+      FC_ASSERT( a.is_market_issued(), "Cannot set feed publishers on a user-issued asset." );
+      FC_ASSERT( o.new_feed_publishers->size() <= chain_parameters.maximum_asset_feed_publishers );
+   }
+   if( o.new_price_feed )
+   {
+      FC_ASSERT( a.is_market_issued() &&
+                 (a.issuer != account_id_type() || (o.new_issuer && *o.new_issuer != account_id_type())) );
+   }
    if( o.new_whitelist_authorities )
    {
       FC_ASSERT( o.new_whitelist_authorities->size() <= chain_parameters.maximum_asset_whitelist_authorities );
@@ -179,12 +201,14 @@ object_id_type asset_update_evaluator::do_evaluate(const asset_update_operation&
       FC_ASSERT(a.is_market_issued());
       FC_ASSERT(o.new_price_feed->call_limit.base.asset_id == a.short_backing_asset);
    }
+
+   FC_ASSERT( o.feed_lifetime_seconds > chain_parameters.block_interval );
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW((o)) }
 
 object_id_type asset_update_evaluator::do_apply(const asset_update_operation& o)
 {
-   db().modify(*asset_to_update, [&o](asset_object& a) {
+   db().modify(*asset_to_update, [&](asset_object& a) {
       if( o.new_issuer )
          a.issuer = *o.new_issuer;
       if( o.permissions )
@@ -195,6 +219,21 @@ object_id_type asset_update_evaluator::do_apply(const asset_update_operation& o)
          a.core_exchange_rate = *o.core_exchange_rate;
       if( o.new_price_feed )
          a.current_feed = *o.new_price_feed;
+      if( o.new_feed_publishers )
+      {
+         //This is tricky because I have a set of publishers coming in, but a map of publisher to feed is stored.
+         //I need to update the map such that the keys match the new publishers, but not munge the old price feeds from
+         //publishers who are being kept.
+         //First, remove any old publishers who are no longer publishers
+         for( auto itr = a.feeds.begin(); itr != a.feeds.end(); ++itr )
+            if( !o.new_feed_publishers->count(itr->first) )
+               itr = a.feeds.erase(itr);
+         //Now, add any new publishers
+         for( auto itr = o.new_feed_publishers->begin(); itr != o.new_feed_publishers->end(); ++itr )
+            if( !a.feeds.count(*itr) )
+               a.feeds[*itr];
+         a.update_median_feeds(db().head_block_time());
+      }
       if( o.new_whitelist_authorities )
          a.whitelist_authorities = *o.new_whitelist_authorities;
       if( o.new_blacklist_authorities )
@@ -205,6 +244,7 @@ object_id_type asset_update_evaluator::do_apply(const asset_update_operation& o)
       a.min_market_fee = o.min_market_fee;
       a.force_settlement_delay_sec = o.force_settlement_delay_sec;
       a.force_settlement_offset_percent = o.force_settlement_offset_percent;
+      a.feed_lifetime_sec = o.feed_lifetime_seconds;
    });
 
    return object_id_type();
@@ -230,5 +270,39 @@ object_id_type asset_settle_evaluator::do_apply(const asset_settle_evaluator::op
       s.settlement_date = d.head_block_time() + asset_to_settle->force_settlement_delay_sec;
    }).id;
 }
+
+object_id_type asset_publish_feeds_evaluator::do_evaluate(const asset_publish_feed_operation& o)
+{ try {
+   database& d = db();
+
+   const asset_object& quote = o.feed.call_limit.quote.asset_id(d);
+   //Verify that this feed is for a market-issued asset and that asset is backed by the base
+   FC_ASSERT(quote.is_market_issued() && quote.short_backing_asset == o.feed.call_limit.base.asset_id);
+   //Verify that the publisher is authoritative to publish a feed
+   if( quote.issuer == account_id_type() )
+   {
+      //It's a delegate-fed asset. Verify that publisher is an active delegate or witness.
+      FC_ASSERT(d.get(account_id_type()).active.auths.count(o.publisher) ||
+                d.get_global_properties().witness_accounts.count(o.publisher));
+   } else {
+      FC_ASSERT(quote.feeds.count(o.publisher));
+   }
+
+   return object_id_type();
+} FC_CAPTURE_AND_RETHROW((o)) }
+
+object_id_type asset_publish_feeds_evaluator::do_apply(const asset_publish_feed_operation& o)
+{ try {
+   database& d = db();
+
+   const asset_object& quote = d.get(o.feed.call_limit.quote.asset_id);
+   // Store medians for this asset
+   d.modify(quote, [&o,&d](asset_object& a) {
+      a.feeds[o.publisher] = make_pair(d.head_block_time(), o.feed);
+      a.update_median_feeds(d.head_block_time());
+   });
+
+   return object_id_type();
+} FC_CAPTURE_AND_RETHROW((o)) }
 
 } } // bts::chain

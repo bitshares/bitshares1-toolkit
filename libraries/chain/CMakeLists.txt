@@ -23,7 +23,7 @@ add_library( bts_chain
 
              key_object.cpp
              account_object.cpp
-             delegate_object.cpp
+             asset_object.cpp
              proposal_object.cpp
 
              transaction.cpp

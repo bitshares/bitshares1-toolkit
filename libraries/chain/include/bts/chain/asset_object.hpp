@@ -1,4 +1,5 @@
 #pragma once
+#include <boost/multi_index/composite_key.hpp>
 #include <bts/chain/asset.hpp>
 #include <bts/db/generic_index.hpp>
 
@@ -46,6 +47,23 @@ namespace bts { namespace chain {
          /// ID of the account which issued this asset.
          account_id_type         issuer;
 
+         /// @{ @group Market-Issued Asset Fields
+         /// These fields are only relevant to market-issued assets.
+
+         /// Feeds published for this asset. If issuer is not genesis, the keys in this map are the feed publishing
+         /// accounts; otherwise, the feed publishers are the currently active delegates and witnesses and this map
+         /// should be treated as an implementation detail. The timestamp on each feed is the time it was published.
+         flat_map<account_id_type, pair<time_point_sec,price_feed>> feeds;
+         /// Time before a price feed expires
+         uint32_t feed_lifetime_sec;
+         /// This is the currently active price feed, calculated as the median of values from the currently active
+         /// feeds.
+         price_feed current_feed;
+         /// This is the publication time of the oldest feed which was factored into current_feed.
+         fc::time_point_sec current_feed_publication_time;
+
+         /// @}
+
          /// The maximum supply of this asset which may exist at any given time. This can be as large as
          /// BTS_MAX_SHARE_SUPPLY
          share_type              max_supply         = 0;
@@ -70,8 +88,6 @@ namespace bts { namespace chain {
          /// this asset to its accumulated fees, and withdraw from the fee pool the same amount as converted at the
          /// core exchange rate.
          price core_exchange_rate;
-         /// This is the currently active price feed. Only relevant for market-issued assets.
-         price_feed current_feed;
          /// This is the delay between the time a long requests settlement and the chain evaluates the settlement
          uint32_t force_settlement_delay_sec;
          /// This is the percent to adjust the feed price in the short's favor in the event of a forced settlement
@@ -91,6 +107,13 @@ namespace bts { namespace chain {
          flat_set<account_id_type> blacklist_authorities;
 
          asset_id_type get_id()const { return id; }
+
+         time_point_sec feed_expiration_time()const { return current_feed_publication_time + feed_lifetime_sec; }
+         bool feed_is_expired(time_point_sec current_time)const
+         {
+            return feed_expiration_time() >= current_time;
+         }
+         void update_median_feeds(time_point_sec current_time);
    };
 
    class force_settlement_object : public bts::db::annotated_object<force_settlement_object>
@@ -104,12 +127,16 @@ namespace bts { namespace chain {
          time_point_sec    settlement_date;
    };
 
-   struct by_symbol{};
+   struct by_symbol;
+   struct by_feed_expiration;
    typedef multi_index_container<
       asset_object,
       indexed_by<
          hashed_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
-         hashed_unique< tag<by_symbol>, member<asset_object, string, &asset_object::symbol> >
+         hashed_unique< tag<by_symbol>, member<asset_object, string, &asset_object::symbol> >,
+         ordered_non_unique< tag<by_feed_expiration>,
+            const_mem_fun< asset_object, time_point_sec, &asset_object::feed_expiration_time >
+         >
       >
    > asset_object_multi_index_type;
 
@@ -139,16 +166,23 @@ FC_REFLECT_DERIVED( bts::chain::asset_object,
                     (bts::db::annotated_object<bts::chain::asset_object>),
                     (symbol)
                     (issuer)
+                    (feeds)
+                    (feed_lifetime_sec)
+                    (current_feed)
+                    (current_feed_publication_time)
                     (max_supply)
+                    (market_fee_percent)
                     (max_market_fee)
                     (min_market_fee)
-                    (market_fee_percent)
                     (issuer_permissions)
                     (flags)
                     (short_backing_asset)
                     (core_exchange_rate)
-                    (current_feed)
+                    (force_settlement_delay_sec)
+                    (force_settlement_offset_percent)
                     (dynamic_asset_data_id)
+                    (whitelist_authorities)
+                    (blacklist_authorities)
                   )
 
 FC_REFLECT( bts::chain::force_settlement_object, (owner)(balance)(settlement_date) )

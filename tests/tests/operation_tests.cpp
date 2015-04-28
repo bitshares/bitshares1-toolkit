@@ -290,16 +290,15 @@ BOOST_AUTO_TEST_CASE( update_mia )
       REQUIRE_THROW_WITH_VALUE(op, new_price_feed->max_margin_period_sec, 0);
       REQUIRE_THROW_WITH_VALUE(op, new_price_feed->required_maintenance_collateral, 0);
       REQUIRE_THROW_WITH_VALUE(op, new_price_feed->required_initial_collateral, 500);
-
-      /* TODO: why shouldn't we be able to update the issuer to genesis?
+      // Can't set issuer to genesis while setting a price feed -- genesis feeds must come through median voting
       REQUIRE_THROW_WITH_VALUE(op, new_issuer, account_id_type());
-      */
 
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
       std::swap(op.flags, op.permissions);
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
+      op.new_price_feed.reset();
 
       trx.operations.clear();
       auto nathan = create_account("nathan");
@@ -510,7 +509,6 @@ BOOST_AUTO_TEST_CASE( update_uia )
       op.asset_to_update = test.id;
 
       trx.operations.push_back(op);
-      BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
 
       //Cannot set issuer to same value as before
       REQUIRE_THROW_WITH_VALUE(op, new_issuer, account_id_type());
@@ -878,26 +876,36 @@ BOOST_AUTO_TEST_CASE( cancel_limit_order_test )
 
 BOOST_AUTO_TEST_CASE( delegate_feeds )
 {
+   using namespace bts::chain;
    try {
       INVOKE( create_mia );
+      {
+         asset_update_operation uop(get_asset("BITUSD"));
+         uop.new_issuer = account_id_type();
+         trx.operations.push_back(uop);
+         db.push_transaction(trx, ~0);
+         trx.clear();
+      }
+      generate_block();
       const asset_object& bit_usd = get_asset("BITUSD");
-      const vector<delegate_id_type>& active_delegates = db.get_global_properties().active_delegates;
-      BOOST_REQUIRE(active_delegates.size() == 10);
+      auto& global_props = db.get_global_properties();
+      const vector<account_id_type> active_witnesses(global_props.witness_accounts.begin(),
+                                                      global_props.witness_accounts.end());
+      BOOST_REQUIRE_EQUAL(active_witnesses.size(), 10);
 
-      delegate_publish_feeds_operation op({active_delegates[0], asset(), flat_set<price_feed>()});
-      op.feeds.insert(price_feed());
-      op.feeds.begin()->call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(30));
-      op.feeds.begin()->short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(10));
+      asset_publish_feed_operation op({active_witnesses[0], asset()});
+      op.feed.call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(30));
+      op.feed.short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(10));
       // We'll expire margins after a month
-      op.feeds.begin()->max_margin_period_sec = fc::days(30).to_seconds();
+      op.feed.max_margin_period_sec = fc::days(30).to_seconds();
       // Accept defaults for required collateral
       trx.operations.emplace_back(op);
       db.push_transaction(trx, ~0);
 
       {
          //Dumb sanity check of some operators. Only here to improve code coverage. :D
-         price_feed dummy = *op.feeds.begin();
-         BOOST_CHECK(*op.feeds.begin() == dummy);
+         price_feed dummy = op.feed;
+         BOOST_CHECK(op.feed == dummy);
          price a(asset(1), bit_usd.amount(2));
          price b(asset(2), bit_usd.amount(2));
          price c(asset(1), bit_usd.amount(2));
@@ -913,10 +921,10 @@ BOOST_AUTO_TEST_CASE( delegate_feeds )
       BOOST_CHECK(bit_usd.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
       BOOST_CHECK(bit_usd.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);
 
-      op.delegate = active_delegates[1];
-      op.feeds.begin()->call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(25));
-      op.feeds.begin()->short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(20));
-      op.feeds.begin()->max_margin_period_sec = fc::days(10).to_seconds();
+      op.publisher = active_witnesses[1];
+      op.feed.call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(25));
+      op.feed.short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(20));
+      op.feed.max_margin_period_sec = fc::days(10).to_seconds();
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
 
@@ -926,13 +934,13 @@ BOOST_AUTO_TEST_CASE( delegate_feeds )
       BOOST_CHECK(bit_usd.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
       BOOST_CHECK(bit_usd.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);
 
-      op.delegate = active_delegates[2];
-      op.feeds.begin()->call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(40));
-      op.feeds.begin()->short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(10));
-      op.feeds.begin()->max_margin_period_sec = fc::days(100).to_seconds();
+      op.publisher = active_witnesses[2];
+      op.feed.call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(40));
+      op.feed.short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(10));
+      op.feed.max_margin_period_sec = fc::days(100).to_seconds();
       // But this delegate is an idiot.
-      op.feeds.begin()->required_initial_collateral = 1001;
-      op.feeds.begin()->required_maintenance_collateral = 1000;
+      op.feed.required_initial_collateral = 1001;
+      op.feed.required_maintenance_collateral = 1000;
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
 

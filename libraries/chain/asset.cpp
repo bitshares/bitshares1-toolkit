@@ -107,6 +107,8 @@ namespace bts { namespace chain {
             call_limit.validate();
          if( !short_limit.is_null() )
             short_limit.validate();
+         if( !settlement_price.is_null() )
+            settlement_price.validate();
          FC_ASSERT( call_limit.is_null() == short_limit.is_null() );
          FC_ASSERT( call_limit.base.asset_id == short_limit.quote.asset_id );
          FC_ASSERT( call_limit.quote.asset_id == short_limit.base.asset_id );

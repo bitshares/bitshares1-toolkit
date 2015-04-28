@@ -34,10 +34,12 @@
 #define BTS_MAX_MARKET_FEE_PERCENT                         10000
 #define BTS_DEFAULT_FORCE_SETTLEMENT_DELAY                 (60*60*24) ///< 1 day
 #define BTS_DEFAULT_FORCE_SETTLEMENT_OFFSET                100 ///< 1%
+#define BTS_DEFAULT_PRICE_FEED_LIFETIME                    (60*60*24) ///< 1 day
 #define BTS_MAX_FORCE_SETTLEMENT_OFFSET                    10000 ///< 100%
 #define BTS_MAX_FEED_PRODUCERS                             200
 #define BTS_DEFAULT_MAX_AUTHORITY_MEMBERSHIP               10
 #define BTS_DEFAULT_MAX_ASSET_WHITELIST_AUTHORITIES        10
+#define BTS_DEFAULT_MAX_ASSET_FEED_PUBLISHERS              10
 
 #define BTS_MIN_COLLATERAL_RATIO                   1001  // lower than this could result in divide by 0
 #define BTS_MAX_COLLATERAL_RATIO                   32000 // higher than this is unnecessary and may exceed int16 storage

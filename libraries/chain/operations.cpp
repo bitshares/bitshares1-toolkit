@@ -173,27 +173,15 @@ void account_create_operation::validate()const
 }
 
 
-share_type delegate_publish_feeds_operation::calculate_fee( const fee_schedule_type& schedule )const
+share_type asset_publish_feed_operation::calculate_fee( const fee_schedule_type& schedule )const
 {
-   auto bts_fee_required = schedule.at( publish_feed_fee_type );
-   bts_fee_required *= feeds.size();
-   return bts_fee_required;
+   return schedule.at( publish_feed_fee_type );
 }
 
-void delegate_publish_feeds_operation::validate()const
+void asset_publish_feed_operation::validate()const
 {
-   FC_ASSERT( feeds.size() > 0 );
    FC_ASSERT( fee.amount >= 0 );
-   optional<price_feed> prev;
-   for( const price_feed& item : feeds )
-   {
-      item.validate();
-      if( prev )
-         //Verify uniqueness and sortedness.
-         FC_ASSERT( std::tie(prev->call_limit.base.asset_id, prev->call_limit.quote.asset_id) <
-                    std::tie(item.call_limit.base.asset_id, item.call_limit.quote.asset_id) );
-      prev = item;
-   }
+   feed.validate();
 }
 
 void transfer_operation::get_required_auth(flat_set<account_id_type>& active_auth_set,
@@ -234,6 +222,10 @@ void  asset_create_operation::validate()const
    {
       FC_ASSERT( (permissions == market_issued) );
       FC_ASSERT( (flags == market_issued) );
+      if( issuer == account_id_type() )
+         FC_ASSERT( feed_publishers.empty(), "Cannot set feed publishers on an asset issued by genesis." );
+   } else {
+      FC_ASSERT( feed_publishers.empty(), "Cannot set feed publishers on a user-issued asset." );
    }
 }
 
@@ -246,6 +238,7 @@ asset_update_operation::asset_update_operation(const asset_object& old)
    min_market_fee = old.min_market_fee;
    force_settlement_delay_sec = old.force_settlement_delay_sec;
    force_settlement_offset_percent = old.force_settlement_offset_percent;
+   feed_lifetime_seconds = old.feed_lifetime_sec;
 }
 
 void asset_update_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
@@ -256,9 +249,21 @@ void asset_update_operation::get_required_auth(flat_set<account_id_type>& active
 void asset_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( new_issuer || permissions || flags || core_exchange_rate || new_price_feed || new_whitelist_authorities
-              || new_blacklist_authorities );
 
+   if( new_issuer )
+   {
+      FC_ASSERT( *new_issuer != account_id_type() || !new_feed_publishers || new_feed_publishers->empty(),
+                 "Cannot set feed publishers on an asset belonging to genesis." );
+      FC_ASSERT( *new_issuer != account_id_type() || !new_price_feed,
+                 "Cannot set price feed on an asset belonging to genesis." );
+   }
+   else
+   {
+      if( new_feed_publishers && !new_feed_publishers->empty() )
+         FC_ASSERT( issuer != account_id_type(), "Cannot set feed publishers on an asset belonging to genesis." );
+      if( new_price_feed )
+         FC_ASSERT( issuer != account_id_type(), "Cannot set price feed on an asset belonging to genesis." );
+   }
    if( permissions )
    {
       if( flags )
@@ -681,6 +686,11 @@ void create_bond_offer_operation::validate()const
 share_type create_bond_offer_operation::calculate_fee( const fee_schedule_type& schedule )const
 {
    return schedule.at( create_bond_offer_fee_type );
+}
+
+void bts::chain::asset_publish_feed_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
+{
+   active_auth_set.insert(publisher);
 }
 
 } } // namespace bts::chain

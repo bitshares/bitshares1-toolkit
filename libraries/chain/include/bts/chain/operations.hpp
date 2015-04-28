@@ -208,34 +208,7 @@ namespace bts { namespace chain {
       void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
-   /**
-    * @brief Publish delegate-specified price feeds for market-issued assets
-    *
-    * Delegates use this operation to publish their price feeds for market-issued assets which are maintained by the
-    * delegates. Each price feed is used to tune the market for a particular market-issued asset. For each value in the
-    * feeds, the median across all delegate feeds for that asset is calculated and the market for the asset is
-    * configured with the median of each value.
-    *
-    * The feeds in the operation each contain two prices: a call price limit and a short price limit. For each feed,
-    * the call price is structured as (collateral asset) / (debt asset) and the short price is structured as (asset for
-    * sale) / (collateral asset). Note that the asset IDs are opposite to eachother, so if we're publishing a feed for
-    * USD, the call limit price will be CORE/USD and the short limit price will be USD/CORE.
-    */
-   struct delegate_publish_feeds_operation
-   {
-      delegate_id_type       delegate;
-      asset                  fee; ///< paid for by delegate->delegate_account
-      flat_set<price_feed>   feeds; ///< must be sorted with no duplicates
-
-      account_id_type fee_payer()const { return account_id_type(); }
-      void       get_required_auth( flat_set<account_id_type>&, flat_set<account_id_type>& )const {}
-      void       validate()const;
-      share_type calculate_fee( const fee_schedule_type& k )const;
-
-      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
-   };
-
-   /**
+  /**
     * @brief Create a witness object, as a bid to hold a witness position on the network.
     *
     * Accounts which wish to become witnesses may use this operation to create a witness object which stakeholders may
@@ -352,7 +325,11 @@ namespace bts { namespace chain {
       uint16_t                force_settlement_offset_percent = BTS_DEFAULT_FORCE_SETTLEMENT_OFFSET;
       /// Only for market-issued assets; this speicifies which asset type is used to collateralize short sales
       asset_id_type           short_backing_asset;
+      /// Number of seconds price feeds are valid for
+      uint32_t                feed_lifetime_seconds = BTS_DEFAULT_PRICE_FEED_LIFETIME;
 
+      /// The set of accounts which may publish feeds for this asset
+      flat_set<account_id_type> feed_publishers;
       /// The set of accounts which manage the whitelist for this asset
       flat_set<account_id_type> whitelist_authorities;
       /// The set of accounts which manage the blacklist for this asset
@@ -389,9 +366,9 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const 
-      { 
-         acc.adjust( fee_payer(), -fee ); 
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
+      {
+         acc.adjust( fee_payer(), -fee );
          acc.adjust( account, -amount );
       }
    };
@@ -441,7 +418,9 @@ namespace bts { namespace chain {
       uint32_t                force_settlement_delay_sec = BTS_DEFAULT_FORCE_SETTLEMENT_DELAY;
       /// Offset to apply to feed price when evaluating forced settlements
       uint16_t                force_settlement_offset_percent = BTS_DEFAULT_FORCE_SETTLEMENT_OFFSET;
+      uint32_t                feed_lifetime_seconds = BTS_DEFAULT_PRICE_FEED_LIFETIME;
 
+      optional<flat_set<account_id_type>> new_feed_publishers;
       optional<flat_set<account_id_type>> new_whitelist_authorities;
       optional<flat_set<account_id_type>> new_blacklist_authorities;
 
@@ -450,6 +429,34 @@ namespace bts { namespace chain {
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
       void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
+   };
+
+   /**
+    * @brief Publish price feeds for market-issued assets
+    *
+    * Price feed providers use this operation to publish their price feeds for market-issued assets. A price feed is
+    * used to tune the market for a particular market-issued asset. For each value in the feed, the median across all
+    * delegate feeds for that asset is calculated and the market for the asset is configured with the median of that
+    * value.
+    *
+    * The feed in the operation contains three prices: a call price limit, a short price limit, and a settlement price.
+    * The call limit price is structured as (collateral asset) / (debt asset) and the short limit price is structured
+    * as (asset for sale) / (collateral asset). Note that the asset IDs are opposite to eachother, so if we're
+    * publishing a feed for USD, the call limit price will be CORE/USD and the short limit price will be USD/CORE. The
+    * settlement price may be flipped either direction, as long as it is a ratio between the market-issued asset and
+    * its collateral.
+    */
+   struct asset_publish_feed_operation
+   {
+      account_id_type        publisher;
+      asset                  fee; ///< paid for by publisher
+      price_feed             feed;
+
+      account_id_type fee_payer()const { return publisher; }
+      void       get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const;
+      void       validate()const;
+      share_type calculate_fee( const fee_schedule_type& k )const;
+      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
    };
 
    struct asset_issue_operation
@@ -463,12 +470,8 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
-      {
-         acc.adjust( fee_payer(), -fee );
-         acc.adjust( issue_to_account, asset_to_issue );
-      }
-};
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
+   };
 
    /**
     *  @class limit_order_create_operation
@@ -1042,7 +1045,7 @@ namespace bts { namespace chain {
             asset_issue_operation,
             asset_fund_fee_pool_operation,
             asset_settle_operation,
-            delegate_publish_feeds_operation,
+            asset_publish_feed_operation,
             delegate_create_operation,
             witness_create_operation,
             witness_withdraw_pay_operation,
@@ -1188,8 +1191,6 @@ FC_REFLECT( bts::chain::account_transfer_operation, (account_id)(new_owner)(fee)
 
 FC_REFLECT( bts::chain::delegate_create_operation,
             (delegate_account)(fee) )
-FC_REFLECT( bts::chain::delegate_publish_feeds_operation,
-            (delegate)(fee)(feeds) )
 
 FC_REFLECT( bts::chain::witness_create_operation, (witness_account)(fee)(block_signing_key)(initial_secret) )
 FC_REFLECT( bts::chain::witness_withdraw_pay_operation, (fee)(from_witness)(to_account)(amount) )
@@ -1221,6 +1222,10 @@ FC_REFLECT( bts::chain::asset_create_operation,
             (core_exchange_rate)
             (short_backing_asset)
             (force_settlement_offset_percent)
+            (feed_lifetime_seconds)
+            (feed_publishers)
+            (whitelist_authorities)
+            (blacklist_authorities)
           )
 FC_REFLECT( bts::chain::asset_update_operation,
             (issuer)
@@ -1238,6 +1243,8 @@ FC_REFLECT( bts::chain::asset_update_operation,
 //            (new_whitelist_authorities)
 //            (new_blacklist_authorities)
           )
+FC_REFLECT( bts::chain::asset_publish_feed_operation,
+            (publisher)(fee)(feed) )
 FC_REFLECT( bts::chain::asset_settle_operation, (fee)(account)(amount) )
 
 FC_REFLECT( bts::chain::asset_issue_operation,
@@ -1263,5 +1270,3 @@ FC_REFLECT( bts::chain::create_bond_offer_operation, (fee)(creator)(offer_to_bor
 FC_REFLECT( bts::chain::cancel_bond_offer_operation, (fee)(creator)(offer_id)(refund) )
 FC_REFLECT( bts::chain::accept_bond_offer_operation, (fee)(claimer)(offer_id)(amount) )
 FC_REFLECT( bts::chain::claim_bond_collateral_operation, (fee)(claimer)(bond_id)(payoff_amount)(collateral_claimed) )
-
-

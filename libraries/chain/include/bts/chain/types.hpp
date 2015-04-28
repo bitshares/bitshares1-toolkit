@@ -202,7 +202,6 @@ namespace bts { namespace chain {
    class account_statistics_object;
    class account_debt_object;
    class transaction_object;
-   class delegate_feeds_object;
    class block_summary_object;
    class account_transaction_history_object;
 
@@ -211,7 +210,6 @@ namespace bts { namespace chain {
    typedef object_id< implementation_ids, impl_asset_dynamic_data_type,      asset_dynamic_data_object>                 dynamic_asset_data_id_type;
    typedef object_id< implementation_ids, impl_account_balance_object_type,  account_balance_object>                    account_balance_id_type;
    typedef object_id< implementation_ids, impl_account_statistics_object_type,account_statistics_object>                account_statistics_id_type;
-   typedef object_id< implementation_ids, impl_delegate_feeds_object_type,   delegate_feeds_object>                     delegate_feeds_id_type;
    typedef object_id< implementation_ids, impl_account_debt_object_type,     account_debt_object>                       account_debt_id_type;
    typedef object_id< implementation_ids, impl_transaction_object_type,      transaction_object>                        transaction_obj_id_type;
    typedef object_id< implementation_ids, impl_block_summary_object_type,    block_summary_object>                      block_summary_id_type;
@@ -293,6 +291,7 @@ namespace bts { namespace chain {
       uint16_t                max_bulk_discount_percent_of_fee    = BTS_DEFAULT_MAX_BULK_DISCOUNT_PERCENT; ///< the maximum percentage discount for bulk discounts
       share_type              bulk_discount_threshold_min         = BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MIN; ///< the minimum amount of fees paid to qualify for bulk discounts
       share_type              bulk_discount_threshold_max         = BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MAX; ///< the amount of fees paid to qualify for the max bulk discount percent
+      uint8_t                 maximum_asset_feed_publishers       = BTS_DEFAULT_MAX_ASSET_FEED_PUBLISHERS; ///< the maximum number of feed publishers for a given asset
 
       void validate()const
       {
@@ -303,9 +302,9 @@ namespace bts { namespace chain {
          FC_ASSERT( bulk_discount_threshold_min <= bulk_discount_threshold_max );
          FC_ASSERT( bulk_discount_threshold_min > 0 );
 
-         FC_ASSERT( witness_pay_percent_of_accumulated >= 0 );
          FC_ASSERT( witness_pay_percent_of_accumulated < BTS_WITNESS_PAY_PERCENT_PRECISION );
          FC_ASSERT( block_interval <= BTS_MAX_BLOCK_INTERVAL );
+         FC_ASSERT( block_interval > 0 );
          FC_ASSERT( maintenance_interval > block_interval,
                     "Maintenance interval must be longer than block interval" );
          FC_ASSERT( maintenance_interval % block_interval == 0,

@@ -58,4 +58,15 @@ namespace bts { namespace chain {
          const asset_object* asset_to_settle = nullptr;
    };
 
+   class asset_publish_feeds_evaluator : public evaluator<asset_publish_feeds_evaluator>
+   {
+      public:
+         typedef asset_publish_feed_operation operation_type;
+
+         object_id_type do_evaluate( const asset_publish_feed_operation& o );
+         object_id_type do_apply( const asset_publish_feed_operation& o );
+
+         std::map<std::pair<asset_id_type,asset_id_type>,price_feed> median_feed_values;
+   };
+
 } } // bts::chain

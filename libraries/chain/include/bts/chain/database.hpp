@@ -247,6 +247,7 @@ namespace bts { namespace chain {
          void clear_expired_transactions();
          void clear_expired_proposals();
          void clear_expired_orders();
+         void update_expired_feeds();
          ///@}
 
          signed_block                           _pending_block;

@@ -150,7 +150,7 @@ struct operation_get_impacted_accounts
    }
 
    void operator()( const asset_fund_fee_pool_operation& o )const { }
-   void operator()( const delegate_publish_feeds_operation& o )const { }
+   void operator()( const asset_publish_feed_operation& o )const { }
    void operator()( const delegate_create_operation& o )const { }
 
    void operator()( const withdraw_permission_create_operation& o )const{
