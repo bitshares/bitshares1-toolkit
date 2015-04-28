@@ -749,13 +749,19 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
                for( const vector< int >& key_sched_before : possible_key_sched )
                {
                   auto it = key_sched_before.begin();
+                  vector< const private_key_type* > owner_privkey;
+                  owner_privkey.reserve( num_owner_keys );
 
                   trx.clear();
                   account_create_operation create_op;
                   create_op.name = "alice";
 
                   for( int owner_index=0; owner_index<num_owner_keys; owner_index++ )
-                     create_op.owner.auths[ key_ids[ *(it++) ] ] = 1;
+                  {
+                     int i = *(it++);
+                     create_op.owner.auths[ key_ids[ i ] ] = 1;
+                     owner_privkey.push_back( &numbered_private_keys[i] );
+                  }
                   create_op.owner.weight_threshold = num_owner_keys;
 
                   for( int active_index=0; active_index<num_active_keys; active_index++ )
@@ -765,6 +771,7 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
                   create_op.memo_key = key_ids[ *(it++) ] ;
                   create_op.registrar = sam_account_object.id;
                   trx.operations.push_back( create_op );
+                  trx.sign( sam_key );
 
                   processed_transaction ptx_create = db.push_transaction( trx );
                   account_id_type alice_account_id =
@@ -791,7 +798,18 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
                      update_op.memo_key = key_ids[ *(it++) ] ;
 
                      trx.operations.push_back( update_op );
-                     db.push_transaction( trx );
+                     for( int i=0; i<num_owner_keys; i++)
+                     {
+                        trx.sign( *owner_privkey[i] );
+                        if( i < num_owner_keys-1 )
+                        {
+                           BOOST_REQUIRE_THROW(db.push_transaction(trx), fc::exception);
+                        }
+                        else
+                        {
+                           db.push_transaction( trx );
+                        }
+                     }
                      verify_account_history_plugin_index();
                      generate_block();
 
