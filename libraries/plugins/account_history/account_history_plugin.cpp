@@ -7,9 +7,9 @@
 #include <bts/chain/database.hpp>
 #include <bts/chain/evaluator.hpp>
 #include <bts/chain/key_object.hpp>
-#include <bts/chain/time.hpp>
 #include <bts/chain/operation_history_object.hpp>
-#include <bts/chain/account_object.hpp>
+#include <bts/chain/time.hpp>
+#include <bts/chain/transaction_evaluation_state.hpp>
 
 #include <fc/thread/thread.hpp>
 
@@ -17,6 +17,22 @@ namespace bts { namespace account_history {
 
 namespace detail
 {
+
+class account_create_observer : public bts::chain::evaluation_observer
+{
+   public:
+      account_create_observer( account_history_plugin& plugin )
+          : _plugin( plugin ) {}
+      virtual ~account_create_observer();
+
+      virtual void post_evaluate(
+          const transaction_evaluation_state& eval_state,
+          const operation& op,
+          bool apply,
+          generic_evaluator* ge ) override;
+
+      account_history_plugin& _plugin;
+};
 
 class account_update_observer : public bts::chain::evaluation_observer
 {
@@ -56,6 +72,7 @@ class account_history_plugin_impl
       account_history_plugin_impl(
          account_history_plugin& _plugin
          ) : _self( _plugin ),
+             _create_observer( _plugin ),
              _update_observer( _plugin ),
              _chain_db( nullptr )
          { }
@@ -79,6 +96,7 @@ class account_history_plugin_impl
       }
 
       account_history_plugin& _self;
+      account_create_observer _create_observer;
       account_update_observer _update_observer;
       bts::chain::database* _chain_db;
 };
@@ -191,9 +209,33 @@ struct operation_get_impacted_accounts
    void operator()( const create_bond_offer_operation& o )const { }
 };
 
+account_create_observer::~account_create_observer()
+{
+   return;
+}
+
+void account_create_observer::post_evaluate(
+    const transaction_evaluation_state& eval_state,
+    const operation& op,
+    bool apply,
+    generic_evaluator* ge
+    )
+{
+   assert( op.which() == operation::tag<account_create_operation>::value );
+
+   // if we only care about given accounts, then key -> account mapping
+   //   is not maintained
+   if( _plugin._config.accounts.size() > 0 )
+       return;
+
+   account_id_type account_id = eval_state.operation_results.back().get< object_id_type >();
+   _plugin._my->index_account_keys( account_id );
+   return;
+}
+
 account_update_observer::~account_update_observer()
 {
-    return;
+   return;
 }
 
 void account_update_observer::pre_evaluate(
@@ -422,7 +464,8 @@ void account_history_plugin_impl::update_account_histories( const signed_block& 
       {
          for( auto& account_id : impacted )
          {
-            index_account_keys( account_id );
+            // we don't do index_account_keys here anymore, because
+            // that indexing now happens in observers' post_evaluate()
 
             // add history
             const auto& stats_obj = account_id(db).statistics(db);
@@ -484,7 +527,7 @@ void account_history_plugin::configure(const account_history_plugin::plugin_conf
    // and the only way they can be removed is by account_update_operation
    //    which will mark the removed keys for updating
    //
-   // database().register_evaluation_observer<account_create_evaluator>( _my->_observer );
+   database().register_evaluation_observer<account_create_evaluator>( _my->_create_observer );
    database().register_evaluation_observer< bts::chain::account_update_evaluator >( _my->_update_observer );
 }
 
