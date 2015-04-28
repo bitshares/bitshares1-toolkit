@@ -18,15 +18,15 @@ namespace bts { namespace account_history {
 namespace detail
 {
 
-class account_observer : public bts::chain::evaluation_observer
+class account_update_observer : public bts::chain::evaluation_observer
 {
    public:
-      account_observer( account_history_plugin& plugin )
+      account_update_observer( account_history_plugin& plugin )
           : _plugin( plugin )
       {
          _pre_account_keys.reserve( BTS_DEFAULT_MAX_AUTHORITY_MEMBERSHIP * 2 + 2 );
       }
-      virtual ~account_observer();
+      virtual ~account_update_observer();
 
       virtual void pre_evaluate(
           const transaction_evaluation_state& eval_state,
@@ -56,7 +56,7 @@ class account_history_plugin_impl
       account_history_plugin_impl(
          account_history_plugin& _plugin
          ) : _self( _plugin ),
-             _observer( _plugin ),
+             _update_observer( _plugin ),
              _chain_db( nullptr )
          { }
       virtual ~account_history_plugin_impl();
@@ -79,7 +79,7 @@ class account_history_plugin_impl
       }
 
       account_history_plugin& _self;
-      account_observer _observer;
+      account_update_observer _update_observer;
       bts::chain::database* _chain_db;
 };
 
@@ -191,12 +191,12 @@ struct operation_get_impacted_accounts
    void operator()( const create_bond_offer_operation& o )const { }
 };
 
-account_observer::~account_observer()
+account_update_observer::~account_update_observer()
 {
     return;
 }
 
-void account_observer::pre_evaluate(
+void account_update_observer::pre_evaluate(
     const transaction_evaluation_state& eval_state,
     const operation& op,
     bool apply,
@@ -222,7 +222,7 @@ void account_observer::pre_evaluate(
    //      get_updatable_account_keys( update_op, _pre_account_keys );
    //      break;
    //   default:
-   //      FC_ASSERT( false, "account_observer got unexpected operation type" );
+   //      FC_ASSERT( false, "account_update_observer got unexpected operation type" );
    //}
 
    const account_update_operation& update_op = op.get< account_update_operation >();
@@ -230,7 +230,7 @@ void account_observer::pre_evaluate(
    return;
 }
 
-void account_observer::post_evaluate(
+void account_update_observer::post_evaluate(
     const transaction_evaluation_state& eval_state,
     const operation& op,
     bool apply,
@@ -301,7 +301,7 @@ void account_observer::post_evaluate(
    return;
 }
 
-void account_observer::evaluation_failed(
+void account_update_observer::evaluation_failed(
     const transaction_evaluation_state& eval_state,
     const operation& op,
     bool apply,
@@ -485,7 +485,7 @@ void account_history_plugin::configure(const account_history_plugin::plugin_conf
    //    which will mark the removed keys for updating
    //
    // database().register_evaluation_observer<account_create_evaluator>( _my->_observer );
-   database().register_evaluation_observer< bts::chain::account_update_evaluator >( _my->_observer );
+   database().register_evaluation_observer< bts::chain::account_update_evaluator >( _my->_update_observer );
 }
 
 void account_history_plugin::init()
