@@ -46,18 +46,6 @@ class account_observer : public bts::chain::evaluation_observer
           bool apply,
           generic_evaluator* ge ) override;
 
-      /**
-       * Helper method to get the set of account keys
-       * that could be touched by the update operation.
-       *
-       * This observer's "diff" is get_updatable_account_keys() before
-       * and after the operation is applied.
-       */
-      void get_updatable_account_keys(
-          const account_update_operation& update_op,
-          flat_set< key_id_type > result
-          );
-
       account_history_plugin& _plugin;
       flat_set< key_id_type > _pre_account_keys;
 };
@@ -208,38 +196,6 @@ account_observer::~account_observer()
     return;
 }
 
-void account_observer::get_updatable_account_keys(
-   const account_update_operation& update_op,
-   flat_set< key_id_type > result
-   )
-{
-   // add all keys which are in key fields touched by the update_op
-   //  to the given flat_set
-
-   const bts::chain::database& db = _plugin._my->database();
-   const account_object& acct = update_op.account(db);
-
-   if( update_op.memo_key.valid() )
-      result.insert( acct.memo_key );
-   if( update_op.owner.valid() )
-   {
-      for( const pair<object_id_type, weight_type>& item : acct.owner.auths )
-      {
-         if( item.first.type() == key_object_type )
-            result.insert( item.first );
-      }
-   }
-   if( update_op.active.valid() )
-   {
-      for( const pair<object_id_type, weight_type>& item : acct.active.auths )
-      {
-         if( item.first.type() == key_object_type )
-            result.insert( item.first );
-      }
-   }
-   return;
-}
-
 void account_observer::pre_evaluate(
     const transaction_evaluation_state& eval_state,
     const operation& op,
@@ -270,9 +226,7 @@ void account_observer::pre_evaluate(
    //}
 
    const account_update_operation& update_op = op.get< account_update_operation >();
-   _pre_account_keys.clear();
-   get_updatable_account_keys( update_op, _pre_account_keys );
-
+   _pre_account_keys = _plugin._my->get_keys_for_account( update_op.account );
    return;
 }
 
@@ -301,17 +255,43 @@ void account_observer::post_evaluate(
    removed_account_keys.reserve( _pre_account_keys.size() );
 
    const account_update_operation& update_op = op.get< account_update_operation >();
-   get_updatable_account_keys( update_op, post_account_keys );
+   post_account_keys = _plugin._my->get_keys_for_account( update_op.account );
+
    std::set_difference(
       _pre_account_keys.begin(), _pre_account_keys.end(),
       post_account_keys.begin(), post_account_keys.end(),
       removed_account_keys.begin()
       );
+
+   //
+   // If a key_id is in _pre_account_keys but not in post_account_keys,
+   //    then it is placed in removed_account_keys by set_difference().
+   //
+   // Note, the *address* corresponding to this key may still exist
+   //    in the account, because it may be aliased to multiple key_id's.
+   //
+   // We delete the key_account_object for all removed_account_keys.
+   //    This correctly deletes addresses which were removed
+   //    from the account by the update_op.
+   //
+   // Unfortunately, in the case of aliased keys, it deletes
+   //    key_account_object if *any* of the aliases was removed from
+   //    the account.  We want it to delete only if *all* of the aliases
+   //    were removed from the account.
+   //
+   // However, we need to run index_account_keys() afterwards anyway.
+   //    It will re-add to the index any addresses which had been
+   //    deleted -- but only if they still exist in the account under
+   //    at least one alias.
+   //
+   // This is precisely the correct behavior.
+   //
+
    for( const key_id_type& key_id : removed_account_keys )
    {
       auto& index = db.get_index_type<key_account_index>().indices().get<by_key>();
       auto it = index.find( key_id(db).key_address() );
-      FC_ASSERT( it != index.end() );
+      assert( it != index.end() );
 
       db.modify<key_account_object>( *it, [&]( key_account_object& ka )
       {
