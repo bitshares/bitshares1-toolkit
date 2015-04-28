@@ -168,6 +168,8 @@ void account_create_operation::validate()const
       FC_ASSERT( owner.weight_threshold == 1 );
       FC_ASSERT( owner.auths.size() == 1 );
    }
+   FC_ASSERT( num_witness + num_committee >= num_witness );  // no overflow
+   FC_ASSERT( num_witness + num_committee <= vote.size() );
 }
 
 

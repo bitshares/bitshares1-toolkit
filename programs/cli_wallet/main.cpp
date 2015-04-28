@@ -34,6 +34,31 @@ struct wallet_data
 };
 FC_REFLECT( wallet_data, (accounts)(keys)(pending_account_registrations)(ws_server)(ws_user)(ws_password) );
 
+// BLOCK  TRX  OP  VOP  
+struct operation_printer
+{
+   operation_result _result;
+   operation_printer( const operation_result& r = operation_result() ):_result(r){}
+   typedef void result_type;
+   template<typename T>
+   void operator()( const T& op )const
+   {
+      balance_accumulator acc;
+      op.get_balance_delta( acc, _result );
+      std::cerr << fc::get_typename<T>::name() <<" ";
+      std::cerr << "balance delta: " << fc::json::to_string(acc.balance) <<"   ";
+      std::cerr << fc::json::to_string(op.fee_payer()) << "  fee: " << fc::json::to_string(op.fee);
+   }
+   void operator()( const account_create_operation& op )const
+   {
+      balance_accumulator acc;
+      op.get_balance_delta( acc, _result );
+      std::cerr << "Create Account '" << op.name << "' ";
+      std::cerr << "balance delta: " << fc::json::to_string(acc.balance) <<"   ";
+      std::cerr << fc::json::to_string(op.fee_payer()) << "  fee: " << fc::json::to_string(op.fee);
+   }
+};
+
 /**
  *  This wallet assumes nothing about where the database server is
  *  located and performs minimal caching.  This API could be provided
@@ -267,6 +292,8 @@ class wallet_api
         account_create_op.owner = authority(1, owner_rkid, 1);
         account_create_op.active = authority(1, active_rkid, 1);
         account_create_op.memo_key = active_rkid;
+        // TODO: Doesn't compile
+        //account_create_op.voting_key = active_rkid;
         account_create_op.vote = flat_set<vote_tally_id_type>();
 
         // current_fee_schedule()
@@ -480,6 +507,16 @@ int main( int argc, char** argv )
       auto wallet_cli = std::make_shared<fc::rpc::cli>();
       wallet_cli->format_result( "help", [&]( variant result, const fc::variants& a) {
                                     return result.get_string();
+                                });
+      wallet_cli->format_result( "get_account_history", [&]( variant result, const fc::variants& a) {
+                                 auto r = result.as<vector<operation_history_object>>();
+                                 for( auto& i : r )
+                                 {
+                                    cerr << i.block_num << " "<<i.trx_in_block << " " << i.op_in_trx << " " << i.virtual_op<< " ";
+                                    i.op.visit( operation_printer() );
+                                    cerr << " \n";
+                                 }
+                                 return string();
                                 });
       wallet_cli->register_api( wapi );
       wallet_cli->start();

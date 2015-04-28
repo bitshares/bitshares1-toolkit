@@ -36,7 +36,7 @@ namespace bts { namespace chain {
       share_type      calculate_fee( const fee_schedule_type& k )const{ return k.at( key_create_fee_type ); }
       void            validate()const;
 
-      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    struct account_create_operation
@@ -58,16 +58,16 @@ namespace bts { namespace chain {
       account_id_type voting_account;
       object_id_type  memo_key = key_id_type();
 
-      uint16_t        num_witness = BTS_DEFUALT_NUM_WITNESSES;
-      uint16_t        num_committee = BTS_DEFUALT_NUM_COMMITTEE;
+      uint16_t        num_witness = 0;
+      uint16_t        num_committee = 0;
       flat_set<vote_tally_id_type> vote;
 
-      account_id_type fee_payer()const { return referrer; }
+      account_id_type fee_payer()const { return registrar; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
 
-      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -112,7 +112,7 @@ namespace bts { namespace chain {
       void validate()const { FC_ASSERT( fee.amount >= 0 ); FC_ASSERT(new_listing < 0x4); }
       share_type calculate_fee(const fee_schedule_type& k)const { return k.at(account_whitelist_fee_type); }
 
-      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    struct account_update_operation
@@ -124,8 +124,8 @@ namespace bts { namespace chain {
       optional<account_id_type>               voting_account;
       optional<object_id_type>                memo_key = key_id_type();
       optional<flat_set<vote_tally_id_type>>  vote;
-      uint16_t                                num_witness = BTS_DEFUALT_NUM_WITNESSES;
-      uint16_t                                num_committee = BTS_DEFUALT_NUM_COMMITTEE;
+      uint16_t                                num_witness = 0;
+      uint16_t                                num_committee = 0;
 
       /**
        * If set to true, upgrades the account to a prime account by setting the account's referrer to itself. This may
@@ -137,7 +137,7 @@ namespace bts { namespace chain {
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>& owner_auth_set)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
-      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -156,7 +156,7 @@ namespace bts { namespace chain {
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
-      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -176,7 +176,7 @@ namespace bts { namespace chain {
       void        validate()const;
       share_type  calculate_fee( const fee_schedule_type& k )const;
 
-      void get_balance_delta( balance_accumulator& acc )const {
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( account, asset(amount) );
       }
@@ -205,7 +205,7 @@ namespace bts { namespace chain {
       void        validate()const;
       share_type  calculate_fee( const fee_schedule_type& k )const;
 
-      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -232,7 +232,7 @@ namespace bts { namespace chain {
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
 
-      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -254,7 +254,7 @@ namespace bts { namespace chain {
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
 
-      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -273,7 +273,7 @@ namespace bts { namespace chain {
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
 
-      void get_balance_delta( balance_accumulator& acc )const
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
       {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( to_account, amount );
@@ -300,7 +300,7 @@ namespace bts { namespace chain {
       { active_auth_set.insert(account_id_type()); }
       void validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
-      void get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    struct transfer_operation
@@ -315,7 +315,7 @@ namespace bts { namespace chain {
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
-      void get_balance_delta( balance_accumulator& acc )const
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
       {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( from, -amount );
@@ -362,7 +362,7 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-      void            get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -389,6 +389,11 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const 
+      { 
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( account, -amount );
+      }
    };
 
    struct asset_fund_fee_pool_operation
@@ -402,7 +407,7 @@ namespace bts { namespace chain {
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
-      void       get_balance_delta( balance_accumulator& acc )const
+      void       get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
       {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( fee_payer(), -amount );
@@ -444,7 +449,7 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-      void            get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    struct asset_issue_operation
@@ -458,7 +463,7 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-      void            get_balance_delta( balance_accumulator& acc )const
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
       {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( issue_to_account, asset_to_issue );
@@ -503,7 +508,7 @@ namespace bts { namespace chain {
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
       price           get_price()const { return amount_to_sell / min_to_receive; }
-      void            get_balance_delta( balance_accumulator& acc )const
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
       {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( seller, -amount_to_sell );
@@ -529,7 +534,7 @@ namespace bts { namespace chain {
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
 
-      void            get_balance_delta( balance_accumulator& acc, const operation_result& result )const
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
       {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( fee_payer(), result.get<asset>() );
@@ -580,7 +585,7 @@ namespace bts { namespace chain {
        **/
       price call_price() const { return price::call_price(amount_to_sell, collateral, maintenance_collateral_ratio); }
 
-      void            get_balance_delta( balance_accumulator& acc )const
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
       {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( seller, -collateral );
@@ -634,7 +639,7 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-      void            get_balance_delta( balance_accumulator& acc )const
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
       {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( funding_account, -collateral_to_add );
@@ -698,7 +703,7 @@ namespace bts { namespace chain {
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
 
-      void            get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -734,7 +739,7 @@ namespace bts { namespace chain {
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& owner_auth_set)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
-      void       get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void       get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -758,7 +763,7 @@ namespace bts { namespace chain {
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& owner_auth_set)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const { return 0; }
-      void       get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void       get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
    ///@}
 
@@ -779,7 +784,7 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const{}
       void            validate()const { FC_ASSERT( !"virtual operation" ); }
       share_type      calculate_fee( const fee_schedule_type& k )const { return share_type(); }
-      void            get_balance_delta( balance_accumulator& acc )const {
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const {
          // acc.adjust( fee_payer(), -fee );  fee never actually entered the account, this is a virtual operation
          acc.adjust( account_id, receives );
       }
@@ -824,7 +829,7 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-      void            get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -856,7 +861,7 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-      void         get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void         get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -890,7 +895,7 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-      void            get_balance_delta( balance_accumulator& acc )const { acc.adjust( fee_payer(), -fee ); }
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -915,7 +920,7 @@ namespace bts { namespace chain {
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
 
-      void            get_balance_delta( balance_accumulator& acc )const
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
       {
          acc.adjust( fee_payer(), -fee );
       }
@@ -945,7 +950,7 @@ namespace bts { namespace chain {
       void              get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void              validate()const;
       share_type        calculate_fee( const fee_schedule_type& k )const;
-      void              get_balance_delta( balance_accumulator& acc )const
+      void              get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
       {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( creator, -amount );
@@ -966,7 +971,7 @@ namespace bts { namespace chain {
       void              get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void              validate()const;
       share_type        calculate_fee( const fee_schedule_type& k )const;
-      void              get_balance_delta( balance_accumulator& acc )const
+      void              get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
       {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( creator, refund );
@@ -987,7 +992,7 @@ namespace bts { namespace chain {
       void              get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void              validate()const;
       share_type        calculate_fee( const fee_schedule_type& k )const;
-      void              get_balance_delta( balance_accumulator& acc )const
+      void              get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
       {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( claimer, -amount );
@@ -1011,7 +1016,7 @@ namespace bts { namespace chain {
       void              get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void              validate()const;
       share_type        calculate_fee( const fee_schedule_type& k )const;
-      void              get_balance_delta( balance_accumulator& acc )const
+      void              get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
       {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( claimer, -payoff_amount );
@@ -1165,7 +1170,7 @@ FC_REFLECT( bts::chain::account_create_operation,
             (referrer)(referrer_percent)
             (name)
             (owner)(active)(voting_account)(memo_key)
-            (num_witness)(num_committee)(vote) 
+            (num_witness)(num_committee)(vote)
            )
 
 FC_REFLECT_TYPENAME( fc::flat_set<bts::chain::vote_tally_id_type> )
