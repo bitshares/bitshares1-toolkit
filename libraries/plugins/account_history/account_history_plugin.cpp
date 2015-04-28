@@ -319,7 +319,7 @@ void account_update_observer::post_evaluate(
    std::set_difference(
       _pre_account_keys.begin(), _pre_account_keys.end(),
       post_account_keys.begin(), post_account_keys.end(),
-      removed_account_keys.begin()
+      std::back_inserter( removed_account_keys )
       );
 
    //
