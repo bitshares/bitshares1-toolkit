@@ -249,7 +249,8 @@ class wallet_api
         account_create_op.owner = authority(1, owner_rkid, 1);
         account_create_op.active = authority(1, active_rkid, 1);
         account_create_op.memo_key = active_rkid;
-        account_create_op.voting_key = active_rkid;
+        // TODO: Doesn't compile
+        //account_create_op.voting_key = active_rkid;
         account_create_op.vote = flat_set<vote_tally_id_type>();
 
         // current_fee_schedule()

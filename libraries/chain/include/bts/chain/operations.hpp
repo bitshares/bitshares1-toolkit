@@ -1165,7 +1165,7 @@ FC_REFLECT( bts::chain::account_create_operation,
             (referrer)(referrer_percent)
             (name)
             (owner)(active)(voting_account)(memo_key)
-            (num_witness)(num_committee)(vote) 
+            (num_witness)(num_committee)(vote)
            )
 
 FC_REFLECT_TYPENAME( fc::flat_set<bts::chain::vote_tally_id_type> )
