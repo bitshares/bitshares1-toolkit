@@ -763,6 +763,7 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
                   create_op.owner.weight_threshold = num_active_keys;
 
                   create_op.memo_key = key_ids[ *(it++) ] ;
+                  create_op.registrar = sam_account_object.id;
                   trx.operations.push_back( create_op );
 
                   processed_transaction ptx_create = db.push_transaction( trx );
