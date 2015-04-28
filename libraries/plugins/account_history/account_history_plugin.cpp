@@ -29,7 +29,8 @@ class account_create_observer : public bts::chain::evaluation_observer
           const transaction_evaluation_state& eval_state,
           const operation& op,
           bool apply,
-          generic_evaluator* ge ) override;
+          generic_evaluator* ge,
+          const operation_result& result ) override;
 
       account_history_plugin& _plugin;
 };
@@ -54,13 +55,15 @@ class account_update_observer : public bts::chain::evaluation_observer
           const transaction_evaluation_state& eval_state,
           const operation& op,
           bool apply,
-          generic_evaluator* ge ) override;
+          generic_evaluator* ge,
+          const operation_result& result ) override;
 
       virtual void evaluation_failed(
           const transaction_evaluation_state& eval_state,
           const operation& op,
           bool apply,
-          generic_evaluator* ge ) override;
+          generic_evaluator* ge,
+          const operation_result& result ) override;
 
       account_history_plugin& _plugin;
       flat_set< key_id_type > _pre_account_keys;
@@ -218,7 +221,8 @@ void account_create_observer::post_evaluate(
     const transaction_evaluation_state& eval_state,
     const operation& op,
     bool apply,
-    generic_evaluator* ge
+    generic_evaluator* ge,
+    const operation_result& result
     )
 {
    assert( op.which() == operation::tag<account_create_operation>::value );
@@ -231,9 +235,7 @@ void account_create_observer::post_evaluate(
    if( _plugin._config.accounts.size() > 0 )
       return;
 
-   assert( eval_state.operation_results.size() > 0 );
-
-   account_id_type account_id = eval_state.operation_results.back().get< object_id_type >();
+   account_id_type account_id = result.get< object_id_type >();
    _plugin._my->index_account_keys( account_id );
    return;
 }
@@ -247,7 +249,8 @@ void account_update_observer::pre_evaluate(
     const transaction_evaluation_state& eval_state,
     const operation& op,
     bool apply,
-    generic_evaluator* ge )
+    generic_evaluator* ge
+    )
 {
    assert( op.which() == operation::tag<account_update_operation>::value );
 
@@ -284,7 +287,8 @@ void account_update_observer::post_evaluate(
     const transaction_evaluation_state& eval_state,
     const operation& op,
     bool apply,
-    generic_evaluator* ge
+    generic_evaluator* ge,
+    const operation_result& result
     )
 {
    assert( op.which() == operation::tag<account_update_operation>::value );
@@ -358,7 +362,8 @@ void account_update_observer::evaluation_failed(
     const transaction_evaluation_state& eval_state,
     const operation& op,
     bool apply,
-    generic_evaluator* ge
+    generic_evaluator* ge,
+    const operation_result& result
     )
 {
    if( !apply )
