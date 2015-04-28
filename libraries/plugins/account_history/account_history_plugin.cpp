@@ -81,6 +81,8 @@ class account_history_plugin_impl
          { }
       virtual ~account_history_plugin_impl();
 
+      void rebuild_key_account_index();
+
       flat_set<key_id_type> get_keys_for_account(
           const account_id_type& account_id );
 
@@ -384,6 +386,19 @@ account_history_plugin_impl::~account_history_plugin_impl()
    return;
 }
 
+void account_history_plugin_impl::rebuild_key_account_index()
+{
+   // TODO:  We should really delete the index before we re-create it.
+   // TODO:  Building and sorting a vector of tuples is probably more efficient
+   const bts::chain::database& db = database();
+
+   vector< pair< account_id_type, address > > tuples_from_db;
+   const auto& primary_account_idx = db.get_index_type<account_index>().indices().get<by_id>();
+   for( const account_object& acct : primary_account_idx )
+      index_account_keys( acct.id );
+   return;
+}
+
 flat_set<key_id_type> account_history_plugin_impl::get_keys_for_account( const account_id_type& account_id )
 {
    const bts::chain::database& db = database();
@@ -539,20 +554,16 @@ void account_history_plugin::configure(const account_history_plugin::plugin_conf
    database().add_index< primary_index< simple_index< operation_history_object > > >();
    database().add_index< primary_index< simple_index< account_transaction_history_object > > >();
    database().add_index< primary_index< key_account_index >>();
-   // account_create_operation is actually unnecessary
-   //    because all the necessary keys will be touched when
-   //    update_account_histories() is called, unless they are removed
-   //
-   // and the only way they can be removed is by account_update_operation
-   //    which will mark the removed keys for updating
-   //
+
    database().register_evaluation_observer<account_create_evaluator>( _my->_create_observer );
    database().register_evaluation_observer< bts::chain::account_update_evaluator >( _my->_update_observer );
+
 }
 
 void account_history_plugin::init()
 {
    _my->_chain_db = &database();
+   _my->rebuild_key_account_index();
    return;
 }
 
