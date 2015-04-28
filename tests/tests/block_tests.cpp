@@ -649,6 +649,7 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    BOOST_CHECK(db.get_index_type<call_order_index>().indices().empty());
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( update_account_keys, 1 )
 BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
 {
    try
