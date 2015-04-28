@@ -18,15 +18,15 @@ namespace bts { namespace account_history {
 namespace detail
 {
 
-class account_observer : public bts::chain::evaluation_observer
+class account_update_observer : public bts::chain::evaluation_observer
 {
    public:
-      account_observer( account_history_plugin& plugin )
+      account_update_observer( account_history_plugin& plugin )
           : _plugin( plugin )
       {
          _pre_account_keys.reserve( BTS_DEFAULT_MAX_AUTHORITY_MEMBERSHIP * 2 + 2 );
       }
-      virtual ~account_observer();
+      virtual ~account_update_observer();
 
       virtual void pre_evaluate(
           const transaction_evaluation_state& eval_state,
@@ -46,18 +46,6 @@ class account_observer : public bts::chain::evaluation_observer
           bool apply,
           generic_evaluator* ge ) override;
 
-      /**
-       * Helper method to get the set of account keys
-       * that could be touched by the update operation.
-       *
-       * This observer's "diff" is get_updatable_account_keys() before
-       * and after the operation is applied.
-       */
-      void get_updatable_account_keys(
-          const account_update_operation& update_op,
-          flat_set< key_id_type > result
-          );
-
       account_history_plugin& _plugin;
       flat_set< key_id_type > _pre_account_keys;
 };
@@ -68,7 +56,7 @@ class account_history_plugin_impl
       account_history_plugin_impl(
          account_history_plugin& _plugin
          ) : _self( _plugin ),
-             _observer( _plugin ),
+             _update_observer( _plugin ),
              _chain_db( nullptr )
          { }
       virtual ~account_history_plugin_impl();
@@ -91,7 +79,7 @@ class account_history_plugin_impl
       }
 
       account_history_plugin& _self;
-      account_observer _observer;
+      account_update_observer _update_observer;
       bts::chain::database* _chain_db;
 };
 
@@ -203,44 +191,12 @@ struct operation_get_impacted_accounts
    void operator()( const create_bond_offer_operation& o )const { }
 };
 
-account_observer::~account_observer()
+account_update_observer::~account_update_observer()
 {
     return;
 }
 
-void account_observer::get_updatable_account_keys(
-   const account_update_operation& update_op,
-   flat_set< key_id_type > result
-   )
-{
-   // add all keys which are in key fields touched by the update_op
-   //  to the given flat_set
-
-   const bts::chain::database& db = _plugin._my->database();
-   const account_object& acct = update_op.account(db);
-
-   if( update_op.memo_key.valid() )
-      result.insert( acct.memo_key );
-   if( update_op.owner.valid() )
-   {
-      for( const pair<object_id_type, weight_type>& item : acct.owner.auths )
-      {
-         if( item.first.type() == key_object_type )
-            result.insert( item.first );
-      }
-   }
-   if( update_op.active.valid() )
-   {
-      for( const pair<object_id_type, weight_type>& item : acct.active.auths )
-      {
-         if( item.first.type() == key_object_type )
-            result.insert( item.first );
-      }
-   }
-   return;
-}
-
-void account_observer::pre_evaluate(
+void account_update_observer::pre_evaluate(
     const transaction_evaluation_state& eval_state,
     const operation& op,
     bool apply,
@@ -266,17 +222,15 @@ void account_observer::pre_evaluate(
    //      get_updatable_account_keys( update_op, _pre_account_keys );
    //      break;
    //   default:
-   //      FC_ASSERT( false, "account_observer got unexpected operation type" );
+   //      FC_ASSERT( false, "account_update_observer got unexpected operation type" );
    //}
 
    const account_update_operation& update_op = op.get< account_update_operation >();
-   _pre_account_keys.clear();
-   get_updatable_account_keys( update_op, _pre_account_keys );
-
+   _pre_account_keys = _plugin._my->get_keys_for_account( update_op.account );
    return;
 }
 
-void account_observer::post_evaluate(
+void account_update_observer::post_evaluate(
     const transaction_evaluation_state& eval_state,
     const operation& op,
     bool apply,
@@ -301,17 +255,43 @@ void account_observer::post_evaluate(
    removed_account_keys.reserve( _pre_account_keys.size() );
 
    const account_update_operation& update_op = op.get< account_update_operation >();
-   get_updatable_account_keys( update_op, post_account_keys );
+   post_account_keys = _plugin._my->get_keys_for_account( update_op.account );
+
    std::set_difference(
       _pre_account_keys.begin(), _pre_account_keys.end(),
       post_account_keys.begin(), post_account_keys.end(),
       removed_account_keys.begin()
       );
+
+   //
+   // If a key_id is in _pre_account_keys but not in post_account_keys,
+   //    then it is placed in removed_account_keys by set_difference().
+   //
+   // Note, the *address* corresponding to this key may still exist
+   //    in the account, because it may be aliased to multiple key_id's.
+   //
+   // We delete the key_account_object for all removed_account_keys.
+   //    This correctly deletes addresses which were removed
+   //    from the account by the update_op.
+   //
+   // Unfortunately, in the case of aliased keys, it deletes
+   //    key_account_object if *any* of the aliases was removed from
+   //    the account.  We want it to delete only if *all* of the aliases
+   //    were removed from the account.
+   //
+   // However, we need to run index_account_keys() afterwards anyway.
+   //    It will re-add to the index any addresses which had been
+   //    deleted -- but only if they still exist in the account under
+   //    at least one alias.
+   //
+   // This is precisely the correct behavior.
+   //
+
    for( const key_id_type& key_id : removed_account_keys )
    {
       auto& index = db.get_index_type<key_account_index>().indices().get<by_key>();
       auto it = index.find( key_id(db).key_address() );
-      FC_ASSERT( it != index.end() );
+      assert( it != index.end() );
 
       db.modify<key_account_object>( *it, [&]( key_account_object& ka )
       {
@@ -321,7 +301,7 @@ void account_observer::post_evaluate(
    return;
 }
 
-void account_observer::evaluation_failed(
+void account_update_observer::evaluation_failed(
     const transaction_evaluation_state& eval_state,
     const operation& op,
     bool apply,
@@ -505,7 +485,7 @@ void account_history_plugin::configure(const account_history_plugin::plugin_conf
    //    which will mark the removed keys for updating
    //
    // database().register_evaluation_observer<account_create_evaluator>( _my->_observer );
-   database().register_evaluation_observer< bts::chain::account_update_evaluator >( _my->_observer );
+   database().register_evaluation_observer< bts::chain::account_update_evaluator >( _my->_update_observer );
 }
 
 void account_history_plugin::init()
