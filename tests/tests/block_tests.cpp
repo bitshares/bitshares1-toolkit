@@ -762,11 +762,13 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
                      create_op.owner.auths[ key_ids[ i ] ] = 1;
                      owner_privkey.push_back( &numbered_private_keys[i] );
                   }
-                  create_op.owner.weight_threshold = num_owner_keys;
+                  // size() < num_owner_keys is possible when some keys are duplicates
+                  create_op.owner.weight_threshold = create_op.owner.auths.size();
 
                   for( int active_index=0; active_index<num_active_keys; active_index++ )
                      create_op.active.auths[ key_ids[ *(it++) ] ] = 1;
-                  create_op.owner.weight_threshold = num_active_keys;
+                  // size() < num_active_keys is possible when some keys are duplicates
+                  create_op.active.weight_threshold = create_op.active.auths.size();
 
                   create_op.memo_key = key_ids[ *(it++) ] ;
                   create_op.registrar = sam_account_object.id;
@@ -791,17 +793,19 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
 
                      for( int owner_index=0; owner_index<num_owner_keys; owner_index++ )
                         update_op.owner->auths[ key_ids[ *(it++) ] ] = 1;
-                     update_op.owner->weight_threshold = num_owner_keys;
+                     // size() < num_owner_keys is possible when some keys are duplicates
+                     update_op.owner->weight_threshold = update_op.owner->auths.size();
                      for( int active_index=0; active_index<num_active_keys; active_index++ )
                         update_op.active->auths[ key_ids[ *(it++) ] ] = 1;
-                     update_op.active->weight_threshold = num_active_keys;
+                     // size() < num_active_keys is possible when some keys are duplicates
+                     update_op.active->weight_threshold = update_op.active->auths.size();
                      update_op.memo_key = key_ids[ *(it++) ] ;
 
                      trx.operations.push_back( update_op );
-                     for( int i=0; i<num_owner_keys; i++)
+                     for( int i=0; i<create_op.owner.weight_threshold; i++)
                      {
                         trx.sign( *owner_privkey[i] );
-                        if( i < num_owner_keys-1 )
+                        if( i < int(create_op.owner.weight_threshold-1) )
                         {
                            BOOST_REQUIRE_THROW(db.push_transaction(trx), fc::exception);
                         }
