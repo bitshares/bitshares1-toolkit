@@ -223,10 +223,15 @@ void account_create_observer::post_evaluate(
 {
    assert( op.which() == operation::tag<account_create_operation>::value );
 
+   if( !apply )
+      return;
+
    // if we only care about given accounts, then key -> account mapping
    //   is not maintained
    if( _plugin._config.accounts.size() > 0 )
-       return;
+      return;
+
+   assert( eval_state.operation_results.size() > 0 );
 
    account_id_type account_id = eval_state.operation_results.back().get< object_id_type >();
    _plugin._my->index_account_keys( account_id );
@@ -244,7 +249,10 @@ void account_update_observer::pre_evaluate(
     bool apply,
     generic_evaluator* ge )
 {
-   FC_ASSERT( op.which() == operation::tag<account_update_operation>::value );
+   assert( op.which() == operation::tag<account_update_operation>::value );
+
+   if( !apply )
+      return;
 
    // if we only care about given accounts, then key -> account mapping
    //   is not maintained
@@ -279,7 +287,10 @@ void account_update_observer::post_evaluate(
     generic_evaluator* ge
     )
 {
-   FC_ASSERT( op.which() == operation::tag<account_update_operation>::value );
+   assert( op.which() == operation::tag<account_update_operation>::value );
+
+   if( !apply )
+      return;
 
    bts::chain::database& db = _plugin._my->database();
 
@@ -350,6 +361,9 @@ void account_update_observer::evaluation_failed(
     generic_evaluator* ge
     )
 {
+   if( !apply )
+      return;
+
    // if we only care about given accounts, then key -> account mapping
    //   is not maintained
    if( _plugin._config.accounts.size() > 0 )
