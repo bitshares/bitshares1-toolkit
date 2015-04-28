@@ -123,6 +123,7 @@ void undo_database::merge()
 }
 void undo_database::commit()
 {
+   FC_ASSERT( _active_sessions > 0 );
    --_active_sessions;
 }
 
