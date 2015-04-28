@@ -215,9 +215,6 @@ struct database_fixture {
             BOOST_CHECK( tuples_from_index.size() == size_before_uniq );
          }
 
-         wdump( (tuples_from_db) );
-         wdump( (tuples_from_index) );
-
          //BOOST_CHECK_EQUAL( tuples_from_db, tuples_from_index );
          bool is_equal = true;
          is_equal &= (tuples_from_db.size() == tuples_from_index.size());
