@@ -567,7 +567,6 @@ BOOST_FIXTURE_TEST_CASE( change_block_interval, database_fixture )
    BOOST_CHECK_EQUAL(db.head_block_time().sec_since_epoch() - past_time, 2);
 } FC_LOG_AND_RETHROW() }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( force_settlement, 1 )
 BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
 { try {
    auto private_key = generate_private_key("genesis");
@@ -579,16 +578,16 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    transfer(account_id_type()(db), shorter1_id(db), asset(100000000));
    transfer(account_id_type()(db), shorter2_id(db), asset(100000000));
    transfer(account_id_type()(db), shorter3_id(db), asset(100000000));
-   asset_id_type bit_usd = create_bitasset("BITUSD").get_id();
+   asset_id_type bit_usd = create_bitasset("BITUSD", 0).get_id();
    generate_block();
 
    create_short(shorter1_id(db), asset(1000, bit_usd), asset(1000));
    create_sell_order(nathan_id(db), asset(1000), asset(1000, bit_usd));
    create_short(shorter2_id(db), asset(2000, bit_usd), asset(1999));
-   create_sell_order(nathan_id(db), asset(2000), asset(2000, bit_usd));
+   create_sell_order(nathan_id(db), asset(1999), asset(2000, bit_usd));
    create_short(shorter3_id(db), asset(3000, bit_usd), asset(2990));
-   create_sell_order(nathan_id(db), asset(3000), asset(3000, bit_usd));
-   BOOST_CHECK_EQUAL(get_balance(nathan_id, bit_usd), 5941);
+   create_sell_order(nathan_id(db), asset(2990), asset(3000, bit_usd));
+   BOOST_CHECK_EQUAL(get_balance(nathan_id, bit_usd), 6000);
 
    transfer(nathan_id(db), account_id_type()(db), db.get_balance(nathan_id, asset_id_type()));
 
@@ -607,7 +606,11 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    sop.account = nathan_id;
    sop.amount = asset(50, bit_usd);
    trx.operations.push_back(sop);
+   REQUIRE_THROW_WITH_VALUE(sop, amount, asset(999999, bit_usd));
+   trx.operations.back() = sop;
    trx.sign(private_key);
+
+   //Partially settle a call
    force_settlement_id_type settle_id = db.push_transaction(trx).operation_results.front().get<object_id_type>();
    trx.clear();
    call_order_id_type call_id = db.get_index_type<call_order_index>().indices().get<by_collateral>().begin()->id;
@@ -620,6 +623,7 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 49);
    BOOST_CHECK_EQUAL(call_id(db).debt.value, 2950);
 
+   //Exactly settle a call
    call_id = db.get_index_type<call_order_index>().indices().get<by_collateral>().begin()->id;
    sop.amount.amount = 2000;
    trx.operations.push_back(sop);
@@ -631,6 +635,18 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    BOOST_CHECK(db.find(settle_id) == nullptr);
    BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 2029);
    BOOST_CHECK(db.find(call_id) == nullptr);
+
+   //Settle all existing asset
+   sop.amount = db.get_balance(nathan_id, bit_usd);
+   trx.operations.push_back(sop);
+   trx.sign(private_key);
+   settle_id = db.push_transaction(trx).operation_results.front().get<object_id_type>();
+   trx.clear();
+
+   generate_blocks(settle_id(db).settlement_date);
+   BOOST_CHECK(db.find(settle_id) == nullptr);
+   BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 5938);
+   BOOST_CHECK(db.get_index_type<call_order_index>().indices().empty());
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -85,12 +85,14 @@ struct database_fixture {
 
    void verify_asset_supplies()
    {
+      wlog("*** Begin asset supply verification ***");
       const asset_dynamic_data_object& core_asset_data = db.get_core_asset().dynamic_asset_data_id(db);
       BOOST_CHECK(core_asset_data.current_supply +core_asset_data.burned == BTS_INITIAL_SUPPLY);
       BOOST_CHECK(core_asset_data.fee_pool == 0);
 
       const simple_index<account_statistics_object>& statistics_index = db.get_index_type<simple_index<account_statistics_object>>();
       const auto& balance_index = db.get_index_type<account_balance_index>().indices();
+      const auto& settle_index = db.get_index_type<force_settlement_index>().indices();
       map<asset_id_type,share_type> total_balances;
       map<asset_id_type,share_type> total_debts;
       share_type core_in_orders;
@@ -98,6 +100,8 @@ struct database_fixture {
 
       for( const account_balance_object& b : balance_index )
          total_balances[b.asset_type] += b.balance;
+      for( const force_settlement_object& s : settle_index )
+         total_balances[s.balance.asset_id] += s.balance.amount;
       for( const account_statistics_object& a : statistics_index )
       {
          total_balances[asset_id_type()] += a.cashback_rewards;
@@ -142,6 +146,7 @@ struct database_fixture {
 
       BOOST_CHECK_EQUAL( core_in_orders.value , reported_core_in_orders.value );
       BOOST_CHECK_EQUAL( total_balances[asset_id_type()].value , core_asset_data.current_supply.value );
+      wlog("***  End  asset supply verification ***");
    }
 
    void verify_account_history_plugin_index()
@@ -284,7 +289,7 @@ struct database_fixture {
       return *db.get_index_type<account_index>().indices().get<by_name>().find(name);
    }
 
-   const asset_object& create_bitasset( const string& name )
+   const asset_object& create_bitasset( const string& name, uint16_t market_fee_percent = 100 /*1%*/ )
    {
       asset_create_operation creator;
       creator.issuer = account_id_type(1);
@@ -292,7 +297,7 @@ struct database_fixture {
       creator.symbol = name;
       creator.max_supply = 0;
       creator.precision = 2;
-      creator.market_fee_percent = BTS_MAX_MARKET_FEE_PERCENT/100; /*1%*/
+      creator.market_fee_percent = market_fee_percent;
       creator.permissions = market_issued;
       creator.flags = market_issued;
       creator.core_exchange_rate = price({asset(1),asset(1)});

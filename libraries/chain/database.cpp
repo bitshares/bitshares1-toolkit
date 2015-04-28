@@ -427,25 +427,14 @@ int database::match( const call_order_object& call, const force_settlement_objec
    assert(call.debt > 0 && call.collateral > 0 && settle.balance.amount > 0);
 
    auto settle_for_sale = settle.balance;
-   auto call_for_sale = call.collateral;
+   auto call_debt = call.get_debt();
 
-   asset call_pays, call_receives, settle_pays, settle_receives;
+   asset call_receives = std::min(settle_for_sale, call_debt),
+         call_pays = call_receives * match_price,
+         settle_pays = call_receives,
+         settle_receives = call_pays;
 
-   if( settle_for_sale <= call_for_sale * match_price )
-   {
-      // We are finishing off the settle
-      call_receives = settle_for_sale;
-      settle_receives = settle_for_sale * match_price;
-   } else {
-      // We are finishing off the call
-      settle_receives = call_for_sale;
-      call_receives = call_for_sale * match_price;
-   }
-
-   call_pays = settle_receives;
-   settle_pays = call_receives;
-
-   assert( settle_pays == settle.balance || call_pays == call.get_collateral() );
+   assert( settle_pays == settle.balance || call_receives == call.get_debt() );
 
    int result = 0;
    result |= fill_order(call, call_pays, call_receives);
@@ -848,7 +837,7 @@ bool database::fill_order( const call_order_object& order, const asset& pays, co
       modify( borrower_statistics, [&]( account_statistics_object& b ){
               if( collateral_freed && collateral_freed->amount > 0 )
                 b.total_core_in_orders -= collateral_freed->amount;
-              else if( pays.asset_id == asset_id_type() )
+              if( pays.asset_id == asset_id_type() )
                 b.total_core_in_orders -= pays.amount;
               assert( b.total_core_in_orders >= 0 );
            });
