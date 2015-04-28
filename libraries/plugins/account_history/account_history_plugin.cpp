@@ -357,6 +357,9 @@ void account_update_observer::post_evaluate(
          ka.account_ids.erase( update_op.account );
       });
    }
+
+   _plugin._my->index_account_keys( update_op.account );
+
    return;
 }
 
