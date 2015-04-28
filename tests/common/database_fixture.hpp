@@ -233,8 +233,7 @@ struct database_fixture {
    database_fixture()
       : app(), db( *app.chain_database() )
    {
-      // TODO: Un-comment this when no longer buggy
-      //app.register_plugin<bts::account_history::account_history_plugin>();
+      app.register_plugin<bts::account_history::account_history_plugin>();
       bts::app::application::daemon_configuration cfg;
       cfg.initial_allocation = genesis_allocation();
       app.configure_without_network( cfg );
