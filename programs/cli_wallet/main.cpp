@@ -69,6 +69,24 @@ class wallet_api
 
       string  help()const;
 
+      uint64_t  get_account_count()const
+      {
+         return _remote_db->get_account_count();
+      }
+
+      map<string,account_id_type> list_accounts( const string& lowerbound, uint32_t limit)
+      {
+         return _remote_db->lookup_accounts( lowerbound, limit );
+      }
+      vector<asset> list_account_balances( const account_id_type& id )
+      {
+         return _remote_db->get_account_balances( id, flat_set<asset_id_type>() );
+      }
+      vector<operation_history_object>  get_account_history( account_id_type id )const
+      {
+         return _remote_db->get_account_history( id, operation_history_id_type() );
+      }
+
       string  suggest_brain_key()const
       {
         return string("dummy");
@@ -249,7 +267,6 @@ class wallet_api
         account_create_op.owner = authority(1, owner_rkid, 1);
         account_create_op.active = authority(1, active_rkid, 1);
         account_create_op.memo_key = active_rkid;
-        account_create_op.voting_key = active_rkid;
         account_create_op.vote = flat_set<vote_tally_id_type>();
 
         // current_fee_schedule()
@@ -396,11 +413,14 @@ class wallet_api
 
 FC_API( wallet_api,
         (help)
+        (list_accounts)
+        (list_account_balances)
         (import_key)
         (suggest_brain_key)
         (create_account_with_brain_key)
         (transfer)
         (get_account)
+        (get_account_history)
         (get_global_properties)
         (get_dynamic_global_properties)
         (get_object)
@@ -414,7 +434,7 @@ struct help_visitor
    template<typename R, typename... Args>
    void operator()( const char* name, std::function<R(Args...)>& memb )const {
       ss << std::setw(40) << std::left << fc::get_typename<R>::name() << " " << name << "( ";
-      vector<string> args{ fc::get_typename<Args>::name()... };
+      vector<string> args{ fc::get_typename<typename std::decay<Args>::type>::name()... };
       for( uint32_t i = 0; i < args.size(); ++i )
          ss << args[i] << (i==args.size()-1?" ":", ");
       ss << ")\n";

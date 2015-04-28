@@ -1,6 +1,7 @@
 #include <bts/app/application.hpp>
 
 #include <bts/witness/witness.hpp>
+#include <bts/account_history/account_history_plugin.hpp>
 
 #include <bts/chain/time.hpp>
 
@@ -18,6 +19,7 @@ int main(int argc, char** argv) {
       app::application node;
       node.configure(fc::current_path()/"witness_node_data_dir");
       auto witness_plug = node.register_plugin<witness_plugin::witness_plugin>();
+      auto history_plug = node.register_plugin<account_history::account_history_plugin>();
       if( argc > 1 )
          witness_plug->set_block_production(true);
 

@@ -29,6 +29,7 @@ class plugin : public abstract_plugin
       {
          _app = &app;
          static_cast<P*>(this)->configure(cfg);
+         static_cast<P*>(this)->init();
       }
       application* _app;
 };

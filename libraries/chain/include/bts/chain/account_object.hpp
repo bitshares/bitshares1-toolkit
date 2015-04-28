@@ -221,7 +221,7 @@ namespace bts { namespace chain {
       account_object,
       indexed_by<
          hashed_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
-         hashed_non_unique< tag<by_name>, member<account_object, string, &account_object::name> >
+         ordered_non_unique< tag<by_name>, member<account_object, string, &account_object::name> >
       >
    > account_object_multi_index_type;
 

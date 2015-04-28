@@ -2,6 +2,7 @@
 #include <bts/chain/types.hpp>
 #include <bts/chain/database.hpp>
 #include <bts/chain/account_object.hpp>
+#include <bts/chain/operation_history_object.hpp>
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/key_object.hpp>
 #include <bts/net/node.hpp>
@@ -26,6 +27,11 @@ namespace bts { namespace app {
 
          vector<optional<account_object>>  lookup_account_names( const vector<string>& account_name )const;
          vector<optional<asset_object>>    lookup_asset_symbols( const vector<string>& asset_symbols )const;
+
+         vector<asset>                     get_account_balances( account_id_type id, const flat_set<asset_id_type>& assets )const;
+         uint64_t                          get_account_count()const; 
+         map<string,account_id_type>       lookup_accounts( const string& lower_bound_name, uint32_t limit )const;
+         vector<operation_history_object>  get_account_history( account_id_type, operation_history_id_type stop = operation_history_id_type() )const;
 
          bts::chain::database& _db;
    };
@@ -80,6 +86,10 @@ FC_API( bts::app::database_api,
         (get_accounts)
         (get_assets)
         (lookup_account_names)
+        (get_account_count)
+        (lookup_accounts)
+        (get_account_balances)
+        (get_account_history)
         (lookup_asset_symbols) 
      )
 FC_API( bts::app::network_api, (broadcast_transaction)(add_node)(get_connected_peers) )

@@ -2,6 +2,7 @@
 #include <bts/app/application.hpp>
 #include <bts/chain/database.hpp>
 #include <bts/utilities/key_conversion.hpp>
+#include <bts/chain/operation_history_object.hpp>
 
 namespace bts { namespace app {
 
@@ -96,6 +97,64 @@ namespace bts { namespace app {
        return result;
     }
 
+    uint64_t                      database_api::get_account_count()const 
+    {
+       const auto& account_idx = _db.get_index_type<account_index>();
+       return account_idx.indices().size();
+    }
+
+
+    map<string,account_id_type>   database_api::lookup_accounts( const string& lower_bound_name, uint32_t limit )const
+    {
+       const auto& account_idx = _db.get_index_type<account_index>();
+       const auto& accounts_by_name = account_idx.indices().get<by_name>();
+       map<string,account_id_type> result;
+
+       auto itr = accounts_by_name.lower_bound( lower_bound_name );
+       while( limit && itr != accounts_by_name.end() )
+       {
+          result[itr->name] = itr->id; 
+          ++itr;
+          --limit;
+       }
+       return result;
+    }
+
+    vector<operation_history_object>  database_api::get_account_history( account_id_type a, 
+                                                                         operation_history_id_type stop )const
+    {
+       vector<operation_history_object> result;
+       const auto& stats = a(_db).statistics(_db);
+       if( stats.most_recent_op == account_transaction_history_id_type() ) return result;
+       const account_transaction_history_object* node = &stats.most_recent_op(_db);
+       while( node && node->operation_id != stop )
+       {
+          result.push_back( node->operation_id(_db) );
+          if( node->next == account_transaction_history_id_type() )
+             node = nullptr;
+          else node = _db.find(node->next);
+       }
+       return result;
+    }
+
+    vector<asset>  database_api::get_account_balances( account_id_type acnt, const flat_set<asset_id_type>& assets )const
+    {
+       vector<asset> result;  result.reserve( assets.size() );
+
+       const auto& account_bal_idx   = _db.get_index_type<account_balance_index>();
+       const auto& bal_by_account    = account_bal_idx.indices().get<by_account>();
+       auto itr = bal_by_account.find( acnt );
+       while( itr->owner == acnt )
+       {
+          if( assets.size() == 0 || assets.find( itr->asset_type ) != assets.end() )
+                result.push_back( itr->get_balance() );
+          ++itr;
+       }
+
+       return result;
+    }
+
+
     bool login_api::login( const string& user, const string& password )
     {
        auto db_api = std::make_shared<database_api>( std::ref(*_app.chain_database()) );
@@ -146,5 +205,7 @@ namespace bts { namespace app {
 
         return trx;
     }
+
+
 
 } } // bts::app
