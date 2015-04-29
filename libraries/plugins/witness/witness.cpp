@@ -56,7 +56,8 @@ void witness_plugin::block_production_loop()
    auto next_production = db.get_next_generation_time(witnesses);
    wdump((next_production)(chain::now()));
    if( _production_enabled &&
-       (llabs((next_production.first - chain::now()).count()) <= fc::seconds(1).count() || db.head_block_num() == 0) )
+       (llabs((next_production.first - chain::now()).count()) <= fc::milliseconds(500).count() || db.head_block_num() == 0) &&
+       (chain::now() - db.head_block_time()).to_seconds() >= 1 )
    {
       ilog("Witness ${id} production slot has arrived; generating a block now...", ("id", next_production.second));
       try {
