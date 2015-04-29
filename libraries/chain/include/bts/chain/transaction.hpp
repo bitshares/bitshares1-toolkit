@@ -13,6 +13,8 @@
 namespace bts { namespace chain {
 
    /**
+    *  @defgroup transactions Transactions
+    *
     *  All transactions are sets of operations that must be
     *  applied atomically.  Transactions must refer to a recent
     *  block that defines the context of the operation so that
@@ -50,6 +52,12 @@ namespace bts { namespace chain {
     *  payments should probably have a longer re-org window to ensure
     *  their transaction can still go through in the event of a
     *  momentary disruption in service.
+    *
+    *  @{
+    */
+
+   /**
+    *  @brief groups operations that should be applied atomically 
     */
    struct transaction
    {
@@ -81,6 +89,9 @@ namespace bts { namespace chain {
       }
    };
 
+   /**
+    *  @brief adds a signature to a transaction
+    */
    struct signed_transaction : public transaction
    {
       signed_transaction( const transaction& trx = transaction() )
@@ -93,6 +104,8 @@ namespace bts { namespace chain {
    };
 
    /**
+    *  @brief captures the result of evaluating the operations contained in the transaction
+    *  
     *  When processing a transaction some operations generate
     *  new object IDs and these IDs cannot be known until the
     *  transaction is actually included into a block.  When a
@@ -110,6 +123,8 @@ namespace bts { namespace chain {
 
       vector<operation_result> operation_results;
    };
+
+   /// @} transactions group
 
 
 } }

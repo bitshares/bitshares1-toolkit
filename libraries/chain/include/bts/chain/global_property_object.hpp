@@ -18,7 +18,7 @@ namespace bts { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_global_property_object_type;
 
-         chain_parameters parameters;
+         chain_parameters           parameters;
          optional<chain_parameters> pending_parameters;
 
          vector<delegate_id_type>   active_delegates; // updated once per maintenance interval

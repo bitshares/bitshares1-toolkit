@@ -25,6 +25,60 @@ namespace bts { namespace chain {
       flat_map< pair<account_id_type, asset_id_type>, share_type > balance;
    };
 
+   /**
+    *  @defgroup operations Operations
+    *  @ingroup transactions Transactions
+    *  @brief A set of valid comands for mutating the globally shared state.
+    *
+    *  An operation can be thought of like a function that will modify the global
+    *  shared state of the blockchain.  The members of each struct are like function
+    *  arguments and each operation can potentially generate a return value.
+    *
+    *  Operations can be grouped into transactions (@ref transaction) to ensure that they occur
+    *  in a particular order and that all operations apply successfully or
+    *  no operations apply.
+    *
+    *  Each operation is a fully defined state transition and can exist in a transaction on its own.  
+    *
+    *  @section operation_design_principles Design Principles 
+    *
+    *  Operations have been carefully designed to include all of the information necessary to
+    *  interpret them outside the context of the blockchain.   This means that information about
+    *  current chain state is included in the operation even though it could be inferred from
+    *  a subset of the data.   This makes the expected outcome of each operation well defined and
+    *  easily understood without access to chain state.   
+    *
+    *  @subsection balance_calculation Balance Calculation Principle
+    *  
+    *    We have stipulated that the current account balance may be entirely calculated from
+    *    just the subset of operations that are relevant to that account.  There should be
+    *    no need to process the entire blockchain inorder to know your account's balance.
+    *
+    *  @subsection fee_calculation Explicit Fee Principle
+    *    
+    *    Blockchain fees can change from time to time and it is important that a signed
+    *    transaction explicitly agree to the fees it will be paying.  This aids with account
+    *    balance updates and ensures that the sender agreed to the fee prior to making the
+    *    transaction.  
+    *
+    *  @subsection defined_authority Explicit Authority
+    *    
+    *    Each operation shall contain enough information to know which accounts must authorize
+    *    the operation.  This principle enables authority verification to occur in a centralized,
+    *    optimized, and parallel manner.  
+    *
+    *  @subsection relevancy_principle Explicit Relevant Accounts
+    *    
+    *    Each operation contains enough information to enumerate all accounts for which the
+    *    operation should apear in its account history.  This principle enables us to easily
+    *    define and enforce the @balance_calculation. This is superset of the @ref defined_authority
+    *
+    *  @{
+    */
+
+   /**
+    *  @ingroup operations
+    */
    struct key_create_operation
    {
       account_id_type  fee_paying_account;
@@ -39,6 +93,9 @@ namespace bts { namespace chain {
       void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
+   /**
+    *  @ingroup operations
+    */
    struct account_create_operation
    {
       account_id_type registrar;
@@ -72,6 +129,7 @@ namespace bts { namespace chain {
 
    /**
     * @brief This operation is used to whitelist and blacklist accounts, primarily for transacting in whitelisted assets
+    * @ingroup operations
     *
     * Accounts can freely specify opinions about other accounts, in the form of either whitelisting or blacklisting
     * them. This information is used in chain validation only to determine whether an account is authorized to transact
@@ -115,6 +173,9 @@ namespace bts { namespace chain {
       void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
+   /**
+    * @ingroup operations
+    */
    struct account_update_operation
    {
       account_id_type                         account;
@@ -142,6 +203,7 @@ namespace bts { namespace chain {
 
    /**
     * @brief Create a delegate object, as a bid to hold a delegate seat on the network.
+    * @ingroup operations
     *
     * Accounts which wish to become delegates may use this operation to create a delegate object which stakeholders may
     * vote on to approve its position as a delegate.
@@ -161,6 +223,7 @@ namespace bts { namespace chain {
 
    /**
     *  @brief transfers the cashback rewards to balance
+    *  @ingroup operations
     *
     *  This is defined as a separate operation because cashback rewards would end up creating many
     *  small 'micro-payments' and this helps keep the ledger clean.
@@ -184,6 +247,7 @@ namespace bts { namespace chain {
 
    /**
     *  @brief transfers the account to another account while clearing the white list
+    *  @ingroup operations
     *
     *  In theory an account can be transferred by simply updating the authorities, but that kind
     *  of transfer lacks semantic meaning and is more often done to rotate keys without transferring
@@ -210,6 +274,7 @@ namespace bts { namespace chain {
 
   /**
     * @brief Create a witness object, as a bid to hold a witness position on the network.
+    * @ingroup operations
     *
     * Accounts which wish to become witnesses may use this operation to create a witness object which stakeholders may
     * vote on to approve its position as a witness.
@@ -231,6 +296,7 @@ namespace bts { namespace chain {
    };
 
    /**
+    * @ingroup operations
     *  Used to move witness pay from accumulated_income to their account balance.
     */
    struct witness_withdraw_pay_operation
@@ -255,6 +321,7 @@ namespace bts { namespace chain {
 
    /**
     * @brief Used by delegates to update the global parameters of the blockchain.
+    * @ingroup operations
     *
     * This operation allows the delegates to update the global parameters on the blockchain. These control various
     * tunable aspects of the chain, including block and maintenance intervals, maximum data sizes, the fees charged by
@@ -276,12 +343,33 @@ namespace bts { namespace chain {
       void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
+   /**
+    * @ingroup operations
+    *
+    * @brief Transfers an amount of one asset from one account to another
+    *
+    *  Fees are paid by the "from" account
+    *
+    *  @pre amount.amount > 0 
+    *  @pre fee.amount >= 0 
+    *  @pre from != to 
+    *  @post from account's balance will be reduced by fee and amount
+    *  @post to account's balance will be increased by amount
+    *  @return n/a
+    */
    struct transfer_operation
    {
       account_id_type from;
       account_id_type to;
+      /** the amount and asset type that will be withdrawn from account "from" and added to account "to" 
+       *  
+       **/
       asset           amount;
-      asset           fee; ///< same asset_id as amount.asset_id
+
+      /** paid by the from account, may be of any asset for which there is a funded fee pool 
+       **/
+      asset           fee; 
+      /** user provided data encrypted to the memo key of the "to" account */
       vector<char>    memo;
 
       account_id_type fee_payer()const { return from; }
@@ -296,6 +384,9 @@ namespace bts { namespace chain {
       }
    };
 
+   /**
+    * @ingroup operations
+    */
    struct asset_create_operation
    {
       /// This account must sign and pay the fee for this operation. Later, this account may update the asset
@@ -344,6 +435,7 @@ namespace bts { namespace chain {
 
    /**
     * @brief Schedules a market-issued asset for automatic settlement
+    * @ingroup operations
     *
     * Holders of market-issued assests may request a forced settlement for some amount of their asset. This means that
     * the specified sum will be locked by the chain and held for the settlement period, after which time the chain will
@@ -373,6 +465,9 @@ namespace bts { namespace chain {
       }
    };
 
+   /**
+    * @ingroup operations
+    */
    struct asset_fund_fee_pool_operation
    {
       account_id_type from_account;
@@ -391,6 +486,9 @@ namespace bts { namespace chain {
       }
    };
 
+   /**
+    * @ingroup operations
+    */
    struct asset_update_operation
    {
       asset_update_operation(){}
@@ -433,6 +531,7 @@ namespace bts { namespace chain {
 
    /**
     * @brief Publish price feeds for market-issued assets
+    * @ingroup operations
     *
     * Price feed providers use this operation to publish their price feeds for market-issued assets. A price feed is
     * used to tune the market for a particular market-issued asset. For each value in the feed, the median across all
@@ -459,6 +558,9 @@ namespace bts { namespace chain {
       void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset() )const { acc.adjust( fee_payer(), -fee ); }
    };
 
+   /**
+    * @ingroup operations
+    */
    struct asset_issue_operation
    {
       account_id_type  issuer; ///< Must be asset_to_issue->asset_id->issuer
@@ -476,6 +578,7 @@ namespace bts { namespace chain {
    /**
     *  @class limit_order_create_operation
     *  @brief instructs the blockchain to attempt to sell one asset for another
+    *  @ingroup operations
     *
     *  The blockchain will atempt to sell amount_to_sell.asset_id for as
     *  much min_to_receive.asset_id as possible.  The fee will be paid by
@@ -520,6 +623,7 @@ namespace bts { namespace chain {
 
 
    /**
+    *  @ingroup operations
     *  Used to cancel an existing limit order, fee_pay_account and the
     *  account to receive the proceeds must be the same as order->seller
     *
@@ -545,6 +649,8 @@ namespace bts { namespace chain {
    };
 
    /**
+    *  @ingroup operations
+    *
     *  Define a new short order, if it is filled it will
     *  be merged with existing call orders for the same
     *  account.  If maintenance_collateral_ratio is set
@@ -596,6 +702,7 @@ namespace bts { namespace chain {
    };
 
    /**
+    * @ingroup operations
     * Cancel the short order and return the balance to the
     * order->seller account.
     */
@@ -619,6 +726,8 @@ namespace bts { namespace chain {
 
 
    /**
+    *  @ingroup operations
+    *
     *  This operation can be used to add collateral, cover, and adjust the margin call price with a new maintenance
     *  collateral ratio.
     *
@@ -651,7 +760,8 @@ namespace bts { namespace chain {
    };
 
    /**
-     * The Graphene Transaction Proposal Protocol
+     * @defgroup proposed_transactions  The Graphene Transaction Proposal Protocol
+     * @ingroup operations
      *
      * Graphene allows users to propose a transaction which requires approval of multiple accounts in order to execute.
      * The user proposes a transaction using proposal_create_operation, then signatory accounts use
@@ -683,6 +793,7 @@ namespace bts { namespace chain {
    struct op_wrapper;
    /**
     * @brief The proposal_create_operation creates a transaction proposal, for use in multi-sig scenarios
+    * @ingroup operations
     *
     * Creates a transaction proposal. The operations which compose the transaction are listed in order in proposed_ops,
     * and expiration_time specifies the time by which the proposal must be accepted or it will fail permanently. The
@@ -711,6 +822,7 @@ namespace bts { namespace chain {
 
    /**
     * @brief The proposal_update_operation updates an existing transaction proposal
+    * @ingroup operations
     *
     * This operation allows accounts to add or revoke approval of a proposed transaction. Signatures sufficient to
     * satisfy the authority of each account in approvals are required on the transaction containing this operation.
@@ -747,6 +859,7 @@ namespace bts { namespace chain {
 
    /**
     * @brief The proposal_delete_operation deletes an existing transaction proposal
+    * @ingroup operations
     *
     * This operation allows the early veto of a proposed transaction. It may be used by any account which is a required
     * authority on the proposed transaction if that account's holder feels the proposal is ill-advised and he decides
@@ -771,7 +884,9 @@ namespace bts { namespace chain {
    ///@}
 
    /**
-    * This is a virtual operation that is created while matching orders and
+    * @ingroup operations
+    *
+    * @note This is a virtual operation that is created while matching orders and
     * emited for the purpose of accurately tracking account history, acclerating
     * reindex.
     */
@@ -795,6 +910,7 @@ namespace bts { namespace chain {
 
    /**
     * @brief Create a new withdrawal permission
+    * @ingroup operations
     *
     * This operation creates a withdrawal permission, which allows some authorized account to withdraw from an
     * authorizing account. This operation is primarily useful for scheduling recurring payments.
@@ -837,6 +953,7 @@ namespace bts { namespace chain {
 
    /**
     * @brief Update an existing withdraw permission
+    * @ingroup operations
     *
     * This oeration is used to update the settings for an existing withdrawal permission.
     *
@@ -869,6 +986,7 @@ namespace bts { namespace chain {
 
    /**
     * @brief Withdraw from an account which has published a withdrawal permission
+    * @ingroup operations
     *
     * This operation is used to withdraw from an account which has authorized such a withdrawal. It may be executed at
     * most once per withdrawal period for the given permission. On execution, amount_to_withdraw is transferred from
@@ -903,6 +1021,7 @@ namespace bts { namespace chain {
 
    /**
     * @brief Delete an existing withdrawal permission
+    * @ingroup operations
     *
     * This operation cancels a withdrawal permission, thus preventing any future withdrawals using that permission.
     *
@@ -930,6 +1049,8 @@ namespace bts { namespace chain {
    };
 
    /**
+    * @ingroup operations
+    *
     * Bond offers are objects that exist on the blockchain and can be
     * filled in full or in part by someone using the accept_bond_offer
     * operation. When the offer is accepted a new bond_object is
@@ -961,6 +1082,7 @@ namespace bts { namespace chain {
    };
 
    /**
+    * @ingroup operations
     *  Subtracts refund from bond_offer.amount and frees bond_offer if refund == bond_offer.amount
     */
    struct cancel_bond_offer_operation
@@ -982,6 +1104,7 @@ namespace bts { namespace chain {
    };
 
    /**
+    * @ingroup operations
     *  @return new bond_id
     */
    struct accept_bond_offer_operation
@@ -1003,6 +1126,7 @@ namespace bts { namespace chain {
    };
 
    /**
+    * @ingroup operations
     *  After the loan period the lender can claim
     *  the collateral, prior to the loan period expiring
     *  the borrower can claim it by paying off the loan
@@ -1027,6 +1151,11 @@ namespace bts { namespace chain {
       }
    };
 
+   /**
+    * @ingroup operations
+    *
+    * Defines the set of valid operations as a discriminated union type.
+    */
    typedef fc::static_variant<
             transfer_operation,
             limit_order_create_operation,
@@ -1064,6 +1193,8 @@ namespace bts { namespace chain {
             claim_bond_collateral_operation
             */
          > operation;
+
+   /// @} // operations group
 
    /**
     *  Used to track the result of applying an operation and when it was applied.
