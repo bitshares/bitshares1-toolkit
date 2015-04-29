@@ -82,6 +82,7 @@ BOOST_AUTO_TEST_CASE( child_account )
       const account_object& nathan = get_account("nathan");
       const account_object& root = create_account("root");
 
+      skip_key_index_test = true;
       db.modify(nathan, [nathan_key](account_object& a) {
          a.owner = authority(1, nathan_key.get_id(), 1);
          a.active = authority(1, nathan_key.get_id(), 1);

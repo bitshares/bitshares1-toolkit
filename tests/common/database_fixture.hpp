@@ -77,6 +77,7 @@ struct database_fixture {
    fc::ecc::private_key private_key = fc::ecc::private_key::generate();
    fc::ecc::private_key delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
    optional<fc::temp_directory> data_dir;
+   bool skip_key_index_test = false;
 
    static fc::ecc::private_key generate_private_key(string seed)
    {
@@ -151,6 +152,9 @@ struct database_fixture {
 
    void verify_account_history_plugin_index()
    {
+      if( skip_key_index_test )
+         return;
+
       const std::shared_ptr<bts::account_history::account_history_plugin> pin =
          app.get_plugin<bts::account_history::account_history_plugin>( "account_history" );
       if( pin->_config.accounts.size() == 0 )
@@ -220,7 +224,7 @@ struct database_fixture {
          is_equal &= (tuples_from_db.size() == tuples_from_index.size());
          for( size_t i=0,n=tuples_from_db.size(); i<n; i++ )
             is_equal &= (tuples_from_db[i] == tuples_from_index[i] );
-         
+
          bool account_history_plugin_index_ok = is_equal;
          BOOST_CHECK( account_history_plugin_index_ok );
       }
