@@ -655,6 +655,7 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
    try
    {
       const asset_object& core = asset_id_type()(db);
+      uint32_t skip_flags = database::skip_transaction_dupe_check;
 
       // Sam is the creator of accounts
       private_key_type genesis_key = generate_private_key("genesis");
@@ -677,7 +678,7 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
       account_object sam_account_object = create_account( "sam", sam_key );
 
       //Get a sane head block time
-      generate_block();
+      generate_block( skip_flags );
 
       db.modify(db.get_global_properties(), [](global_property_object& p) {
          p.parameters.genesis_proposal_review_period = fc::hours(1).to_seconds();
@@ -737,7 +738,7 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
       }
 
       // we can only undo in blocks
-      generate_block();
+      generate_block( skip_flags );
 
       for( int use_addresses=0; use_addresses<2; use_addresses++ )
       {
@@ -780,7 +781,7 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
                      ptx_create.operation_results[0]
                      .get< object_id_type >();
 
-                  generate_block();
+                  generate_block( skip_flags );
                   for( const vector< int >& key_sched_after : possible_key_sched )
                   {
                      auto it = key_sched_after.begin();
@@ -815,7 +816,7 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
                         }
                      }
                      verify_account_history_plugin_index();
-                     generate_block();
+                     generate_block( skip_flags );
 
                      verify_account_history_plugin_index();
                      db.pop_block();
@@ -839,6 +840,22 @@ BOOST_FIXTURE_TEST_CASE( pop_block_twice, database_fixture )
 {
    try
    {
+/*
+            skip_delegate_signature     = 0x01, ///< used while reindexing
+            skip_transaction_signatures = 0x02, ///< used by non delegate nodes
+            skip_undo_block             = 0x04, ///< used while reindexing
+            skip_undo_transaction       = 0x08, ///< used while applying block
+            skip_transaction_dupe_check = 0x10, ///< used while reindexing
+            skip_fork_db                = 0x20, ///< used while reindexing
+            skip_block_size_check       = 0x40, ///< used when applying locally generated transactions
+            skip_tapos_check            = 0x80, ///< used while reindexing -- note this skips expiration check as well
+*/
+
+      uint32_t skip_flags = (
+           database::skip_delegate_signature
+         | database::skip_transaction_signatures
+         );
+
       const asset_object& core = asset_id_type()(db);
 
       // Sam is the creator of accounts
@@ -847,7 +864,7 @@ BOOST_FIXTURE_TEST_CASE( pop_block_twice, database_fixture )
       account_object sam_account_object = create_account( "sam", sam_key );
 
       //Get a sane head block time
-      generate_block();
+      generate_block( skip_flags );
 
       db.modify(db.get_global_properties(), [](global_property_object& p) {
          p.parameters.genesis_proposal_review_period = fc::hours(1).to_seconds();
@@ -860,12 +877,12 @@ BOOST_FIXTURE_TEST_CASE( pop_block_twice, database_fixture )
       // transfer from genesis account to Sam account
       transfer(genesis_account_object, sam_account_object, core.amount(100000));
 
-      generate_block();
+      generate_block( skip_flags );
 
       create_account( "alice" );
-      generate_block();
+      generate_block( skip_flags );
       create_account( "bob" );
-      generate_block();
+      generate_block( skip_flags );
 
       db.pop_block();
       db.pop_block();
