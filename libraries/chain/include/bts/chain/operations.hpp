@@ -38,37 +38,37 @@ namespace bts { namespace chain {
     *  in a particular order and that all operations apply successfully or
     *  no operations apply.
     *
-    *  Each operation is a fully defined state transition and can exist in a transaction on its own.  
+    *  Each operation is a fully defined state transition and can exist in a transaction on its own.
     *
-    *  @section operation_design_principles Design Principles 
+    *  @section operation_design_principles Design Principles
     *
     *  Operations have been carefully designed to include all of the information necessary to
     *  interpret them outside the context of the blockchain.   This means that information about
     *  current chain state is included in the operation even though it could be inferred from
     *  a subset of the data.   This makes the expected outcome of each operation well defined and
-    *  easily understood without access to chain state.   
+    *  easily understood without access to chain state.
     *
     *  @subsection balance_calculation Balance Calculation Principle
-    *  
+    *
     *    We have stipulated that the current account balance may be entirely calculated from
     *    just the subset of operations that are relevant to that account.  There should be
     *    no need to process the entire blockchain inorder to know your account's balance.
     *
     *  @subsection fee_calculation Explicit Fee Principle
-    *    
+    *
     *    Blockchain fees can change from time to time and it is important that a signed
     *    transaction explicitly agree to the fees it will be paying.  This aids with account
     *    balance updates and ensures that the sender agreed to the fee prior to making the
-    *    transaction.  
+    *    transaction.
     *
     *  @subsection defined_authority Explicit Authority
-    *    
+    *
     *    Each operation shall contain enough information to know which accounts must authorize
     *    the operation.  This principle enables authority verification to occur in a centralized,
-    *    optimized, and parallel manner.  
+    *    optimized, and parallel manner.
     *
     *  @subsection relevancy_principle Explicit Relevant Accounts
-    *    
+    *
     *    Each operation contains enough information to enumerate all accounts for which the
     *    operation should apear in its account history.  This principle enables us to easily
     *    define and enforce the @balance_calculation. This is superset of the @ref defined_authority
@@ -350,9 +350,9 @@ namespace bts { namespace chain {
     *
     *  Fees are paid by the "from" account
     *
-    *  @pre amount.amount > 0 
-    *  @pre fee.amount >= 0 
-    *  @pre from != to 
+    *  @pre amount.amount > 0
+    *  @pre fee.amount >= 0
+    *  @pre from != to
     *  @post from account's balance will be reduced by fee and amount
     *  @post to account's balance will be increased by amount
     *  @return n/a
@@ -361,14 +361,14 @@ namespace bts { namespace chain {
    {
       account_id_type from;
       account_id_type to;
-      /** the amount and asset type that will be withdrawn from account "from" and added to account "to" 
-       *  
+      /** the amount and asset type that will be withdrawn from account "from" and added to account "to"
+       *
        **/
       asset           amount;
 
-      /** paid by the from account, may be of any asset for which there is a funded fee pool 
+      /** paid by the from account, may be of any asset for which there is a funded fee pool
        **/
-      asset           fee; 
+      asset           fee;
       /** user provided data encrypted to the memo key of the "to" account */
       vector<char>    memo;
 
@@ -444,7 +444,7 @@ namespace bts { namespace chain {
     * feed price at the time of settlement with an offset in favor of the margin position, where the offset is a
     * blockchain parameter set in the global_property_object.
     *
-    * The fee is paid by account, and account must authorize this operation
+    * The fee is paid by @ref account, and @ref account must authorize this operation
     */
    struct asset_settle_operation
    {
