@@ -145,9 +145,12 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
                   create_op.memo_key = key_ids[ *(it++) ] ;
                   create_op.registrar = sam_account_object.id;
                   trx.operations.push_back( create_op );
-                  trx.sign( sam_key );
+                  // trx.sign( sam_key );
 
-                  processed_transaction ptx_create = db.push_transaction( trx, database::skip_transaction_dupe_check );
+                  processed_transaction ptx_create = db.push_transaction( trx,
+                     database::skip_transaction_dupe_check |
+                     database::skip_transaction_signatures
+                      );
                   account_id_type alice_account_id =
                      ptx_create.operation_results[0]
                      .get< object_id_type >();
@@ -176,14 +179,16 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
                      trx.operations.push_back( update_op );
                      for( int i=0; i<int(create_op.owner.weight_threshold); i++)
                      {
-                        trx.sign( *owner_privkey[i] );
+                        // trx.sign( *owner_privkey[i] );
                         if( i < int(create_op.owner.weight_threshold-1) )
                         {
                            BOOST_REQUIRE_THROW(db.push_transaction(trx), fc::exception);
                         }
                         else
                         {
-                           db.push_transaction( trx, database::skip_transaction_dupe_check );
+                           db.push_transaction( trx,
+                           database::skip_transaction_dupe_check |
+                           database::skip_transaction_signatures );
                         }
                      }
                      verify_account_history_plugin_index();
