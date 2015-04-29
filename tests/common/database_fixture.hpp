@@ -215,9 +215,6 @@ struct database_fixture {
             BOOST_CHECK( tuples_from_index.size() == size_before_uniq );
          }
 
-         wdump( (tuples_from_db) );
-         wdump( (tuples_from_index) );
-
          //BOOST_CHECK_EQUAL( tuples_from_db, tuples_from_index );
          bool is_equal = true;
          is_equal &= (tuples_from_db.size() == tuples_from_index.size());
@@ -233,8 +230,7 @@ struct database_fixture {
    database_fixture()
       : app(), db( *app.chain_database() )
    {
-      // TODO: Un-comment this when no longer buggy
-      //app.register_plugin<bts::account_history::account_history_plugin>();
+      app.register_plugin<bts::account_history::account_history_plugin>();
       bts::app::application::daemon_configuration cfg;
       cfg.initial_allocation = genesis_allocation();
       app.configure_without_network( cfg );
@@ -246,8 +242,7 @@ struct database_fixture {
    }
    ~database_fixture(){
       verify_asset_supplies();
-      // TODO:  Un-comment this when no longer buggy
-      //verify_account_history_plugin_index();
+      verify_account_history_plugin_index();
       shutdown_ntp_time();
 
       if( data_dir )
@@ -262,13 +257,16 @@ struct database_fixture {
       }
    }
 
-   signed_block generate_block()
+   signed_block generate_block(
+      uint32_t skip = ~0
+      )
    {
       open_database();
 
       auto aw = db.get_global_properties().active_witnesses;
       advance_simulated_time_to( db.get_next_generation_time(  aw[db.head_block_num()%aw.size()] ) );
-      return db.generate_block( delegate_priv_key, aw[db.head_block_num()%aw.size()], ~0 );
+      // skip == ~0 will skip checks specified in database::validation_steps
+      return db.generate_block( delegate_priv_key, aw[db.head_block_num()%aw.size()], skip );
    }
 
    /**

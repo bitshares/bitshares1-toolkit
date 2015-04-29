@@ -21,6 +21,9 @@ undo_database::session undo_database::start_undo_session()
 void undo_database::on_create( const object& obj )
 {
    if( _disabled ) return;
+
+   if( _stack.empty() )
+      _stack.emplace_back();
    auto& state = _stack.back();
    auto index_id = object_id_type( obj.id.space(), obj.id.type(), 0 );
    auto itr = state.old_index_next_ids.find( index_id );
@@ -31,6 +34,9 @@ void undo_database::on_create( const object& obj )
 void undo_database::on_modify( const object& obj )
 {
    if( _disabled ) return;
+
+   if( _stack.empty() )
+      _stack.emplace_back();
    auto& state = _stack.back();
    if( state.new_ids.find(obj.id) != state.new_ids.end() )
       return;
@@ -41,6 +47,9 @@ void undo_database::on_modify( const object& obj )
 void undo_database::on_remove( const object& obj )
 {
    if( _disabled ) return;
+
+   if( _stack.empty() )
+      _stack.emplace_back();
    auto& state = _stack.back();
    if( state.new_ids.find(obj.id) != state.new_ids.end() )
    {
@@ -114,6 +123,7 @@ void undo_database::merge()
 }
 void undo_database::commit()
 {
+   FC_ASSERT( _active_sessions > 0 );
    --_active_sessions;
 }
 

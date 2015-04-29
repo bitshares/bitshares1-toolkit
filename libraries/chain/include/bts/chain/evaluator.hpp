@@ -38,13 +38,15 @@ namespace bts { namespace chain {
              const transaction_evaluation_state& eval_state,
              const operation& op,
              bool apply,
-             generic_evaluator* ge ) {}
+             generic_evaluator* ge,
+             const operation_result& result ) {}
 
          virtual void evaluation_failed(
              const transaction_evaluation_state& eval_state,
              const operation& op,
              bool apply,
-             generic_evaluator* ge ) {}
+             generic_evaluator* ge,
+             const operation_result& result ) {}
    };
 
    class generic_evaluator
@@ -116,7 +118,7 @@ namespace bts { namespace chain {
              T eval;
              optional< fc::exception > evaluation_exception;
              size_t observer_count = 0;
-             decltype( eval.start_evaluate( eval_state, op, apply ) ) result;
+             operation_result result;
 
              for( const auto& obs : eval_observers )
              {
@@ -147,9 +149,9 @@ namespace bts { namespace chain {
                 try
                 {
                    if( !evaluation_exception.valid() )
-                      obs->post_evaluate( eval_state, op, apply, &eval );
+                      obs->post_evaluate( eval_state, op, apply, &eval, result );
                    else
-                      obs->evaluation_failed( eval_state, op, apply, &eval );
+                      obs->evaluation_failed( eval_state, op, apply, &eval, result );
                 }
                 catch( const fc::exception& e )
                 {
