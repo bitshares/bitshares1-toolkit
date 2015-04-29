@@ -38,6 +38,8 @@ namespace bts { namespace chain {
          bool enforce_white_list()const { return flags & white_list; }
          /// @return true if this is a market-issued asset; false otherwise.
          bool is_market_issued()const { return flags & market_issued; }
+         /// @return true if this asset charges a fee for the issuer on market operations; false otherwise
+         bool charges_market_fees()const { return flags & charge_market_fee; }
 
          /// Helper function to get an asset object with the given amount in this asset's type
          asset amount(share_type a)const { return asset(a, id); }

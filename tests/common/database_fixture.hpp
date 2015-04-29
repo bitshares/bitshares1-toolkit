@@ -74,6 +74,7 @@ struct database_fixture {
    chain::database &db;
    signed_transaction trx;
    key_id_type genesis_key;
+   account_id_type genesis_account;
    fc::ecc::private_key private_key = fc::ecc::private_key::generate();
    fc::ecc::private_key delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
    optional<fc::temp_directory> data_dir;
@@ -350,12 +351,6 @@ struct database_fixture {
       return create_account;
    } FC_CAPTURE_AND_RETHROW((name)(referrer_percent))}
 
-
-
-
-
-   account_id_type genesis_account;
-
    const asset_object& get_asset( const string& symbol )
    {
       return *db.get_index_type<asset_index>().indices().get<by_symbol>().find(symbol);
@@ -375,8 +370,8 @@ struct database_fixture {
       creator.max_supply = 0;
       creator.precision = 2;
       creator.market_fee_percent = market_fee_percent;
-      creator.permissions = market_issued;
-      creator.flags = market_issued;
+      creator.permissions = market_issued | charge_market_fee;
+      creator.flags = market_issued | charge_market_fee;
       creator.core_exchange_rate = price({asset(1),asset(1)});
       creator.short_backing_asset = asset_id_type();
       creator.max_supply = BTS_MAX_SHARE_SUPPLY;
@@ -397,6 +392,8 @@ struct database_fixture {
       creator.precision = 2;
       creator.core_exchange_rate = price({asset(1),asset(1)});
       creator.max_supply = BTS_MAX_SHARE_SUPPLY;
+      creator.flags = charge_market_fee;
+      creator.permissions = charge_market_fee;
       trx.operations.push_back(std::move(creator));
       trx.validate();
       auto r = db.push_transaction(trx, ~0);

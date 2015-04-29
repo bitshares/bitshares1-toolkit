@@ -454,7 +454,7 @@ BOOST_AUTO_TEST_CASE( create_uia )
       creator.precision = 2;
       creator.market_fee_percent = BTS_MAX_MARKET_FEE_PERCENT/100; /*1%*/
       creator.permissions = ASSET_ISSUER_PERMISSION_MASK & ~market_issued;
-      creator.flags = 0;
+      creator.flags = charge_market_fee;
       creator.core_exchange_rate = price({asset(2),asset(1)});
       creator.short_backing_asset = asset_id_type();
       trx.operations.push_back(std::move(creator));
@@ -498,6 +498,7 @@ BOOST_AUTO_TEST_CASE( create_uia )
 
 BOOST_AUTO_TEST_CASE( update_uia )
 {
+   using namespace bts;
    try {
       INVOKE(create_uia);
       const auto& test = get_asset("TEST");
@@ -516,7 +517,7 @@ BOOST_AUTO_TEST_CASE( update_uia )
       //Cannot convert to an MIA
       REQUIRE_THROW_WITH_VALUE(op, flags, market_issued);
       //Cannot set flags to same value as before
-      REQUIRE_THROW_WITH_VALUE(op, flags, 0);
+      REQUIRE_THROW_WITH_VALUE(op, flags, charge_market_fee);
       //Cannot convert to an MIA
       REQUIRE_THROW_WITH_VALUE(op, permissions, ASSET_ISSUER_PERMISSION_MASK);
       //Cannot set permissions to same value as before

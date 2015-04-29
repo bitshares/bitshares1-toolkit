@@ -708,7 +708,10 @@ void database::settle_black_swan( const asset_object& mia, const price& settleme
 
 asset database::calculate_market_fee( const asset_object& trade_asset, const asset& trade_amount )
 {
-   assert( trade_asset.id == trade_amount.asset_id );
+   if( !trade_asset.charges_market_fees() )
+      return trade_asset.amount(0);
+   if( trade_asset.market_fee_percent == 0 )
+      return trade_asset.amount(trade_asset.min_market_fee);
 
    fc::uint128 a(trade_amount.amount.value);
    a *= trade_asset.market_fee_percent;

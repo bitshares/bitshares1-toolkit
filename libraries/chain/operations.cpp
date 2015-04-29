@@ -220,8 +220,7 @@ void  asset_create_operation::validate()const
    FC_ASSERT( !(flags & ~permissions ) );
    if( permissions & market_issued )
    {
-      FC_ASSERT( (permissions == market_issued) );
-      FC_ASSERT( (flags == market_issued) );
+      FC_ASSERT( (flags & market_issued) );
       if( issuer == account_id_type() )
          FC_ASSERT( feed_publishers.empty(), "Cannot set feed publishers on an asset issued by genesis." );
    } else {
