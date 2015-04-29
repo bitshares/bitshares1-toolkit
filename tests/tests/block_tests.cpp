@@ -812,4 +812,47 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
    }
 }
 
+BOOST_FIXTURE_TEST_CASE( pop_block_twice, database_fixture )
+{
+   try
+   {
+      const asset_object& core = asset_id_type()(db);
+
+      // Sam is the creator of accounts
+      private_key_type genesis_key = generate_private_key("genesis");
+      private_key_type sam_key = generate_private_key("sam");
+      account_object sam_account_object = create_account( "sam", sam_key );
+
+      //Get a sane head block time
+      generate_block();
+
+      db.modify(db.get_global_properties(), [](global_property_object& p) {
+         p.parameters.genesis_proposal_review_period = fc::hours(1).to_seconds();
+      });
+
+      transaction tx;
+      processed_transaction ptx;
+
+      account_object genesis_account_object = genesis_account(db);
+      // transfer from genesis account to Sam account
+      transfer(genesis_account_object, sam_account_object, core.amount(100000));
+
+      generate_block();
+
+      create_account( "alice" );
+      generate_block();
+      create_account( "bob" );
+      generate_block();
+
+      db.pop_block();
+      db.pop_block();
+   }
+   catch( const fc::exception& e )
+   {
+      edump( (e.to_detail_string()) );
+      throw;
+   }
+}
+
+
 BOOST_AUTO_TEST_SUITE_END()
