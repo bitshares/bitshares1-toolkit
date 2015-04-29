@@ -41,6 +41,7 @@ class wallet_api
       uint64_t  get_account_count()const;
       map<string,account_id_type> list_accounts( const string& lowerbound, uint32_t limit);
       vector<asset> list_account_balances( const account_id_type& id );
+      vector<asset_object> list_assets( const string& lowerbound, uint32_t limit )const;
       vector<operation_history_object>  get_account_history( account_id_type id )const;
       vector<limit_order_object>        get_limit_orders( asset_id_type a, asset_id_type b, uint32_t limit )const;
       vector<short_order_object>        get_short_orders( asset_id_type a, uint32_t limit )const;
@@ -108,6 +109,7 @@ FC_API( bts::wallet::wallet_api,
    (help)
    (list_accounts)
    (list_account_balances)
+   (list_assets)
    (import_key)
    (suggest_brain_key)
    (create_account_with_brain_key)

@@ -1,5 +1,6 @@
 #include <bts/app/api.hpp>
 #include <bts/app/application.hpp>
+#include <bts/chain/asset_object.hpp>
 #include <bts/chain/database.hpp>
 #include <bts/utilities/key_conversion.hpp>
 #include <bts/chain/operation_history_object.hpp>
@@ -207,6 +208,52 @@ namespace bts { namespace app {
     vector<force_settlement_object>   database_api::get_settle_orders( asset_id_type a, uint32_t limit )const
     {
        return vector<force_settlement_object>();
+    }
+
+    vector<asset_object> database_api::list_assets( const string& lower_bound_symbol, uint32_t limit )const
+    {
+       /*
+        * This commented-out implementation tries to list assets
+        * in alphabetical order, however it does not work
+        * because asset_index is hashed, not ordered.
+        *
+        * So for now it just returns assets based on consecutive
+        * asset_id's starting at lower_bound_symbol.
+        *
+        * TODO:  Fix this when wallet gets its own plugin.
+        *
+
+       const auto& asset_idx = _db.get_index_type<asset_index>();
+       const auto& assets_by_symbol = asset_idx.indices().get<by_symbol>();
+       map<string,asset_id_type> result;
+
+       auto itr = assets_by_symbol.lower_bound( lower_bound_symbol );
+       while( limit && itr != assets_by_symbol.end() )
+       {
+          result[itr->name] = itr->id;
+          ++itr;
+          --limit;
+       }
+       */
+       const auto& asset_idx = _db.get_index_type<asset_index>();
+       const auto& assets_by_id = asset_idx.indices().get<by_id>();
+       const auto& assets_by_symbol = asset_idx.indices().get<by_symbol>();
+       vector<asset_object> result;
+       result.reserve( limit );
+
+       // grab the assets starting at lower_bound_symbol
+       auto itr = assets_by_symbol.find( lower_bound_symbol );
+       if( itr == assets_by_symbol.end() )
+          return result;
+
+       auto id_itr = assets_by_id.find( itr->id );
+       while( (limit > 0) && (id_itr != assets_by_id.end()) )
+       {
+          result.push_back( *id_itr );
+          ++id_itr;
+          --limit;
+       }
+       return result;
     }
 
     bool login_api::login( const string& user, const string& password )

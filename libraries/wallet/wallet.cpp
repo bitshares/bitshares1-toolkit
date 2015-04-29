@@ -17,6 +17,14 @@
 
 namespace bts { namespace wallet {
 
+template< class T >
+optional< T > maybe_id( const string& name_or_id )
+{
+   if( std::isdigit( name_or_id.front() ) )
+      return fc::variant(name_or_id).as<T>();
+   return optional<T>();
+}
+
 wallet_api::wallet_api( fc::api<login_api> rapi )
    : _remote_api( rapi )
 {
@@ -61,6 +69,11 @@ map<string,account_id_type> wallet_api::list_accounts( const string& lowerbound,
 vector<asset> wallet_api::list_account_balances( const account_id_type& id )
 {
    return _remote_db->get_account_balances( id, flat_set<asset_id_type>() );
+}
+
+vector<asset_object> wallet_api::list_assets( const string& lowerbound, uint32_t limit )const
+{
+   return _remote_db->list_assets( lowerbound, limit );
 }
 
 vector<operation_history_object> wallet_api::get_account_history( account_id_type id )const

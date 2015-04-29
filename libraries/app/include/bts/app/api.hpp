@@ -43,6 +43,8 @@ namespace bts { namespace app {
          vector<call_order_object>         get_call_orders( asset_id_type a, uint32_t limit )const;
          vector<force_settlement_object>   get_settle_orders( asset_id_type a, uint32_t limit )const;
 
+         vector<asset_object>              list_assets( const string& lower_bound_symbol, uint32_t limit )const;
+
          bts::chain::database& _db;
    };
 
@@ -106,6 +108,7 @@ FC_API( bts::app::database_api,
         (get_short_orders)
         (get_call_orders)
         (get_settle_orders)
+        (list_assets)
      )
 FC_API( bts::app::network_api, (broadcast_transaction)(add_node)(get_connected_peers) )
 FC_API( bts::app::login_api,
