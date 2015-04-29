@@ -655,7 +655,11 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
    try
    {
       const asset_object& core = asset_id_type()(db);
-      uint32_t skip_flags = database::skip_transaction_dupe_check;
+      uint32_t skip_flags =
+          database::skip_transaction_dupe_check
+        | database::skip_delegate_signature
+        | database::skip_transaction_signatures
+        ;
 
       // Sam is the creator of accounts
       private_key_type genesis_key = generate_private_key("genesis");
