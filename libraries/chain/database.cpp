@@ -845,6 +845,8 @@ bool database::fill_order( const call_order_object& order, const asset& pays, co
       remove( order );
    }
 
+   push_applied_operation( fill_order_operation{ order.id, order.borrower, pays, receives, asset(0, pays.asset_id) } );
+
    return collateral_freed.valid();
 } FC_CAPTURE_AND_RETHROW( (order)(pays)(receives) ) }
 
@@ -936,6 +938,9 @@ bool database::fill_order( const short_order_object& order, const asset& pays, c
          filled = true;
       }
    }
+
+   push_applied_operation( fill_order_operation{ order.id, order.seller, pays, receives, issuer_fees } );
+
    return filled;
 } FC_CAPTURE_AND_RETHROW( (order)(pays)(receives) ) }
 
@@ -954,6 +959,9 @@ bool database::fill_order(const force_settlement_object& settle, const asset& pa
       filled = true;
    }
    adjust_balance(settle.owner, receives);
+
+   //TODO: should force settlements pay market fee?
+   push_applied_operation( fill_order_operation{ settle.id, settle.owner, pays, receives, asset(0, pays.asset_id) } );
 
    return filled;
 } FC_CAPTURE_AND_RETHROW( (settle)(pays)(receives) ) }
@@ -1731,25 +1739,21 @@ void database::clear_expired_orders()
    while( !settlement_index.empty() && settlement_index.begin()->settlement_date <= head_block_time() )
    {
       const force_settlement_object& order = *settlement_index.begin();
+      auto order_id = order.id;
       const asset_object mia = get(order.balance.asset_id);
-      fill_order_operation settle_op;
-      settle_op.account_id = order.owner;
-      settle_op.order_id = order.id;
-      settle_op.pays = order.balance;
-      settle_op.receives = (order.balance * mia.current_feed.settlement_price);
-      settle_op.receives.amount = (fc::uint128_t(settle_op.receives.amount.value) *
-                                 (10000 - mia.force_settlement_offset_percent) / 10000).to_uint64();
-      assert(settle_op.receives <= order.balance * mia.current_feed.settlement_price);
+      auto& pays = order.balance;
+      auto receives = (order.balance * mia.current_feed.settlement_price);
+      receives.amount = (fc::uint128_t(receives.amount.value) *
+                         (10000 - mia.force_settlement_offset_percent) / 10000).to_uint64();
+      assert(receives <= order.balance * mia.current_feed.settlement_price);
 
-      price settlement_price = settle_op.pays / settle_op.receives;
+      price settlement_price = pays / receives;
 
       auto& call_index = get_index_type<call_order_index>().indices().get<by_collateral>();
       // Match against the least collateralized short until the settlement is finished
       while( !call_index.empty() && !(match(*call_index.begin(), order, settlement_price) & 2) );
       // Under no circumstances should the settlement not be finished now
-      assert(find_object(settle_op.order_id) == nullptr);
-
-      set_applied_operation_result(push_applied_operation(settle_op), object_id_type());
+      assert(find_object(order_id) == nullptr);
    }
 }
 
