@@ -61,16 +61,16 @@ namespace bts { namespace chain {
                              gp.parameters.bulk_discount_threshold_min.value)) /
                   (gp.parameters.bulk_discount_threshold_max.value - gp.parameters.bulk_discount_threshold_min.value);
          }
-         assert( bulk_discount_percent <= 10000 );
+         assert( bulk_discount_percent <= BTS_100_PERCENT );
          assert( bulk_discount_percent >= 0 );
 
-         bulk_cashback = (core_fee_subtotal.amount.value * bulk_discount_percent) / 10000;
+         bulk_cashback = (core_fee_subtotal.amount.value * bulk_discount_percent) / BTS_100_PERCENT;
          assert( bulk_cashback <= core_fee_subtotal.amount );
       }
 
       auto core_fee_total = core_fee_subtotal.amount - bulk_cashback;
-      auto accumulated = (core_fee_total.value  * gp.parameters.witness_percent_of_fee)/10000;
-      auto burned     = (core_fee_total.value  * gp.parameters.burn_percent_of_fee)/10000;
+      auto accumulated = (core_fee_total.value  * gp.parameters.witness_percent_of_fee)/BTS_100_PERCENT;
+      auto burned     = (core_fee_total.value  * gp.parameters.burn_percent_of_fee)/BTS_100_PERCENT;
       auto referral   = core_fee_total.value - accumulated - burned;
       auto& d = db();
       auto now = d.head_block_time();
