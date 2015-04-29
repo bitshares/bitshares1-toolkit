@@ -94,6 +94,11 @@ class wallet_api
 
       string  help()const;
 
+      optional<signed_block> get_block( uint32_t num )
+      {
+         return _remote_db->get_block(num);
+      }
+
       uint64_t  get_account_count()const
       {
          return _remote_db->get_account_count();
@@ -447,6 +452,8 @@ FC_API( wallet_api,
         (create_account_with_brain_key)
         (transfer)
         (get_account)
+        (get_block)
+        (get_account_count)
         (get_account_history)
         (get_global_properties)
         (get_dynamic_global_properties)
