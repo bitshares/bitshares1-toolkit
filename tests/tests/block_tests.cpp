@@ -744,6 +744,7 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
       // we can only undo in blocks
       generate_block( skip_flags );
 
+      std::cout << "update_account_keys:  this test will take a few minutes...\n";
       for( int use_addresses=0; use_addresses<2; use_addresses++ )
       {
          vector< key_id_type > key_ids = numbered_key_id[ use_addresses ];
@@ -751,6 +752,7 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
          {
             for( int num_active_keys=1; num_active_keys<=2; num_active_keys++ )
             {
+               std::cout << use_addresses << num_owner_keys << num_active_keys << "\n";
                for( const vector< int >& key_sched_before : possible_key_sched )
                {
                   auto it = key_sched_before.begin();
