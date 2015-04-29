@@ -154,6 +154,28 @@ namespace bts { namespace app {
        return result;
     }
 
+    /**
+     *  @return the limit orders for both sides of the book for the two assets specified up to limit number on each side.
+     */
+    vector<limit_order_object>        database_api::get_limit_orders( asset_id_type a, asset_id_type b, uint32_t limit )const
+    {
+       return vector<limit_order_object>();
+    }
+
+    vector<short_order_object>        database_api::get_short_orders( asset_id_type a, uint32_t limit )const
+    {
+       return vector<short_order_object>();
+    }
+
+    vector<call_order_object>         database_api::get_call_orders( asset_id_type a, uint32_t limit )const
+    {
+       return vector<call_order_object>();
+    }
+
+    vector<force_settlement_object>   database_api::get_settle_orders( asset_id_type a, uint32_t limit )const
+    {
+       return vector<force_settlement_object>();
+    }
 
     bool login_api::login( const string& user, const string& password )
     {

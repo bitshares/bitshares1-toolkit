@@ -4,6 +4,8 @@
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/operation_history_object.hpp>
 #include <bts/chain/asset_object.hpp>
+#include <bts/chain/limit_order_object.hpp>
+#include <bts/chain/short_order_object.hpp>
 #include <bts/chain/key_object.hpp>
 #include <bts/net/node.hpp>
 #include <fc/api.hpp>
@@ -32,6 +34,14 @@ namespace bts { namespace app {
          uint64_t                          get_account_count()const; 
          map<string,account_id_type>       lookup_accounts( const string& lower_bound_name, uint32_t limit )const;
          vector<operation_history_object>  get_account_history( account_id_type, operation_history_id_type stop = operation_history_id_type() )const;
+
+         /**
+          *  @return the limit orders for both sides of the book for the two assets specified up to limit number on each side.
+          */
+         vector<limit_order_object>        get_limit_orders( asset_id_type a, asset_id_type b, uint32_t limit )const;
+         vector<short_order_object>        get_short_orders( asset_id_type a, uint32_t limit )const;
+         vector<call_order_object>         get_call_orders( asset_id_type a, uint32_t limit )const;
+         vector<force_settlement_object>   get_settle_orders( asset_id_type a, uint32_t limit )const;
 
          bts::chain::database& _db;
    };
@@ -91,6 +101,10 @@ FC_API( bts::app::database_api,
         (get_account_balances)
         (get_account_history)
         (lookup_asset_symbols) 
+        (get_limit_orders)
+        (get_short_orders)
+        (get_call_orders)
+        (get_settle_orders)
      )
 FC_API( bts::app::network_api, (broadcast_transaction)(add_node)(get_connected_peers) )
 FC_API( bts::app::login_api, (login)(network)(database) )
