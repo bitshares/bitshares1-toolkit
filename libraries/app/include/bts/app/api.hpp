@@ -79,6 +79,7 @@ namespace bts { namespace app {
          fc::api<network_api>   network()const;
          fc::api<database_api>  database()const;
          signed_transaction     sign_transaction( signed_transaction trx, const vector< string >& wif_keys )const;
+         string                 serialize_transaction( signed_transaction trx, bool hex )const;
 
          application&                      _app;
          optional< fc::api<database_api> > _database_api;
@@ -107,4 +108,10 @@ FC_API( bts::app::database_api,
         (get_settle_orders)
      )
 FC_API( bts::app::network_api, (broadcast_transaction)(add_node)(get_connected_peers) )
-FC_API( bts::app::login_api, (login)(network)(database) )
+FC_API( bts::app::login_api,
+   (login)
+   (network)
+   (database)
+   (serialize_transaction)
+   (sign_transaction)
+   )

@@ -93,6 +93,11 @@ string wallet_api::suggest_brain_key()const
    return string("dummy");
 }
 
+string wallet_api::serialize_transaction( signed_transaction tx )const
+{
+   return _remote_api->serialize_transaction( tx, true );
+}
+
 variant wallet_api::get_object( object_id_type id )
 {
    return _remote_db->get_objects({id});

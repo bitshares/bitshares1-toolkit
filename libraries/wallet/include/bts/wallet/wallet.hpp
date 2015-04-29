@@ -46,8 +46,10 @@ class wallet_api
       vector<short_order_object>        get_short_orders( asset_id_type a, uint32_t limit )const;
       vector<call_order_object>         get_call_orders( asset_id_type a, uint32_t limit )const;
       vector<force_settlement_object>   get_settle_orders( asset_id_type a, uint32_t limit )const;
-
       string  suggest_brain_key()const;
+
+      string serialize_transaction( signed_transaction tx ) const;
+
       variant get_object( object_id_type id );
       account_object get_account( string account_name_or_id );
       bool import_key( string account_name_or_id, string wif_key );
@@ -121,4 +123,5 @@ FC_API( bts::wallet::wallet_api,
    (get_short_orders)
    (get_call_orders)
    (get_settle_orders)
+   (serialize_transaction)
    )

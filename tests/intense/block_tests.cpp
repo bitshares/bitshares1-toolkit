@@ -146,6 +146,7 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
                   create_op.registrar = sam_account_object.id;
                   trx.operations.push_back( create_op );
                   // trx.sign( sam_key );
+                  wdump( (trx) );
 
                   processed_transaction ptx_create = db.push_transaction( trx,
                      database::skip_transaction_dupe_check |

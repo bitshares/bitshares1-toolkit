@@ -246,6 +246,7 @@ namespace bts { namespace app {
        FC_ASSERT( _database_api );
        return *_database_api;
     }
+
     signed_transaction  login_api::sign_transaction( signed_transaction trx, const vector< string >& wif_keys )const
     {
         if( trx.ref_block_num == 0 )
@@ -260,6 +261,22 @@ namespace bts { namespace app {
         return trx;
     }
 
+    string login_api::serialize_transaction( signed_transaction trx, bool hex )const
+    {
+        std::ostringstream ss;
+        fc::raw::pack( ss, trx );
+        if( hex )
+        {
+           std::ostringstream ss_hex;
+           for( char c : ss.str() )
+           {
+              ss_hex << "0123456789abcdef"[ (c >> 4) & 0x0f ]
+                     << "0123456789abcdef"[ (c     ) & 0x0f ];
+           }
+           return ss_hex.str();
+        }
+        return ss.str();
+    }
 
 
 } } // bts::app
