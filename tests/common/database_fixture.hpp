@@ -215,9 +215,6 @@ struct database_fixture {
             BOOST_CHECK( tuples_from_index.size() == size_before_uniq );
          }
 
-         wdump( (tuples_from_db) );
-         wdump( (tuples_from_index) );
-
          //BOOST_CHECK_EQUAL( tuples_from_db, tuples_from_index );
          bool is_equal = true;
          is_equal &= (tuples_from_db.size() == tuples_from_index.size());
@@ -233,8 +230,7 @@ struct database_fixture {
    database_fixture()
       : app(), db( *app.chain_database() )
    {
-      // TODO: Un-comment this when no longer buggy
-      //app.register_plugin<bts::account_history::account_history_plugin>();
+      app.register_plugin<bts::account_history::account_history_plugin>();
       bts::app::application::daemon_configuration cfg;
       cfg.initial_allocation = genesis_allocation();
       app.configure_without_network( cfg );
@@ -246,8 +242,7 @@ struct database_fixture {
    }
    ~database_fixture(){
       verify_asset_supplies();
-      // TODO:  Un-comment this when no longer buggy
-      //verify_account_history_plugin_index();
+      verify_account_history_plugin_index();
       shutdown_ntp_time();
 
       if( data_dir )
