@@ -115,6 +115,17 @@ account_object wallet_api::get_account( string account_name_or_id )
    return *opt_account.front();
 }
 
+account_id_type wallet_api::get_account_id( string account_name_or_id )
+{
+   FC_ASSERT( account_name_or_id.size() > 0 );
+   vector<optional<account_object>> opt_account;
+   if( std::isdigit( account_name_or_id.front() ) )
+      return fc::variant(account_name_or_id).as<account_id_type>();
+   opt_account = _remote_db->lookup_account_names( {account_name_or_id} );
+   FC_ASSERT( opt_account.size() && opt_account.front() );
+   return opt_account.front()->id;
+}
+
 bool wallet_api::import_key( string account_name_or_id, string wif_key )
 {
    auto opt_priv_key = wif_to_key(wif_key);
@@ -327,6 +338,9 @@ signed_transaction wallet_api::transfer(
    )
 {
    auto opt_asset = _remote_db->lookup_asset_symbols( {asset_symbol} );
+
+
+
    wdump( (opt_asset) );
    return signed_transaction();
 }

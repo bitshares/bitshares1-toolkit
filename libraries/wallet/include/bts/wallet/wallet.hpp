@@ -52,6 +52,7 @@ class wallet_api
 
       variant get_object( object_id_type id );
       account_object get_account( string account_name_or_id );
+      account_id_type get_account_id( string account_name_or_id );
       bool import_key( string account_name_or_id, string wif_key );
       string normalize_brain_key( string s );
       fc::ecc::private_key derive_private_key(
@@ -112,6 +113,7 @@ FC_API( bts::wallet::wallet_api,
    (create_account_with_brain_key)
    (transfer)
    (get_account)
+   (get_account_id)
    (get_block)
    (get_account_count)
    (get_account_history)
