@@ -159,12 +159,44 @@ namespace bts { namespace app {
      */
     vector<limit_order_object>        database_api::get_limit_orders( asset_id_type a, asset_id_type b, uint32_t limit )const
     {
-       return vector<limit_order_object>();
+       const auto& limit_order_idx = _db.get_index_type<limit_order_index>();
+       const auto& limit_price_idx = limit_order_idx.indices().get<by_price>();
+       
+       vector<limit_order_object>  result;
+       
+       int count = 0;
+       auto limit_itr = limit_price_idx.lower_bound( price::max(a,b) );
+       auto limit_end = limit_price_idx.upper_bound( price::min(a,b) );
+       while( limit_itr != limit_end && count < limit )
+       {
+          result.push_back( *limit_itr );
+          ++limit_itr;
+          ++count;
+       }
+       count = 0;
+       limit_itr = limit_price_idx.lower_bound( price::max(b,a) );
+       limit_end = limit_price_idx.upper_bound( price::min(b,a) );
+       while( limit_itr != limit_end && count < limit )
+       {
+          result.push_back( *limit_itr );
+          ++limit_itr;
+          ++count;
+       }
+
+       return result;
     }
 
     vector<short_order_object>        database_api::get_short_orders( asset_id_type a, uint32_t limit )const
     {
-       return vector<short_order_object>();
+      const auto& short_order_idx = _db.get_index_type<short_order_index>();
+      const auto& sell_price_idx = short_order_idx.indices().get<by_price>();
+      price max_price; // TODO: define this properly.
+
+      FC_ASSERT( max_price.max() >= max_price );
+      auto short_itr = sell_price_idx.lower_bound( max_price.max() );
+      auto short_end = sell_price_idx.upper_bound( max_price );
+
+      return vector<short_order_object>();
     }
 
     vector<call_order_object>         database_api::get_call_orders( asset_id_type a, uint32_t limit )const

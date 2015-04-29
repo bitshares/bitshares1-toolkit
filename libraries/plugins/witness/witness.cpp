@@ -7,15 +7,18 @@
 using namespace bts::witness_plugin;
 
 void witness_plugin::configure(const bts::witness_plugin::witness_plugin::plugin_config& cfg)
-{
+{ try {
    _config = cfg;
+} FC_CAPTURE_AND_RETHROW() }
 
+void witness_plugin::init()
+{ try {
    if( !_config.witness_keys.empty() )
       schedule_next_production(database().get_global_properties().parameters);
    else
       elog("No witnesses configured! Please add delegate IDs and private keys to configuration.");
-   _production_enabled = cfg.allow_production_on_stale_chain;
-}
+   _production_enabled = _config.allow_production_on_stale_chain;
+} FC_CAPTURE_AND_RETHROW() }
 
 void witness_plugin::schedule_next_production(const bts::chain::chain_parameters& global_parameters)
 {

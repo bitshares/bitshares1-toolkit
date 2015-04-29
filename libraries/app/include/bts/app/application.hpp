@@ -29,6 +29,7 @@ namespace bts { namespace app {
 
          void configure( const fc::path& data_dir );
          void configure( const fc::path& data_dir, const daemon_configuration& config );
+         void init();
          /**
           * Partial initialization for testing.
           *
@@ -49,7 +50,7 @@ namespace bts { namespace app {
                configuration()[plug->plugin_name()] = cfg;
                save_configuration();
             }
-            plug->initialize( *this, cfg);
+            plug->configure_plugin( *this, cfg);
             add_plugin( plug->plugin_name(), plug );
 
             return plug;

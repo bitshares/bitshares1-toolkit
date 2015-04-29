@@ -96,8 +96,11 @@ class account_history_plugin_impl
       //  you know what you doing for great justice
       bts::chain::database& database()
       {
-         assert( _chain_db != nullptr );
+         FC_ASSERT( &_self.database() );
+         return _self.database();
+         /*
          return *_chain_db;
+         */
       }
 
       account_history_plugin& _self;
@@ -542,12 +545,10 @@ void account_history_plugin_impl::update_account_histories( const signed_block& 
 account_history_plugin::account_history_plugin() :
    _my( new detail::account_history_plugin_impl(*this) )
 {
-   return;
 }
 
 account_history_plugin::~account_history_plugin()
 {
-   return;
 }
 
 void account_history_plugin::configure(const account_history_plugin::plugin_config& cfg)
@@ -567,7 +568,6 @@ void account_history_plugin::init()
 {
    _my->_chain_db = &database();
    _my->rebuild_key_account_index();
-   return;
 }
 
 

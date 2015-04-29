@@ -117,6 +117,23 @@ class wallet_api
          return _remote_db->get_account_history( id, operation_history_id_type() );
       }
 
+      vector<limit_order_object>        get_limit_orders( asset_id_type a, asset_id_type b, uint32_t limit )const
+      {
+         return _remote_db->get_limit_orders( a, b, limit );
+      }
+      vector<short_order_object>        get_short_orders( asset_id_type a, uint32_t limit )const
+      {
+         return _remote_db->get_short_orders( a, limit );
+      }
+      vector<call_order_object>         get_call_orders( asset_id_type a, uint32_t limit )const
+      {
+         return _remote_db->get_call_orders( a, limit );
+      }
+      vector<force_settlement_object>   get_settle_orders( asset_id_type a, uint32_t limit )const
+      {
+         return _remote_db->get_settle_orders( a, limit );
+      }
+
       string  suggest_brain_key()const
       {
         return string("dummy");
@@ -459,6 +476,10 @@ FC_API( wallet_api,
         (get_dynamic_global_properties)
         (get_object)
         (normalize_brain_key)
+        (get_limit_orders)
+        (get_short_orders)
+        (get_call_orders)
+        (get_settle_orders)
        )
 
 struct help_visitor

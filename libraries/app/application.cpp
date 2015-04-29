@@ -27,6 +27,8 @@ namespace detail {
 
    class application_impl : public net::node_delegate
    {
+      application::daemon_configuration _config;
+
       void reset_p2p_node(const fc::path& data_dir, const application::daemon_configuration& cfg)
       { try {
          _p2p_network = std::make_shared<net::node>("Graphene Reference Implementation");
@@ -117,15 +119,20 @@ namespace detail {
       void configure( const fc::path& data_dir, const application::daemon_configuration& config )
       {
          _data_dir = data_dir;
+         _config   = config;
          _configuration["daemon"] = config;
-         _chain_db->open(data_dir / "blockchain", config.initial_allocation);
+      }
+
+      void init()
+      { try {
+         _chain_db->open(_data_dir / "blockchain", _config.initial_allocation);
 
          for( const auto& p : _plugins )
             p.second->init();
 
-         reset_p2p_node(data_dir, config);
-         reset_websocket_server(config);
-      }
+         reset_p2p_node(_data_dir, _config);
+         reset_websocket_server(_config);
+      } FC_CAPTURE_AND_RETHROW() }
 
       void configure_without_network( const application::daemon_configuration& config )
       {
@@ -384,6 +391,11 @@ application::~application()
 void application::configure( const fc::path& data_dir )
 {
    my->configure( data_dir );
+}
+
+void application::init()
+{
+   my->init();
 }
 
 void application::configure(const fc::path& data_dir, const application::daemon_configuration& config)

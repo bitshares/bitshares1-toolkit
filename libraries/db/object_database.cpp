@@ -93,13 +93,17 @@ void object_database::open( const fc::path& data_dir )
       }
    }
    try {
-   auto next_ids = fc::raw::unpack<vector<object_id_type>>( _object_id_to_object->fetch( object_id_type() ) );
-   for( auto id : next_ids )
-      get_mutable_index( id ).set_next_id( id );
+      auto next_ids = fc::raw::unpack<vector<object_id_type>>( _object_id_to_object->fetch( object_id_type() ) );
+      for( auto id : next_ids )
+      {
+         try {
+            get_mutable_index( id ).set_next_id( id );
+         } FC_CAPTURE_AND_RETHROW( (id) );
+      }
    }
-   catch ( const fc::exception& )
+   catch ( const fc::exception& e )
    {
-      wlog( "unable to fetch next ids, must be new object_database" );
+      wlog( "unable to fetch next ids, must be new object_database\n ${e}", ("e",e.to_detail_string()) );
    }
 
    _data_dir = data_dir;

@@ -17,19 +17,19 @@ class abstract_plugin
 template<class P>
 class plugin : public abstract_plugin
 {
+   public:
+      chain::database& database() { return *app().chain_database(); }
    protected:
       application& app()const { return *_app; }
-      chain::database& database() { return *app().chain_database(); }
       net::node& p2p_node() { return *app().p2p_node(); }
 
     private:
       friend class application;
       template<typename T>
-      void initialize(application& app, const T& cfg )
+      void configure_plugin(application& app, const T& cfg )
       {
          _app = &app;
          static_cast<P*>(this)->configure(cfg);
-         static_cast<P*>(this)->init();
       }
       application* _app;
 };

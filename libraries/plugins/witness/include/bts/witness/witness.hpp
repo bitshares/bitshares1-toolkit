@@ -45,6 +45,7 @@ public:
    };
 
    void configure( const plugin_config& cfg );
+   void init();
 
 private:
    void schedule_next_production(const bts::chain::chain_parameters& global_parameters);
