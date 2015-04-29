@@ -712,7 +712,7 @@ asset database::calculate_market_fee( const asset_object& trade_asset, const ass
 
    fc::uint128 a(trade_amount.amount.value);
    a *= trade_asset.market_fee_percent;
-   a /= BTS_MAX_MARKET_FEE_PERCENT;
+   a /= BTS_100_PERCENT;
    asset percent_fee = trade_asset.amount(a.to_uint64());
 
    if( percent_fee.amount > trade_asset.max_market_fee )
@@ -948,6 +948,8 @@ bool database::fill_order(const force_settlement_object& settle, const asset& pa
 { try {
    bool filled = false;
 
+   auto issuer_fees = pay_market_fees(get(receives.asset_id), receives);
+
    if( pays < settle.balance )
    {
       modify(settle, [&pays](force_settlement_object& s) {
@@ -958,10 +960,9 @@ bool database::fill_order(const force_settlement_object& settle, const asset& pa
       remove(settle);
       filled = true;
    }
-   adjust_balance(settle.owner, receives);
+   adjust_balance(settle.owner, receives - issuer_fees);
 
-   //TODO: should force settlements pay market fee?
-   push_applied_operation( fill_order_operation{ settle.id, settle.owner, pays, receives, asset(0, pays.asset_id) } );
+   push_applied_operation( fill_order_operation{ settle.id, settle.owner, pays, receives, issuer_fees } );
 
    return filled;
 } FC_CAPTURE_AND_RETHROW( (settle)(pays)(receives) ) }
@@ -1744,7 +1745,7 @@ void database::clear_expired_orders()
       auto& pays = order.balance;
       auto receives = (order.balance * mia.current_feed.settlement_price);
       receives.amount = (fc::uint128_t(receives.amount.value) *
-                         (10000 - mia.force_settlement_offset_percent) / 10000).to_uint64();
+                         (BTS_100_PERCENT - mia.force_settlement_offset_percent) / BTS_100_PERCENT).to_uint64();
       assert(receives <= order.balance * mia.current_feed.settlement_price);
 
       price settlement_price = pays / receives;

@@ -295,10 +295,10 @@ namespace bts { namespace chain {
 
       void validate()const
       {
-         FC_ASSERT( witness_percent_of_fee <= 10000 );
-         FC_ASSERT( burn_percent_of_fee <= 10000 );
-         FC_ASSERT( max_bulk_discount_percent_of_fee <= 10000 );
-         FC_ASSERT( burn_percent_of_fee + witness_percent_of_fee <= 10000 );
+         FC_ASSERT( witness_percent_of_fee <= BTS_100_PERCENT );
+         FC_ASSERT( burn_percent_of_fee <= BTS_100_PERCENT );
+         FC_ASSERT( max_bulk_discount_percent_of_fee <= BTS_100_PERCENT );
+         FC_ASSERT( burn_percent_of_fee + witness_percent_of_fee <= BTS_100_PERCENT );
          FC_ASSERT( bulk_discount_threshold_min <= bulk_discount_threshold_max );
          FC_ASSERT( bulk_discount_threshold_min > 0 );
 
