@@ -18,6 +18,101 @@
 
 namespace bts { namespace wallet {
 
+namespace detail {
+
+class wallet_api_impl
+{
+   public:
+      wallet_api_impl( fc::api<login_api> rapi );
+      virtual ~wallet_api_impl();
+
+      // methods that start with underscore are not incuded in API
+      void _resync();
+      void _resync_loop();
+      void _start_resync_loop();
+
+      signed_transaction create_account_with_brain_key(
+         string brain_key,
+         string account_name,
+         string registrar_account,
+         string referrer_account,
+         uint8_t referrer_percent,
+         bool broadcast = false
+         );
+
+      global_property_object            get_global_properties() const;
+      dynamic_global_property_object    get_dynamic_global_properties() const;
+      account_object                    get_account( string account_name_or_id ) const;
+      account_id_type                   get_account_id( string account_name_or_id ) const;
+      asset_id_type                     get_asset_id( string asset_name_or_id ) const;
+
+      bool import_key( string account_name_or_id, string wif_key );
+
+      signed_transaction sign_transaction(
+         signed_transaction tx,
+         bool broadcast = false
+         );
+
+      signed_transaction transfer(
+         string from,
+         string to,
+         uint64_t amount,
+         string asset_symbol,
+         string memo,
+         bool broadcast = false
+         );
+
+      std::map<string,std::function<string(fc::variant,const fc::variants&)> >
+      _get_result_formatters() const;
+
+      wallet_data             _wallet;
+
+      fc::api<login_api>      _remote_api;
+      fc::api<database_api>   _remote_db;
+      fc::api<network_api>    _remote_net;
+
+      fc::future<void>        _resync_loop_task;
+};
+
+struct help_visitor
+{
+   help_visitor( std::stringstream& s ):ss(s){}
+   std::stringstream& ss;
+   template<typename R, typename... Args>
+   void operator()( const char* name, std::function<R(Args...)>& memb )const {
+      ss << std::setw(40) << std::left << fc::get_typename<R>::name() << " " << name << "( ";
+      vector<string> args{ fc::get_typename<typename std::decay<Args>::type>::name()... };
+      for( uint32_t i = 0; i < args.size(); ++i )
+         ss << args[i] << (i==args.size()-1?" ":", ");
+      ss << ")\n";
+   }
+};
+
+// BLOCK  TRX  OP  VOP  
+struct operation_printer
+{
+   operation_result _result;
+   operation_printer( const operation_result& r = operation_result() ):_result(r){}
+   typedef void result_type;
+   template<typename T>
+   void operator()( const T& op )const
+   {
+      balance_accumulator acc;
+      op.get_balance_delta( acc, _result );
+      std::cerr << fc::get_typename<T>::name() <<" ";
+      std::cerr << "balance delta: " << fc::json::to_string(acc.balance) <<"   ";
+      std::cerr << fc::json::to_string(op.fee_payer()) << "  fee: " << fc::json::to_string(op.fee);
+   }
+   void operator()( const account_create_operation& op )const
+   {
+      balance_accumulator acc;
+      op.get_balance_delta( acc, _result );
+      std::cerr << "Create Account '" << op.name << "' ";
+      std::cerr << "balance delta: " << fc::json::to_string(acc.balance) <<"   ";
+      std::cerr << fc::json::to_string(op.fee_payer()) << "  fee: " << fc::json::to_string(op.fee);
+   }
+};
+
 template< class T >
 optional< T > maybe_id( const string& name_or_id )
 {
@@ -26,170 +121,18 @@ optional< T > maybe_id( const string& name_or_id )
    return optional<T>();
 }
 
-wallet_api::wallet_api( fc::api<login_api> rapi )
-   : _remote_api( rapi )
+fc::ecc::private_key derive_private_key(
+   const std::string& prefix_string,
+   int sequence_number
+   )
 {
-   _remote_db  = _remote_api->database();
-   _remote_net = _remote_api->network();
-   return;
+   std::string sequence_string = std::to_string(sequence_number);
+   fc::sha512 h = fc::sha512::hash(prefix_string + " " + sequence_string);
+   fc::ecc::private_key derived_key = fc::ecc::private_key::regenerate(fc::sha256::hash(h));
+   return derived_key;
 }
 
-wallet_api::~wallet_api()
-{
-   try
-   {
-      if( _resync_loop_task.valid() )
-         _resync_loop_task.cancel_and_wait();
-   }
-   catch(fc::canceled_exception&)
-   {
-      //Expected exception. Move along.
-   }
-   catch(fc::exception& e)
-   {
-      edump((e.to_detail_string()));
-   }
-   return;
-}
-
-optional<signed_block> wallet_api::get_block( uint32_t num )
-{
-   return _remote_db->get_block(num);
-}
-
-uint64_t wallet_api::get_account_count() const
-{
-   return _remote_db->get_account_count();
-}
-
-map<string,account_id_type> wallet_api::list_accounts( const string& lowerbound, uint32_t limit)
-{
-   return _remote_db->lookup_accounts( lowerbound, limit );
-}
-
-vector<asset> wallet_api::list_account_balances( const account_id_type& id )
-{
-   return _remote_db->get_account_balances( id, flat_set<asset_id_type>() );
-}
-
-vector<asset_object> wallet_api::list_assets( const string& lowerbound, uint32_t limit )const
-{
-   return _remote_db->list_assets( lowerbound, limit );
-}
-
-vector<operation_history_object> wallet_api::get_account_history( account_id_type id )const
-{
-   return _remote_db->get_account_history( id, operation_history_id_type() );
-}
-
-vector<limit_order_object> wallet_api::get_limit_orders( asset_id_type a, asset_id_type b, uint32_t limit )const
-{
-   return _remote_db->get_limit_orders( a, b, limit );
-}
-
-vector<short_order_object> wallet_api::get_short_orders( asset_id_type a, uint32_t limit )const
-{
-   return _remote_db->get_short_orders( a, limit );
-}
-
-vector<call_order_object> wallet_api::get_call_orders( asset_id_type a, uint32_t limit )const
-{
-   return _remote_db->get_call_orders( a, limit );
-}
-
-vector<force_settlement_object> wallet_api::get_settle_orders( asset_id_type a, uint32_t limit )const
-{
-   return _remote_db->get_settle_orders( a, limit );
-}
-
-string wallet_api::suggest_brain_key()const
-{
-   return string("dummy");
-}
-
-string wallet_api::serialize_transaction( signed_transaction tx )const
-{
-   return _remote_api->serialize_transaction( tx, true );
-}
-
-variant wallet_api::get_object( object_id_type id )
-{
-   return _remote_db->get_objects({id});
-}
-
-account_object wallet_api::get_account( string account_name_or_id )
-{
-   FC_ASSERT( account_name_or_id.size() > 0 );
-   vector<optional<account_object>> opt_account;
-   if( std::isdigit( account_name_or_id.front() ) )
-      opt_account = _remote_db->get_accounts( {fc::variant(account_name_or_id).as<account_id_type>()} );
-   else
-      opt_account = _remote_db->lookup_account_names( {account_name_or_id} );
-   FC_ASSERT( opt_account.size() && opt_account.front() );
-   return *opt_account.front();
-}
-
-account_id_type wallet_api::get_account_id( string account_name_or_id )
-{
-   FC_ASSERT( account_name_or_id.size() > 0 );
-   vector<optional<account_object>> opt_account;
-   if( std::isdigit( account_name_or_id.front() ) )
-      return fc::variant(account_name_or_id).as<account_id_type>();
-   opt_account = _remote_db->lookup_account_names( {account_name_or_id} );
-   FC_ASSERT( opt_account.size() && opt_account.front() );
-   return opt_account.front()->id;
-}
-
-asset_id_type wallet_api::get_asset_id( string asset_symbol_or_id )
-{
-   FC_ASSERT( asset_symbol_or_id.size() > 0 );
-   vector<optional<asset_object>> opt_asset;
-   if( std::isdigit( asset_symbol_or_id.front() ) )
-      return fc::variant(asset_symbol_or_id).as<asset_id_type>();
-   opt_asset = _remote_db->lookup_asset_symbols( {asset_symbol_or_id} );
-   FC_ASSERT( (opt_asset.size() > 0) && (opt_asset[0].valid()) );
-   return opt_asset[0]->id;
-}
-
-bool wallet_api::import_key( string account_name_or_id, string wif_key )
-{
-   auto opt_priv_key = wif_to_key(wif_key);
-   FC_ASSERT( opt_priv_key.valid() );
-   bts::chain::address wif_key_address = bts::chain::address(
-      opt_priv_key->get_public_key() );
-
-   auto acnt = get_account( account_name_or_id );
-
-   flat_set<key_id_type> keys;
-   for( auto item : acnt.active.auths )
-   {
-      if( item.first.type() == key_object_type )
-         keys.insert( item.first );
-   }
-   for( auto item : acnt.owner.auths )
-   {
-      if( item.first.type() == key_object_type )
-         keys.insert( item.first );
-   }
-   auto opt_keys = _remote_db->get_keys( vector<key_id_type>(keys.begin(),keys.end()) );
-   for( const fc::optional<key_object>& opt_key : opt_keys )
-   {
-      // the requested key ID's should all exist because they are
-      //    keys for an account
-      FC_ASSERT( opt_key.valid() );
-      // we do this check by address because key objects on the
-      //    blockchain may not contain a key (i.e. are simply an address)
-      if( opt_key->key_address() == wif_key_address )
-      {
-         _wallet.keys[ opt_key->id ] = wif_key;
-         return true;
-      }
-   }
-   ilog( "key not for account ${name}", ("name",account_name_or_id) );
-   return false;
-}
-
-string wallet_api::normalize_brain_key( string s )
+string normalize_brain_key( string s )
 {
    size_t i = 0, n = s.length();
    std::string result;
@@ -246,16 +189,128 @@ string wallet_api::normalize_brain_key( string s )
    return result;
 }
 
-fc::ecc::private_key wallet_api::derive_private_key(
-   const std::string& prefix_string, int sequence_number)
+wallet_api_impl::wallet_api_impl( fc::api<login_api> rapi )
+   : _remote_api( rapi )
 {
-   std::string sequence_string = std::to_string(sequence_number);
-   fc::sha512 h = fc::sha512::hash(prefix_string + " " + sequence_string);
-   fc::ecc::private_key derived_key = fc::ecc::private_key::regenerate(fc::sha256::hash(h));
-   return derived_key;
+   _remote_db  = _remote_api->database();
+   _remote_net = _remote_api->network();
+   return;
 }
 
-signed_transaction wallet_api::create_account_with_brain_key(
+wallet_api_impl::~wallet_api_impl()
+{
+   try
+   {
+      if( _resync_loop_task.valid() )
+         _resync_loop_task.cancel_and_wait();
+   }
+   catch(fc::canceled_exception&)
+   {
+      //Expected exception. Move along.
+   }
+   catch(fc::exception& e)
+   {
+      edump((e.to_detail_string()));
+   }
+}
+
+void wallet_api_impl::_start_resync_loop()
+{
+   _resync_loop_task = fc::async( [this](){ _resync_loop(); }, "cli_wallet resync loop" );
+   return;
+}
+
+void wallet_api_impl::_resync_loop()
+{
+   // TODO:  Exception handling
+   //    does cancel raise exception?
+   _resync();
+   fc::microseconds resync_interval = fc::seconds(1);
+
+   _resync_loop_task = fc::schedule( [this](){ _resync_loop(); }, fc::time_point::now() + resync_interval, "cli_wallet resync loop" );
+   return;
+}
+
+// methods that start with underscore are not incuded in API
+void wallet_api_impl::_resync()
+{
+   // this method is used to update wallet_data annotations
+   //   e.g. wallet has been restarted and was not notified
+   //   of events while it was down
+   //
+   // everything that is done "incremental style" when a push
+   //   notification is received, should also be done here
+   //   "batch style" by querying the blockchain
+
+   if( _wallet.pending_account_registrations.size() > 0 )
+   {
+      std::vector<string> v_names;
+      v_names.reserve( _wallet.pending_account_registrations.size() );
+
+      for( auto it : _wallet.pending_account_registrations )
+         v_names.push_back( it.first );
+
+      std::vector< fc::optional< bts::chain::account_object >>
+         v_accounts = _remote_db->lookup_account_names( v_names );
+
+      for( fc::optional< bts::chain::account_object > opt_account : v_accounts )
+      {
+         if( ! opt_account.valid() )
+            continue;
+
+         string account_name = opt_account->name;
+         auto it = _wallet.pending_account_registrations.find( account_name );
+         FC_ASSERT( it != _wallet.pending_account_registrations.end() );
+         if( import_key( account_name, it->second ) )
+         {
+            ilog( "successfully imported account ${name}",
+                  ("name", account_name) );
+         }
+         else
+         {
+            // somebody else beat our pending registration, there is
+            //    nothing we can do except log it and move on
+            elog( "account ${name} registered by someone else first!",
+                  ("name", account_name) );
+            // might as well remove it from pending regs,
+            //    because there is now no way this registration
+            //    can become valid (even in the extremely rare
+            //    possibility of migrating to a fork where the
+            //    name is available, the user can always
+            //    manually re-register)
+         }
+         _wallet.pending_account_registrations.erase( it );
+      }
+   }
+
+   return;
+}
+
+std::map<string,std::function<string(fc::variant,const fc::variants&)> >
+wallet_api_impl::_get_result_formatters() const
+{
+   std::map<string,std::function<string(fc::variant,const fc::variants&)> > m;
+   m["help"] = []( variant result, const fc::variants& a)
+   {
+      return result.get_string();
+   };
+
+   m["get_account_history"] = []( variant result, const fc::variants& a)
+   {
+      auto r = result.as<vector<operation_history_object>>();
+      for( auto& i : r )
+      {
+         cerr << i.block_num << " "<<i.trx_in_block << " " << i.op_in_trx << " " << i.virtual_op<< " ";
+         i.op.visit( operation_printer() );
+         cerr << " \n";
+      }
+      return string();
+   };
+
+   return m;
+}
+
+signed_transaction wallet_api_impl::create_account_with_brain_key(
    string brain_key,
    string account_name,
    string registrar_account,
@@ -353,42 +408,79 @@ signed_transaction wallet_api::create_account_with_brain_key(
    return tx;
 }
 
-signed_transaction wallet_api::transfer(
-   string from,
-   string to,
-   uint64_t amount,
-   string asset_symbol,
-   string memo,
-   bool broadcast /* = false */
-   )
+account_object wallet_api_impl::get_account( string account_name_or_id ) const
 {
-   vector< optional< asset_object > > opt_asset = _remote_db->lookup_asset_symbols( {asset_symbol} );
-   FC_ASSERT( opt_asset.size() == 1 );
-   FC_ASSERT( opt_asset[0].valid() );
-
-   account_object from_account = get_account( from );
-   account_id_type from_id = from_account.id;
-   account_id_type to_id = get_account_id( to );
-
-   asset_id_type asset_id = get_asset_id( asset_symbol );
-
-   // TODO:  Memo encryption
-
-   transfer_operation xfer_op;
-
-   xfer_op.from = from_id;
-   xfer_op.to = to_id;
-   xfer_op.amount = asset( amount, asset_id );
-
-   signed_transaction tx;
-   tx.operations.push_back( xfer_op );
-   tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
-   tx.validate();
-
-   return sign_transaction( tx, broadcast );
+   FC_ASSERT( account_name_or_id.size() > 0 );
+   vector<optional<account_object>> opt_account;
+   if( std::isdigit( account_name_or_id.front() ) )
+      opt_account = _remote_db->get_accounts( {fc::variant(account_name_or_id).as<account_id_type>()} );
+   else
+      opt_account = _remote_db->lookup_account_names( {account_name_or_id} );
+   FC_ASSERT( opt_account.size() && opt_account.front() );
+   return *opt_account.front();
 }
 
-signed_transaction wallet_api::sign_transaction(
+account_id_type wallet_api_impl::get_account_id( string account_name_or_id ) const
+{
+   FC_ASSERT( account_name_or_id.size() > 0 );
+   vector<optional<account_object>> opt_account;
+   if( std::isdigit( account_name_or_id.front() ) )
+      return fc::variant(account_name_or_id).as<account_id_type>();
+   opt_account = _remote_db->lookup_account_names( {account_name_or_id} );
+   FC_ASSERT( opt_account.size() && opt_account.front() );
+   return opt_account.front()->id;
+}
+
+asset_id_type wallet_api_impl::get_asset_id( string asset_symbol_or_id ) const
+{
+   FC_ASSERT( asset_symbol_or_id.size() > 0 );
+   vector<optional<asset_object>> opt_asset;
+   if( std::isdigit( asset_symbol_or_id.front() ) )
+      return fc::variant(asset_symbol_or_id).as<asset_id_type>();
+   opt_asset = _remote_db->lookup_asset_symbols( {asset_symbol_or_id} );
+   FC_ASSERT( (opt_asset.size() > 0) && (opt_asset[0].valid()) );
+   return opt_asset[0]->id;
+}
+
+bool wallet_api_impl::import_key( string account_name_or_id, string wif_key )
+{
+   auto opt_priv_key = wif_to_key(wif_key);
+   FC_ASSERT( opt_priv_key.valid() );
+   bts::chain::address wif_key_address = bts::chain::address(
+      opt_priv_key->get_public_key() );
+
+   auto acnt = get_account( account_name_or_id );
+
+   flat_set<key_id_type> keys;
+   for( auto item : acnt.active.auths )
+   {
+      if( item.first.type() == key_object_type )
+         keys.insert( item.first );
+   }
+   for( auto item : acnt.owner.auths )
+   {
+      if( item.first.type() == key_object_type )
+         keys.insert( item.first );
+   }
+   auto opt_keys = _remote_db->get_keys( vector<key_id_type>(keys.begin(),keys.end()) );
+   for( const fc::optional<key_object>& opt_key : opt_keys )
+   {
+      // the requested key ID's should all exist because they are
+      //    keys for an account
+      FC_ASSERT( opt_key.valid() );
+      // we do this check by address because key objects on the
+      //    blockchain may not contain a key (i.e. are simply an address)
+      if( opt_key->key_address() == wif_key_address )
+      {
+         _wallet.keys[ opt_key->id ] = wif_key;
+         return true;
+      }
+   }
+   ilog( "key not for account ${name}", ("name",account_name_or_id) );
+   return false;
+}
+
+signed_transaction wallet_api_impl::sign_transaction(
    signed_transaction tx,
    bool broadcast /* = false */
    )
@@ -473,157 +565,207 @@ signed_transaction wallet_api::sign_transaction(
    return tx;
 }
 
-// methods that start with underscore are not incuded in API
-void wallet_api::_resync()
+signed_transaction wallet_api_impl::transfer(
+   string from,
+   string to,
+   uint64_t amount,
+   string asset_symbol,
+   string memo,
+   bool broadcast /* = false */
+   )
 {
-   // this method is used to update wallet_data annotations
-   //   e.g. wallet has been restarted and was not notified
-   //   of events while it was down
-   //
-   // everything that is done "incremental style" when a push
-   //   notification is received, should also be done here
-   //   "batch style" by querying the blockchain
+   vector< optional< asset_object > > opt_asset = _remote_db->lookup_asset_symbols( {asset_symbol} );
+   FC_ASSERT( opt_asset.size() == 1 );
+   FC_ASSERT( opt_asset[0].valid() );
 
-   if( _wallet.pending_account_registrations.size() > 0 )
-   {
-      std::vector<string> v_names;
-      v_names.reserve( _wallet.pending_account_registrations.size() );
+   account_object from_account = get_account( from );
+   account_id_type from_id = from_account.id;
+   account_id_type to_id = get_account_id( to );
 
-      for( auto it : _wallet.pending_account_registrations )
-         v_names.push_back( it.first );
+   asset_id_type asset_id = get_asset_id( asset_symbol );
 
-      std::vector< fc::optional< bts::chain::account_object >>
-         v_accounts = _remote_db->lookup_account_names( v_names );
+   // TODO:  Memo encryption
 
-      for( fc::optional< bts::chain::account_object > opt_account : v_accounts )
-      {
-         if( ! opt_account.valid() )
-            continue;
+   transfer_operation xfer_op;
 
-         string account_name = opt_account->name;
-         auto it = _wallet.pending_account_registrations.find( account_name );
-         FC_ASSERT( it != _wallet.pending_account_registrations.end() );
-         if( import_key( account_name, it->second ) )
-         {
-            ilog( "successfully imported account ${name}",
-                  ("name", account_name) );
-         }
-         else
-         {
-            // somebody else beat our pending registration, there is
-            //    nothing we can do except log it and move on
-            elog( "account ${name} registered by someone else first!",
-                  ("name", account_name) );
-            // might as well remove it from pending regs,
-            //    because there is now no way this registration
-            //    can become valid (even in the extremely rare
-            //    possibility of migrating to a fork where the
-            //    name is available, the user can always
-            //    manually re-register)
-         }
-         _wallet.pending_account_registrations.erase( it );
-      }
-   }
+   xfer_op.from = from_id;
+   xfer_op.to = to_id;
+   xfer_op.amount = asset( amount, asset_id );
 
+   signed_transaction tx;
+   tx.operations.push_back( xfer_op );
+   tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
+   tx.validate();
+
+   return sign_transaction( tx, broadcast );
+}
+
+} // end namespace detail
+
+wallet_api::wallet_api( fc::api<login_api> rapi )
+   : _my( new detail::wallet_api_impl( rapi ) )
+{
    return;
 }
 
-void wallet_api::_start_resync_loop()
+wallet_api::~wallet_api()
 {
-   _resync_loop_task = fc::async( [this](){ _resync_loop(); }, "cli_wallet resync loop" );
    return;
 }
 
-void wallet_api::_resync_loop()
+optional<signed_block> wallet_api::get_block( uint32_t num )
 {
-   // TODO:  Exception handling
-   //    does cancel raise exception?
-   _resync();
-   fc::microseconds resync_interval = fc::seconds(1);
+   return _my->_remote_db->get_block(num);
+}
 
-   _resync_loop_task = fc::schedule( [this](){ _resync_loop(); }, fc::time_point::now() + resync_interval, "cli_wallet resync loop" );
-   return;
+uint64_t wallet_api::get_account_count() const
+{
+   return _my->_remote_db->get_account_count();
+}
+
+map<string,account_id_type> wallet_api::list_accounts( const string& lowerbound, uint32_t limit)
+{
+   return _my->_remote_db->lookup_accounts( lowerbound, limit );
+}
+
+vector<asset> wallet_api::list_account_balances( const account_id_type& id )
+{
+   return _my->_remote_db->get_account_balances( id, flat_set<asset_id_type>() );
+}
+
+vector<asset_object> wallet_api::list_assets( const string& lowerbound, uint32_t limit )const
+{
+   return _my->_remote_db->list_assets( lowerbound, limit );
+}
+
+vector<operation_history_object> wallet_api::get_account_history( account_id_type id )const
+{
+   return _my->_remote_db->get_account_history( id, operation_history_id_type() );
+}
+
+vector<limit_order_object> wallet_api::get_limit_orders( asset_id_type a, asset_id_type b, uint32_t limit )const
+{
+   return _my->_remote_db->get_limit_orders( a, b, limit );
+}
+
+vector<short_order_object> wallet_api::get_short_orders( asset_id_type a, uint32_t limit )const
+{
+   return _my->_remote_db->get_short_orders( a, limit );
+}
+
+vector<call_order_object> wallet_api::get_call_orders( asset_id_type a, uint32_t limit )const
+{
+   return _my->_remote_db->get_call_orders( a, limit );
+}
+
+vector<force_settlement_object> wallet_api::get_settle_orders( asset_id_type a, uint32_t limit )const
+{
+   return _my->_remote_db->get_settle_orders( a, limit );
+}
+
+string wallet_api::suggest_brain_key()const
+{
+   return string("dummy");
+}
+
+string wallet_api::serialize_transaction( signed_transaction tx )const
+{
+   return _my->_remote_api->serialize_transaction( tx, true );
+}
+
+variant wallet_api::get_object( object_id_type id ) const
+{
+   return _my->_remote_db->get_objects({id});
+}
+
+account_object wallet_api::get_account( string account_name_or_id ) const
+{
+   return _my->get_account( account_name_or_id );
+}
+
+account_id_type wallet_api::get_account_id( string account_name_or_id ) const
+{
+   return _my->get_account_id( account_name_or_id );
+}
+
+asset_id_type wallet_api::get_asset_id( string asset_symbol_or_id ) const
+{
+   return _my->get_asset_id( asset_symbol_or_id );
+}
+
+bool wallet_api::import_key( string account_name_or_id, string wif_key )
+{
+   return _my->import_key( account_name_or_id, wif_key );
+}
+
+string wallet_api::normalize_brain_key( string s ) const
+{
+   return detail::normalize_brain_key( s );
+}
+
+fc::ecc::private_key wallet_api::derive_private_key(
+   const std::string& prefix_string, int sequence_number) const
+{
+   return detail::derive_private_key( prefix_string, sequence_number );
+}
+
+signed_transaction wallet_api::create_account_with_brain_key(
+   string brain_key,
+   string account_name,
+   string registrar_account,
+   string referrer_account,
+   uint8_t referrer_percent,
+   bool broadcast /* = false */
+   )
+{
+   return _my->create_account_with_brain_key(
+      brain_key, account_name, registrar_account,
+      referrer_account, referrer_percent, broadcast
+      );
+}
+
+signed_transaction wallet_api::transfer(
+   string from,
+   string to,
+   uint64_t amount,
+   string asset_symbol,
+   string memo,
+   bool broadcast /* = false */
+   )
+{
+   return _my->transfer( from, to, amount, asset_symbol, memo, broadcast );
+}
+
+signed_transaction wallet_api::sign_transaction(
+   signed_transaction tx,
+   bool broadcast /* = false */
+   )
+{
+   return _my->sign_transaction( tx, broadcast);
 }
 
 global_property_object wallet_api::get_global_properties() const
 {
-   return _remote_db->get_global_properties();
+   return _my->_remote_db->get_global_properties();
 }
 
 dynamic_global_property_object wallet_api::get_dynamic_global_properties() const
 {
-   return _remote_db->get_dynamic_global_properties();
+   return _my->_remote_db->get_dynamic_global_properties();
 }
-
-struct help_visitor
-{
-   help_visitor( std::stringstream& s ):ss(s){}
-   std::stringstream& ss;
-   template<typename R, typename... Args>
-   void operator()( const char* name, std::function<R(Args...)>& memb )const {
-      ss << std::setw(40) << std::left << fc::get_typename<R>::name() << " " << name << "( ";
-      vector<string> args{ fc::get_typename<typename std::decay<Args>::type>::name()... };
-      for( uint32_t i = 0; i < args.size(); ++i )
-         ss << args[i] << (i==args.size()-1?" ":", ");
-      ss << ")\n";
-   }
-};
 
 string wallet_api::help()const
 {
    fc::api<wallet_api> tmp;
    std::stringstream ss;
-   tmp->visit( help_visitor(ss) );
+   tmp->visit( detail::help_visitor(ss) );
    return ss.str();
 }
 
-// BLOCK  TRX  OP  VOP  
-struct operation_printer
+void wallet_api::_start_resync_loop()
 {
-   operation_result _result;
-   operation_printer( const operation_result& r = operation_result() ):_result(r){}
-   typedef void result_type;
-   template<typename T>
-   void operator()( const T& op )const
-   {
-      balance_accumulator acc;
-      op.get_balance_delta( acc, _result );
-      std::cerr << fc::get_typename<T>::name() <<" ";
-      std::cerr << "balance delta: " << fc::json::to_string(acc.balance) <<"   ";
-      std::cerr << fc::json::to_string(op.fee_payer()) << "  fee: " << fc::json::to_string(op.fee);
-   }
-   void operator()( const account_create_operation& op )const
-   {
-      balance_accumulator acc;
-      op.get_balance_delta( acc, _result );
-      std::cerr << "Create Account '" << op.name << "' ";
-      std::cerr << "balance delta: " << fc::json::to_string(acc.balance) <<"   ";
-      std::cerr << fc::json::to_string(op.fee_payer()) << "  fee: " << fc::json::to_string(op.fee);
-   }
-};
-
-std::map<string,std::function<string(fc::variant,const fc::variants&)> >
-wallet_api::_get_result_formatters() const
-{
-   std::map<string,std::function<string(fc::variant,const fc::variants&)> > m;
-   m["help"] = []( variant result, const fc::variants& a)
-   {
-      return result.get_string();
-   };
-
-   m["get_account_history"] = []( variant result, const fc::variants& a)
-   {
-      auto r = result.as<vector<operation_history_object>>();
-      for( auto& i : r )
-      {
-         cerr << i.block_num << " "<<i.trx_in_block << " " << i.op_in_trx << " " << i.virtual_op<< " ";
-         i.op.visit( operation_printer() );
-         cerr << " \n";
-      }
-      return string();
-   };
-
-   return m;
+   _my->_start_resync_loop();
+   return;
 }
 
 } }

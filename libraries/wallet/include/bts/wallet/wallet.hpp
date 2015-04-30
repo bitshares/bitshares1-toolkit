@@ -24,6 +24,10 @@ struct wallet_data
    string                    ws_password;
 };
 
+namespace detail {
+class wallet_api_impl;
+}
+
 /**
  *  This wallet assumes nothing about where the database server is
  *  located and performs minimal caching.  This API could be provided
@@ -35,7 +39,8 @@ class wallet_api
       wallet_api( fc::api<login_api> rapi );
       virtual ~wallet_api();
       
-      string  help()const;
+      fc::ecc::private_key derive_private_key(
+         const std::string& prefix_string, int sequence_number) const;
 
       optional<signed_block> get_block( uint32_t num );
       uint64_t  get_account_count()const;
@@ -47,19 +52,21 @@ class wallet_api
       vector<short_order_object>        get_short_orders( asset_id_type a, uint32_t limit )const;
       vector<call_order_object>         get_call_orders( asset_id_type a, uint32_t limit )const;
       vector<force_settlement_object>   get_settle_orders( asset_id_type a, uint32_t limit )const;
+      global_property_object            get_global_properties() const;
+      dynamic_global_property_object    get_dynamic_global_properties() const;
+      account_object                    get_account( string account_name_or_id ) const;
+      account_id_type                   get_account_id( string account_name_or_id ) const;
+      asset_id_type                     get_asset_id( string asset_name_or_id ) const;
+      variant                           get_object( object_id_type id ) const;
+
+      string  help()const;
+
       string  suggest_brain_key()const;
 
       string serialize_transaction( signed_transaction tx ) const;
 
-      variant get_object( object_id_type id );
-      account_object get_account( string account_name_or_id );
-      account_id_type get_account_id( string account_name_or_id );
-      asset_id_type get_asset_id( string asset_name_or_id );
-
       bool import_key( string account_name_or_id, string wif_key );
-      string normalize_brain_key( string s );
-      fc::ecc::private_key derive_private_key(
-         const std::string& prefix_string, int sequence_number);
+      string normalize_brain_key( string s ) const;
       signed_transaction create_account_with_brain_key(
          string brain_key,
          string account_name,
@@ -82,23 +89,9 @@ class wallet_api
          bool broadcast = false
          );
 
-      // methods that start with underscore are not incuded in API
-      void _resync();
       void _start_resync_loop();
-      void _resync_loop();
-      global_property_object get_global_properties() const;
-      dynamic_global_property_object get_dynamic_global_properties() const;
 
-      std::map<string,std::function<string(fc::variant,const fc::variants&)> >
-      _get_result_formatters() const;
-
-      wallet_data             _wallet;
-
-      fc::api<login_api>      _remote_api;
-      fc::api<database_api>   _remote_db;
-      fc::api<network_api>    _remote_net;
-
-      fc::future<void>        _resync_loop_task;
+      std::unique_ptr<detail::wallet_api_impl> _my;
 };
 
 } }
