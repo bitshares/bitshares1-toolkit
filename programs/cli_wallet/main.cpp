@@ -27,8 +27,12 @@ int main( int argc, char** argv )
       FC_ASSERT( argc > 1, "usage: ${cmd} WALLET_FILE", ("cmd",argv[0]) );
 
       fc::ecc::private_key genesis_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
+
       idump( (key_to_wif( genesis_private_key ) ) );
       idump( (account_id_type()) );
+
+      fc::ecc::private_key nathan_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("nathan")));
+      idump( (key_to_wif( nathan_private_key ) ) );
 
       wallet_data wallet;
       fc::path wallet_file(argv[1]);
