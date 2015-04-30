@@ -66,7 +66,9 @@ vector<item_ptr> fork_database::fetch_block_by_number( uint32_t num )const
    {
       if( (*itr)->num == num )
          result.push_back( *itr );
-      else break;
+      else
+         break;
+      ++itr;
    }
    return result;
 }
