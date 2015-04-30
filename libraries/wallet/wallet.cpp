@@ -4,6 +4,7 @@
 #include <iostream>
 #include <iterator>
 
+#include <fc/io/fstream.hpp>
 #include <fc/io/json.hpp>
 #include <fc/io/stdio.hpp>
 #include <fc/network/http/websocket.hpp>
@@ -15,6 +16,11 @@
 #include <bts/chain/asset_object.hpp>
 #include <bts/utilities/key_conversion.hpp>
 #include <bts/wallet/wallet.hpp>
+
+#ifndef WIN32
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif
 
 namespace bts { namespace wallet {
 
@@ -30,6 +36,10 @@ class wallet_api_impl
       void _resync();
       void _resync_loop();
       void _start_resync_loop();
+      void _enable_umask_protection();
+      void _disable_umask_protection();
+
+      bool copy_wallet_file( string destination_filename );
 
       signed_transaction create_account_with_brain_key(
          string brain_key,
@@ -45,8 +55,11 @@ class wallet_api_impl
       account_object                    get_account( string account_name_or_id ) const;
       account_id_type                   get_account_id( string account_name_or_id ) const;
       asset_id_type                     get_asset_id( string asset_name_or_id ) const;
+      string                            get_wallet_filename() const;
 
       bool import_key( string account_name_or_id, string wif_key );
+      bool load_wallet_file( string wallet_filename = "" );
+      void save_wallet_file( string wallet_filename = "" );
 
       signed_transaction sign_transaction(
          signed_transaction tx,
@@ -65,6 +78,7 @@ class wallet_api_impl
       std::map<string,std::function<string(fc::variant,const fc::variants&)> >
       _get_result_formatters() const;
 
+      string                  _wallet_filename;
       wallet_data             _wallet;
 
       fc::api<login_api>      _remote_api;
@@ -72,6 +86,9 @@ class wallet_api_impl
       fc::api<network_api>    _remote_net;
 
       fc::future<void>        _resync_loop_task;
+
+      mode_t                  _old_umask;
+      const string _wallet_filename_extension = ".wallet";
 };
 
 struct help_visitor
@@ -119,6 +136,24 @@ optional< T > maybe_id( const string& name_or_id )
    if( std::isdigit( name_or_id.front() ) )
       return fc::variant(name_or_id).as<T>();
    return optional<T>();
+}
+
+string address_to_shorthash( const address& addr )
+{
+   uint32_t x = addr.addr._hash[0];
+   static const char hd[] = "0123456789abcdef";
+   string result;
+
+   result += hd[(x >> 0x1c) & 0x0f];
+   result += hd[(x >> 0x18) & 0x0f];
+   result += hd[(x >> 0x14) & 0x0f];
+   result += hd[(x >> 0x10) & 0x0f];
+   result += hd[(x >> 0x0c) & 0x0f];
+   result += hd[(x >> 0x08) & 0x0f];
+   result += hd[(x >> 0x04) & 0x0f];
+   result += hd[(x        ) & 0x0f];
+
+   return result;
 }
 
 fc::ecc::private_key derive_private_key(
@@ -212,6 +247,18 @@ wallet_api_impl::~wallet_api_impl()
    {
       edump((e.to_detail_string()));
    }
+}
+
+void wallet_api_impl::_enable_umask_protection()
+{
+   _old_umask = umask( S_IRWXG | S_IRWXO );
+   return;
+}
+
+void wallet_api_impl::_disable_umask_protection()
+{
+   umask( _old_umask );
+   return;
 }
 
 void wallet_api_impl::_start_resync_loop()
@@ -308,6 +355,38 @@ wallet_api_impl::_get_result_formatters() const
    };
 
    return m;
+}
+
+bool wallet_api_impl::copy_wallet_file( string destination_filename )
+{
+   fc::path src_path = get_wallet_filename();
+   if( !fc::exists( src_path ) )
+      return false;
+   fc::path dest_path = destination_filename + _wallet_filename_extension;
+   int suffix = 0;
+   while( fc::exists(dest_path) )
+   {
+      ++suffix;
+      dest_path = destination_filename + "-" + to_string( suffix ) + _wallet_filename_extension;
+   }
+   wlog( "backing up wallet ${src} to ${dest}",
+      ("src", src_path)
+      ("dest", dest_path) );
+
+   fc::path dest_parent = fc::absolute(dest_path).parent_path();
+   try
+   {
+      _enable_umask_protection();
+      if( !fc::exists( dest_parent ) )
+         fc::create_directories( dest_parent );
+      fc::copy( src_path, dest_path );
+   }
+   catch(...)
+   {
+      _disable_umask_protection();
+      throw;
+   }
+   return true;
 }
 
 signed_transaction wallet_api_impl::create_account_with_brain_key(
@@ -442,6 +521,11 @@ asset_id_type wallet_api_impl::get_asset_id( string asset_symbol_or_id ) const
    return opt_asset[0]->id;
 }
 
+string wallet_api_impl::get_wallet_filename() const
+{
+   return _wallet_filename;
+}
+
 bool wallet_api_impl::import_key( string account_name_or_id, string wif_key )
 {
    auto opt_priv_key = wif_to_key(wif_key);
@@ -449,6 +533,10 @@ bool wallet_api_impl::import_key( string account_name_or_id, string wif_key )
    bts::chain::address wif_key_address = bts::chain::address(
       opt_priv_key->get_public_key() );
 
+   string shorthash = address_to_shorthash( wif_key_address );
+
+   // backup wallet
+   copy_wallet_file( "before-import-key-" + shorthash );
    auto acnt = get_account( account_name_or_id );
 
    flat_set<key_id_type> keys;
@@ -473,11 +561,68 @@ bool wallet_api_impl::import_key( string account_name_or_id, string wif_key )
       if( opt_key->key_address() == wif_key_address )
       {
          _wallet.keys[ opt_key->id ] = wif_key;
+         save_wallet_file();
+         copy_wallet_file( "after-import-key-" + shorthash );
          return true;
       }
    }
    ilog( "key not for account ${name}", ("name",account_name_or_id) );
    return false;
+}
+
+bool wallet_api_impl::load_wallet_file( string wallet_filename )
+{
+   //
+   // TODO:  Merge imported wallet with existing wallet,
+   //        instead of replacing it
+   //
+   if( wallet_filename == "" )
+      wallet_filename = _wallet_filename;
+
+   if( ! fc::exists( wallet_filename ) )
+      return false;
+
+   _wallet = fc::json::from_file( wallet_filename ).as< wallet_data >();
+   return true;
+}
+
+void wallet_api_impl::save_wallet_file( string wallet_filename )
+{
+   //
+   // Serialize in memory, then save to disk
+   //
+   // This approach lessens the risk of a partially written wallet
+   // if exceptions are thrown in serialization
+   //
+   // TODO:  Encrypt wallet
+   //
+
+   if( wallet_filename == "" )
+      wallet_filename = _wallet_filename;
+
+   wlog( "saving wallet to file ${fn}", ("fn", wallet_filename) );
+
+   string data = fc::json::to_pretty_string( _wallet );
+   try
+   {
+      _enable_umask_protection();
+      //
+      // Parentheses on the following declaration fails to compile,
+      // due to the Most Vexing Parse.  Thanks, C++
+      //
+      // http://en.wikipedia.org/wiki/Most_vexing_parse
+      //
+      fc::ofstream outfile{ fc::path( wallet_filename ) };
+      outfile.write( data.c_str(), data.length() );
+      outfile.flush();
+      outfile.close();
+   }
+   catch(...)
+   {
+      _disable_umask_protection();
+      throw;
+   }
+   return;
 }
 
 signed_transaction wallet_api_impl::sign_transaction(
@@ -613,6 +758,11 @@ wallet_api::~wallet_api()
    return;
 }
 
+bool wallet_api::copy_wallet_file( string destination_filename )
+{
+   return _my->copy_wallet_file( destination_filename );
+}
+
 optional<signed_block> wallet_api::get_block( uint32_t num )
 {
    return _my->_remote_db->get_block(num);
@@ -736,6 +886,12 @@ signed_transaction wallet_api::transfer(
    return _my->transfer( from, to, amount, asset_symbol, memo, broadcast );
 }
 
+void wallet_api::set_wallet_filename( string wallet_filename )
+{
+   _my->_wallet_filename = wallet_filename;
+   return;
+}
+
 signed_transaction wallet_api::sign_transaction(
    signed_transaction tx,
    bool broadcast /* = false */
@@ -760,6 +916,22 @@ string wallet_api::help()const
    std::stringstream ss;
    tmp->visit( detail::help_visitor(ss) );
    return ss.str();
+}
+
+bool wallet_api::load_wallet_file( string wallet_filename )
+{
+   return _my->load_wallet_file( wallet_filename );
+}
+
+void wallet_api::save_wallet_file( string wallet_filename )
+{
+   _my->save_wallet_file( wallet_filename );
+}
+
+std::map<string,std::function<string(fc::variant,const fc::variants&)> >
+wallet_api::_get_result_formatters() const
+{
+   return _my->_get_result_formatters();
 }
 
 void wallet_api::_start_resync_loop()

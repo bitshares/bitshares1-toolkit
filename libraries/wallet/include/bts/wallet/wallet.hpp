@@ -39,6 +39,8 @@ class wallet_api
       wallet_api( fc::api<login_api> rapi );
       virtual ~wallet_api();
       
+      bool copy_wallet_file( string destination_filename );
+
       fc::ecc::private_key derive_private_key(
          const std::string& prefix_string, int sequence_number) const;
 
@@ -58,9 +60,13 @@ class wallet_api
       account_id_type                   get_account_id( string account_name_or_id ) const;
       asset_id_type                     get_asset_id( string asset_name_or_id ) const;
       variant                           get_object( object_id_type id ) const;
+      void                              get_wallet_filename() const;
 
       string  help()const;
 
+      bool    load_wallet_file( string wallet_filename = "" );
+      void    save_wallet_file( string wallet_filename = "" );
+      void    set_wallet_filename( string wallet_filename );
       string  suggest_brain_key()const;
 
       string serialize_transaction( signed_transaction tx ) const;
@@ -122,11 +128,13 @@ FC_API( bts::wallet::wallet_api,
    (get_global_properties)
    (get_dynamic_global_properties)
    (get_object)
+   (load_wallet_file)
    (normalize_brain_key)
    (get_limit_orders)
    (get_short_orders)
    (get_call_orders)
    (get_settle_orders)
+   (save_wallet_file)
    (serialize_transaction)
    (sign_transaction)
    )
