@@ -11,28 +11,27 @@ object_id_type asset_create_evaluator::do_evaluate( const asset_create_operation
    database& d = db();
 
    const auto& chain_parameters = d.get_global_properties().parameters;
-   FC_ASSERT( op.feed_publishers.size() <= chain_parameters.maximum_asset_feed_publishers );
-   FC_ASSERT( op.whitelist_authorities.size() <= chain_parameters.maximum_asset_whitelist_authorities );
-   FC_ASSERT( op.blacklist_authorities.size() <= chain_parameters.maximum_asset_whitelist_authorities );
+   FC_ASSERT( op.common_options.whitelist_authorities.size() <= chain_parameters.maximum_asset_whitelist_authorities );
+   FC_ASSERT( op.common_options.blacklist_authorities.size() <= chain_parameters.maximum_asset_whitelist_authorities );
 
    // Check that all authorities do exist
-   for( auto id : op.feed_publishers )
+   for( auto id : op.common_options.whitelist_authorities )
       d.get_object(id);
-   for( auto id : op.whitelist_authorities )
-      d.get_object(id);
-   for( auto id : op.blacklist_authorities )
+   for( auto id : op.common_options.blacklist_authorities )
       d.get_object(id);
 
-   auto& asset_indx = db().get_index_type<asset_index>();
-   auto asset_symbol_itr = asset_indx.indices().get<by_symbol>().find( op.symbol );
-   FC_ASSERT( asset_symbol_itr == asset_indx.indices().get<by_symbol>().end() );
+   auto& asset_indx = db().get_index_type<asset_index>().indices().get<by_symbol>();
+   auto asset_symbol_itr = asset_indx.find( op.symbol );
+   FC_ASSERT( asset_symbol_itr == asset_indx.end() );
 
    core_fee_paid -= op.calculate_fee(d.current_fee_schedule()).value/2;
    assert( core_fee_paid >= 0 );
 
-   FC_ASSERT( d.find_object(op.short_backing_asset) != nullptr );
+   FC_ASSERT( !op.bitasset_options.valid() ||
+              (d.find_object(op.bitasset_options->short_backing_asset) &&
+               op.bitasset_options->feed_lifetime_sec > chain_parameters.block_interval &&
+               op.bitasset_options->force_settlement_delay_sec > chain_parameters.block_interval) );
 
-   FC_ASSERT( op.feed_lifetime_seconds > chain_parameters.block_interval );
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (op) ) }
 
@@ -44,33 +43,26 @@ object_id_type asset_create_evaluator::do_apply( const asset_create_operation& o
          a.fee_pool = op.calculate_fee(db().current_fee_schedule()).value / 2;
       });
 
+   asset_bitasset_data_id_type bit_asset_id;
+   if( op.common_options.flags & market_issued )
+      bit_asset_id = db().create<asset_bitasset_data_object>( [&]( asset_bitasset_data_object& a ) {
+            a.options = *op.bitasset_options;
+         }).id;
+
    auto next_asset_id = db().get_index_type<asset_index>().get_next_id();
 
    const asset_object& new_asset =
      db().create<asset_object>( [&]( asset_object& a ) {
-         a.symbol = op.symbol;
-         a.max_supply = op.max_supply;
-         a.market_fee_percent = op.market_fee_percent;
-         a.max_market_fee = op.max_market_fee;
-         a.min_market_fee = op.min_market_fee;
-         a.flags = op.flags;
-         a.issuer_permissions = op.permissions;
-         a.short_backing_asset = op.short_backing_asset;
          a.issuer = op.issuer;
-         a.core_exchange_rate = op.core_exchange_rate;
-         a.core_exchange_rate.base.asset_id = 0;
-         a.core_exchange_rate.quote.asset_id = next_asset_id;
+         a.symbol = op.symbol;
+         a.options = op.common_options;
+         if( a.options.core_exchange_rate.base.asset_id.instance.value == 0 )
+            a.options.core_exchange_rate.quote.asset_id = next_asset_id;
+         else
+            a.options.core_exchange_rate.base.asset_id = next_asset_id;
          a.dynamic_asset_data_id = dyn_asset.id;
-         a.force_settlement_delay_sec = op.force_settlement_delay_sec;
-         a.force_settlement_offset_percent = op.force_settlement_offset_percent;
-         a.feed_lifetime_sec = op.feed_lifetime_seconds;
-         std::transform(op.feed_publishers.begin(), op.feed_publishers.end(),
-                        std::inserter(a.feeds, a.feeds.end()),
-                        [this](account_id_type id) {
-                           return make_pair(id, make_pair(db().head_block_time(), price_feed()));
-                        });
-         a.whitelist_authorities = op.whitelist_authorities;
-         a.blacklist_authorities = op.blacklist_authorities;
+         if( a.is_market_issued() )
+            a.bitasset_data_id = bit_asset_id;
       });
    assert( new_asset.id == next_asset_id );
 
@@ -83,17 +75,17 @@ object_id_type asset_issue_evaluator::do_evaluate( const asset_issue_operation& 
 
    const asset_object& a = o.asset_to_issue.asset_id(d);
    FC_ASSERT( o.issuer == a.issuer );
-   FC_ASSERT( !(a.issuer_permissions & market_issued) );
+   FC_ASSERT( !(a.options.issuer_permissions & market_issued) );
 
    to_account = &o.issue_to_account(d);
 
-   if( a.flags & white_list )
+   if( a.options.flags & white_list )
    {
       FC_ASSERT( to_account->is_authorized_asset( a ) );
    }
 
    asset_dyn_data = &a.dynamic_asset_data_id(d);
-   FC_ASSERT( (asset_dyn_data->current_supply + o.asset_to_issue.amount) <= a.max_supply );
+   FC_ASSERT( (asset_dyn_data->current_supply + o.asset_to_issue.amount) <= a.options.max_supply );
 
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (o) ) }
@@ -135,74 +127,28 @@ object_id_type asset_update_evaluator::do_evaluate(const asset_update_operation&
 { try {
    database& d = db();
 
+   if( o.new_issuer ) FC_ASSERT(d.find_object(*o.new_issuer));
+
    const asset_object& a = o.asset_to_update(d);
+
+   FC_ASSERT((a.options.flags & market_issued) == (o.new_options.flags & market_issued),
+             "Cannot convert a market-issued asset to/from a user-issued asset.");
+   //There must be no bits set in o.permissions which are unset in a.issuer_permissions.
+   FC_ASSERT(!(o.new_options.issuer_permissions & ~a.options.issuer_permissions),
+             "Cannot reinstate previously revoked issuer permissions on an asset.");
+
    asset_to_update = &a;
    FC_ASSERT( o.issuer == a.issuer, "", ("o.issuer", o.issuer)("a.issuer", a.issuer) );
 
    const auto& chain_parameters = d.get_global_properties().parameters;
 
-   if( o.new_feed_publishers )
-   {
-      FC_ASSERT( a.is_market_issued(), "Cannot set feed publishers on a user-issued asset." );
-      FC_ASSERT( o.new_feed_publishers->size() <= chain_parameters.maximum_asset_feed_publishers );
-   }
-   if( o.new_price_feed )
-   {
-      FC_ASSERT( a.is_market_issued() &&
-                 (a.issuer != account_id_type() || (o.new_issuer && *o.new_issuer != account_id_type())) );
-   }
-   if( o.new_whitelist_authorities )
-   {
-      FC_ASSERT( o.new_whitelist_authorities->size() <= chain_parameters.maximum_asset_whitelist_authorities );
-      for( auto id : *o.new_whitelist_authorities )
-         d.get_object(id);
-   }
-   if( o.new_blacklist_authorities )
-   {
-      FC_ASSERT( o.new_blacklist_authorities->size() <= chain_parameters.maximum_asset_whitelist_authorities );
-      for( auto id : *o.new_blacklist_authorities )
-         d.get_object(id);
-   }
-   if( o.new_whitelist_authorities || o.new_blacklist_authorities )
-   {
-      FC_ASSERT( a.enforce_white_list() || (o.flags && (*o.flags & white_list)) );
-   }
+   FC_ASSERT( o.new_options.whitelist_authorities.size() <= chain_parameters.maximum_asset_whitelist_authorities );
+   for( auto id : o.new_options.whitelist_authorities )
+      d.get_object(id);
+   FC_ASSERT( o.new_options.blacklist_authorities.size() <= chain_parameters.maximum_asset_whitelist_authorities );
+   for( auto id : o.new_options.blacklist_authorities )
+      d.get_object(id);
 
-   if( o.new_issuer )
-   {
-      auto new_issuer = (*o.new_issuer)(d);
-      FC_ASSERT(new_issuer.id != a.issuer);
-   }
-
-   if( o.permissions )
-   {
-      FC_ASSERT( *o.permissions != a.issuer_permissions );
-      if( !o.flags )
-         FC_ASSERT( (a.flags & *o.permissions) == a.flags );
-      if( a.is_market_issued() ) FC_ASSERT(*o.permissions == market_issued);
-      //There must be no bits set in o.permissions which are unset in a.issuer_permissions.
-      FC_ASSERT(!(~a.issuer_permissions & *o.permissions));
-   }
-   if( o.flags )
-   {
-      FC_ASSERT( *o.flags != a.flags, "", ("a", a.flags) );
-      FC_ASSERT( (*o.flags & a.issuer_permissions) == *o.flags );
-      //Cannot change an asset to/from market_issued
-      if( a.is_market_issued() ) FC_ASSERT(*o.flags == market_issued);
-      else                       FC_ASSERT(~*o.flags & market_issued);
-   }
-   if( o.core_exchange_rate )
-   {
-      FC_ASSERT(!a.is_market_issued());
-      FC_ASSERT(*o.core_exchange_rate != a.core_exchange_rate, "", ("e", a.core_exchange_rate));
-   }
-   if( o.new_price_feed )
-   {
-      FC_ASSERT(a.is_market_issued());
-      FC_ASSERT(o.new_price_feed->call_limit.base.asset_id == a.short_backing_asset);
-   }
-
-   FC_ASSERT( o.feed_lifetime_seconds > chain_parameters.block_interval );
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW((o)) }
 
@@ -211,40 +157,80 @@ object_id_type asset_update_evaluator::do_apply(const asset_update_operation& o)
    db().modify(*asset_to_update, [&](asset_object& a) {
       if( o.new_issuer )
          a.issuer = *o.new_issuer;
-      if( o.permissions )
-         a.issuer_permissions = *o.permissions;
-      if( o.flags )
-         a.flags = *o.flags;
-      if( o.core_exchange_rate )
-         a.core_exchange_rate = *o.core_exchange_rate;
-      if( o.new_price_feed )
-         a.current_feed = *o.new_price_feed;
-      if( o.new_feed_publishers )
-      {
-         //This is tricky because I have a set of publishers coming in, but a map of publisher to feed is stored.
-         //I need to update the map such that the keys match the new publishers, but not munge the old price feeds from
-         //publishers who are being kept.
-         //First, remove any old publishers who are no longer publishers
-         for( auto itr = a.feeds.begin(); itr != a.feeds.end(); ++itr )
-            if( !o.new_feed_publishers->count(itr->first) )
-               itr = a.feeds.erase(itr);
-         //Now, add any new publishers
-         for( auto itr = o.new_feed_publishers->begin(); itr != o.new_feed_publishers->end(); ++itr )
-            if( !a.feeds.count(*itr) )
-               a.feeds[*itr];
-         a.update_median_feeds(db().head_block_time());
-      }
-      if( o.new_whitelist_authorities )
-         a.whitelist_authorities = *o.new_whitelist_authorities;
-      if( o.new_blacklist_authorities )
-         a.blacklist_authorities = *o.new_blacklist_authorities;
+      a.options = o.new_options;
+   });
 
-      a.market_fee_percent = o.market_fee_percent;
-      a.max_market_fee = o.max_market_fee;
-      a.min_market_fee = o.min_market_fee;
-      a.force_settlement_delay_sec = o.force_settlement_delay_sec;
-      a.force_settlement_offset_percent = o.force_settlement_offset_percent;
-      a.feed_lifetime_sec = o.feed_lifetime_seconds;
+   return object_id_type();
+}
+
+object_id_type asset_update_bitasset_evaluator::do_evaluate(const asset_update_bitasset_operation& o)
+{
+   database& d = db();
+
+   const asset_object& a = o.asset_to_update(d);
+
+   FC_ASSERT(a.is_market_issued(), "Cannot update BitAsset-specific settings on a non-BitAsset.");
+
+   const asset_bitasset_data_object& b = a.bitasset_data(d);
+   if( o.new_options.short_backing_asset != b.short_backing_asset )
+   {
+      FC_ASSERT(a.dynamic_asset_data_id(d).current_supply == 0);
+      FC_ASSERT(d.find_object(o.new_options.short_backing_asset));
+   }
+
+   bitasset_to_update = &b;
+   FC_ASSERT( o.issuer == a.issuer, "", ("o.issuer", o.issuer)("a.issuer", a.issuer) );
+
+   return object_id_type();
+}
+
+object_id_type asset_update_bitasset_evaluator::do_apply(const asset_update_bitasset_operation& o)
+{
+   db().modify(*bitasset_to_update, [&o](asset_bitasset_data_object& b) {
+      b.options = o.new_options;
+   });
+
+   return object_id_type();
+}
+
+object_id_type asset_update_feed_producers_evaluator::do_evaluate(const asset_update_feed_producers_evaluator::operation_type& o)
+{
+   database& d = db();
+
+   FC_ASSERT( o.new_feed_producers.size() <= d.get_global_properties().parameters.maximum_asset_feed_publishers );
+   for( auto id : o.new_feed_producers )
+      d.get_object(id);
+
+   const asset_object& a = o.asset_to_update(d);
+
+   FC_ASSERT(a.is_market_issued(), "Cannot update feed producers on a non-BitAsset.");
+   FC_ASSERT(a.issuer != account_id_type(), "Cannot set feed producers on a genesis-issued asset.");
+
+   const asset_bitasset_data_object& b = a.bitasset_data(d);
+   bitasset_to_update = &b;
+   FC_ASSERT( a.issuer == o.issuer );
+   return object_id_type();
+}
+
+object_id_type asset_update_feed_producers_evaluator::do_apply(const asset_update_feed_producers_evaluator::operation_type& o)
+{
+   db().modify(*bitasset_to_update, [&](asset_bitasset_data_object& a) {
+      //This is tricky because I have a set of publishers coming in, but a map of publisher to feed is stored.
+      //I need to update the map such that the keys match the new publishers, but not munge the old price feeds from
+      //publishers who are being kept.
+      //First, remove any old publishers who are no longer publishers
+      for( auto itr = a.feeds.begin(); itr != a.feeds.end(); )
+      {
+         if( !o.new_feed_producers.count(itr->first) )
+            itr = a.feeds.erase(itr);
+         else
+            ++itr;
+      }
+      //Now, add any new publishers
+      for( auto itr = o.new_feed_producers.begin(); itr != o.new_feed_producers.end(); ++itr )
+         if( !a.feeds.count(*itr) )
+            a.feeds[*itr];
+      a.update_median_feeds(db().head_block_time());
    });
 
    return object_id_type();
@@ -267,7 +253,7 @@ object_id_type asset_settle_evaluator::do_apply(const asset_settle_evaluator::op
    return d.create<force_settlement_object>([&](force_settlement_object& s) {
       s.owner = op.account;
       s.balance = op.amount;
-      s.settlement_date = d.head_block_time() + asset_to_settle->force_settlement_delay_sec;
+      s.settlement_date = d.head_block_time() + asset_to_settle->bitasset_data(d).options.force_settlement_delay_sec;
    }).id;
 }
 
@@ -277,7 +263,10 @@ object_id_type asset_publish_feeds_evaluator::do_evaluate(const asset_publish_fe
 
    const asset_object& quote = o.feed.call_limit.quote.asset_id(d);
    //Verify that this feed is for a market-issued asset and that asset is backed by the base
-   FC_ASSERT(quote.is_market_issued() && quote.short_backing_asset == o.feed.call_limit.base.asset_id);
+   FC_ASSERT(quote.is_market_issued());
+
+   const asset_bitasset_data_object& bitasset = quote.bitasset_data(d);
+   FC_ASSERT(bitasset.short_backing_asset == o.feed.call_limit.base.asset_id);
    //Verify that the publisher is authoritative to publish a feed
    if( quote.issuer == account_id_type() )
    {
@@ -285,7 +274,7 @@ object_id_type asset_publish_feeds_evaluator::do_evaluate(const asset_publish_fe
       FC_ASSERT(d.get(account_id_type()).active.auths.count(o.publisher) ||
                 d.get_global_properties().witness_accounts.count(o.publisher));
    } else {
-      FC_ASSERT(quote.feeds.count(o.publisher));
+      FC_ASSERT(bitasset.feeds.count(o.publisher));
    }
 
    return object_id_type();
@@ -297,12 +286,12 @@ object_id_type asset_publish_feeds_evaluator::do_apply(const asset_publish_feed_
 
    const asset_object& quote = d.get(o.feed.call_limit.quote.asset_id);
    // Store medians for this asset
-   d.modify(quote, [&o,&d](asset_object& a) {
+   d.modify(quote.bitasset_data(d), [&o,&d](asset_bitasset_data_object& a) {
       a.feeds[o.publisher] = make_pair(d.head_block_time(), o.feed);
       a.update_median_feeds(d.head_block_time());
    });
 
    return object_id_type();
-} FC_CAPTURE_AND_RETHROW((o)) }
+   } FC_CAPTURE_AND_RETHROW((o)) }
 
 } } // bts::chain

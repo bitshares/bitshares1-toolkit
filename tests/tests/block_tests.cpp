@@ -592,13 +592,30 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
 
    transfer(nathan_id(db), account_id_type()(db), db.get_balance(nathan_id, asset_id_type()));
 
-   asset_update_operation uop(bit_usd(db));
-   uop.force_settlement_delay_sec = 100;
-   uop.force_settlement_offset_percent = 100;
-   price_feed feed;
-   feed.settlement_price = price(asset(1),asset(1, bit_usd));
-   uop.new_price_feed = feed;
-   trx.operations.push_back(uop);
+   {
+      asset_update_bitasset_operation uop;
+      uop.issuer = bit_usd(db).issuer;
+      uop.asset_to_update = bit_usd;
+      uop.new_options = bit_usd(db).bitasset_data(db).options;
+      uop.new_options.force_settlement_delay_sec = 100;
+      uop.new_options.force_settlement_offset_percent = 100;
+      trx.operations.push_back(uop);
+   } {
+      asset_update_feed_producers_operation uop;
+      uop.asset_to_update = bit_usd;
+      uop.issuer = bit_usd(db).issuer;
+      uop.new_feed_producers = {nathan_id};
+      trx.operations.push_back(uop);
+   } {
+      asset_publish_feed_operation pop;
+      pop.publisher = nathan_id;
+      price_feed feed;
+      feed.settlement_price = price(asset(1),asset(1, bit_usd));
+      feed.call_limit = price::min(0, bit_usd);
+      feed.short_limit = price::min(bit_usd, 0);
+      pop.feed = feed;
+      trx.operations.push_back(pop);
+   }
    trx.sign(key_id_type(),private_key);
    db.push_transaction(trx);
    trx.clear();

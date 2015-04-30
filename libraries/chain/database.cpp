@@ -122,6 +122,8 @@ void database::initialize_evaluators()
    register_evaluator<asset_create_evaluator>();
    register_evaluator<asset_issue_evaluator>();
    register_evaluator<asset_update_evaluator>();
+   register_evaluator<asset_update_bitasset_evaluator>();
+   register_evaluator<asset_update_feed_producers_evaluator>();
    register_evaluator<asset_settle_evaluator>();
    register_evaluator<limit_order_create_evaluator>();
    register_evaluator<limit_order_cancel_evaluator>();
@@ -162,6 +164,7 @@ void database::initialize_indexes()
    //Implementation object indexes
    add_index< primary_index< transaction_index                             > >();
    add_index< primary_index< account_balance_index                         > >();
+   add_index< primary_index< asset_bitasset_data_index                     > >();
    add_index< primary_index< simple_index< global_property_object         >> >();
    add_index< primary_index< simple_index< dynamic_global_property_object >> >();
    add_index< primary_index< simple_index< account_statistics_object      >> >();
@@ -255,14 +258,14 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
    const asset_object& core_asset =
      create<asset_object>( [&]( asset_object& a ) {
          a.symbol = BTS_SYMBOL;
-         a.max_supply = BTS_INITIAL_SUPPLY;
-         a.flags = 0;
-         a.issuer_permissions = 0;
+         a.options.max_supply = BTS_INITIAL_SUPPLY;
+         a.options.flags = 0;
+         a.options.issuer_permissions = 0;
          a.issuer = genesis_account.id;
-         a.core_exchange_rate.base.amount = 1;
-         a.core_exchange_rate.base.asset_id = 0;
-         a.core_exchange_rate.quote.amount = 1;
-         a.core_exchange_rate.quote.asset_id = 0;
+         a.options.core_exchange_rate.base.amount = 1;
+         a.options.core_exchange_rate.base.asset_id = 0;
+         a.options.core_exchange_rate.quote.amount = 1;
+         a.options.core_exchange_rate.quote.asset_id = 0;
          a.dynamic_asset_data_id = dyn_asset.id;
       });
    assert( asset_id_type(core_asset.id) == asset().asset_id );
@@ -456,7 +459,8 @@ int database::match( const limit_order_object& bid, const short_order_object& as
 bool database::check_call_orders( const asset_object& mia )
 { try {
     if( !mia.is_market_issued() ) return false;
-    if( mia.current_feed.call_limit.is_null() ) return false;
+    const asset_bitasset_data_object& bitasset = mia.bitasset_data(*this);
+    if( bitasset.current_feed.call_limit.is_null() ) return false;
 
     const call_order_index& call_index = get_index_type<call_order_index>();
     const auto& call_price_index = call_index.indices().get<by_price>();
@@ -467,15 +471,14 @@ bool database::check_call_orders( const asset_object& mia )
     const short_order_index& short_index = get_index_type<short_order_index>();
     const auto& short_price_index = short_index.indices().get<by_price>();
 
-    auto short_itr = short_price_index.lower_bound( price::max( mia.id, mia.short_backing_asset ) );
-    auto short_end = short_price_index.upper_bound( ~mia.current_feed.call_limit );
-    for( auto s = short_itr; s != short_end; ++s ) wdump((s->sell_price.to_real())(s->sell_price)(mia.current_feed.call_limit));
+    auto short_itr = short_price_index.lower_bound( price::max( mia.id, bitasset.short_backing_asset ) );
+    auto short_end = short_price_index.upper_bound( ~bitasset.current_feed.call_limit );
 
-    auto limit_itr = limit_price_index.lower_bound( price::max( mia.id, mia.short_backing_asset ) );
-    auto limit_end = limit_price_index.upper_bound( ~mia.current_feed.call_limit );
+    auto limit_itr = limit_price_index.lower_bound( price::max( mia.id, bitasset.short_backing_asset ) );
+    auto limit_end = limit_price_index.upper_bound( ~bitasset.current_feed.call_limit );
 
-    auto call_itr = call_price_index.lower_bound( price::min( mia.short_backing_asset, mia.id ) );
-    auto call_end = call_price_index.upper_bound( price::max( mia.short_backing_asset, mia.id ) );
+    auto call_itr = call_price_index.lower_bound( price::min( bitasset.short_backing_asset, mia.id ) );
+    auto call_end = call_price_index.upper_bound( price::max( bitasset.short_backing_asset, mia.id ) );
 
     bool filled_short_or_limit = false;
 
@@ -602,7 +605,8 @@ void database::settle_black_swan( const asset_object& mia, const price& settleme
 
    edump( (mia.symbol)(settlement_price) );
 
-   const asset_object& backing_asset = mia.short_backing_asset(*this);
+   const asset_bitasset_data_object& bitasset = mia.bitasset_data(*this);
+   const asset_object& backing_asset = bitasset.short_backing_asset(*this);
    asset collateral_gathered = backing_asset.amount(0);
 
    const asset_dynamic_data_object& mia_dyn = mia.dynamic_asset_data_id(*this);
@@ -611,8 +615,8 @@ void database::settle_black_swan( const asset_object& mia, const price& settleme
    const call_order_index& call_index = get_index_type<call_order_index>();
    const auto& call_price_index = call_index.indices().get<by_price>();
 
-    auto call_itr = call_price_index.lower_bound( price::min( mia.short_backing_asset, mia.id ) );
-    auto call_end = call_price_index.upper_bound( price::max( mia.short_backing_asset, mia.id ) );
+    auto call_itr = call_price_index.lower_bound( price::min( bitasset.short_backing_asset, mia.id ) );
+    auto call_end = call_price_index.upper_bound( price::max( bitasset.short_backing_asset, mia.id ) );
     while( call_itr != call_end )
     {
        auto pays = call_itr->get_debt() * settlement_price;
@@ -627,10 +631,8 @@ void database::settle_black_swan( const asset_object& mia, const price& settleme
    const auto& limit_price_index = limit_index.indices().get<by_price>();
 
     // cancel all orders selling the market issued asset
-    auto limit_itr = limit_price_index.lower_bound( price::max( mia.id, mia.short_backing_asset ) );
-    auto limit_end = limit_price_index.upper_bound( ~mia.current_feed.call_limit );
-    //auto limit_end = limit_price_index.upper_bound( price::max( asset_id_type(mia.id.instance()+1),
-    //                                                            mia.short_backing_asset ) );
+    auto limit_itr = limit_price_index.lower_bound( price::max( mia.id, bitasset.short_backing_asset ) );
+    auto limit_end = limit_price_index.upper_bound( ~bitasset.current_feed.call_limit );
     while( limit_itr != limit_end )
     {
        const auto& order = *limit_itr;
@@ -641,8 +643,6 @@ void database::settle_black_swan( const asset_object& mia, const price& settleme
     }
 
     limit_itr = limit_price_index.begin();
-    //auto limit_end = limit_price_index.upper_bound( ~mia.current_feed.call_limit );
-    limit_end = limit_price_index.end();
     while( limit_itr != limit_end )
     {
        if( limit_itr->amount_for_sale().asset_id == mia.id )
@@ -656,8 +656,6 @@ void database::settle_black_swan( const asset_object& mia, const price& settleme
     }
 
    limit_itr = limit_price_index.begin();
-   //auto limit_end = limit_price_index.upper_bound( ~mia.current_feed.call_limit );
-   limit_end = limit_price_index.end();
    while( limit_itr != limit_end )
    {
       if( limit_itr->amount_for_sale().asset_id == mia.id )
@@ -697,11 +695,9 @@ void database::settle_black_swan( const asset_object& mia, const price& settleme
 
     wlog( "====================== AFTER SETTLE BLACK SWAN UNCLAIMED SETTLEMENT FUNDS ==============\n" );
     wdump((collateral_gathered)(total_mia_settled)(original_mia_supply)(mia_dyn.current_supply));
-    modify( mia.short_backing_asset(*this).dynamic_asset_data_id(*this), [&]( asset_dynamic_data_object& obj ){
-       idump((collateral_gathered));
-                 obj.accumulated_fees += collateral_gathered.amount;
-                 idump((obj.accumulated_fees));
-                 });
+    modify( bitasset.short_backing_asset(*this).dynamic_asset_data_id(*this), [&]( asset_dynamic_data_object& obj ){
+       obj.accumulated_fees += collateral_gathered.amount;
+    });
 
     FC_ASSERT( total_mia_settled.amount == original_mia_supply, "", ("total_settled",total_mia_settled)("original",original_mia_supply) );
 } FC_CAPTURE_AND_RETHROW( (mia)(settlement_price) ) }
@@ -712,18 +708,18 @@ asset database::calculate_market_fee( const asset_object& trade_asset, const ass
 
    if( !trade_asset.charges_market_fees() )
       return trade_asset.amount(0);
-   if( trade_asset.market_fee_percent == 0 )
-      return trade_asset.amount(trade_asset.min_market_fee);
+   if( trade_asset.options.market_fee_percent == 0 )
+      return trade_asset.amount(trade_asset.options.min_market_fee);
 
    fc::uint128 a(trade_amount.amount.value);
-   a *= trade_asset.market_fee_percent;
+   a *= trade_asset.options.market_fee_percent;
    a /= BTS_100_PERCENT;
    asset percent_fee = trade_asset.amount(a.to_uint64());
 
-   if( percent_fee.amount > trade_asset.max_market_fee )
-      percent_fee.amount = trade_asset.max_market_fee;
-   else if( percent_fee.amount < trade_asset.min_market_fee )
-      percent_fee.amount = trade_asset.min_market_fee;
+   if( percent_fee.amount > trade_asset.options.max_market_fee )
+      percent_fee.amount = trade_asset.options.max_market_fee;
+   else if( percent_fee.amount < trade_asset.options.min_market_fee )
+      percent_fee.amount = trade_asset.options.min_market_fee;
 
    return percent_fee;
 }
@@ -1751,11 +1747,11 @@ void database::clear_expired_orders()
    {
       const force_settlement_object& order = *settlement_index.begin();
       auto order_id = order.id;
-      const asset_object mia = get(order.balance.asset_id);
+      const asset_bitasset_data_object mia = get(order.balance.asset_id).bitasset_data(*this);
       auto& pays = order.balance;
       auto receives = (order.balance * mia.current_feed.settlement_price);
       receives.amount = (fc::uint128_t(receives.amount.value) *
-                         (BTS_100_PERCENT - mia.force_settlement_offset_percent) / BTS_100_PERCENT).to_uint64();
+                         (BTS_100_PERCENT - mia.options.force_settlement_offset_percent) / BTS_100_PERCENT).to_uint64();
       assert(receives <= order.balance * mia.current_feed.settlement_price);
 
       price settlement_price = pays / receives;
@@ -1770,10 +1766,10 @@ void database::clear_expired_orders()
 
 void database::update_expired_feeds()
 {
-   auto& asset_idx = get_index_type<asset_index>().indices().get<by_feed_expiration>();
+   auto& asset_idx = get_index_type<asset_bitasset_data_index>().indices().get<by_feed_expiration>();
    if( asset_idx.empty() ) return;
    while( asset_idx.begin()->feed_is_expired(head_block_time()) )
-      modify(*asset_idx.begin(), [this](asset_object& a) {
+      modify(*asset_idx.begin(), [this](asset_bitasset_data_object& a) {
          a.update_median_feeds(head_block_time());
       });
 }
@@ -1786,8 +1782,6 @@ void database::debug_dump()
 {
    const auto& db = *this;
    const asset_dynamic_data_object& core_asset_data = db.get_core_asset().dynamic_asset_data_id(db);
-//   BOOST_CHECK(core_asset_data.current_supply +core_asset_data.burned == BTS_INITIAL_SUPPLY);
-//   BOOST_CHECK(core_asset_data.fee_pool == 0);
 
    const auto& balance_index = db.get_index_type<account_balance_index>().indices();
    const simple_index<account_statistics_object>& statistics_index = db.get_index_type<simple_index<account_statistics_object>>();
@@ -1832,8 +1826,6 @@ void database::debug_dump()
    for( const asset_object& asset_obj : db.get_index_type<asset_index>().indices() )
    {
       total_balances[asset_obj.id] += asset_obj.dynamic_asset_data_id(db).accumulated_fees;
-//      if( asset_obj.id != asset_id_type() )
-//         BOOST_CHECK_EQUAL(total_balances[asset_obj.id].value, asset_obj.dynamic_asset_data_id(db).current_supply.value);
       total_balances[asset_id_type()] += asset_obj.dynamic_asset_data_id(db).fee_pool;
    }
    for( const witness_object& witness_obj : db.get_index_type<simple_index<witness_object>>() )
@@ -1841,10 +1833,6 @@ void database::debug_dump()
       //idump((witness_obj));
       total_balances[asset_id_type()] += witness_obj.accumulated_income;
    }
-//   for( auto item : total_debts )
-//      BOOST_CHECK_EQUAL(item.first(db).dynamic_asset_data_id(db).current_supply.value, item.second.value);
-
-//   BOOST_CHECK_EQUAL( core_in_orders.value , reported_core_in_orders.value );
    if( total_balances[asset_id_type()].value != core_asset_data.current_supply.value )
    {
       edump( (total_balances[asset_id_type()].value)(core_asset_data.current_supply.value ));

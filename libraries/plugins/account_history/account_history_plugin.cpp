@@ -167,6 +167,14 @@ struct operation_get_impacted_accounts
    }
 
    void operator()( const asset_update_operation& o )const {
+      if( o.new_issuer )
+         _impacted.insert(*o.new_issuer);
+   }
+   void operator()( const asset_update_bitasset_operation& o )const {
+   }
+   void operator()( const asset_update_feed_producers_operation& o )const {
+      for( auto id : o.new_feed_producers )
+         _impacted.insert(id);
    }
 
    void operator()( const asset_issue_operation& o )const {

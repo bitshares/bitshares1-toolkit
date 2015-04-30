@@ -16,8 +16,8 @@ object_id_type limit_order_create_evaluator::do_evaluate( const limit_order_crea
    _receive_asset = &op.min_to_receive.asset_id(d);
 
 
-   if( _sell_asset->flags & white_list ) FC_ASSERT( _seller->is_authorized_asset( *_sell_asset ) );
-   if( _receive_asset->flags & white_list ) FC_ASSERT( _seller->is_authorized_asset( *_receive_asset ) );
+   if( _sell_asset->options.flags & white_list ) FC_ASSERT( _seller->is_authorized_asset( *_sell_asset ) );
+   if( _receive_asset->options.flags & white_list ) FC_ASSERT( _seller->is_authorized_asset( *_receive_asset ) );
 
    FC_ASSERT( d.get_balance( _seller, _sell_asset ) >= op.amount_to_sell, "insufficient balance",
               ("balance",d.get_balance(_seller,_sell_asset))("amount_to_sell",op.amount_to_sell) );
@@ -76,7 +76,7 @@ object_id_type limit_order_create_evaluator::do_apply( const limit_order_create_
    //if( new_order_object.amount_to_receive().asset_id(db()).is_market_issued() )
    if( _receive_asset->is_market_issued() )
    { // then we may also match against shorts
-      if( _receive_asset->short_backing_asset == asset_id_type() )
+      if( _receive_asset->bitasset_data(db()).short_backing_asset == asset_id_type() )
       {
          bool converted_some = db().convert_fees( *_receive_asset );
          // just incase the new order was completely filled from fees

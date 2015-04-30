@@ -206,38 +206,19 @@ void  asset_create_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( is_valid_symbol( symbol ) );
-   FC_ASSERT( max_supply <= BTS_MAX_SHARE_SUPPLY );
-   FC_ASSERT( max_supply > 0 );
-   FC_ASSERT( market_fee_percent <= BTS_MAX_MARKET_FEE_PERCENT );
-   FC_ASSERT( permissions <= ASSET_ISSUER_PERMISSION_MASK );
-   FC_ASSERT( flags <= ASSET_ISSUER_PERMISSION_MASK );
-   FC_ASSERT( force_settlement_offset_percent <= BTS_MAX_FORCE_SETTLEMENT_OFFSET );
-   FC_ASSERT( core_exchange_rate.quote.asset_id == asset_id_type() );
-   FC_ASSERT( core_exchange_rate.base.asset_id == asset_id_type() );
-   FC_ASSERT( core_exchange_rate.base.amount > 0 );
-   FC_ASSERT( core_exchange_rate.quote.amount > 0 );
+   common_options.validate();
+   FC_ASSERT( bitasset_options.valid() == bool(common_options.flags & market_issued) );
+   if( bitasset_options ) bitasset_options->validate();
 
-   FC_ASSERT( !(flags & ~permissions ) );
-   if( permissions & market_issued )
-   {
-      FC_ASSERT( (flags & market_issued) );
-      if( issuer == account_id_type() )
-         FC_ASSERT( feed_publishers.empty(), "Cannot set feed publishers on an asset issued by genesis." );
-   } else {
-      FC_ASSERT( feed_publishers.empty(), "Cannot set feed publishers on a user-issued asset." );
-   }
+   asset dummy = asset(1) * common_options.core_exchange_rate;
+   FC_ASSERT(dummy.asset_id == asset_id_type(1));
 }
 
 asset_update_operation::asset_update_operation(const asset_object& old)
 {
    issuer = old.issuer;
    asset_to_update = old.get_id();
-   market_fee_percent = old.market_fee_percent;
-   max_market_fee = old.max_market_fee;
-   min_market_fee = old.min_market_fee;
-   force_settlement_delay_sec = old.force_settlement_delay_sec;
-   force_settlement_offset_percent = old.force_settlement_offset_percent;
-   feed_lifetime_seconds = old.feed_lifetime_sec;
+   new_options = old.options;
 }
 
 void asset_update_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
@@ -248,48 +229,12 @@ void asset_update_operation::get_required_auth(flat_set<account_id_type>& active
 void asset_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
-
    if( new_issuer )
-   {
-      FC_ASSERT( *new_issuer != account_id_type() || !new_feed_publishers || new_feed_publishers->empty(),
-                 "Cannot set feed publishers on an asset belonging to genesis." );
-      FC_ASSERT( *new_issuer != account_id_type() || !new_price_feed,
-                 "Cannot set price feed on an asset belonging to genesis." );
-   }
-   else
-   {
-      if( new_feed_publishers && !new_feed_publishers->empty() )
-         FC_ASSERT( issuer != account_id_type(), "Cannot set feed publishers on an asset belonging to genesis." );
-      if( new_price_feed )
-         FC_ASSERT( issuer != account_id_type(), "Cannot set price feed on an asset belonging to genesis." );
-   }
-   if( permissions )
-   {
-      if( flags )
-         FC_ASSERT( !(*flags & ~*permissions ) );
-      FC_ASSERT( *permissions <= ASSET_ISSUER_PERMISSION_MASK );
-   }
-   if( flags )
-      FC_ASSERT( *flags <= ASSET_ISSUER_PERMISSION_MASK );
+      FC_ASSERT(issuer != *new_issuer);
+   new_options.validate();
 
-   FC_ASSERT( !(core_exchange_rate.valid() && new_price_feed.valid()) );
-
-   if( core_exchange_rate )
-   {
-      core_exchange_rate->validate();
-      FC_ASSERT(core_exchange_rate->quote.asset_id == asset_to_update);
-      FC_ASSERT(core_exchange_rate->base.asset_id == asset_id_type());
-   }
-   if( new_price_feed )
-   {
-      new_price_feed->validate();
-      if( !new_price_feed->call_limit.is_null() )
-      {
-         FC_ASSERT(new_price_feed->call_limit.quote.asset_id == asset_to_update);
-         FC_ASSERT(new_price_feed->call_limit.base.asset_id < asset_to_update);
-      }
-   }
-   FC_ASSERT( force_settlement_offset_percent <= BTS_MAX_FORCE_SETTLEMENT_OFFSET );
+   asset dummy = asset(1, asset_to_update) * new_options.core_exchange_rate;
+   FC_ASSERT(dummy.asset_id == asset_id_type());
 }
 
 share_type asset_update_operation::calculate_fee( const fee_schedule_type& k )const
@@ -690,6 +635,27 @@ share_type create_bond_offer_operation::calculate_fee( const fee_schedule_type& 
 void bts::chain::asset_publish_feed_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
 {
    active_auth_set.insert(publisher);
+}
+
+void asset_update_bitasset_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
+{
+   active_auth_set.insert(issuer);
+}
+
+void asset_update_bitasset_operation::validate() const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   new_options.validate();
+}
+
+share_type asset_update_bitasset_operation::calculate_fee(const fee_schedule_type& k) const
+{
+   return k.at( asset_update_fee_type );
+}
+
+void asset_update_feed_producers_operation::validate() const
+{
+   FC_ASSERT( fee.amount >= 0 );
 }
 
 } } // namespace bts::chain

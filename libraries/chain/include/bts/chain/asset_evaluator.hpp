@@ -36,6 +36,28 @@ namespace bts { namespace chain {
          const asset_object* asset_to_update = nullptr;
    };
 
+   class asset_update_bitasset_evaluator : public evaluator<asset_update_bitasset_evaluator>
+   {
+      public:
+         typedef asset_update_bitasset_operation operation_type;
+
+         object_id_type do_evaluate( const asset_update_bitasset_operation& o );
+         object_id_type do_apply( const asset_update_bitasset_operation& o );
+
+         const asset_bitasset_data_object* bitasset_to_update = nullptr;
+   };
+
+   class asset_update_feed_producers_evaluator : public evaluator<asset_update_feed_producers_evaluator>
+   {
+      public:
+         typedef asset_update_feed_producers_operation operation_type;
+
+         object_id_type do_evaluate( const operation_type& o );
+         object_id_type do_apply( const operation_type& o );
+
+         const asset_bitasset_data_object* bitasset_to_update = nullptr;
+   };
+
    class asset_fund_fee_pool_evaluator : public evaluator<asset_fund_fee_pool_evaluator>
    {
       public:

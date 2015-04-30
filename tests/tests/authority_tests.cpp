@@ -226,7 +226,7 @@ BOOST_AUTO_TEST_CASE( recursive_accounts )
       trx.operations.push_back(op);
       sign(trx, key2.id,parent2_key);
       sign(trx, grandparent_key_obj.id,grandparent_key);
-      sign(trx, key_id_type(), fc::ecc::private_key::regenerate(fc::digest("genesis")));
+      sign(trx, key_id_type(), generate_private_key("genesis"));
       //Fails due to recursion depth.
       BOOST_CHECK_THROW(db.push_transaction(trx, database::skip_transaction_dupe_check), fc::exception);
       sign(trx, child_key_obj.id, child_key);
@@ -264,7 +264,7 @@ BOOST_AUTO_TEST_CASE( proposed_single_account )
    try {
       INVOKE(any_two_of_three);
 
-      fc::ecc::private_key genesis_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
+      fc::ecc::private_key genesis_key = generate_private_key("genesis");
       fc::ecc::private_key nathan_key1 = fc::ecc::private_key::regenerate(fc::digest("key1"));
       fc::ecc::private_key nathan_key2 = fc::ecc::private_key::regenerate(fc::digest("key2"));
       fc::ecc::private_key nathan_key3 = fc::ecc::private_key::regenerate(fc::digest("key3"));
@@ -295,7 +295,6 @@ BOOST_AUTO_TEST_CASE( proposed_single_account )
 
       trx.operations.push_back(op);
       trx.set_expiration(db.head_block_id());
-      ilog(".");
       sign(trx, this->genesis_key, genesis_key);
       const proposal_object& proposal = db.get<proposal_object>(db.push_transaction(trx).operation_results.front().get<object_id_type>());
 
@@ -306,24 +305,20 @@ BOOST_AUTO_TEST_CASE( proposed_single_account )
       BOOST_CHECK(*proposal.required_active_approvals.begin() == nathan.id);
 
       trx.operations = {proposal_update_operation{account_id_type(), asset(), proposal.id,{nathan.id},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<key_id_type>{},flat_set<key_id_type>{}}};
-      ilog(".");
       trx.sign( this->genesis_key, genesis_key );
       //Genesis may not add nathan's approval.
       BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
       trx.operations = {proposal_update_operation{account_id_type(), asset(), proposal.id,{account_id_type()},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<key_id_type>{},flat_set<key_id_type>{}}};
-      ilog(".");
       trx.sign( key_id_type(), genesis_key );
       //Genesis has no stake in the transaction.
       BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
 
       trx.operations = {proposal_update_operation{nathan.id, asset(), proposal.id,{nathan.id},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<key_id_type>{},flat_set<key_id_type>{}}};
-      ilog(".");
       trx.sign( key3->id, nathan_key3 );
-      ilog(".");
       trx.sign( key2->id, nathan_key2 );
       // TODO: verify the key_id is proper...
       //trx.signatures = {nathan_key3.sign_compact(trx.digest()), nathan_key2.sign_compact(trx.digest())};
-      
+
       BOOST_CHECK_EQUAL(get_balance(nathan, core), nathan_start_balance.amount.value);
       db.push_transaction(trx);
       BOOST_CHECK_EQUAL(get_balance(nathan, core), nathan_start_balance.amount.value - 100);
@@ -339,6 +334,7 @@ BOOST_AUTO_TEST_CASE( genesis_authority )
    fc::ecc::private_key nathan_key = fc::ecc::private_key::generate();
    fc::ecc::private_key genesis_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
    const auto& nathan_key_obj = register_key(nathan_key.get_public_key());
+   key_id_type nathan_key_id = nathan_key_obj.get_id();
    const account_object nathan = create_account("nathan", nathan_key_obj.id);
    const auto& global_params = db.get_global_properties().parameters;
 
@@ -354,7 +350,7 @@ BOOST_AUTO_TEST_CASE( genesis_authority )
    sign(trx, key_id_type(), genesis_key);
    BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
 
-   auto sign = [&] { trx.signatures.clear(); trx.sign(nathan_key_obj.id,nathan_key); };
+   auto sign = [&] { trx.signatures.clear(); trx.sign(nathan_key_id,nathan_key); };
 
    proposal_create_operation pop;
    pop.proposed_ops.push_back({trx.operations.front()});

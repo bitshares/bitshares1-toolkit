@@ -20,10 +20,10 @@ void account_statistics_object::adjust_cashback( share_type amount, time_point_s
 
 bool account_object::is_authorized_asset(const asset_object& asset_obj) const {
    for( const auto id : blacklisting_accounts )
-      if( asset_obj.blacklist_authorities.find(id) != asset_obj.blacklist_authorities.end() ) return false;
+      if( asset_obj.options.blacklist_authorities.find(id) != asset_obj.options.blacklist_authorities.end() ) return false;
 
    for( const auto id : whitelisting_accounts )
-      if( asset_obj.whitelist_authorities.find(id) != asset_obj.whitelist_authorities.end() ) return true;
+      if( asset_obj.options.whitelist_authorities.find(id) != asset_obj.options.whitelist_authorities.end() ) return true;
    return false;
 }
 

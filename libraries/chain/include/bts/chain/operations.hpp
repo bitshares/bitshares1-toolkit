@@ -3,6 +3,7 @@
 #include <bts/chain/types.hpp>
 #include <bts/chain/asset.hpp>
 #include <bts/chain/authority.hpp>
+#include <bts/chain/asset_object.hpp>
 
 #include <fc/static_variant.hpp>
 #include <fc/uint128.hpp>
@@ -394,37 +395,18 @@ namespace bts { namespace chain {
       asset                   fee;
       /// The ticker symbol of this asset
       string                  symbol;
-      /// Maximum number of shares of this asset that may exist at any given point
-      share_type              max_supply;
       /// Number of digits to the right of decimal point
       uint8_t                 precision = 0;
-      /// Expressed in fixed-point notation, where 100 = 1%
-      uint16_t                market_fee_percent = 0;
-      /** If the percentage based fee is greater than max_market_fee then the max fee will be used */
-      share_type              max_market_fee = BTS_MAX_SHARE_SUPPLY;
-      /** If the percentage based fee is less than min_market_fee then the min fee will be used */
-      share_type              min_market_fee;
-      /// Bitfield specifying the flags the issuer is allowed to set
-      uint16_t                permissions = 0;
-      /// Bitfield specifying which flags are currently in effect
-      uint16_t                flags = 0;
-      /// Rate at which core asset from fee pool may be exhcanged for this asset
-      price                   core_exchange_rate;
-      /// The delay between the request and processing of a forced settlement
-      uint32_t                force_settlement_delay_sec = BTS_DEFAULT_FORCE_SETTLEMENT_DELAY;
-      /// Offset to apply to feed price when evaluating forced settlements
-      uint16_t                force_settlement_offset_percent = BTS_DEFAULT_FORCE_SETTLEMENT_OFFSET;
-      /// Only for market-issued assets; this speicifies which asset type is used to collateralize short sales
-      asset_id_type           short_backing_asset;
-      /// Number of seconds price feeds are valid for
-      uint32_t                feed_lifetime_seconds = BTS_DEFAULT_PRICE_FEED_LIFETIME;
 
-      /// The set of accounts which may publish feeds for this asset
-      flat_set<account_id_type> feed_publishers;
-      /// The set of accounts which manage the whitelist for this asset
-      flat_set<account_id_type> whitelist_authorities;
-      /// The set of accounts which manage the blacklist for this asset
-      flat_set<account_id_type> blacklist_authorities;
+      /// Options common to all assets.
+      ///
+      /// @note common_options.core_exchange_rate technically needs to store the asset ID of this new asset. Since this
+      /// ID is not known at the time this operation is created, create this price as though the new asset has instance
+      /// ID 1, and the chain will overwrite it with the new asset's ID.
+      asset_object::asset_options common_options;
+      /// Options only available for BitAssets. MUST be non-null if and only if the @ref market_issued flag is set in
+      /// common_options.flags
+      fc::optional<asset_object::bitasset_options> bitasset_options;
 
       account_id_type fee_payer()const { return issuer; }
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
@@ -487,46 +469,101 @@ namespace bts { namespace chain {
    };
 
    /**
+    * @brief Update options common to all assets
     * @ingroup operations
+    *
+    * There are a number of options which all assets in the network use. These options are enumerated in the @ref
+    * asset_object::asset_options struct. This operation is used to update these options for an existing asset.
+    *
+    * @note This operation cannot be used to update BitAsset-specific options. For these options, use @ref
+    * asset_update_bitasset_operation instead.
+    *
+    * @pre @ref issuer SHALL be an existing account and MUST match asset_object::issuer on @ref asset_to_update
+    * @pre @ref fee SHALL be nonnegative, and @ref issuer MUST have a sufficient balance to pay it
+    * @pre @ref new_options SHALL be internally consistent, as verified by @ref validate()
+    * @post @ref asset_to_update will have options matching those of new_options
     */
    struct asset_update_operation
    {
       asset_update_operation(){}
-      /// Initializes the update to make no changes to the provided asset
+      /// Initializes the operation to apply changes to the provided asset, and copies old.options into @ref new_options
       asset_update_operation(const asset_object& old);
 
-      account_id_type issuer; ///< must be asset_to_update->issuer
+      account_id_type issuer;
       asset_id_type   asset_to_update;
       asset           fee;
 
-      optional<uint16_t>         flags;
-      optional<uint16_t>         permissions;
-      optional<account_id_type>  new_issuer;
-      optional<price>            core_exchange_rate;
-      /// If price limits are null, shorts and margin calls are disabled.
-      optional<price_feed>       new_price_feed;
-
-      /// Expressed in fixed-point notation, where 100 = 1%
-      uint16_t                market_fee_percent = 0;
-      /** If the percentage based fee is greater than max_market_fee then the max fee will be used */
-      share_type              max_market_fee = BTS_MAX_SHARE_SUPPLY;
-      /** If the percentage based fee is less than min_market_fee then the min fee will be used */
-      share_type              min_market_fee;
-      /// The delay between the request and processing of a forced settlement
-      uint32_t                force_settlement_delay_sec = BTS_DEFAULT_FORCE_SETTLEMENT_DELAY;
-      /// Offset to apply to feed price when evaluating forced settlements
-      uint16_t                force_settlement_offset_percent = BTS_DEFAULT_FORCE_SETTLEMENT_OFFSET;
-      uint32_t                feed_lifetime_seconds = BTS_DEFAULT_PRICE_FEED_LIFETIME;
-
-      optional<flat_set<account_id_type>> new_feed_publishers;
-      optional<flat_set<account_id_type>> new_whitelist_authorities;
-      optional<flat_set<account_id_type>> new_blacklist_authorities;
+      /// If the asset is to be given a new issuer, specify his ID here.
+      optional<account_id_type>   new_issuer;
+      asset_object::asset_options new_options;
 
       account_id_type fee_payer()const { return issuer; }
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
       void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
+   };
+
+   /**
+    * @brief Update options specific to BitAssets
+    * @ingroup operations
+    *
+    * BitAssets have some options which are not relevant to other asset types. This operation is used to update those
+    * options an an existing BitAsset.
+    *
+    * @pre @ref issuer MUST be an existing account and MUST match asset_object::issuer on @ref asset_to_update
+    * @pre @ref asset_to_update MUST be a BitAsset, i.e. @ref asset_object::is_market_issued() returns true
+    * @pre @ref fee MUST be nonnegative, and @ref issuer MUST have a sufficient balance to pay it
+    * @pre @ref new_options SHALL be internally consistent, as verified by @ref validate()
+    * @post @ref asset_to_update will have BitAsset-specific options matching those of new_options
+    */
+   struct asset_update_bitasset_operation
+   {
+      account_id_type issuer;
+      asset_id_type   asset_to_update;
+      asset           fee;
+
+      asset_object::bitasset_options new_options;
+
+      account_id_type fee_payer()const { return issuer; }
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
+   };
+
+   /**
+    * @brief Update the set of feed-producing accounts for a BitAsset
+    * @ingroup operations
+    *
+    * BitAssets have price feeds selected by taking the median values of recommendations from a set of feed producers.
+    * This operation is used to specify which accounts may produce feeds for a given BitAsset.
+    *
+    * @pre @ref issuer MUST be an existing account, and MUST match asset_object::issuer on @ref asset_to_update
+    * @pre @ref issuer MUST NOT be the genesis account
+    * @pre @ref asset_to_update MUST be a BitAsset, i.e. @ref asset_object::is_market_issued() returns true
+    * @pre @ref fee MUST be nonnegative, and @ref issuer MUST have a sufficient balance to pay it
+    * @pre Cardinality of @ref new_feed_producers MUST NOT exceed @ref chain_parameters::maximum_asset_feed_publishers
+    * @post @ref asset_to_update will have a set of feed producers matching @ref new_feed_producers
+    * @post All valid feeds supplied by feed producers in @ref new_feed_producers, which were already feed producers
+    * prior to execution of this operation, will be preserved
+    */
+   struct asset_update_feed_producers_operation
+   {
+      account_id_type issuer;
+      asset_id_type   asset_to_update;
+      asset           fee;
+
+      flat_set<account_id_type> new_feed_producers;
+
+      account_id_type fee_payer()const { return issuer; }
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
+      { active_auth_set.insert(fee_payer()); }
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const
+      { return k.at(asset_update_fee_type); }
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
+      { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -1171,6 +1208,8 @@ namespace bts { namespace chain {
             account_transfer_operation,
             asset_create_operation,
             asset_update_operation,
+            asset_update_bitasset_operation,
+            asset_update_feed_producers_operation,
             asset_issue_operation,
             asset_fund_fee_pool_operation,
             asset_settle_operation,
@@ -1346,36 +1385,25 @@ FC_REFLECT( bts::chain::asset_create_operation,
             (issuer)
             (fee)
             (symbol)
-            (max_supply)
             (precision)
-            (market_fee_percent)
-            (min_market_fee)
-            (max_market_fee)
-            (permissions)
-            (flags)
-            (core_exchange_rate)
-            (short_backing_asset)
-            (force_settlement_offset_percent)
-            (feed_lifetime_seconds)
-            (feed_publishers)
-            (whitelist_authorities)
-            (blacklist_authorities)
+            (common_options)
+            (bitasset_options)
           )
 FC_REFLECT( bts::chain::asset_update_operation,
             (issuer)
             (asset_to_update)
             (fee)
-            (flags)
-            (permissions)
             (new_issuer)
-            (core_exchange_rate)
-            (new_price_feed)
-            (market_fee_percent)
-            (min_market_fee)
-            (max_market_fee)
-            (force_settlement_offset_percent)
-//            (new_whitelist_authorities)
-//            (new_blacklist_authorities)
+            (new_options)
+          )
+FC_REFLECT( bts::chain::asset_update_bitasset_operation,
+            (issuer)
+            (asset_to_update)
+            (fee)
+            (new_options)
+          )
+FC_REFLECT( bts::chain::asset_update_feed_producers_operation,
+            (issuer)(asset_to_update)(fee)(new_feed_producers)
           )
 FC_REFLECT( bts::chain::asset_publish_feed_operation,
             (publisher)(fee)(feed) )

@@ -35,7 +35,7 @@ namespace bts { namespace chain {
       if( fee_from_account.asset_id == asset_id_type() )
          core_fee_paid = fee_from_account.amount;
       else {
-         asset fee_from_pool = fee_from_account * fee_asset->core_exchange_rate;
+         asset fee_from_pool = fee_from_account * fee_asset->options.core_exchange_rate;
          FC_ASSERT( fee_from_pool.asset_id == asset_id_type() );
          core_fee_paid = fee_from_pool.amount;
          FC_ASSERT( core_fee_paid <= fee_asset_dyn_data->fee_pool );

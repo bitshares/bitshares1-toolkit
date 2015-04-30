@@ -11,13 +11,13 @@ object_id_type transfer_evaluator::do_evaluate( const transfer_operation& op )
    const asset_object&   asset_type      = op.amount.asset_id(d);
    const asset_object&   fee_asset_type  = op.fee.asset_id(d);
 
-   if( asset_type.flags & white_list )
+   if( asset_type.options.flags & white_list )
    {
       FC_ASSERT( to_account.is_authorized_asset( asset_type ) );
       FC_ASSERT( from_account.is_authorized_asset( asset_type ) );
    }
 
-   if( fee_asset_type.flags & white_list )
+   if( fee_asset_type.options.flags & white_list )
       FC_ASSERT( from_account.is_authorized_asset( asset_type ) );
 
    FC_ASSERT( d.get_balance( &from_account, &asset_type ).amount >= op.amount.amount,

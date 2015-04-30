@@ -251,7 +251,7 @@ BOOST_AUTO_TEST_CASE( create_mia )
    try {
       const asset_object& bitusd = create_bitasset( "BITUSD" );
       BOOST_CHECK(bitusd.symbol == "BITUSD");
-      BOOST_CHECK(bitusd.short_backing_asset == asset_id_type());
+      BOOST_CHECK(bitusd.bitasset_data(db).short_backing_asset == asset_id_type());
       BOOST_CHECK(bitusd.dynamic_asset_data_id(db).current_supply == 0);
       BOOST_REQUIRE_THROW( create_bitasset("BITUSD"), fc::exception);
    } catch ( const fc::exception& e ) {
@@ -264,45 +264,50 @@ BOOST_AUTO_TEST_CASE( update_mia )
 {
    try {
       INVOKE(create_mia);
+      generate_block();
       const asset_object& bit_usd = get_asset("BITUSD");
 
       asset_update_operation op;
       op.issuer = bit_usd.issuer;
       op.asset_to_update = bit_usd.id;
+      op.new_options = bit_usd.options;
       trx.operations.emplace_back(op);
 
-      //Cannot set core_exchange_rate on an MIA
-      REQUIRE_THROW_WITH_VALUE(op, core_exchange_rate, price(asset(5), bit_usd.amount(5)));
       //Cannot convert an MIA to UIA
-      REQUIRE_THROW_WITH_VALUE(op, flags, 0);
-      REQUIRE_THROW_WITH_VALUE(op, permissions, 0);
-
-      price_feed feed;
-      feed.call_limit = price(bit_usd.amount(5), bit_usd.amount(5));
-      feed.short_limit = feed.call_limit;
-      REQUIRE_THROW_WITH_VALUE(op, new_price_feed, feed);
-      feed.call_limit = price(bit_usd.amount(5), asset(5));
-      feed.short_limit = ~feed.call_limit;
-      REQUIRE_THROW_WITH_VALUE(op, new_price_feed, feed);
-      feed.short_limit = price(asset(4), bit_usd.amount(5));
-      REQUIRE_THROW_WITH_VALUE(op, new_price_feed, feed);
-      std::swap(feed.call_limit, feed.short_limit);
-      op.new_price_feed = feed;
-      REQUIRE_THROW_WITH_VALUE(op, new_price_feed->max_margin_period_sec, 0);
-      REQUIRE_THROW_WITH_VALUE(op, new_price_feed->required_maintenance_collateral, 0);
-      REQUIRE_THROW_WITH_VALUE(op, new_price_feed->required_initial_collateral, 500);
-      // Can't set issuer to genesis while setting a price feed -- genesis feeds must come through median voting
-      REQUIRE_THROW_WITH_VALUE(op, new_issuer, account_id_type());
+      REQUIRE_THROW_WITH_VALUE(op, new_options.flags, 0);
+      REQUIRE_THROW_WITH_VALUE(op, new_options.issuer_permissions, 0);
 
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
-      std::swap(op.flags, op.permissions);
+      std::swap(op.new_options.flags, op.new_options.issuer_permissions);
+      op.new_issuer = account_id_type();
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
-      op.new_price_feed.reset();
+
+      {
+         asset_publish_feed_operation pop;
+         pop.publisher = account_id_type(1);
+         price_feed feed;
+         feed.call_limit = price(bit_usd.amount(5), bit_usd.amount(5));
+         feed.short_limit = feed.call_limit;
+         REQUIRE_THROW_WITH_VALUE(pop, feed, feed);
+         feed.call_limit = price(bit_usd.amount(5), asset(5));
+         feed.short_limit = ~feed.call_limit;
+         REQUIRE_THROW_WITH_VALUE(pop, feed, feed);
+         feed.short_limit = price(asset(4), bit_usd.amount(5));
+         REQUIRE_THROW_WITH_VALUE(pop, feed, feed);
+         std::swap(feed.call_limit, feed.short_limit);
+         pop.feed = feed;
+         REQUIRE_THROW_WITH_VALUE(pop, feed.max_margin_period_sec, 0);
+         REQUIRE_THROW_WITH_VALUE(pop, feed.required_maintenance_collateral, 0);
+         REQUIRE_THROW_WITH_VALUE(pop, feed.required_initial_collateral, 500);
+         trx.operations.back() = pop;
+         db.push_transaction(trx, ~0);
+      }
 
       trx.operations.clear();
       auto nathan = create_account("nathan");
+      op.issuer = account_id_type();
       op.new_issuer = nathan.id;
       trx.operations.emplace_back(op);
       db.push_transaction(trx, ~0);
@@ -312,6 +317,7 @@ BOOST_AUTO_TEST_CASE( update_mia )
       op.new_issuer = account_id_type();
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
+      BOOST_CHECK(bit_usd.issuer == account_id_type());
    } catch ( const fc::exception& e ) {
       elog( "${e}", ("e", e.to_detail_string() ) );
       throw;
@@ -450,23 +456,22 @@ BOOST_AUTO_TEST_CASE( create_uia )
       creator.issuer = account_id_type();
       creator.fee = asset();
       creator.symbol = "TEST";
-      creator.max_supply = 100000000;
+      creator.common_options.max_supply = 100000000;
       creator.precision = 2;
-      creator.market_fee_percent = BTS_MAX_MARKET_FEE_PERCENT/100; /*1%*/
-      creator.permissions = ASSET_ISSUER_PERMISSION_MASK & ~market_issued;
-      creator.flags = charge_market_fee;
-      creator.core_exchange_rate = price({asset(2),asset(1)});
-      creator.short_backing_asset = asset_id_type();
+      creator.common_options.market_fee_percent = BTS_MAX_MARKET_FEE_PERCENT/100; /*1%*/
+      creator.common_options.issuer_permissions = ASSET_ISSUER_PERMISSION_MASK & ~market_issued;
+      creator.common_options.flags = charge_market_fee;
+      creator.common_options.core_exchange_rate = price({asset(2),asset(1,1)});
       trx.operations.push_back(std::move(creator));
       db.push_transaction(trx, ~0);
 
       const asset_object& test_asset = test_asset_id(db);
       BOOST_CHECK(test_asset.symbol == "TEST");
-      BOOST_CHECK(asset(1, test_asset_id) * test_asset.core_exchange_rate == asset(2));
+      BOOST_CHECK(asset(1, test_asset_id) * test_asset.options.core_exchange_rate == asset(2));
       BOOST_CHECK(!test_asset.enforce_white_list());
-      BOOST_CHECK(test_asset.max_supply == 100000000);
-      BOOST_CHECK(test_asset.short_backing_asset == asset_id_type());
-      BOOST_CHECK(test_asset.market_fee_percent == BTS_MAX_MARKET_FEE_PERCENT/100);
+      BOOST_CHECK(test_asset.options.max_supply == 100000000);
+      BOOST_CHECK(!test_asset.bitasset_data_id.valid());
+      BOOST_CHECK(test_asset.options.market_fee_percent == BTS_MAX_MARKET_FEE_PERCENT/100);
       BOOST_REQUIRE_THROW(db.push_transaction(trx, ~0), fc::exception);
 
       const asset_dynamic_data_object& test_asset_dynamic_data = test_asset.dynamic_asset_data_id(db);
@@ -477,8 +482,8 @@ BOOST_AUTO_TEST_CASE( create_uia )
       auto op = trx.operations.back().get<asset_create_operation>();
       op.symbol = "TESTFAIL";
       REQUIRE_THROW_WITH_VALUE(op, issuer, account_id_type(99999999));
-      REQUIRE_THROW_WITH_VALUE(op, max_supply, -1);
-      REQUIRE_THROW_WITH_VALUE(op, max_supply, 0);
+      REQUIRE_THROW_WITH_VALUE(op, common_options.max_supply, -1);
+      REQUIRE_THROW_WITH_VALUE(op, common_options.max_supply, 0);
       REQUIRE_THROW_WITH_VALUE(op, symbol, "A");
       REQUIRE_THROW_WITH_VALUE(op, symbol, "qqq");
       REQUIRE_THROW_WITH_VALUE(op, symbol, "11");
@@ -486,10 +491,8 @@ BOOST_AUTO_TEST_CASE( create_uia )
       REQUIRE_THROW_WITH_VALUE(op, symbol, "AAA.");
       REQUIRE_THROW_WITH_VALUE(op, symbol, "AB CD");
       REQUIRE_THROW_WITH_VALUE(op, symbol, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-      REQUIRE_THROW_WITH_VALUE(op, core_exchange_rate, price({asset(-100), asset(1)}));
-      REQUIRE_THROW_WITH_VALUE(op, core_exchange_rate, price({asset(100),asset(-1)}));
-      REQUIRE_THROW_WITH_VALUE(op, short_backing_asset, db.get_index<asset_object>().get_next_id());
-      REQUIRE_THROW_WITH_VALUE(op, short_backing_asset, asset_id_type(1000000));
+      REQUIRE_THROW_WITH_VALUE(op, common_options.core_exchange_rate, price({asset(-100), asset(1)}));
+      REQUIRE_THROW_WITH_VALUE(op, common_options.core_exchange_rate, price({asset(100),asset(-1)}));
    } catch(fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
@@ -506,50 +509,42 @@ BOOST_AUTO_TEST_CASE( update_uia )
 
       asset_update_operation op;
       op.issuer = test.issuer;
-      op.permissions.reset();
-      op.flags.reset();
       op.asset_to_update = test.id;
+      op.new_options = test.options;
 
       trx.operations.push_back(op);
 
-      //Cannot set issuer to same value as before
-      REQUIRE_THROW_WITH_VALUE(op, new_issuer, account_id_type());
+      //Cannot change issuer to same as before
+      REQUIRE_THROW_WITH_VALUE(op, new_issuer, test.issuer);
       //Cannot convert to an MIA
-      REQUIRE_THROW_WITH_VALUE(op, flags, market_issued);
-      //Cannot set flags to same value as before
-      REQUIRE_THROW_WITH_VALUE(op, flags, charge_market_fee);
+      REQUIRE_THROW_WITH_VALUE(op, new_options.flags, market_issued);
       //Cannot convert to an MIA
-      REQUIRE_THROW_WITH_VALUE(op, permissions, ASSET_ISSUER_PERMISSION_MASK);
-      //Cannot set permissions to same value as before
-      REQUIRE_THROW_WITH_VALUE(op, permissions, ASSET_ISSUER_PERMISSION_MASK & ~market_issued);
-      //Cannot set a price feed on a UIA
-      REQUIRE_THROW_WITH_VALUE(op, new_price_feed, price_feed());
-      REQUIRE_THROW_WITH_VALUE(op, core_exchange_rate, price(asset(5), asset(5)));
+      REQUIRE_THROW_WITH_VALUE(op, new_options.issuer_permissions, ASSET_ISSUER_PERMISSION_MASK);
+      REQUIRE_THROW_WITH_VALUE(op, new_options.core_exchange_rate, price(asset(5), asset(5)));
 
-      op.core_exchange_rate = price(asset(3), test.amount(5));
+      op.new_options.core_exchange_rate = price(asset(3), test.amount(5));
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
-      REQUIRE_THROW_WITH_VALUE(op, core_exchange_rate, ~*op.core_exchange_rate);
-      REQUIRE_THROW_WITH_VALUE(op, core_exchange_rate, price());
-      op.core_exchange_rate.reset();
+      REQUIRE_THROW_WITH_VALUE(op, new_options.core_exchange_rate, price());
+      op.new_options.core_exchange_rate = test.options.core_exchange_rate;
       op.new_issuer = nathan.id;
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
       op.issuer = nathan.id;
       op.new_issuer.reset();
-      op.flags = halt_transfer | white_list;
+      op.new_options.flags = halt_transfer | white_list;
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
-      REQUIRE_THROW_WITH_VALUE(op, permissions, test.issuer_permissions & ~white_list);
-      op.permissions = test.issuer_permissions & ~white_list;
-      op.flags = 0;
+      REQUIRE_THROW_WITH_VALUE(op, new_options.issuer_permissions, test.options.issuer_permissions & ~white_list);
+      op.new_options.issuer_permissions = test.options.issuer_permissions & ~white_list;
+      op.new_options.flags = 0;
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
-      op.permissions.reset();
-      op.flags.reset();
-      BOOST_CHECK(!(test.issuer_permissions & white_list));
-      REQUIRE_THROW_WITH_VALUE(op, permissions, ASSET_ISSUER_PERMISSION_MASK & ~market_issued);
-      REQUIRE_THROW_WITH_VALUE(op, flags, white_list);
+      op.new_options.issuer_permissions = test.options.issuer_permissions;
+      op.new_options.flags = test.options.flags;
+      BOOST_CHECK(!(test.options.issuer_permissions & white_list));
+      REQUIRE_THROW_WITH_VALUE(op, new_options.issuer_permissions, ASSET_ISSUER_PERMISSION_MASK & ~market_issued);
+      REQUIRE_THROW_WITH_VALUE(op, new_options.flags, white_list);
       op.new_issuer = account_id_type();
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
@@ -805,12 +800,12 @@ BOOST_AUTO_TEST_CASE( uia_fees )
       BOOST_CHECK(asset_dynamic.fee_pool == 1000000);
 
       transfer_operation op({nathan_account.id, genesis_account.id, test_asset.amount(100), test_asset.amount(0)});
-      op.fee = asset(op.calculate_fee(db.current_fee_schedule())) * test_asset.core_exchange_rate;
+      op.fee = asset(op.calculate_fee(db.current_fee_schedule())) * test_asset.options.core_exchange_rate;
       BOOST_CHECK(op.fee.asset_id == test_asset.id);
       asset old_balance = db.get_balance(nathan_account.get_id(), test_asset.get_id());
       asset fee = op.fee;
       BOOST_CHECK(fee.amount > 0);
-      asset core_fee = fee*test_asset.core_exchange_rate;
+      asset core_fee = fee*test_asset.options.core_exchange_rate;
       trx.operations.push_back(std::move(op));
       db.push_transaction(trx, ~0);
 
@@ -917,11 +912,12 @@ BOOST_AUTO_TEST_CASE( delegate_feeds )
          BOOST_CHECK(!(b == c));
       }
 
-      BOOST_CHECK(bit_usd.current_feed.call_limit.to_real() == BTS_BLOCKCHAIN_PRECISION / 30.0);
-      BOOST_CHECK_EQUAL(bit_usd.current_feed.short_limit.to_real(), 10.0 / BTS_BLOCKCHAIN_PRECISION);
-      BOOST_CHECK(bit_usd.current_feed.max_margin_period_sec == fc::days(30).to_seconds());
-      BOOST_CHECK(bit_usd.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
-      BOOST_CHECK(bit_usd.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);
+      const asset_bitasset_data_object& bitasset = bit_usd.bitasset_data(db);
+      BOOST_CHECK(bitasset.current_feed.call_limit.to_real() == BTS_BLOCKCHAIN_PRECISION / 30.0);
+      BOOST_CHECK_EQUAL(bitasset.current_feed.short_limit.to_real(), 10.0 / BTS_BLOCKCHAIN_PRECISION);
+      BOOST_CHECK(bitasset.current_feed.max_margin_period_sec == fc::days(30).to_seconds());
+      BOOST_CHECK(bitasset.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
+      BOOST_CHECK(bitasset.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);
 
       op.publisher = active_witnesses[1];
       op.feed.call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(25));
@@ -930,11 +926,11 @@ BOOST_AUTO_TEST_CASE( delegate_feeds )
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
 
-      BOOST_CHECK_EQUAL(bit_usd.current_feed.call_limit.to_real(), BTS_BLOCKCHAIN_PRECISION / 25.0);
-      BOOST_CHECK_EQUAL(bit_usd.current_feed.short_limit.to_real(), 20.0 / BTS_BLOCKCHAIN_PRECISION);
-      BOOST_CHECK(bit_usd.current_feed.max_margin_period_sec == fc::days(30).to_seconds());
-      BOOST_CHECK(bit_usd.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
-      BOOST_CHECK(bit_usd.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);
+      BOOST_CHECK_EQUAL(bitasset.current_feed.call_limit.to_real(), BTS_BLOCKCHAIN_PRECISION / 25.0);
+      BOOST_CHECK_EQUAL(bitasset.current_feed.short_limit.to_real(), 20.0 / BTS_BLOCKCHAIN_PRECISION);
+      BOOST_CHECK(bitasset.current_feed.max_margin_period_sec == fc::days(30).to_seconds());
+      BOOST_CHECK(bitasset.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
+      BOOST_CHECK(bitasset.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);
 
       op.publisher = active_witnesses[2];
       op.feed.call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(40));
@@ -946,11 +942,11 @@ BOOST_AUTO_TEST_CASE( delegate_feeds )
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
 
-      BOOST_CHECK_EQUAL(bit_usd.current_feed.call_limit.to_real(), BTS_BLOCKCHAIN_PRECISION / 30.0);
-      BOOST_CHECK_EQUAL(bit_usd.current_feed.short_limit.to_real(), 10.0 / BTS_BLOCKCHAIN_PRECISION);
-      BOOST_CHECK(bit_usd.current_feed.max_margin_period_sec == fc::days(30).to_seconds());
-      BOOST_CHECK(bit_usd.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
-      BOOST_CHECK(bit_usd.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);
+      BOOST_CHECK_EQUAL(bitasset.current_feed.call_limit.to_real(), BTS_BLOCKCHAIN_PRECISION / 30.0);
+      BOOST_CHECK_EQUAL(bitasset.current_feed.short_limit.to_real(), 10.0 / BTS_BLOCKCHAIN_PRECISION);
+      BOOST_CHECK(bitasset.current_feed.max_margin_period_sec == fc::days(30).to_seconds());
+      BOOST_CHECK(bitasset.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
+      BOOST_CHECK(bitasset.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);
    } catch (const fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
@@ -1585,7 +1581,7 @@ BOOST_AUTO_TEST_CASE( margin_call_limit_test )
       const asset_object& bitusd      = create_bitasset( "BITUSD" );
       const asset_object& core         = get_asset( BTS_SYMBOL );
 
-      db.modify( bitusd, [&]( asset_object& usd ){
+      db.modify( bitusd.bitasset_data(db), [&]( asset_bitasset_data_object& usd ){
                  usd.current_feed.call_limit = core.amount(3) / bitusd.amount(1);
                  });
 
@@ -1656,7 +1652,7 @@ BOOST_AUTO_TEST_CASE( margin_call_limit_test_protected )
       const asset_object& bitusd      = create_bitasset( "BITUSD" );
       const asset_object& bts         = get_asset( BTS_SYMBOL );
 
-      db.modify( bitusd, [&]( asset_object& usd ){
+      db.modify( bitusd.bitasset_data(db), [&]( asset_bitasset_data_object& usd ){
                  usd.current_feed.call_limit = bts.amount(1) / bitusd.amount(1);
                  });
 
@@ -1692,7 +1688,7 @@ BOOST_AUTO_TEST_CASE( dont_margin_call_limit_test )
       const asset_object& bitusd      = create_bitasset( "BITUSD" );
       const asset_object& bts         = get_asset( BTS_SYMBOL );
 
-      db.modify( bitusd, [&]( asset_object& usd ){
+      db.modify( bitusd.bitasset_data(db), [&]( asset_bitasset_data_object& usd ){
                  usd.current_feed.call_limit = bts.amount(3) / bitusd.amount(1);
                  });
 
@@ -1727,7 +1723,7 @@ BOOST_AUTO_TEST_CASE( margin_call_short_test )
       const asset_object& bitusd      = create_bitasset( "BITUSD" );
       const asset_object& bts         = get_asset( BTS_SYMBOL );
 
-      db.modify( bitusd, [&]( asset_object& usd ){
+      db.modify( bitusd.bitasset_data(db), [&]( asset_bitasset_data_object& usd ){
                  usd.current_feed.call_limit = bts.amount(3) / bitusd.amount(1);
                  });
 
@@ -1763,7 +1759,7 @@ BOOST_AUTO_TEST_CASE( margin_call_short_test_limit_protected )
       const asset_object& bitusd      = create_bitasset( "BITUSD" );
       const asset_object& bts         = get_asset( BTS_SYMBOL );
 
-      db.modify( bitusd, [&]( asset_object& usd ){
+      db.modify( bitusd.bitasset_data(db), [&]( asset_bitasset_data_object& usd ){
                  usd.current_feed.call_limit = bts.amount(3) / bitusd.amount(4);
                  });
 
@@ -1932,7 +1928,7 @@ BOOST_AUTO_TEST_CASE( margin_call_black_swan )
       const asset_object& bitusd      = create_bitasset( "BITUSD" );
       const asset_object& bts         = get_asset( BTS_SYMBOL );
 
-      db.modify( bitusd, [&]( asset_object& usd ){
+      db.modify( bitusd.bitasset_data(db), [&]( asset_bitasset_data_object& usd ){
                  usd.current_feed.call_limit = bts.amount(30) / bitusd.amount(1);
                  });
 

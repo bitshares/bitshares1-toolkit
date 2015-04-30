@@ -16,7 +16,7 @@ object_id_type short_order_create_evaluator::do_evaluate( const short_order_crea
    const asset_object& quote_asset = op.collateral.asset_id(d);
 
    FC_ASSERT( base_asset.is_market_issued() );
-   FC_ASSERT( quote_asset.id == base_asset.short_backing_asset );
+   FC_ASSERT( quote_asset.id == base_asset.bitasset_data(d).short_backing_asset );
    _seller = fee_paying_account;
    _receive_asset = &quote_asset;
    _sell_asset    = &base_asset;
@@ -129,17 +129,18 @@ asset call_order_update_evaluator::do_evaluate(const call_order_update_operation
    _paying_account = &o.funding_account(d);
 
    _debt_asset = &o.amount_to_cover.asset_id(d);
+   const asset_bitasset_data_object& bitasset_data = _debt_asset->bitasset_data(d);
    FC_ASSERT( _debt_asset->is_market_issued(), "Unable to cover ${sym} as it is not a market-issued asset.",
               ("sym", _debt_asset->symbol) );
-   FC_ASSERT( o.collateral_to_add.asset_id == _debt_asset->short_backing_asset );
+   FC_ASSERT( o.collateral_to_add.asset_id == bitasset_data.short_backing_asset );
    FC_ASSERT( o.maintenance_collateral_ratio == 0 ||
-              o.maintenance_collateral_ratio > _debt_asset->current_feed.required_maintenance_collateral );
+              o.maintenance_collateral_ratio > bitasset_data.current_feed.required_maintenance_collateral );
    FC_ASSERT( d.get_balance(*_paying_account, *_debt_asset) >= o.amount_to_cover,
               "Cannot cover by ${c} when payer has ${b}",
               ("c", o.amount_to_cover.amount)("b", d.get_balance(*_paying_account, *_debt_asset).amount) );
-   FC_ASSERT( d.get_balance(*_paying_account, _debt_asset->short_backing_asset(d)) >= o.collateral_to_add,
+   FC_ASSERT( d.get_balance(*_paying_account, bitasset_data.short_backing_asset(d)) >= o.collateral_to_add,
               "Cannot increase collateral by ${c} when payer has ${b}", ("c", o.amount_to_cover.amount)
-              ("b", d.get_balance(*_paying_account, _debt_asset->short_backing_asset(d)).amount) );
+              ("b", d.get_balance(*_paying_account, bitasset_data.short_backing_asset(d)).amount) );
 
    auto& call_idx = d.get_index_type<call_order_index>().indices().get<by_account>();
    auto itr = call_idx.find( boost::make_tuple(o.funding_account, o.amount_to_cover.asset_id) );

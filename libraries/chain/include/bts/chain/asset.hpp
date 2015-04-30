@@ -72,8 +72,8 @@ namespace bts { namespace chain {
       asset base;
       asset quote;
 
-      static price max( asset_id_type a, asset_id_type b );
-      static price min( asset_id_type a, asset_id_type b );
+      static price max(asset_id_type base, asset_id_type quote );
+      static price min(asset_id_type base, asset_id_type quote );
 
       static price call_price(const asset& debt, const asset& collateral, uint16_t collateral_ratio);
 

@@ -80,8 +80,8 @@ namespace bts { namespace chain {
          assert( base.asset_id != quote.asset_id );
          return price{base,quote};
       }
-      price price::max( asset_id_type a, asset_id_type b ) { return asset( share_type(BTS_MAX_SHARE_SUPPLY), a ) / asset( share_type(1), b); }
-      price price::min( asset_id_type a, asset_id_type b ) { return asset( 1, a ) / asset( BTS_MAX_SHARE_SUPPLY, b); }
+      price price::max( asset_id_type base, asset_id_type quote ) { return asset( share_type(BTS_MAX_SHARE_SUPPLY), base ) / asset( share_type(1), quote); }
+      price price::min( asset_id_type base, asset_id_type quote ) { return asset( 1, base ) / asset( BTS_MAX_SHARE_SUPPLY, quote); }
 
       price price::call_price(const asset& debt, const asset& collateral, uint16_t collateral_ratio)
       {
@@ -96,7 +96,7 @@ namespace bts { namespace chain {
 
       void price::validate() const
       { try {
-            FC_ASSERT( base.amount > share_type(0) );
+         FC_ASSERT( base.amount > share_type(0) );
          FC_ASSERT( quote.amount > share_type(0) );
          FC_ASSERT( base.asset_id != quote.asset_id );
       } FC_CAPTURE_AND_RETHROW() }

@@ -21,24 +21,23 @@ BOOST_AUTO_TEST_CASE( create_advanced_uia )
       creator.issuer = account_id_type();
       creator.fee = asset();
       creator.symbol = "ADVANCED";
-      creator.max_supply = 100000000;
+      creator.common_options.max_supply = 100000000;
       creator.precision = 2;
-      creator.market_fee_percent = BTS_MAX_MARKET_FEE_PERCENT/100; /*1%*/
-      creator.permissions = ASSET_ISSUER_PERMISSION_MASK & ~market_issued;
-      creator.flags = ASSET_ISSUER_PERMISSION_MASK & ~market_issued;
-      creator.core_exchange_rate = price({asset(2),asset(1)});
-      creator.short_backing_asset = asset_id_type();
-      creator.whitelist_authorities = creator.blacklist_authorities = {account_id_type()};
+      creator.common_options.market_fee_percent = BTS_MAX_MARKET_FEE_PERCENT/100; /*1%*/
+      creator.common_options.issuer_permissions = ASSET_ISSUER_PERMISSION_MASK & ~market_issued;
+      creator.common_options.flags = ASSET_ISSUER_PERMISSION_MASK & ~market_issued;
+      creator.common_options.core_exchange_rate = price({asset(2),asset(1,1)});
+      creator.common_options.whitelist_authorities = creator.common_options.blacklist_authorities = {account_id_type()};
       trx.operations.push_back(std::move(creator));
       db.push_transaction(trx, ~0);
 
       const asset_object& test_asset = test_asset_id(db);
       BOOST_CHECK(test_asset.symbol == "ADVANCED");
-      BOOST_CHECK(asset(1, test_asset_id) * test_asset.core_exchange_rate == asset(2));
+      BOOST_CHECK(asset(1, test_asset_id) * test_asset.options.core_exchange_rate == asset(2));
       BOOST_CHECK(test_asset.enforce_white_list());
-      BOOST_CHECK(test_asset.max_supply == 100000000);
-      BOOST_CHECK(test_asset.short_backing_asset == asset_id_type());
-      BOOST_CHECK(test_asset.market_fee_percent == BTS_MAX_MARKET_FEE_PERCENT/100);
+      BOOST_CHECK(test_asset.options.max_supply == 100000000);
+      BOOST_CHECK(!test_asset.bitasset_data_id.valid());
+      BOOST_CHECK(test_asset.options.market_fee_percent == BTS_MAX_MARKET_FEE_PERCENT/100);
 
       const asset_dynamic_data_object& test_asset_dynamic_data = test_asset.dynamic_asset_data_id(db);
       BOOST_CHECK(test_asset_dynamic_data.current_supply == 0);
@@ -118,11 +117,11 @@ BOOST_AUTO_TEST_CASE( transfer_whitelist_uia )
       {
          asset_update_operation op;
          op.asset_to_update = advanced.id;
-         op.new_blacklist_authorities = flat_set<account_id_type>();
-         op.new_blacklist_authorities->insert(dan.id);
+         op.new_options = advanced.options;
+         op.new_options.blacklist_authorities = {dan.id};
          trx.operations.back() = op;
          db.push_transaction(trx, ~0);
-         BOOST_CHECK(advanced.blacklist_authorities.find(dan.id) != advanced.blacklist_authorities.end());
+         BOOST_CHECK(advanced.options.blacklist_authorities.find(dan.id) != advanced.options.blacklist_authorities.end());
       }
 
       trx.operations.back() = op;
