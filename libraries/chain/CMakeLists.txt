@@ -33,6 +33,7 @@ add_library( bts_chain
              transaction_evaluation_state.cpp
              database.cpp
              fork_database.cpp
+             ${HEADERS}
            )
 
 target_link_libraries( bts_chain fc bts_db leveldb )
