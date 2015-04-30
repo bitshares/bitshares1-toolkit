@@ -1277,6 +1277,9 @@ namespace bts { namespace chain {
       asset operator()( T& v )const { return v.fee = asset(v.calculate_fee(fees)) * core_exchange_rate; }
    };
 
+   /**
+    *  @brief necessary to support nested operations inside the proposal_create_operation 
+    */
    struct op_wrapper
    {
       public:
@@ -1305,7 +1308,7 @@ FC_REFLECT( bts::chain::account_create_operation,
             (name)
             (owner)(active)(voting_account)(memo_key)
             (num_witness)(num_committee)(vote)
-           )
+          )
 
 FC_REFLECT_TYPENAME( fc::flat_set<bts::chain::vote_tally_id_type> )
 FC_REFLECT( bts::chain::account_update_operation,

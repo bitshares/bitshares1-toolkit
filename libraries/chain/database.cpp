@@ -1398,6 +1398,7 @@ processed_transaction database::push_proposal(const proposal_object& proposal)
 
    eval_state.operation_results.reserve(proposal.proposed_transaction.operations.size());
    processed_transaction ptrx(proposal.proposed_transaction);
+   eval_state._trx = &ptrx;
 
    auto session = _undo_db.start_undo_session();
    for( auto& op : proposal.proposed_transaction.operations )
@@ -1417,11 +1418,15 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    FC_ASSERT( (skip & skip_transaction_dupe_check) ||
               trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end() );
    transaction_evaluation_state eval_state(this, skip&skip_transaction_signatures );
+   eval_state._trx = &trx;
+
    if( !(skip & skip_transaction_signatures) )
    {
       for( auto sig : trx.signatures )
       {
-         eval_state.signed_by.insert( fc::ecc::public_key( sig, trx.digest() ) );
+         //wdump((sig.first));
+         //wdump((sig.first(*this)));
+         FC_ASSERT( sig.first(*this).key_address() == fc::ecc::public_key( sig.second, trx.digest() ), "", ("sig.first",sig.first)("key_address",sig.first(*this).key_address())("addr", address(fc::ecc::public_key( sig.second, trx.digest() ))) );
       }
    }
    eval_state.operation_results.reserve( trx.operations.size() );
@@ -1833,7 +1838,7 @@ void database::debug_dump()
    }
    for( const witness_object& witness_obj : db.get_index_type<simple_index<witness_object>>() )
    {
-      idump((witness_obj));
+      //idump((witness_obj));
       total_balances[asset_id_type()] += witness_obj.accumulated_income;
    }
 //   for( auto item : total_debts )

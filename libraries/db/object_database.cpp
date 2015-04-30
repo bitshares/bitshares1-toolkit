@@ -94,6 +94,7 @@ void object_database::open( const fc::path& data_dir )
    }
    try {
       auto next_ids = fc::raw::unpack<vector<object_id_type>>( _object_id_to_object->fetch( object_id_type() ) );
+      wdump((next_ids));
       for( auto id : next_ids )
       {
          try {

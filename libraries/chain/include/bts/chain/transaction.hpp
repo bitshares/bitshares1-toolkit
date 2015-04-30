@@ -96,8 +96,9 @@ namespace bts { namespace chain {
    {
       signed_transaction( const transaction& trx = transaction() )
          : transaction(trx){}
-      void sign( const private_key_type& key );
-      vector<signature_type> signatures;
+
+      void sign( key_id_type id, const private_key_type& key );
+      flat_map<key_id_type,signature_type> signatures;
 
       /// Removes all operations and signatures
       void clear() { operations.clear(); signatures.clear(); }

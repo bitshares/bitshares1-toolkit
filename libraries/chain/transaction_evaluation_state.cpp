@@ -1,5 +1,4 @@
 #include <bts/chain/transaction_evaluation_state.hpp>
-#include <bts/chain/key_object.hpp>
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/delegate_object.hpp>
@@ -53,9 +52,7 @@ namespace bts { namespace chain {
                }
                case key_object_type:
                {
-                  auto key_obj = dynamic_cast<const key_object*>( &auth_item );
-                  FC_ASSERT( key_obj );
-                  if( signed_by.find( key_obj->key_address() ) != signed_by.end() )
+                  if( signed_by( auth.first ) )
                   {
                      approved_by.insert( std::make_pair(auth_item.id,authority::key) );
                      total_weight += auth.second;
@@ -73,6 +70,12 @@ namespace bts { namespace chain {
          }
       }
       return false;
+   }
+   bool transaction_evaluation_state::signed_by( key_id_type id )const 
+   { 
+      if( _skip_signature_check ) return true;
+      assert(_trx); 
+      return _trx->signatures.find(id) != _trx->signatures.end(); 
    }
 
 } } // namespace bts::chain

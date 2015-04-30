@@ -73,11 +73,9 @@ object_id_type proposal_update_evaluator::do_evaluate(const proposal_update_oper
       FC_ASSERT( _proposal->available_owner_approvals.find(id) != _proposal->available_owner_approvals.end(),
                  "", ("id", id)("available", _proposal->available_owner_approvals) );
    for( key_id_type id : o.key_approvals_to_add )
-      FC_ASSERT( trx_state->signed_by.find(id(d).key_address()) != trx_state->signed_by.end()
-                 || trx_state->_skip_signature_check );
+      FC_ASSERT( trx_state->signed_by(id) || trx_state->_skip_signature_check );
    for( key_id_type id : o.key_approvals_to_remove )
-      FC_ASSERT( trx_state->signed_by.find(id(d).key_address()) != trx_state->signed_by.end()
-                 || trx_state->_skip_signature_check );
+      FC_ASSERT( trx_state->signed_by(id) || trx_state->_skip_signature_check );
 
    return object_id_type();
 }
@@ -97,9 +95,9 @@ object_id_type proposal_update_evaluator::do_apply(const proposal_update_operati
       for( account_id_type id : o.owner_approvals_to_remove )
          p.available_owner_approvals.erase(id);
       for( key_id_type id : o.key_approvals_to_add )
-         p.available_key_approvals.insert(id(d).key_address());
+         p.available_key_approvals.insert(id);
       for( key_id_type id : o.key_approvals_to_remove )
-         p.available_key_approvals.erase(id(d).key_address());
+         p.available_key_approvals.erase(id);
    });
 
    // If the proposal has a review period, don't bother attempting to authorize/execute it.

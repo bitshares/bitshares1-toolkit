@@ -341,7 +341,7 @@ signed_transaction wallet_api::create_account_with_brain_key(
          {
             FC_ASSERT( false, "Malformed private key in _wallet.keys" );
          }
-         tx.sign( *privkey );
+         tx.sign( key, *privkey );
       }
    }
 
@@ -463,7 +463,7 @@ signed_transaction wallet_api::sign_transaction(
          {
             FC_ASSERT( false, "Malformed private key in _wallet.keys" );
          }
-         tx.sign( *privkey );
+         tx.sign( key, *privkey );
       }
    }
 

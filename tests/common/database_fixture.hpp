@@ -77,6 +77,9 @@ struct database_fixture {
    account_id_type genesis_account;
    fc::ecc::private_key private_key = fc::ecc::private_key::generate();
    fc::ecc::private_key delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
+   const key_object* key1= nullptr;
+   const key_object* key2= nullptr;
+   const key_object* key3= nullptr;
    optional<fc::temp_directory> data_dir;
    bool skip_key_index_test = false;
 
@@ -235,10 +238,11 @@ struct database_fixture {
    database_fixture()
       : app(), db( *app.chain_database() )
    {
-      app.register_plugin<bts::account_history::account_history_plugin>();
       bts::app::application::daemon_configuration cfg;
+      app.register_plugin<bts::account_history::account_history_plugin>();
       cfg.initial_allocation = genesis_allocation();
       app.configure_without_network( cfg );
+      //app.init();
 
       genesis_key(db); // attempt to deref
       trx.relative_expiration = 1000;
@@ -517,9 +521,9 @@ struct database_fixture {
       transfer(account_id_type()(db), account, amount);
       return get_balance(account, amount.asset_id(db));
    }
-   void sign(signed_transaction& trx, const fc::ecc::private_key& key)
+   void sign(signed_transaction& trx, key_id_type key_id, const fc::ecc::private_key& key)
    {
-      trx.signatures.push_back(key.sign_compact(trx.digest()));
+      trx.sign( key_id, key );
    }
 
    const limit_order_object* create_sell_order( const account_object& user, const asset& amount, const asset& recv )

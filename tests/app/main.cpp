@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE( two_node_network )
       trx.operations.push_back(key_create_operation({account_id_type(1), asset(), public_key_type(nathan_key.get_public_key())}));
       trx.set_expiration(app2.chain_database()->head_block_id());
       trx.validate();
-      trx.signatures.push_back(genesis_key.sign_compact(trx.digest()));
+      trx.signatures[key_id_type(0)] =  genesis_key.sign_compact(trx.digest());
       processed_transaction ptrx = app.chain_database()->push_transaction(trx);
       app.p2p_node()->broadcast(bts::net::trx_message(trx));
       key_id_type nathan_key_id = ptrx.operation_results.front().get<object_id_type>();

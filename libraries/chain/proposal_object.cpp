@@ -16,7 +16,14 @@ bool proposal_object::is_authorized_to_execute(database* db) const
                   std::inserter(dry_run_eval.approved_by, dry_run_eval.approved_by.end()), [](object_id_type id) {
       return make_pair(id, authority::owner);
    });
-   dry_run_eval.signed_by.insert(available_key_approvals.begin(), available_key_approvals.end());
+
+   signed_transaction tmp;
+   dry_run_eval._trx = &tmp;
+   for( auto key_id : available_key_approvals )
+      tmp.signatures[key_id] = fc::ecc::compact_signature();
+
+   //insert into dry_run_eval->_trx.signatures
+   //dry_run_eval.signed_by.insert(available_key_approvals.begin(), available_key_approvals.end());
 
    // Check all required approvals. If any of them are unsatisfied, return false.
    for( const auto& id : required_active_approvals )

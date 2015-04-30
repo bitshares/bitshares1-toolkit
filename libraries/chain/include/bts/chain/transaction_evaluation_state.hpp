@@ -5,7 +5,7 @@
 
 namespace bts { namespace chain {
    class database;
-   struct transaction;
+   struct signed_transaction;
 
    /**
     *  Place holder for state tracked while processing a
@@ -23,8 +23,11 @@ namespace bts { namespace chain {
 
          database& db()const { FC_ASSERT( _db ); return *_db; }
 
-         /** derived from signatures on transaction */
+         bool signed_by( key_id_type id )const;
+
+         /** derived from signatures on transaction 
          flat_set<address>                                          signed_by;
+         */
          /** cached approval (accounts and keys) */
          flat_set< pair<object_id_type,authority::classification> > approved_by;
 
@@ -33,9 +36,9 @@ namespace bts { namespace chain {
           */
          vector<operation_result>   operation_results;
 
-         transaction* _trx;
-         database*    _db = nullptr;
-         bool         _skip_signature_check = false;
-         bool         _is_proposed_trx = false;
+         const signed_transaction* _trx = nullptr;
+         database*                 _db = nullptr;
+         bool                      _skip_signature_check = false;
+         bool                      _is_proposed_trx = false;
    };
 } } // namespace bts::chain

@@ -294,15 +294,15 @@ namespace bts { namespace app {
        return *_database_api;
     }
 
-    signed_transaction  login_api::sign_transaction( signed_transaction trx, const vector< string >& wif_keys )const
+    signed_transaction  login_api::sign_transaction( signed_transaction trx, const map< key_id_type,string >& wif_keys )const
     {
         if( trx.ref_block_num == 0 )
            trx.set_expiration( _app.chain_database()->head_block_id() );
         for( auto wif_key : wif_keys )
         {
-            auto key = utilities::wif_to_key( wif_key );
+            auto key = utilities::wif_to_key( wif_key.second );
             FC_ASSERT( key.valid() );
-            trx.sign( *key );
+            trx.sign( wif_key.first, *key );
         }
 
         return trx;

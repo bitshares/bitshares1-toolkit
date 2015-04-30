@@ -182,7 +182,8 @@ BOOST_AUTO_TEST_CASE( undo_pending )
          cop.registrar = account_id_type(1);
          cop.name = "nathan";
          trx.operations.push_back(cop);
-         trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+         //trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+         trx.sign( key_id_type(), delegate_priv_key );
          db.push_transaction(trx);
 
          auto aw = db.get_global_properties().active_witnesses;
@@ -194,12 +195,12 @@ BOOST_AUTO_TEST_CASE( undo_pending )
          trx = decltype(trx)();
          trx.relative_expiration = 1000;
          trx.operations.push_back(transfer_operation({account_id_type(1), nathan_id, asset(5000), asset(1)}));
-         trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+         trx.sign( key_id_type(), delegate_priv_key );
          db.push_transaction(trx);
          trx = decltype(trx)();
          trx.relative_expiration = 1001;
          trx.operations.push_back(transfer_operation({account_id_type(1), nathan_id, asset(5000), asset(1)}));
-         trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+         trx.sign( key_id_type(), delegate_priv_key );
          db.push_transaction(trx);
 
          BOOST_CHECK(db.get_balance(nathan_id, asset_id_type()).amount == 10000);
@@ -233,7 +234,7 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
       cop.registrar = account_id_type(1);
       cop.name = "nathan";
       trx.operations.push_back(cop);
-      trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+      trx.sign( key_id_type(), delegate_priv_key );
       db1.push_transaction(trx);
 
       auto aw = db1.get_global_properties().active_witnesses;
@@ -290,13 +291,13 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
       account_create_operation cop;
       cop.name = "nathan";
       trx.operations.push_back(cop);
-      trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+      trx.sign( key_id_type(), delegate_priv_key );
       db1.push_transaction(trx, skip_sigs);
 
       trx = decltype(trx)();
       trx.relative_expiration = 1000;
       trx.operations.push_back(transfer_operation({account_id_type(), nathan_id, asset(500)}));
-      trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+      trx.sign( key_id_type(), delegate_priv_key );
       db1.push_transaction(trx, skip_sigs);
 
       BOOST_CHECK_THROW(db1.push_transaction(trx, skip_sigs), fc::exception);
@@ -346,13 +347,13 @@ BOOST_AUTO_TEST_CASE( tapos )
       cop.registrar = init1.id;
       cop.name = "nathan";
       trx.operations.push_back(cop);
-      trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+      trx.sign( key_id_type(), delegate_priv_key );
 
       //ref_block_prefix isn't set, so we should see an exception here.
       BOOST_REQUIRE_THROW(db1.push_transaction(trx), fc::exception);
       trx.ref_block_prefix = db1.head_block_id()._hash[1];
       trx.signatures.clear();
-      trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+      trx.sign( key_id_type(), delegate_priv_key );
       db1.push_transaction(trx);
 
       aw = db1.get_global_properties().active_witnesses;
@@ -362,12 +363,12 @@ BOOST_AUTO_TEST_CASE( tapos )
       trx.operations.clear();
       trx.signatures.clear();
       trx.operations.push_back(transfer_operation({account_id_type(), nathan_id, asset(50)}));
-      trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+      trx.sign( key_id_type(), delegate_priv_key );
       //relative_expiration is 1, but ref block is 2 blocks old, so this should fail.
       BOOST_REQUIRE_THROW(db1.push_transaction(trx, database::skip_transaction_signatures), fc::exception);
       trx.relative_expiration = 2;
       trx.signatures.clear();
-      trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
+      trx.sign( key_id_type(), delegate_priv_key );
       db1.push_transaction(trx, database::skip_transaction_signatures);
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
@@ -534,7 +535,7 @@ BOOST_FIXTURE_TEST_CASE( change_block_interval, database_fixture )
       uop.new_parameters.block_interval = 1;
       cop.proposed_ops.emplace_back(uop);
       trx.operations.push_back(cop);
-      trx.sign(generate_private_key("genesis"));
+      trx.sign(key_id_type(),generate_private_key("genesis"));
       db.push_transaction(trx);
    }
    {
@@ -543,7 +544,7 @@ BOOST_FIXTURE_TEST_CASE( change_block_interval, database_fixture )
       uop.active_approvals_to_add = {account_id_type(1), account_id_type(2), account_id_type(3), account_id_type(4),
                                      account_id_type(5), account_id_type(6), account_id_type(7), account_id_type(8)};
       trx.operations.push_back(uop);
-      trx.sign(generate_private_key("genesis"));
+      trx.sign(key_id_type(),generate_private_key("genesis"));
       db.push_transaction(trx);
       BOOST_CHECK(proposal_id_type()(db).is_authorized_to_execute(&db));
    }
@@ -598,7 +599,7 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    feed.settlement_price = price(asset(1),asset(1, bit_usd));
    uop.new_price_feed = feed;
    trx.operations.push_back(uop);
-   trx.sign(private_key);
+   trx.sign(key_id_type(),private_key);
    db.push_transaction(trx);
    trx.clear();
 
@@ -608,7 +609,7 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    trx.operations.push_back(sop);
    REQUIRE_THROW_WITH_VALUE(sop, amount, asset(999999, bit_usd));
    trx.operations.back() = sop;
-   trx.sign(private_key);
+   trx.sign(key_id_type(),private_key);
 
    //Partially settle a call
    force_settlement_id_type settle_id = db.push_transaction(trx).operation_results.front().get<object_id_type>();
@@ -627,7 +628,7 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    call_id = db.get_index_type<call_order_index>().indices().get<by_collateral>().begin()->id;
    sop.amount.amount = 2000;
    trx.operations.push_back(sop);
-   trx.sign(private_key);
+   trx.sign(key_id_type(),private_key);
    settle_id = db.push_transaction(trx).operation_results.front().get<object_id_type>();
    trx.clear();
 
@@ -639,7 +640,7 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    //Settle all existing asset
    sop.amount = db.get_balance(nathan_id, bit_usd);
    trx.operations.push_back(sop);
-   trx.sign(private_key);
+   trx.sign(key_id_type(),private_key);
    settle_id = db.push_transaction(trx).operation_results.front().get<object_id_type>();
    trx.clear();
 

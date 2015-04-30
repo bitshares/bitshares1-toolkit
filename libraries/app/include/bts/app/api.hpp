@@ -80,7 +80,7 @@ namespace bts { namespace app {
          bool                   login( const string& user, const string& password );
          fc::api<network_api>   network()const;
          fc::api<database_api>  database()const;
-         signed_transaction     sign_transaction( signed_transaction trx, const vector< string >& wif_keys )const;
+         signed_transaction     sign_transaction( signed_transaction trx, const map< key_id_type, string >& wif_keys )const;
          string                 serialize_transaction( signed_transaction trx, bool hex )const;
 
          application&                      _app;

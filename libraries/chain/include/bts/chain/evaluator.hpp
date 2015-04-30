@@ -81,7 +81,7 @@ namespace bts { namespace chain {
          void pay_fee();
 
          bool       verify_authority( const account_object&, authority::classification );
-         bool       verify_signature( const key_object& );
+         //bool       verify_signature( const key_object& );
 
          object_id_type get_relative_id( object_id_type rel_id )const;
 

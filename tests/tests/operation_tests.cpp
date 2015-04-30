@@ -46,7 +46,7 @@ BOOST_AUTO_TEST_CASE( create_account_test )
       op.owner = auth_bak;
 
       trx.operations.back() = op;
-      trx.signatures.push_back(fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis"))).sign_compact(fc::digest(trx)));
+      trx.sign( key_id_type(), fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis"))) );
       trx.validate();
       db.push_transaction(trx, ~0);
 
@@ -95,16 +95,16 @@ BOOST_AUTO_TEST_CASE( child_account )
       op.owner = authority(1, child_key.get_id(), 1);
       op.active = authority(1, child_key.get_id(), 1);
       trx.operations.emplace_back(op);
-      sign(trx, fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis"))));
+      sign(trx, key_id_type(), fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis"))));
 
       BOOST_REQUIRE_THROW(db.push_transaction(trx), fc::exception);
-      sign(trx, nathan_private_key);
+      sign(trx, nathan_key.id,nathan_private_key);
       BOOST_REQUIRE_THROW(db.push_transaction(trx), fc::exception);
       trx.signatures.clear();
       op.owner = authority(1, account_id_type(nathan.id), 1);
       trx.operations.back() = op;
-      sign(trx, fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis"))));
-      sign(trx, nathan_private_key);
+      sign(trx, key_id_type(), fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis"))));
+      sign(trx, nathan_key.id, nathan_private_key);
       db.push_transaction(trx);
 
       BOOST_CHECK( get_account("nathan/child").active.auths == op.active.auths );
@@ -1850,7 +1850,7 @@ BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
    trx.operations.push_back(uop);
    trx.visit(operation_set_fee(db.current_fee_schedule()));
    trx.validate();
-   trx.sign(generate_private_key("genesis"));
+   trx.sign(key_id_type(),generate_private_key("genesis"));
    db.push_transaction(trx);
    trx.clear();
    BOOST_CHECK_EQUAL(get_balance(*nathan, *core), 9000000000);
@@ -1876,7 +1876,7 @@ BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
    trx.operations.back() = wop;
    trx.visit(operation_set_fee(db.current_fee_schedule()));
    trx.validate();
-   trx.sign(generate_private_key("genesis"));
+   trx.sign(key_id_type(),generate_private_key("genesis"));
    db.push_transaction(trx);
    trx.clear();
 
