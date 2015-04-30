@@ -48,7 +48,6 @@ namespace bts { namespace app {
             } catch(fc::exception& e) {
                ilog("Initializing new configuration for '${name}' plugin.", ("name", plug->plugin_name()));
                configuration()[plug->plugin_name()] = cfg;
-               save_configuration();
             }
             plug->configure_plugin( *this, cfg);
             add_plugin( plug->plugin_name(), plug );

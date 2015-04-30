@@ -71,7 +71,7 @@ namespace detail {
       {
          application::daemon_configuration config;
          _configuration["daemon"] = config;
-         save_configuration();
+         _save_config_when_initialized = true;
          auto key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("nathan")));
          if(config.initial_allocation.size() == 1 &&
                config.initial_allocation.front().first.get<public_key_type>() == key.get_public_key())
@@ -129,6 +129,9 @@ namespace detail {
 
          for( const auto& p : _plugins )
             p.second->init();
+
+         if( _save_config_when_initialized )
+            save_configuration();
 
          reset_p2p_node(_data_dir, _config);
          reset_websocket_server(_config);
@@ -364,6 +367,7 @@ namespace detail {
       std::shared_ptr<bts::net::node>              _p2p_network;
       std::shared_ptr<fc::http::websocket_server>  _websocket_server;
       application::config                          _configuration;
+      bool                                         _save_config_when_initialized = false;
 
       std::map<string, std::shared_ptr<abstract_plugin>> _plugins;
    };
