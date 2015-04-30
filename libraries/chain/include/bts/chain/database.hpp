@@ -134,7 +134,13 @@ namespace bts { namespace chain {
           *  the write lock and may be in an "inconstant state" until after it is
           *  released.
           */
-         fc::signal<void(const signed_block&)> applied_block;
+         fc::signal<void(const signed_block&)>           applied_block;
+
+         /**
+          *  After a block has been applied and committed.  The callback
+          *  should not yield and should execute quickly.
+          */
+         fc::signal<void(const vector<object_id_type>&)> changed_objects;
 
          void debug_dump();
 

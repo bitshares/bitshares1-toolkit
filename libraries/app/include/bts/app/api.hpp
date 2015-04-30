@@ -19,6 +19,7 @@ namespace bts { namespace app {
    {
       public:
          database_api( bts::chain::database& db );
+         ~database_api();
          fc::variants                      get_objects( const vector<object_id_type>& ids )const;
          optional<signed_block>            get_block( uint32_t block_num )const;
          global_property_object            get_global_properties()const;
@@ -45,7 +46,23 @@ namespace bts { namespace app {
 
          vector<asset_object>              list_assets( const string& lower_bound_symbol, uint32_t limit )const;
 
-         bts::chain::database& _db;
+         bool                              subscribe_to_objects(  const std::function<void(const fc::variant&)>&  callback,
+                                                                  const vector<object_id_type>& ids);
+
+         bool                              unsubscribe_from_objects( const vector<object_id_type>& ids );
+
+
+
+
+         // implementation details 
+
+         /** called every time a block is applied to report the objects that were changed */
+         void on_objects_changed( const vector<object_id_type>& ids );
+
+         fc::future<void>                                              _broadcast_changes_complete;
+         boost::signals2::scoped_connection                            _change_connection;
+         map<object_id_type, std::function<void(const fc::variant&)> > _subscriptions;
+         bts::chain::database&                                         _db;
    };
 
    class history_api
@@ -109,6 +126,8 @@ FC_API( bts::app::database_api,
         (get_call_orders)
         (get_settle_orders)
         (list_assets)
+        (subscribe_to_objects)
+        (unsubscribe_from_objects)
      )
 FC_API( bts::app::network_api, (broadcast_transaction)(add_node)(get_connected_peers) )
 FC_API( bts::app::login_api,

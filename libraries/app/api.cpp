@@ -7,7 +7,12 @@
 
 namespace bts { namespace app {
 
-    database_api::database_api( bts::chain::database& db ):_db(db){}
+    database_api::database_api( bts::chain::database& db ):_db(db)
+    {
+       _change_connection = _db.changed_objects.connect( [this]( const vector<object_id_type>& ids ) {
+                                    on_objects_changed( ids );
+                                    });
+    }
 
     fc::variants database_api::get_objects( const vector<object_id_type>& ids )const
     {
@@ -324,6 +329,50 @@ namespace bts { namespace app {
         }
         return ss.str();
     }
+    void database_api::on_objects_changed( const vector<object_id_type>& ids )
+    {
+       vector<object_id_type> my_objects;
+       for( auto id : ids ) 
+          if( _subscriptions.find(id) != _subscriptions.end() )
+             my_objects.push_back(id);
 
+       _broadcast_changes_complete = fc::async( [=](){
+          for( auto id : my_objects )
+          {
+             const object* obj = _db.find_object(id);
+             if( obj )
+             {
+                _subscriptions[id]( obj->to_variant() );
+             }
+          }
+       });
+    }
+    database_api::~database_api()
+    {
+       try {
+          if( _broadcast_changes_complete.valid() )
+          {
+             _broadcast_changes_complete.cancel();
+             _broadcast_changes_complete.wait();
+          }
+       } catch ( const fc::exception& e )
+       {
+          wlog( "${e}", ("e",e.to_detail_string() ) );
+       }
+    }
+
+    bool database_api::subscribe_to_objects(  const std::function<void(const fc::variant&)>&  callback, const vector<object_id_type>& ids)
+    {
+       for( auto id : ids ) _subscriptions[id] = callback;
+
+       return true;
+    }
+
+    bool database_api::unsubscribe_from_objects( const vector<object_id_type>& ids )
+    {
+       for( auto id : ids ) _subscriptions.erase(id);
+
+       return true;
+    }
 
 } } // bts::app
