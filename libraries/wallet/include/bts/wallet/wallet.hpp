@@ -54,6 +54,8 @@ class wallet_api
       variant get_object( object_id_type id );
       account_object get_account( string account_name_or_id );
       account_id_type get_account_id( string account_name_or_id );
+      asset_id_type get_asset_id( string asset_name_or_id );
+
       bool import_key( string account_name_or_id, string wif_key );
       string normalize_brain_key( string s );
       fc::ecc::private_key derive_private_key(
@@ -72,6 +74,11 @@ class wallet_api
          uint64_t amount,
          string asset_symbol,
          string memo,
+         bool broadcast = false
+         );
+
+      signed_transaction sign_transaction(
+         signed_transaction tx,
          bool broadcast = false
          );
 
@@ -128,4 +135,5 @@ FC_API( bts::wallet::wallet_api,
    (get_call_orders)
    (get_settle_orders)
    (serialize_transaction)
+   (sign_transaction)
    )

@@ -12,6 +12,7 @@
 
 #include <bts/app/api.hpp>
 #include <bts/chain/address.hpp>
+#include <bts/chain/asset_object.hpp>
 #include <bts/utilities/key_conversion.hpp>
 #include <bts/wallet/wallet.hpp>
 
@@ -137,6 +138,17 @@ account_id_type wallet_api::get_account_id( string account_name_or_id )
    opt_account = _remote_db->lookup_account_names( {account_name_or_id} );
    FC_ASSERT( opt_account.size() && opt_account.front() );
    return opt_account.front()->id;
+}
+
+asset_id_type wallet_api::get_asset_id( string asset_symbol_or_id )
+{
+   FC_ASSERT( asset_symbol_or_id.size() > 0 );
+   vector<optional<asset_object>> opt_asset;
+   if( std::isdigit( asset_symbol_or_id.front() ) )
+      return fc::variant(asset_symbol_or_id).as<asset_id_type>();
+   opt_asset = _remote_db->lookup_asset_symbols( {asset_symbol_or_id} );
+   FC_ASSERT( (opt_asset.size() > 0) && (opt_asset[0].valid()) );
+   return opt_asset[0]->id;
 }
 
 bool wallet_api::import_key( string account_name_or_id, string wif_key )
@@ -350,12 +362,115 @@ signed_transaction wallet_api::transfer(
    bool broadcast /* = false */
    )
 {
-   auto opt_asset = _remote_db->lookup_asset_symbols( {asset_symbol} );
+   vector< optional< asset_object > > opt_asset = _remote_db->lookup_asset_symbols( {asset_symbol} );
+   FC_ASSERT( opt_asset.size() == 1 );
+   FC_ASSERT( opt_asset[0].valid() );
 
+   account_object from_account = get_account( from );
+   account_id_type from_id = from_account.id;
+   account_id_type to_id = get_account_id( to );
 
+   asset_id_type asset_id = get_asset_id( asset_symbol );
 
-   wdump( (opt_asset) );
-   return signed_transaction();
+   // TODO:  Memo encryption
+
+   transfer_operation xfer_op;
+
+   xfer_op.from = from_id;
+   xfer_op.to = to_id;
+   xfer_op.amount = asset( amount, asset_id );
+
+   signed_transaction tx;
+   tx.operations.push_back( xfer_op );
+   tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
+   tx.validate();
+
+   return sign_transaction( tx, broadcast );
+}
+
+signed_transaction wallet_api::sign_transaction(
+   signed_transaction tx,
+   bool broadcast /* = false */
+   )
+{
+   flat_set<account_id_type> req_active_approvals;
+   flat_set<account_id_type> req_owner_approvals;
+
+   // awesome hack, dump them both into the same flat_set hehe
+   tx.visit( operation_get_required_auths( req_active_approvals, req_owner_approvals ) );
+
+   // TODO:  Only sign if the wallet considers ACCOUNTS to be owned.
+   //        Currently the wallet only owns KEYS and will happily sign
+   //        for any account...
+
+   // std::merge lets us de-duplicate account_id's that occur in both
+   //   sets, and dump them into a vector (as required by remote_db api)
+   //   at the same time
+   vector< account_id_type > v_approving_account_ids;
+   std::merge(req_active_approvals.begin(), req_active_approvals.end(),
+              req_owner_approvals.begin() , req_owner_approvals.end(),
+              std::back_inserter(v_approving_account_ids));
+
+   vector< optional<account_object> > approving_account_objects =
+      _remote_db->get_accounts( v_approving_account_ids );
+
+   FC_ASSERT( approving_account_objects.size() == v_approving_account_ids.size() );
+
+   flat_map< account_id_type, account_object* > approving_account_lut;
+   size_t i = 0;
+   for( optional<account_object>& approving_acct : approving_account_objects )
+   {
+      if( !approving_acct.valid() )
+      {
+         wlog( "operation_get_required_auths said approval of non-existing account ${id} was needed",
+            ("id", v_approving_account_ids[i]) );
+         i++;
+         continue;
+      }
+      approving_account_lut[ approving_acct->id ] = &(*approving_acct);
+      i++;
+   }
+
+   flat_set< key_id_type > approving_key_set;
+   for( account_id_type& acct_id : req_active_approvals )
+   {
+      const auto it = approving_account_lut.find( acct_id );
+      if( it == approving_account_lut.end() )
+         continue;
+      const account_object* acct = it->second;
+      vector<key_id_type> v_approving_keys = acct->active.get_keys();
+      for( const key_id_type& approving_key : v_approving_keys )
+         approving_key_set.insert( approving_key );
+   }
+   for( account_id_type& acct_id : req_owner_approvals )
+   {
+      const auto it = approving_account_lut.find( acct_id );
+      if( it == approving_account_lut.end() )
+         continue;
+      const account_object* acct = it->second;
+      vector<key_id_type> v_approving_keys = acct->owner.get_keys();
+      for( const key_id_type& approving_key : v_approving_keys )
+         approving_key_set.insert( approving_key );
+   }
+
+   for( key_id_type& key : approving_key_set )
+   {
+      auto it = _wallet.keys.find(key);
+      if( it != _wallet.keys.end() )
+      {
+         fc::optional< fc::ecc::private_key > privkey = wif_to_key( it->second );
+         if( !privkey.valid() )
+         {
+            FC_ASSERT( false, "Malformed private key in _wallet.keys" );
+         }
+         tx.sign( *privkey );
+      }
+   }
+
+   if( broadcast )
+      _remote_net->broadcast_transaction( tx );
+
+   return tx;
 }
 
 // methods that start with underscore are not incuded in API
