@@ -34,21 +34,28 @@ int main( int argc, char** argv )
       fc::ecc::private_key nathan_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("nathan")));
       idump( (key_to_wif( nathan_private_key ) ) );
 
-      wallet_data wallet;
+      //
+      // TODO:  We read wallet_data twice, once in main() to grab the
+      //    socket info, again in wallet_api when we do
+      //    load_wallet_file().  Seems like this could be better
+      //    designed.
+      //
+      wallet_data wdata;
       fc::path wallet_file(argv[1]);
       if( fc::exists( wallet_file ) )
-          wallet = fc::json::from_file( wallet_file ).as<wallet_data>();
+          wdata = fc::json::from_file( wallet_file ).as<wallet_data>();
 
       fc::http::websocket_client client;
-      auto con  = client.connect( wallet.ws_server );
+      auto con  = client.connect( wdata.ws_server );
       auto apic = std::make_shared<fc::rpc::websocket_api_connection>(*con);
       con->closed.connect( [&](){ elog( "connection closed" ); } );
 
       auto remote_api = apic->get_remote_api< login_api >();
-      FC_ASSERT( remote_api->login( wallet.ws_user, wallet.ws_password ) );
+      FC_ASSERT( remote_api->login( wdata.ws_user, wdata.ws_password ) );
 
       auto wapiptr = std::make_shared<wallet_api>(remote_api);
-      wapiptr->_wallet = wallet;
+      wapiptr->set_wallet_filename( argv[1] );
+      wapiptr->load_wallet_file();
       wapiptr->_start_resync_loop();
 
       fc::api<wallet_api> wapi(wapiptr);

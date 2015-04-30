@@ -96,6 +96,8 @@ class wallet_api
          );
 
       void _start_resync_loop();
+      std::map<string,std::function<string(fc::variant,const fc::variants&)> >
+      _get_result_formatters() const;
 
       std::unique_ptr<detail::wallet_api_impl> _my;
 };
