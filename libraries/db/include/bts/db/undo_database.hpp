@@ -9,6 +9,15 @@ namespace bts { namespace db {
    using fc::flat_set;
    class object_database;
 
+   struct undo_state
+   {
+      unordered_map<object_id_type, unique_ptr<object> > old_values;
+      unordered_map<object_id_type, object_id_type>      old_index_next_ids;
+      flat_set<object_id_type>                           new_ids;
+      unordered_map<object_id_type, unique_ptr<object> > removed;
+   };
+
+
    /**
     * @class undo_database
     * @brief tracks changes to the state and allows changes to be undone
@@ -95,18 +104,12 @@ namespace bts { namespace db {
          void set_max_size(size_t new_max_size) { _max_size = new_max_size; }
          size_t max_size()const { return _max_size; }
 
+         const undo_state& head()const;
+
       private:
          void undo();
          void merge();
          void commit();
-
-         struct undo_state
-         {
-            unordered_map<object_id_type, unique_ptr<object> > old_values;
-            unordered_map<object_id_type, object_id_type>      old_index_next_ids;
-            flat_set<object_id_type>                           new_ids;
-            unordered_map<object_id_type, unique_ptr<object> > removed;
-         };
 
          uint32_t                _active_sessions = 0;
          bool                    _disabled = true;

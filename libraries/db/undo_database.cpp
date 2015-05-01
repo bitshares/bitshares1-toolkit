@@ -164,5 +164,10 @@ void undo_database::pop_commit()
    }
    enable();
 }
+const undo_state& undo_database::head()const
+{
+   FC_ASSERT( !_stack.empty() );
+   return _stack.back();
+}
 
 } } // bts::db

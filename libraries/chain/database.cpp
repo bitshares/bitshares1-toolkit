@@ -1047,6 +1047,12 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    applied_block( next_block ); //emit
    _applied_ops.clear();
 
+   const auto& head_undo = _undo_db.head(); 
+   vector<object_id_type> changed_ids;  changed_ids.reserve(head_undo.old_values.size());
+   for( const auto& item : head_undo.old_values ) changed_ids.push_back(item.first);
+   changed_objects(changed_ids);
+
+
    update_pending_block(next_block, current_block_interval);
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num())(skip) )  }
 

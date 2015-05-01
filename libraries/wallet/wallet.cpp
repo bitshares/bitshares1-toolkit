@@ -229,6 +229,10 @@ wallet_api_impl::wallet_api_impl( fc::api<login_api> rapi )
 {
    _remote_db  = _remote_api->database();
    _remote_net = _remote_api->network();
+   _remote_db->subscribe_to_objects( [=]( const fc::variant& obj )
+                                     {
+                                        wdump((obj));
+                                     }, {dynamic_global_property_id_type()} );
    return;
 }
 
