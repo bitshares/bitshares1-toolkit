@@ -112,7 +112,7 @@ namespace bts { namespace db {
            Value tmp;
            fc::raw::unpack(ds, tmp);
            return tmp;
-        } FC_RETHROW_EXCEPTIONS( warn, "error fetching key ${key}", ("key",k) ); }
+        } FC_RETHROW_EXCEPTIONS( warn, "failure fetching key ${key}", ("key",k) ); }
 
         class iterator
         {
