@@ -10,6 +10,13 @@ using namespace std;
 
 namespace bts { namespace wallet {
 
+/**
+ * This class takes a variant and turns it into an object
+ * of the given type, with the new operator.
+ */
+
+object* create_object( const variant& v );
+
 struct wallet_data
 {
    flat_set<account_id_type> accounts;
