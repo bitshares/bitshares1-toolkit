@@ -21,6 +21,7 @@ namespace bts { namespace chain {
          chain_parameters           parameters;
          optional<chain_parameters> pending_parameters;
 
+         uint32_t                   next_available_vote_id = 0;
          vector<delegate_id_type>   active_delegates; // updated once per maintenance interval
          vector<witness_id_type>    active_witnesses; // shuffled once per round
          flat_set<account_id_type>  witness_accounts; // updated once per maintenance interval
@@ -59,6 +60,7 @@ FC_REFLECT_DERIVED( bts::chain::dynamic_global_property_object, (bts::db::object
 
 FC_REFLECT_DERIVED( bts::chain::global_property_object, (bts::db::object),
                     (parameters)
+                    (next_available_vote_id)
                     (active_delegates)
                     (active_witnesses)
                   )

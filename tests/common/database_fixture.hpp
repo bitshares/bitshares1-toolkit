@@ -319,14 +319,15 @@ struct database_fixture {
       auto& active_delegates = db.get_global_properties().active_delegates;
       if( active_delegates.size() > 0 )
       {
-         set<vote_tally_id_type> votes;
-         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
-         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
-         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
-         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
-         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
-         create_account.vote = flat_set<vote_tally_id_type>(votes.begin(), votes.end());
+         set<vote_id_type> votes;
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote_id);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote_id);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote_id);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote_id);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote_id);
+         create_account.vote = flat_set<vote_id_type>(votes.begin(), votes.end());
       }
+      create_account.num_committee = create_account.vote.size();
 
       create_account.fee = create_account.calculate_fee(db.current_fee_schedule());
       return create_account;
@@ -352,14 +353,15 @@ struct database_fixture {
       auto& active_delegates = db.get_global_properties().active_delegates;
       if( active_delegates.size() > 0 )
       {
-         set<vote_tally_id_type> votes;
-         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
-         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
-         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
-         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
-         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote);
-         create_account.vote = flat_set<vote_tally_id_type>(votes.begin(), votes.end());
+         set<vote_id_type> votes;
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote_id);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote_id);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote_id);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote_id);
+         votes.insert(active_delegates[rand() % active_delegates.size()](db).vote_id);
+         create_account.vote = flat_set<vote_id_type>(votes.begin(), votes.end());
       }
+      create_account.num_committee = create_account.vote.size();
 
       create_account.fee = create_account.calculate_fee(db.current_fee_schedule());
       return create_account;
@@ -486,7 +488,6 @@ struct database_fixture {
       account_create_op.owner = authority(1234, key_rkid, 1234);
       account_create_op.active = authority(5678, key_rkid, 5678);
       account_create_op.memo_key = key_rkid;
-      account_create_op.vote = flat_set<vote_tally_id_type>();
       trx.operations.push_back( account_create_op );
 
       trx.validate();

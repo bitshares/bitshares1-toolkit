@@ -419,7 +419,7 @@ BOOST_FIXTURE_TEST_CASE( fired_delegates, database_fixture )
    transfer(account_id_type()(db), *nathan, asset(5000));
    generate_block();
    nathan = &get_account("nathan");
-   flat_set<vote_tally_id_type> delegates;
+   flat_set<vote_id_type> delegates;
 
    db.modify(db.get_global_properties(), [](global_property_object& p) {
       // Turn the review period WAY down, so it doesn't take long to produce blocks to that point in simulated time.
@@ -427,7 +427,7 @@ BOOST_FIXTURE_TEST_CASE( fired_delegates, database_fixture )
    });
 
    for( int i = 0; i < 15; ++i )
-      delegates.insert(create_delegate(create_account("delegate" + fc::to_string(i+1), delegate_key_object.id)).vote);
+      delegates.insert(create_delegate(create_account("delegate" + fc::to_string(i+1), delegate_key_object.id)).vote_id);
 
    //A proposal is created to give nathan lots more money.
    proposal_create_operation pop = proposal_create_operation::genesis_proposal(db);

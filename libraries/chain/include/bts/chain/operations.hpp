@@ -118,7 +118,7 @@ namespace bts { namespace chain {
 
       uint16_t        num_witness = 0;
       uint16_t        num_committee = 0;
-      flat_set<vote_tally_id_type> vote;
+      flat_set<vote_id_type> vote;
 
       account_id_type fee_payer()const { return registrar; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set , flat_set<account_id_type>&)const;
@@ -185,7 +185,7 @@ namespace bts { namespace chain {
       optional<authority>                     active;
       optional<account_id_type>               voting_account;
       optional<object_id_type>                memo_key = key_id_type();
-      optional<flat_set<vote_tally_id_type>>  vote;
+      optional<flat_set<vote_id_type>>        vote;
       uint16_t                                num_witness = 0;
       uint16_t                                num_committee = 0;
 
@@ -1317,7 +1317,7 @@ namespace bts { namespace chain {
    };
 
    /**
-    *  @brief necessary to support nested operations inside the proposal_create_operation 
+    *  @brief necessary to support nested operations inside the proposal_create_operation
     */
    struct op_wrapper
    {
@@ -1349,7 +1349,7 @@ FC_REFLECT( bts::chain::account_create_operation,
             (num_witness)(num_committee)(vote)
           )
 
-FC_REFLECT_TYPENAME( fc::flat_set<bts::chain::vote_tally_id_type> )
+FC_REFLECT_TYPENAME( fc::flat_set<bts::chain::vote_id_type> )
 FC_REFLECT( bts::chain::account_update_operation,
             (account)(fee)(owner)(active)(voting_account)(memo_key)(num_witness)(num_committee)(vote)(upgrade_to_prime)
           )

@@ -133,7 +133,7 @@ BOOST_AUTO_TEST_CASE( update_account )
       op.owner = authority(2, key_id, 1, key_id_type(), 1);
       op.active = authority(2, key_id, 1, key_id_type(), 1);
       //op.voting_account = key_id;
-      op.vote = flat_set<vote_tally_id_type>({active_delegates[0](db).vote, active_delegates[5](db).vote});
+      op.vote = flat_set<vote_id_type>({active_delegates[0](db).vote_id, active_delegates[5](db).vote_id});
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
 
@@ -239,7 +239,6 @@ BOOST_AUTO_TEST_CASE( create_delegate )
       const delegate_object& d = delegate_id(db);
 
       BOOST_CHECK(d.delegate_account == account_id_type());
-      BOOST_CHECK(d.vote(db).total_votes == 0);
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;

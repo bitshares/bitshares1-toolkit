@@ -119,7 +119,6 @@ namespace bts { namespace chain {
       force_settlement_object_type,
       delegate_object_type,
       witness_object_type,
-      vote_tally_object_type,
       limit_order_object_type,
       short_order_object_type,
       call_order_object_type,
@@ -159,7 +158,6 @@ namespace bts { namespace chain {
    class account_object;
    class delegate_object;
    class witness_object;
-   class vote_tally_object;
    class asset_object;
    class force_settlement_object;
    class key_object;
@@ -180,7 +178,6 @@ namespace bts { namespace chain {
    typedef object_id< protocol_ids, force_settlement_object_type,   force_settlement_object>      force_settlement_id_type;
    typedef object_id< protocol_ids, delegate_object_type,           delegate_object>              delegate_id_type;
    typedef object_id< protocol_ids, witness_object_type,            witness_object>               witness_id_type;
-   typedef object_id< protocol_ids, vote_tally_object_type,         vote_tally_object>            vote_tally_id_type;
    typedef object_id< protocol_ids, limit_order_object_type,        limit_order_object>           limit_order_id_type;
    typedef object_id< protocol_ids, short_order_object_type,        short_order_object>           short_order_id_type;
    typedef object_id< protocol_ids, call_order_object_type,         call_order_object>            call_order_id_type;
@@ -230,6 +227,101 @@ namespace bts { namespace chain {
    typedef safe<int64_t>                                share_type;
    typedef fc::sha224                                   secret_hash_type;
    typedef uint16_t                                     weight_type;
+
+   /**
+    * @brief An ID for some votable object
+    *
+    * This class stores an ID for a votable object. The ID is comprised of two fields: a type, and an instance. The
+    * type field stores which kind of object is being voted on, and the instance stores which specific object of that
+    * type is being referenced by this ID.
+    *
+    * A value of vote_id_type is implicitly convertible to an unsigned 32-bit integer containing only the instance. It
+    * may also be implicitly assigned from a uint32_t, which will update the instance. It may not, however, be
+    * implicitly constructed from a uint32_t, as in this case, the type would be unknown.
+    *
+    * On the wire, a vote_id_type is represented as a 32-bit integer with the type in the lower 8 bits and the instance
+    * in the upper 24 bits. This means that types may never exceed 8 bits, and instances may never exceed 24 bits.
+    *
+    * In JSON, a vote_id_type is represented as a string "type:instance", i.e. "1:5" would be type 1 and instance 5.
+    *
+    * @note In the Graphene protocol, vote_id_type instances are unique across types; that is to say, if an object of
+    * type 1 has instance 4, an object of type 0 may not also have instance 4. In other words, the type is not a
+    * namespace for instances; it is only an informational field.
+    */
+   struct vote_id_type
+   {
+      /// Lower 8 bits are type; upper 24 bits are instance
+      uint32_t content;
+
+      enum vote_type
+      {
+         committee,
+         witness,
+         VOTE_TYPE_COUNT
+      };
+
+      /// Default constructor. Sets type and instance to 0
+      vote_id_type():content(0){}
+      /// Construct this vote_id_type with provided type and instance
+      vote_id_type(vote_type type, uint32_t instance = 0)
+         : content(instance<<8 | type)
+      {}
+      /// Construct this vote_id_type from a serial string in the form "type:instance"
+      explicit vote_id_type(const std::string& serial)
+      {
+         auto colon = serial.find(':');
+         if( colon != string::npos )
+            *this = vote_id_type(vote_type(std::stoul(serial.substr(0, colon))), std::stoul(serial.substr(colon+1)));
+      }
+
+      /// Set the type of this vote_id_type
+      void set_type(vote_type type)
+      {
+         content &= 0xffffff00;
+         content |= type & 0xff;
+      }
+      /// Get the type of this vote_id_type
+      vote_type type()const
+      {
+         return vote_type(content & 0xff);
+      }
+
+      /// Set the instance of this vote_id_type
+      void set_instance(uint32_t instance)
+      {
+         assert(instance < 0x01000000);
+         content &= 0xff;
+         content |= instance << 8;
+      }
+      /// Get the instance of this vote_id_type
+      uint32_t instance()const
+      {
+         return content >> 8;
+      }
+
+      vote_id_type& operator =(vote_id_type other)
+      {
+         content = other.content;
+         return *this;
+      }
+      /// Set the instance of this vote_id_type
+      vote_id_type& operator =(uint32_t instance)
+      {
+         set_instance(instance);
+         return *this;
+      }
+      /// Get the instance of this vote_id_type
+      operator uint32_t()const
+      {
+         return instance();
+      }
+
+      /// Convert this vote_id_type to a serial string in the form "type:instance"
+      explicit operator std::string()const
+      {
+         return std::to_string(type()) + ":" + std::to_string(instance());
+      }
+   };
 
    struct fee_schedule_type
    {
@@ -287,10 +379,12 @@ namespace bts { namespace chain {
       uint32_t                maximum_proposal_lifetime           = BTS_DEFAULT_MAX_PROPOSAL_LIFETIME_SEC;
       uint32_t                genesis_proposal_review_period      = BTS_DEFAULT_GENESIS_PROPOSAL_REVIEW_PERIOD_SEC;
       uint8_t                 maximum_asset_whitelist_authorities = BTS_DEFAULT_MAX_ASSET_WHITELIST_AUTHORITIES;
-      uint16_t                maximum_authority_membership        = BTS_DEFAULT_MAX_AUTHORITY_MEMBERSHIP;    ///< largest number of keys/accounts an authority can have
-      uint16_t                burn_percent_of_fee                 = BTS_DEFAULT_BURN_PERCENT_OF_FEE; // the percentage of every fee that is taken out of circulation
-      uint16_t                witness_percent_of_fee              = BTS_DEFAULT_WITNESS_PERCENT;  ///< percent of revenue paid to witnesses
-      uint32_t                cashback_vesting_period_seconds     = BTS_DEFAULT_CASHBACK_VESTING_PERIOD_SEC;
+      uint16_t                maximum_witness_count               = BTS_DEFAULT_NUM_WITNESSES; ///< maximum number of active witnesses
+      uint16_t                maximum_committee_count             = BTS_DEFAULT_NUM_COMMITTEE; ///< maximum number of active delegates
+      uint16_t                maximum_authority_membership        = BTS_DEFAULT_MAX_AUTHORITY_MEMBERSHIP; ///< largest number of keys/accounts an authority can have
+      uint16_t                burn_percent_of_fee                 = BTS_DEFAULT_BURN_PERCENT_OF_FEE; ///< the percentage of every fee that is taken out of circulation
+      uint16_t                witness_percent_of_fee              = BTS_DEFAULT_WITNESS_PERCENT; ///< percent of revenue paid to witnesses
+      uint32_t                cashback_vesting_period_seconds     = BTS_DEFAULT_CASHBACK_VESTING_PERIOD_SEC; ///< time after cashback rewards are accrued before they become liquid
       uint16_t                max_bulk_discount_percent_of_fee    = BTS_DEFAULT_MAX_BULK_DISCOUNT_PERCENT; ///< the maximum percentage discount for bulk discounts
       share_type              bulk_discount_threshold_min         = BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MIN; ///< the minimum amount of fees paid to qualify for bulk discounts
       share_type              bulk_discount_threshold_max         = BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MAX; ///< the amount of fees paid to qualify for the max bulk discount percent
@@ -332,7 +426,13 @@ namespace fc
     void from_variant( const fc::variant& var,  bts::chain::public_key_type& vo );
     void to_variant( const bts::chain::fee_schedule_type& var,  fc::variant& vo );
     void from_variant( const fc::variant& var,  bts::chain::fee_schedule_type& vo );
+    void to_variant( const bts::chain::vote_id_type& var, fc::variant& vo );
+    void from_variant( const fc::variant& var, bts::chain::vote_id_type& vo );
 }
+
+FC_REFLECT_TYPENAME( bts::chain::vote_id_type::vote_type )
+FC_REFLECT_ENUM( bts::chain::vote_id_type::vote_type, (witness)(committee)(VOTE_TYPE_COUNT) )
+FC_REFLECT( bts::chain::vote_id_type, (content) )
 
 FC_REFLECT( bts::chain::public_key_type, (key_data) )
 FC_REFLECT( bts::chain::public_key_type::binary_key, (data)(check) )
@@ -347,7 +447,6 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (asset_object_type)
                  (delegate_object_type)
                  (witness_object_type)
-                 (vote_tally_object_type)
                  (limit_order_object_type)
                  (short_order_object_type)
                  (call_order_object_type)

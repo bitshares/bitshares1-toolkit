@@ -14,22 +14,11 @@ namespace bts { namespace chain {
          static const uint8_t type_id  = delegate_object_type;
 
          account_id_type                delegate_account;
-         vote_tally_id_type             vote;
-   };
-
-   class vote_tally_object : public abstract_object<vote_tally_object>
-   {
-      public:
-         static const uint8_t space_id = protocol_ids;
-         static const uint8_t  type_id = vote_tally_object_type;
-
-         share_type  total_votes;
+         vote_id_type                   vote_id;
    };
 
 } } // bts::chain
 
 FC_REFLECT_DERIVED( bts::chain::delegate_object, (bts::db::object),
                     (delegate_account)
-                    (vote) )
-
-FC_REFLECT_DERIVED( bts::chain::vote_tally_object, (bts::db::object), (total_votes) )
+                    (vote_id) )

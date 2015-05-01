@@ -18,8 +18,8 @@ namespace bts { namespace chain {
 
     public_key_type::public_key_type( const std::string& base58str )
     {
-	   // TODO:  Refactor syntactic checks into static is_valid()
-	   //        to make public_key_type API more similar to address API
+      // TODO:  Refactor syntactic checks into static is_valid()
+      //        to make public_key_type API more similar to address API
        std::string prefix( BTS_ADDRESS_PREFIX );
        const size_t prefix_len = prefix.size();
        FC_ASSERT( base58str.size() > prefix_len );
@@ -93,4 +93,14 @@ namespace fc
        for( auto item :  fees )
           vo.set( item.first, item.second );
     }
+
+    void to_variant(const bts::chain::vote_id_type& var, variant& vo)
+    {
+       vo = string(var);
+    }
+    void from_variant(const variant& var, bts::chain::vote_id_type& vo)
+    {
+       vo = bts::chain::vote_id_type(var.as_string());
+    }
+
 } // fc

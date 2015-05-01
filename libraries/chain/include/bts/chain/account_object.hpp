@@ -138,12 +138,12 @@ namespace bts { namespace chain {
          account_id_type       voting_account;
 
 
-         uint16_t              num_witness = BTS_DEFUALT_NUM_WITNESSES;
-         uint16_t              num_committee = BTS_DEFUALT_NUM_COMMITTEE;
+         uint16_t              num_witness = 0;
+         uint16_t              num_committee = 0;
 
-         /// This is the list of vote tallies this account votes for. The weight of these votes is determined by this
+         /// This is the list of vote IDs this account votes for. The weight of these votes is determined by this
          /// account's balance of core asset.
-         flat_set<vote_tally_id_type> votes;
+         flat_set<vote_id_type> votes;
 
          /// The reference implementation records the account's statistics in a separate object. This field contains the
          /// ID of that object.

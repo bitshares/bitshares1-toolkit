@@ -229,7 +229,7 @@ namespace bts { namespace chain {
          template<class Content>
          void shuffle_vector(vector<Content>& ids);
          template<class ObjectType>
-         vector<object_id<ObjectType::space_id, ObjectType::type_id, ObjectType>> sort_votable_objects()const;
+         vector<std::reference_wrapper<const ObjectType>> sort_votable_objects(size_t count)const;
 
          void                  apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
          processed_transaction apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
@@ -245,7 +245,7 @@ namespace bts { namespace chain {
          ///@{
          void update_active_witnesses();
          void update_active_delegates();
-         void update_vote_totals();
+         void update_vote_totals(const global_property_object& props);
          void perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props);
          ///@}
          void create_block_summary(const signed_block& next_block);
@@ -281,6 +281,11 @@ namespace bts { namespace chain {
          uint16_t                          _current_trx_in_block = 0;
          uint16_t                          _current_op_in_trx    = 0;
          uint16_t                          _current_virtual_op   = 0;
+
+         vector<share_type>                _vote_tally_buffer;
+         vector<share_type>                _witness_count_histogram_buffer;
+         vector<share_type>                _committee_count_histogram_buffer;
+         share_type                        _total_voting_stake;
    };
 
    template<class Content>
@@ -297,33 +302,22 @@ namespace bts { namespace chain {
    }
 
    template<class ObjectType>
-   vector<object_id<ObjectType::space_id, ObjectType::type_id, ObjectType>> database::sort_votable_objects() const
+   vector<std::reference_wrapper<const ObjectType>> database::sort_votable_objects(size_t count) const
    {
-      using ObjectIdType = object_id<ObjectType::space_id, ObjectType::type_id, ObjectType>;
       const auto& all_objects = dynamic_cast<const simple_index<ObjectType>&>(get_index<ObjectType>());
-      vector<ObjectIdType> ids;
-      ids.reserve(all_objects.size());
-      std::transform(all_objects.begin(), all_objects.end(), std::back_inserter(ids), [](const ObjectType& w) {
-         return w.id;
+      count = std::min(count, all_objects.size());
+      vector<std::reference_wrapper<const ObjectType>> refs;
+      refs.reserve(all_objects.size());
+      std::transform(all_objects.begin(), all_objects.end(),
+                     std::back_inserter(refs),
+                     [](const ObjectType& o) { return std::cref(o); });
+      std::partial_sort( refs.begin(), refs.begin() + count, refs.end(),
+                         [this]( const ObjectType& a, const ObjectType& b )->bool {
+         return _vote_tally_buffer[a.vote_id] > _vote_tally_buffer[b.vote_id];
       });
-      std::sort( ids.begin(), ids.end(), [&]( ObjectIdType a, ObjectIdType b )->bool {
-         return a(*this).vote(*this).total_votes >
-               b(*this).vote(*this).total_votes;
-      });
 
-      uint64_t base_threshold = ids[9](*this).vote(*this).total_votes.value;
-      uint64_t threshold =  base_threshold * 75 / 100;
-      uint32_t i = 10;
-
-      if( threshold > 0 )
-         for( ; i < ids.size(); ++i )
-         {
-            if( ids[i](*this).vote(*this).total_votes < threshold ) break;
-            threshold = (base_threshold / (100) ) * (75 + i/(ids.size()/4));
-         }
-      ids.resize( i );
-
-      return ids;
+      refs.resize(count, refs.front());
+      return refs;
    }
 
 } }

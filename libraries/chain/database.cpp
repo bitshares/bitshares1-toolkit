@@ -169,7 +169,6 @@ void database::initialize_indexes()
    add_index< primary_index< simple_index< dynamic_global_property_object >> >();
    add_index< primary_index< simple_index< account_statistics_object      >> >();
    add_index< primary_index< simple_index< asset_dynamic_data_object      >> >();
-   add_index< primary_index< flat_index<   vote_tally_object              >> >();
    add_index< primary_index< flat_index<   block_summary_object           >> >();
 }
 
@@ -200,11 +199,11 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
    vector<delegate_id_type> init_delegates;
    vector<witness_id_type> init_witnesses;
 
-   for( int i = 0; i < BTS_MIN_DELEGATE_COUNT; ++i )
+   auto delegates_and_witnesses = std::max(BTS_MIN_WITNESS_COUNT, BTS_MIN_DELEGATE_COUNT);
+   for( int i = 0; i < delegates_and_witnesses; ++i )
    {
       const account_statistics_object& stats_obj =
-         create<account_statistics_object>( [&](account_statistics_object& b){
-            (void)b;
+         create<account_statistics_object>( [&](account_statistics_object&){
          });
       const account_object& delegate_account =
          create<account_object>( [&](account_object& a) {
@@ -212,23 +211,15 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
             a.name = string("init") + fc::to_string(i);
             a.statistics = stats_obj.id;
          });
-      const vote_tally_object& vote =
-         create<vote_tally_object>( [&](vote_tally_object&) {
-            // Nothing to do here...
-         });
       const delegate_object& init_delegate = create<delegate_object>( [&](delegate_object& d) {
          d.delegate_account = delegate_account.id;
-         d.vote = vote.id;
+         d.vote_id = i * 2;
       });
       init_delegates.push_back(init_delegate.id);
 
-      const vote_tally_object& witness_vote =
-         create<vote_tally_object>( [&](vote_tally_object&) {
-            // Nothing to do here...
-         });
       const witness_object& init_witness = create<witness_object>( [&](witness_object& d) {
             d.witness_account = delegate_account.id;
-            d.vote = witness_vote.id;
+            d.vote_id = i * 2 + 1;
             secret_hash_type::encoder enc;
             fc::raw::pack( enc, genesis_private_key );
             fc::raw::pack( enc, d.last_secret );
@@ -244,6 +235,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
       create<global_property_object>( [&](global_property_object& p) {
          p.active_delegates = init_delegates;
          p.active_witnesses = init_witnesses;
+         p.next_available_vote_id = delegates_and_witnesses * 2;
       });
    (void)properties;
 
@@ -1047,7 +1039,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    applied_block( next_block ); //emit
    _applied_ops.clear();
 
-   const auto& head_undo = _undo_db.head(); 
+   const auto& head_undo = _undo_db.head();
    vector<object_id_type> changed_ids;  changed_ids.reserve(head_undo.old_values.size());
    for( const auto& item : head_undo.old_values ) changed_ids.push_back(item.first);
    changed_objects(changed_ids);
@@ -1115,44 +1107,59 @@ signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
 } FC_CAPTURE_AND_RETHROW( (witness_id) ) }
 
 void database::update_active_witnesses()
-{
-   auto ids = sort_votable_objects<witness_object>();
-   shuffle_vector(ids);
+{ try {
+   share_type stake_target = _total_voting_stake.value / 2;
+   share_type stake_tally = _witness_count_histogram_buffer[0];
+   int witness_count = 0;
+   while( stake_tally <= stake_target )
+      stake_tally += _witness_count_histogram_buffer[++witness_count];
+
+   auto wits = sort_votable_objects<witness_object>(std::max(witness_count, BTS_MIN_WITNESS_COUNT));
+   shuffle_vector(wits);
 
    modify( get_global_properties(), [&]( global_property_object& gp ){
-      gp.active_witnesses = std::move(ids);
+      gp.active_witnesses.clear();
+      std::transform(wits.begin(), wits.end(),
+                     std::inserter(gp.active_witnesses, gp.active_witnesses.end()),
+                     [](const witness_object& w) {
+         return w.id;
+      });
       gp.witness_accounts.clear();
-      std::transform(gp.active_witnesses.begin(), gp.active_witnesses.end(),
+      std::transform(wits.begin(), wits.end(),
                      std::inserter(gp.witness_accounts, gp.witness_accounts.end()),
-                     [this](witness_id_type w) {
-         return get(w).witness_account;
+                     [](const witness_object& w) {
+         return w.witness_account;
       });
    });
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 void database::update_active_delegates()
-{
-   auto ids = sort_votable_objects<delegate_object>();
+{ try {
+   share_type stake_target = _total_voting_stake.value / 2;
+   share_type stake_tally = _committee_count_histogram_buffer[0];
+   int delegate_count = 0;
+   while( stake_tally <= stake_target )
+      stake_tally += _committee_count_histogram_buffer[++delegate_count];
+
+   auto delegates = sort_votable_objects<delegate_object>(std::max(delegate_count, BTS_MIN_DELEGATE_COUNT));
 
    // Update genesis authorities
-   if( !ids.empty() )
+   if( !delegates.empty() )
       modify( get(account_id_type()), [&]( account_object& a ) {
-         uint64_t total_votes = 0;
+         share_type total_votes = 0;
          map<account_id_type, share_type> weights;
          a.owner.weight_threshold = 0;
          a.owner.auths.clear();
 
-         for( delegate_id_type id : ids )
+         for( const delegate_object& del : delegates )
          {
-            const delegate_object& del = get<delegate_object>(id);
-            const vote_tally_object& tally = del.vote(*this);
-            weights.emplace(del.delegate_account, tally.total_votes);
-            total_votes += tally.total_votes.value;
+            weights.emplace(del.delegate_account, _vote_tally_buffer[del.vote_id]);
+            total_votes += _vote_tally_buffer[del.vote_id];
          }
 
          // total_votes is 64 bits. Subtract the number of leading low bits from 64 to get the number of useful bits,
          // then I want to keep the most significant 16 bits of what's left.
-         int8_t bits_to_drop = std::max(int(64 - __builtin_clzll(total_votes)) - 16, 0);
+         int8_t bits_to_drop = std::max(int(64 - __builtin_clzll(total_votes.value)) - 16, 0);
          for( const auto& weight : weights )
          {
             // Ensure that everyone has at least one vote. Zero weights aren't allowed.
@@ -1166,9 +1173,12 @@ void database::update_active_delegates()
          a.active = a.owner;
       });
    modify( get_global_properties(), [&]( global_property_object& gp ) {
-      gp.active_delegates = std::move(ids);
+      gp.active_delegates.clear();
+      std::transform(delegates.begin(), delegates.end(),
+                     std::back_inserter(gp.active_delegates),
+                     [](const delegate_object& d) { return d.id; });
    });
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 void database::update_global_dynamic_data( const signed_block& b )
 {
@@ -1222,40 +1232,30 @@ bool database::is_known_transaction( const transaction_id_type& id )const
 /**
  *  For each prime account, adjust the vote total object
  */
-void database::update_vote_totals()
-{
+void database::update_vote_totals(const global_property_object& props)
+{ try {
     const account_index& account_idx = get_index_type<account_index>();
-    const flat_index< vote_tally_object >& tidx = get_index_type< flat_index< vote_tally_object > >();
-
-    vector<share_type> vote_sums;
-    vote_sums.resize( tidx.size() );
+    _total_voting_stake = 0;
 
     for( const account_object& account : account_idx.indices() )
     {
        if( true || account.is_prime() )
        {
-          for( vote_tally_id_type tally : account.votes )
-          {
-             const auto& stats =  account.statistics(*this);
-             vote_sums[tally.instance] +=
-                   stats.total_core_in_orders + stats.cashback_rewards
+          const auto& stats = account.statistics(*this);
+          share_type voting_stake = stats.total_core_in_orders + stats.cashback_rewards
                    + get_balance(account.get_id(), asset_id_type()).amount;
-          }
-       }
-    }
+          for( vote_id_type id : account.votes )
+             _vote_tally_buffer[id] += voting_stake;
 
-    for( uint32_t i = 0; i < vote_sums.size(); ++i )
-    {
-       const auto& current = vote_tally_id_type(i)(*this);
-       // avoid creating unnecessary saved state in the undo history
-       if( current.total_votes != vote_sums[i] )
-       {
-          modify( current, [&]( vote_tally_object& obj ){
-             obj.total_votes = vote_sums[i];
-          });
+          if( account.num_witness <= props.parameters.maximum_witness_count )
+             _witness_count_histogram_buffer[account.num_witness] += voting_stake;
+          if( account.num_committee <= props.parameters.maximum_committee_count )
+             _committee_count_histogram_buffer[account.num_committee] += voting_stake;
+
+          _total_voting_stake += voting_stake;
        }
     }
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 /**
  *  Push block "may fail" in which case every partial change is unwound.  After
@@ -1634,9 +1634,15 @@ void database::update_pending_block(const signed_block& next_block, uint8_t curr
 
 void database::perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props)
 {
-   update_vote_totals();
+   _vote_tally_buffer.resize(global_props.next_available_vote_id);
+   _witness_count_histogram_buffer.resize(global_props.parameters.maximum_witness_count);
+   _committee_count_histogram_buffer.resize(global_props.parameters.maximum_committee_count);
+   update_vote_totals(global_props);
    update_active_witnesses();
    update_active_delegates();
+   _vote_tally_buffer.clear();
+   _witness_count_histogram_buffer.clear();
+   _committee_count_histogram_buffer.clear();
 
    const global_property_object& global_properties = get_global_properties();
    if( global_properties.pending_parameters )

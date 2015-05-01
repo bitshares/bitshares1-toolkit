@@ -13,16 +13,14 @@ object_id_type witness_create_evaluator::do_evaluate( const witness_create_opera
 
 object_id_type witness_create_evaluator::do_apply( const witness_create_operation& op )
 {
-   const auto& vote_obj = db().create<vote_tally_object>( [&]( vote_tally_object& ){
-         // initial vote is 0
-   });
-
+   const auto& props = db().get_global_properties();
    const auto& new_witness_object = db().create<witness_object>( [&]( witness_object& obj ){
          obj.witness_account     = op.witness_account;
-         obj.vote                = vote_obj.id;
+         obj.vote_id             = props.next_available_vote_id;
          obj.signing_key         = op.block_signing_key;
          obj.next_secret         = op.initial_secret;
    });
+   db().modify(props, [](global_property_object& p) { ++p.next_available_vote_id; });
    return new_witness_object.id;
 }
 

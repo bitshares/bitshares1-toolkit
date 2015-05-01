@@ -18,7 +18,9 @@ namespace bts { namespace chain {
          secret_hash_type               next_secret;
          secret_hash_type               last_secret;
          share_type                     accumulated_income;
-         vote_tally_id_type             vote;
+         vote_id_type                   vote_id;
+
+         witness_object() : vote_id(vote_id_type::witness) {}
    };
 
 } } // bts::chain
@@ -29,5 +31,5 @@ FC_REFLECT_DERIVED( bts::chain::witness_object, (bts::db::object),
                     (next_secret)
                     (last_secret)
                     (accumulated_income)
-                    (vote) )
+                    (vote_id) )
 

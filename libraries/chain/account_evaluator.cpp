@@ -22,15 +22,29 @@ object_id_type account_create_evaluator::do_evaluate( const account_create_opera
                  ("fee_paying_account->referral_percent",fee_paying_account->referrer_percent) );
    }
 
-   const auto& chain_params = db().get_global_properties().parameters;
+   const auto& global_props = db().get_global_properties();
+   uint32_t max_vote_id = global_props.next_available_vote_id;
+   const auto& chain_params = global_props.parameters;
+   FC_ASSERT( op.num_witness <= chain_params.maximum_witness_count );
+   FC_ASSERT( op.num_committee <= chain_params.maximum_committee_count );
    FC_ASSERT( op.owner.auths.size() <= chain_params.maximum_authority_membership );
    FC_ASSERT( op.active.auths.size() <= chain_params.maximum_authority_membership );
    for( auto id : op.owner.auths )
       FC_ASSERT( is_relative(id.first) || db().find<object>(id.first) );
    for( auto id : op.active.auths )
       FC_ASSERT( is_relative(id.first) || db().find<object>(id.first) );
+   safe<uint32_t> counts[vote_id_type::VOTE_TYPE_COUNT];
    for( auto id : op.vote )
-      FC_ASSERT( db().find<object>(id) );
+   {
+      FC_ASSERT( id < max_vote_id );
+      counts[id.type()]++;
+   }
+   FC_ASSERT(counts[vote_id_type::witness] <= op.num_witness,
+             "",
+             ("count", counts[vote_id_type::witness])("num", op.num_witness));
+   FC_ASSERT(counts[vote_id_type::committee] <= op.num_committee,
+             "",
+             ("count", counts[vote_id_type::committee])("num", op.num_committee));
 
    auto& acnt_indx = db().get_index_type<account_index>();
    if( op.name.size() )
@@ -97,6 +111,8 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
    FC_ASSERT( !o.memo_key || is_relative(*o.memo_key) || db().find_object(*o.memo_key) );
 
    const auto& chain_params = db().get_global_properties().parameters;
+   FC_ASSERT( o.num_witness <= chain_params.maximum_witness_count );
+   FC_ASSERT( o.num_committee <= chain_params.maximum_committee_count );
    if( o.owner )
    {
       FC_ASSERT( o.owner->auths.size() <= chain_params.maximum_authority_membership );
@@ -115,6 +131,9 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
 
    if( o.vote )
    {
+      uint32_t max_vote_id = d.get_global_properties().next_available_vote_id;
+      for( auto id : *o.vote )
+         FC_ASSERT( id < max_vote_id );
       std::set_difference( acnt->votes.begin(), acnt->votes.end(),
                            o.vote->begin(), o.vote->end(),
                            std::inserter( remove_votes, remove_votes.begin() ) );
