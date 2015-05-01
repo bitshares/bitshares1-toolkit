@@ -292,7 +292,7 @@ struct database_fixture {
     * @brief Generates block_count blocks
     * @param block_count number of blocks to generate
     */
-   void generate_blocks(int block_count)
+   void generate_blocks(uint32_t block_count)
    {
       for( uint32_t i = 0; i < block_count; ++i )
          generate_block();
