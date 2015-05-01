@@ -906,6 +906,8 @@ BOOST_FIXTURE_TEST_CASE( bogus_signature, database_fixture )
       //key_id_type bob_key_id = bob_account_object.memo_key;
       key_id_type charlie_key_id = charlie_account_object.memo_key;
 
+      uint32_t skip = database::skip_transaction_dupe_check;
+
       // send from Sam -> Alice, signed by Sam
 
       const asset_object& core = asset_id_type()(db);
@@ -923,36 +925,43 @@ BOOST_FIXTURE_TEST_CASE( bogus_signature, database_fixture )
       trx.signatures.clear();
       trx.operations.push_back( xfer_op );
       trx.sign( alice_key_id, alice_key );
-      db.push_transaction( trx );
+
+      flat_set<account_id_type> active_set, owner_set;
+      xfer_op.get<transfer_operation>().get_required_auth(active_set, owner_set);
+      wdump( (active_set)(owner_set)(alice_key_id)
+       (alice_account_object) );
+
+      PUSH_TX( trx, skip );
+
       trx.operations.push_back( xfer_op );
       // Alice's signature is now invalid
-      BOOST_REQUIRE_THROW( db.push_transaction(trx), fc::exception );
+      BOOST_REQUIRE_THROW( PUSH_TX( trx, skip ), fc::exception );
       // Re-sign, now OK (sig is replaced)
       trx.sign( alice_key_id, alice_key );
-      db.push_transaction( trx );
-      
+      PUSH_TX( trx, skip );
+
       trx.signatures.clear();
       trx.sign( charlie_key_id, alice_key );
       // Sign with Alice's key (valid) claiming to be Charlie
-      BOOST_REQUIRE_THROW( db.push_transaction(trx), fc::exception );
+      BOOST_REQUIRE_THROW( PUSH_TX( trx, skip ), fc::exception );
       // and with Charlie's key (invalid) claiming to be Alice
       trx.sign( charlie_key_id, alice_key );
-      BOOST_REQUIRE_THROW( db.push_transaction(trx), fc::exception );
+      BOOST_REQUIRE_THROW( PUSH_TX( trx, skip ), fc::exception );
       trx.signatures.clear();
       // okay, now sign ONLY with Charlie's key claiming to be Alice
       trx.sign( charlie_key_id, alice_key );
-      BOOST_REQUIRE_THROW( db.push_transaction(trx), fc::exception );
+      BOOST_REQUIRE_THROW( PUSH_TX( trx, skip ), fc::exception );
 
       trx.signatures.clear();
       trx.operations.pop_back();
       trx.sign( alice_key_id, alice_key );
       trx.sign( charlie_key_id, charlie_key );
       // Signed by third-party Charlie (irrelevant key, not in authority)
-      db.push_transaction( trx );
+      PUSH_TX( trx, skip );
       trx.operations.push_back( xfer_op );
       trx.sign( alice_key_id, alice_key );
       // Alice's sig is valid but Charlie's is invalid
-      BOOST_REQUIRE_THROW( db.push_transaction(trx), fc::exception );
+      BOOST_REQUIRE_THROW( PUSH_TX( trx, skip ), fc::exception );
    }
    FC_LOG_AND_RETHROW()
 }

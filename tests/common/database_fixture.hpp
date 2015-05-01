@@ -65,6 +65,9 @@ using namespace bts::db;
 /// i.e. This allows a test on update_account to begin with the database at the end state of create_account.
 #define INVOKE(test) ((struct test*)this)->test_method(); RESET(trx); trx.relative_expiration = 1000
 
+#define PUSH_TX( tx, skip_flags ) \
+   _push_transaction( tx, skip_flags, __FILE__, __LINE__ )
+
 namespace bts { namespace chain {
 
 struct database_fixture {
@@ -86,6 +89,13 @@ struct database_fixture {
    static fc::ecc::private_key generate_private_key(string seed)
    {
       return fc::ecc::private_key::regenerate(fc::sha256::hash(seed));
+   }
+
+   void _push_transaction( const signed_transaction& tx, uint32_t skip_flags, const char* file, int line )
+   {
+      // wdump( (file)(line)(tx) );
+      db.push_transaction( tx, skip_flags );
+      return;
    }
 
    void verify_asset_supplies()
