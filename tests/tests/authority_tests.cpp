@@ -313,6 +313,7 @@ BOOST_AUTO_TEST_CASE( proposed_single_account )
       //Genesis has no stake in the transaction.
       BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
 
+      trx.signatures.clear();
       trx.operations = {proposal_update_operation{nathan.id, asset(), proposal.id,{nathan.id},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<account_id_type>{},flat_set<key_id_type>{},flat_set<key_id_type>{}}};
       trx.sign( key3->id, nathan_key3 );
       trx.sign( key2->id, nathan_key2 );
