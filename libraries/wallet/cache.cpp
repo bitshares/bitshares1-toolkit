@@ -64,9 +64,9 @@ object* create_object( const variant& v )
       case custom_object_type:
          return create_object_of_type< custom_object >( v );
       */
-      case proposal_object_type: 
+      case proposal_object_type:
          return create_object_of_type< proposal_object >( v );
-      case operation_history_object_type: 
+      case operation_history_object_type:
          return create_object_of_type< operation_history_object >( v );
       case withdraw_permission_object_type:
          return create_object_of_type< withdraw_permission_object >( v );
