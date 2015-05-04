@@ -75,6 +75,23 @@ namespace bts { namespace chain {
         uint16_t         maintenance_collateral_ratio;
   };
 
+  /**
+   *  @brief tracks bitassets scheduled for force settlement at some point in the future.
+   *
+   *  On the @ref settlement_date the @ref balance will be converted to the collateral asset
+   *  and paid to @ref owner and then this object will be deleted. 
+   */
+  class force_settlement_object : public bts::db::annotated_object<force_settlement_object>
+  {
+     public:
+        static const uint8_t space_id = protocol_ids;
+        static const uint8_t type_id  = force_settlement_object_type;
+
+        account_id_type   owner;
+        asset             balance;
+        time_point_sec    settlement_date;
+  };
+
   struct by_id;
   struct by_price;
   struct by_account;
@@ -123,10 +140,25 @@ namespace bts { namespace chain {
       >
    > call_order_multi_index_type;
 
+   struct by_account;
+   struct by_expiration;
+   typedef multi_index_container<
+      force_settlement_object,
+      indexed_by<
+         hashed_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
+         ordered_non_unique< tag<by_account>,
+            member<force_settlement_object, account_id_type, &force_settlement_object::owner>
+         >,
+         ordered_non_unique< tag<by_expiration>,
+            member<force_settlement_object, time_point_sec, &force_settlement_object::settlement_date>
+         >
+      >
+   > force_settlement_object_multi_index_type;
 
-  typedef generic_index<short_order_object, short_order_multi_index_type> short_order_index;
-  typedef generic_index<call_order_object, call_order_multi_index_type>   call_order_index;
 
+  typedef generic_index<short_order_object, short_order_multi_index_type>                    short_order_index;
+  typedef generic_index<call_order_object, call_order_multi_index_type>                      call_order_index;
+  typedef generic_index<force_settlement_object, force_settlement_object_multi_index_type>   force_settlement_index;
 } } // bts::chain
 
 FC_REFLECT_DERIVED( bts::chain::short_order_object, (bts::db::object),
@@ -136,3 +168,5 @@ FC_REFLECT_DERIVED( bts::chain::short_order_object, (bts::db::object),
 
 FC_REFLECT_DERIVED( bts::chain::call_order_object, (bts::db::object),
                     (borrower)(collateral)(debt)(call_price)(maintenance_collateral_ratio) )
+
+FC_REFLECT( bts::chain::force_settlement_object, (owner)(balance)(settlement_date) )

@@ -9,6 +9,8 @@ namespace bts { namespace chain {
    /**
     * @class global_property_object
     * @brief Maintains global state information (delegate list, current fees)
+    * @ingroup object
+    * @ingroup implementation
     *
     * This is an implementation detail. The values here are set by delegates to tune the blockchain parameters.
     */
@@ -30,6 +32,8 @@ namespace bts { namespace chain {
    /**
     * @class dynamic_global_property_object
     * @brief Maintains global state information (delegate list, current fees)
+    * @ingroup object
+    * @ingroup implementation
     *
     * This is an implementation detail. The values here are calculated during normal chain operations and reflect the
     * current values of global blockchain properties.

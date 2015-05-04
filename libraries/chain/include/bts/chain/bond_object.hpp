@@ -7,6 +7,9 @@
 
 namespace bts { namespace chain {
 
+  /**
+   *  @ingroup object
+   */
   class bond_object : public bts::db::abstract_object<bond_object>
   {
      public:
@@ -26,6 +29,9 @@ namespace bts { namespace chain {
         time_point_sec    earliest_payoff_date;
   };
 
+  /**
+   *  @ingroup object
+   */
   class bond_offer_object : public bts::db::abstract_object<bond_offer_object>
   {
      public:

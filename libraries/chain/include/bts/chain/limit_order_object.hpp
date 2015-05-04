@@ -8,6 +8,14 @@
 namespace bts { namespace chain {
   using namespace bts::db;
 
+  /**
+   *  @brief an offer to sell a amount of a asset at a specified exchange rate by a certain time
+   *  @ingroup object
+   *  @ingroup protocol
+   *  @ingroup market 
+   *
+   *  This limit_order_objects are indexed by @ref expiration and is automatically deleted on the first block after expiration. 
+   */
   class limit_order_object : public abstract_object<limit_order_object>
   {
      public:

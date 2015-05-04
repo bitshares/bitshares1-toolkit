@@ -8,6 +8,12 @@
 
 namespace bts { namespace chain {
 
+
+/**
+ *  @brief tracks the approval of a partially approved transaction 
+ *  @ingroup object
+ *  @ingroup protocol
+ */
 class proposal_object : public abstract_object<proposal_object>
 {
    public:

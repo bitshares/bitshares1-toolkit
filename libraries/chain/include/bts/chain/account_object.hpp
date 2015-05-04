@@ -8,6 +8,7 @@ namespace bts { namespace chain {
 
    /**
     * @class account_statistics_object
+    * @ingroup object
     * @ingroup implementation
     *
     * This object contains regularly updated statistical data about an account. It is provided for the purpose of
@@ -68,6 +69,13 @@ namespace bts { namespace chain {
          time_point_sec        cashback_maturity;
    };
 
+   /**
+    * @brief Tracks the balance of a single account/asset pair
+    * @ingroup object
+    *
+    * This object is indexed on owner and asset_type so that black swan
+    * events in asset_type can be processed quickly.
+    */
    class account_balance_object : public abstract_object<account_balance_object>
    {
       public:
@@ -85,6 +93,7 @@ namespace bts { namespace chain {
 
    /**
     * @brief This class represents an account on the object graph
+    * @ingroup object
     * @ingroup protocol
     *
     * Accounts are the primary unit of authority on the BitShares system. Users must have an account in order to use
@@ -199,6 +208,9 @@ namespace bts { namespace chain {
    struct by_asset;
    struct by_account;
    struct by_balance;
+   /**
+    * @ingroup object_index
+    */
    typedef multi_index_container<
       account_balance_object,
       indexed_by<
@@ -214,9 +226,16 @@ namespace bts { namespace chain {
       >
    > account_balance_object_multi_index_type;
 
+   /**
+    * @ingroup object_index
+    */
    typedef generic_index<account_balance_object, account_balance_object_multi_index_type> account_balance_index;
 
    struct by_name{};
+
+   /**
+    * @ingroup object_index
+    */
    typedef multi_index_container<
       account_object,
       indexed_by<
@@ -225,6 +244,9 @@ namespace bts { namespace chain {
       >
    > account_object_multi_index_type;
 
+   /**
+    * @ingroup object_index
+    */
    typedef generic_index<account_object, account_object_multi_index_type> account_index;
 
 }}

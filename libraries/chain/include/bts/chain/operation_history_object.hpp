@@ -4,10 +4,19 @@
 namespace bts { namespace chain {
 
    /**
+    * @brief tracks the history of all logical operations on blockchain state
+    * @ingroup object
+    * @ingroup implementation
+    *
     *  All operations and virtual operations result in the creation of an 
     *  operation_history_object that is maintained on disk as a stack.  Each
     *  real or virtual operation is assigned a unique ID / sequence number that
     *  it can be referenced by.   
+    *
+    *  @note  by default these objects are not tracked, the account_history_plugin must
+    *  be loaded fore these objects to be maintained. 
+    *
+    *  @note  this object is READ ONLY it can never be modified 
     */
    class operation_history_object : public abstract_object<operation_history_object>
    {
@@ -31,6 +40,10 @@ namespace bts { namespace chain {
    };
 
    /**
+    *  @brief a node in a linked list of operation_history_objects
+    *  @ingroup implementation
+    *  @ingroup object
+    *
     *  Account history is important for users and wallets even though it is
     *  not part of "core validation".   Account history is maintained as
     *  a linked list stored on disk in a stack.  Each account will point to the

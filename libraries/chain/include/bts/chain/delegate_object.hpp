@@ -7,6 +7,17 @@ namespace bts { namespace chain {
 
    class account_object;
 
+   /**
+    *  @brief tracks information about a delegate account.
+    *  @ingroup object
+    *
+    *  A delegate is responsible for setting blockchain parameters and has
+    *  dynamic multi-sig control over the genesis account.  The current set of
+    *  active delegates has control.
+    *
+    *  Delegates were separated into a separate object to make iterating over
+    *  the set of delegate easy. 
+    */
    class delegate_object : public abstract_object<delegate_object>
    {
       public:

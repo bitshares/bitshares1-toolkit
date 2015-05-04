@@ -1,6 +1,7 @@
 #include <bts/chain/asset_evaluator.hpp>
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/account_object.hpp>
+#include <bts/chain/short_order_object.hpp>
 #include <bts/chain/database.hpp>
 
 #include <functional>

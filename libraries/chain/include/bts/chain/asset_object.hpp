@@ -8,6 +8,18 @@ namespace bts { namespace chain {
    class account_object;
    using namespace bts::db;
 
+   /**
+    *  @brief tracks the asset information that changes frequently
+    *  @ingroup object
+    *  @ingroup implementation 
+    *
+    *  Because the asset_object is very large it doesn't make sense to save an undo state
+    *  for all of the parameters that never change.   This object factors out the parameters
+    *  of an asset that change in almost every transaction that involves the asset. 
+    *
+    *  This object exists as an implementation detail and its ID should never be referenced by
+    *  a blockchain operation.
+    */
    class asset_dynamic_data_object : public abstract_object<asset_dynamic_data_object>
    {
       public:
@@ -19,10 +31,17 @@ namespace bts { namespace chain {
          /// This tracks how much of the asset has been burned. burned + current_supply should always equal
          /// initial_supply
          share_type burned;
-         share_type accumulated_fees; // fees accumulate to be paid out over time
-         share_type fee_pool;         // in core asset
+         share_type accumulated_fees; ///< fees accumulate to be paid out over time
+         share_type fee_pool;         ///< in core asset
    };
 
+   /**
+    *  @brief tracks the parameters of an asset 
+    *  @ingroup object
+    *
+    *  All assets have a globally unique symbol name that controls how they are traded and an issuer who
+    *  has authority over the parameters of the asset. 
+    */
    class asset_object : public bts::db::annotated_object<asset_object>
    {
       public:
@@ -125,6 +144,12 @@ namespace bts { namespace chain {
          { assert(bitasset_data_id); return db.get(*bitasset_data_id); }
    };
 
+   /**
+    *  @brief contains properties that only apply to bitassets (market issued assets)
+    *
+    *  @ingroup object
+    *  @ingroup implementation
+    */
    class asset_bitasset_data_object : public abstract_object<asset_bitasset_data_object>
    {
       public:
@@ -154,16 +179,6 @@ namespace bts { namespace chain {
          void update_median_feeds(time_point_sec current_time);
    };
 
-   class force_settlement_object : public bts::db::annotated_object<force_settlement_object>
-   {
-      public:
-         static const uint8_t space_id = protocol_ids;
-         static const uint8_t type_id  = force_settlement_object_type;
-
-         account_id_type   owner;
-         asset             balance;
-         time_point_sec    settlement_date;
-   };
 
    struct by_feed_expiration;
    typedef multi_index_container<
@@ -187,21 +202,6 @@ namespace bts { namespace chain {
    > asset_object_multi_index_type;
    typedef generic_index<asset_object, asset_object_multi_index_type> asset_index;
 
-   struct by_account;
-   struct by_expiration;
-   typedef multi_index_container<
-      force_settlement_object,
-      indexed_by<
-         hashed_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
-         ordered_non_unique< tag<by_account>,
-            member<force_settlement_object, account_id_type, &force_settlement_object::owner>
-         >,
-         ordered_non_unique< tag<by_expiration>,
-            member<force_settlement_object, time_point_sec, &force_settlement_object::settlement_date>
-         >
-      >
-   > force_settlement_object_multi_index_type;
-   typedef generic_index<force_settlement_object, force_settlement_object_multi_index_type> force_settlement_index;
 
 } } // bts::chain
 FC_REFLECT_DERIVED( bts::chain::asset_dynamic_data_object, (bts::db::object),
@@ -243,4 +243,3 @@ FC_REFLECT_DERIVED( bts::chain::asset_object,
                     (bitasset_data_id)
                   )
 
-FC_REFLECT( bts::chain::force_settlement_object, (owner)(balance)(settlement_date) )

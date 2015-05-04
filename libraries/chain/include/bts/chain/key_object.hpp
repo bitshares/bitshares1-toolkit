@@ -5,6 +5,12 @@
 #include <bts/chain/types.hpp>
 
 namespace bts { namespace chain {
+   /**
+    * @class key_object
+    * @brief maps an ID to a public key or address
+    * @ingroup object 
+    * @ingroup protocol
+    */
    class key_object : public bts::db::abstract_object<key_object>
    {
       public:
