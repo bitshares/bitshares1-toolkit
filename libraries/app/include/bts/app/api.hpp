@@ -92,7 +92,8 @@ namespace bts { namespace app {
    class login_api
    {
       public:
-         login_api( application& a ):_app(a){}
+         login_api( application& a );
+         ~login_api();
 
          bool                   login( const string& user, const string& password );
          fc::api<network_api>   network()const;

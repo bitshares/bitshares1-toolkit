@@ -260,6 +260,13 @@ namespace bts { namespace app {
        }
        return result;
     }
+    login_api::login_api( application& a )
+    :_app(a)
+    {
+    }
+    login_api::~login_api()
+    {
+    }
 
     bool login_api::login( const string& user, const string& password )
     {
@@ -349,6 +356,7 @@ namespace bts { namespace app {
     }
     database_api::~database_api()
     {
+       wlog("${p}", ("p",int64_t(this)));
        try {
           if( _broadcast_changes_complete.valid() )
           {

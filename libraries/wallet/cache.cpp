@@ -54,8 +54,6 @@ object* create_object( const variant& v )
          return create_object_of_type< delegate_object >( v );
       case witness_object_type:
          return create_object_of_type< witness_object >( v );
-      case vote_tally_object_type:
-         return create_object_of_type< vote_tally_object >( v );
       case limit_order_object_type:
          return create_object_of_type< limit_order_object >( v );
       case short_order_object_type:

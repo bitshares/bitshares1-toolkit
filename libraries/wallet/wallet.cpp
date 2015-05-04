@@ -450,7 +450,6 @@ signed_transaction wallet_api_impl::create_account_with_brain_key(
    account_create_op.memo_key = active_rkid;
    // TODO: Doesn't compile
    //account_create_op.voting_key = active_rkid;
-   account_create_op.vote = flat_set<vote_tally_id_type>();
 
    // current_fee_schedule()
    // find_account(pay_from_account)
