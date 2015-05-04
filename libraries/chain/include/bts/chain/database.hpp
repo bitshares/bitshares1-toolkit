@@ -47,6 +47,12 @@ namespace bts { namespace chain {
          };
 
          void open(const fc::path& data_dir, const genesis_allocation& initial_allocation = genesis_allocation());
+         /**
+          * @brief Rebuild object graph from block history and open detabase
+          *
+          * This method may be called after or instead of @ref database::open, and will rebuild the object graph by
+          * replaying blockchain history. When this method exits successfully, the database will be open.
+          */
          void reindex(fc::path data_dir, genesis_allocation initial_allocation = genesis_allocation());
 
          /**
@@ -55,7 +61,7 @@ namespace bts { namespace chain {
           *
           * Will close the database before wiping. Database will be closed when this function returns.
           */
-         void wipe(bool include_blocks);
+         void wipe(const fc::path& data_dir, bool include_blocks);
          void close(uint32_t blocks_to_rewind = 0);
 
          /**

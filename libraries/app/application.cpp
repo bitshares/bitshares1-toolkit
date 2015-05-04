@@ -28,6 +28,7 @@ namespace detail {
    class application_impl : public net::node_delegate
    {
       application::daemon_configuration _config;
+      fc::optional<fc::temp_file> _lock_file;
 
       void reset_p2p_node(const fc::path& data_dir, const application::daemon_configuration& cfg)
       { try {
@@ -92,6 +93,11 @@ namespace detail {
       {
       }
 
+      ~application_impl()
+      {
+         fc::remove_all(_data_dir / "blockchain/dblock");
+      }
+
       void configure( const fc::path& data_dir)
       {
          _data_dir = data_dir;
@@ -125,7 +131,15 @@ namespace detail {
 
       void init()
       { try {
-         _chain_db->open(_data_dir / "blockchain", _config.initial_allocation);
+         bool clean = !fc::exists(_data_dir / "blockchain/dblock");
+         fc::create_directories(_data_dir / "blockchain/dblock");
+
+         if( clean )
+            _chain_db->open(_data_dir / "blockchain", _config.initial_allocation);
+         else {
+            wlog("Detected unclean shutdown. Replaying blockchain...");
+            _chain_db->reindex(_data_dir / "blockchain", _config.initial_allocation);
+         }
 
          for( const auto& p : _plugins )
             p.second->init();

@@ -84,12 +84,13 @@ const asset_object& database::get_core_asset() const
    return get(asset_id_type());
 }
 
-void database::wipe(bool include_blocks)
+void database::wipe(const fc::path& data_dir, bool include_blocks)
 {
+   ilog("Wiping database", ("include_blocks", include_blocks));
    close();
-   object_database::wipe();
+   object_database::wipe(data_dir);
    if( include_blocks )
-      fc::remove_all( get_data_dir() / "database" / "block_id_to_block" );
+      fc::remove_all( data_dir / "database" / "block_id_to_block" );
 }
 
 void database::open( const fc::path& data_dir, const genesis_allocation& initial_allocation )
@@ -960,15 +961,11 @@ bool database::fill_order(const force_settlement_object& settle, const asset& pa
    return filled;
 } FC_CAPTURE_AND_RETHROW( (settle)(pays)(receives) ) }
 
-/**
- *  This method should be called after the genesis state has
- *  been initialized.
- */
 void database::reindex(fc::path data_dir, genesis_allocation initial_allocation)
-{
-   wipe(false);
-   initialize_indexes();
+{ try {
+   wipe(data_dir, false);
    open(data_dir, initial_allocation);
+   assert(head_block_num() == 0);
 
    auto start = fc::time_point::now();
    auto itr = _block_id_to_block.begin();
@@ -984,7 +981,7 @@ void database::reindex(fc::path data_dir, genesis_allocation initial_allocation)
    }
    auto end = fc::time_point::now();
    wdump( ((end-start).count()/1000000.0) );
-}
+} FC_CAPTURE_AND_RETHROW( (data_dir)(initial_allocation) ) }
 
 asset database::current_delegate_registration_fee()const
 {
