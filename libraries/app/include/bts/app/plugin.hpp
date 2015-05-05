@@ -18,8 +18,8 @@ template<class P>
 class plugin : public abstract_plugin
 {
    public:
-      chain::database& database() { return *app().chain_database(); }
    protected:
+      chain::database& database() { return *app().chain_database(); }
       application& app()const { return *_app; }
       net::node& p2p_node() { return *app().p2p_node(); }
 
