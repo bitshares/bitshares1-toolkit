@@ -99,6 +99,8 @@ namespace bts { namespace chain {
       cancel_bond_offer_fee_type,
       accept_bond_offer_fee_type,
       claim_bond_collateral_fee_type,
+      vesting_balance_create_fee_type,
+      vesting_balance_withdraw_fee_type,
       FEE_TYPE_COUNT ///< Sentry value which contains the number of different fee types
    };
 
@@ -127,7 +129,9 @@ namespace bts { namespace chain {
       operation_history_object_type,
       withdraw_permission_object_type,
       bond_offer_object_type,
-      bond_object_type
+      bond_object_type,
+      vesting_balance_object_type,
+      OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
    enum impl_object_type
@@ -170,6 +174,7 @@ namespace bts { namespace chain {
    class withdraw_permission_object;
    class bond_object;
    class bond_offer_object;
+   class vesting_balance_object;
 
 
    typedef object_id< protocol_ids, key_object_type,                key_object>                   key_id_type;
@@ -187,6 +192,7 @@ namespace bts { namespace chain {
    typedef object_id< protocol_ids, withdraw_permission_object_type,withdraw_permission_object>   withdraw_permission_id_type;
    typedef object_id< protocol_ids, bond_offer_object_type,         bond_offer_object>            bond_offer_id_type;
    typedef object_id< protocol_ids, bond_object_type,               bond_object>                  bond_id_type;
+   typedef object_id< protocol_ids, vesting_balance_object_type,    vesting_balance_object>       vesting_balance_id_type;
 
    typedef object_id< relative_protocol_ids, key_object_type, key_object>           relative_key_id_type;
    typedef object_id< relative_protocol_ids, account_object_type, account_object>   relative_account_id_type;
@@ -257,6 +263,7 @@ namespace bts { namespace chain {
       {
          committee,
          witness,
+         worker,
          VOTE_TYPE_COUNT
       };
 
@@ -431,7 +438,7 @@ namespace fc
 }
 
 FC_REFLECT_TYPENAME( bts::chain::vote_id_type::vote_type )
-FC_REFLECT_ENUM( bts::chain::vote_id_type::vote_type, (witness)(committee)(VOTE_TYPE_COUNT) )
+FC_REFLECT_ENUM( bts::chain::vote_id_type::vote_type, (witness)(committee)(worker)(VOTE_TYPE_COUNT) )
 FC_REFLECT( bts::chain::vote_id_type, (content) )
 
 FC_REFLECT( bts::chain::public_key_type, (key_data) )
@@ -456,6 +463,8 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (withdraw_permission_object_type)
                  (bond_offer_object_type)
                  (bond_object_type)
+                 (vesting_balance_object_type)
+                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT_ENUM( bts::chain::impl_object_type,
                  (impl_global_property_object_type)
@@ -500,6 +509,8 @@ FC_REFLECT_ENUM( bts::chain::fee_type,
                  (cancel_bond_offer_fee_type)
                  (accept_bond_offer_fee_type)
                  (claim_bond_collateral_fee_type)
+                 (vesting_balance_create_fee_type)
+                 (vesting_balance_withdraw_fee_type)
                  (FEE_TYPE_COUNT)
                )
 

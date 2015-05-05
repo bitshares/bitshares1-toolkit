@@ -31,6 +31,8 @@
 #include <bts/chain/witness_object.hpp>
 #include <bts/chain/witness_evaluator.hpp>
 #include <bts/chain/bond_evaluator.hpp>
+#include <bts/chain/vesting_balance_evaluator.hpp>
+#include <bts/chain/vesting_balance_object.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/crypto/digest.hpp>
@@ -141,6 +143,8 @@ void database::initialize_evaluators()
    register_evaluator<witness_create_evaluator>();
    register_evaluator<witness_withdraw_pay_evaluator>();
    register_evaluator<create_bond_offer_evaluator>();
+   register_evaluator<vesting_balance_create_evaluator>();
+   register_evaluator<vesting_balance_withdraw_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -161,6 +165,7 @@ void database::initialize_indexes()
    add_index< primary_index< withdraw_permission_index > >();
    add_index< primary_index< bond_index > >();
    add_index< primary_index< bond_offer_index > >();
+   add_index< primary_index< simple_index<vesting_balance_object> > >();
 
    //Implementation object indexes
    add_index< primary_index< transaction_index                             > >();
