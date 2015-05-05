@@ -30,7 +30,7 @@ namespace bts { namespace db {
           * Saves the complete state of the object_database to disk, this could take a while
           */
          void flush();
-         void wipe(); // remove from disk
+         void wipe(const fc::path& data_dir); // remove from disk
          void close();
 
          template<typename T, typename F>

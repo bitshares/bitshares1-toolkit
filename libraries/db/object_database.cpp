@@ -19,10 +19,11 @@ object_database::~object_database(){}
 
 void object_database::close()
 {
-   flush();
-
    if( _object_id_to_object->is_open() )
+   {
+      flush();
       _object_id_to_object->close();
+   }
 }
 
 const object* object_database::find_object( object_id_type id )const
@@ -70,10 +71,12 @@ void object_database::flush()
    _object_id_to_object->store( object_id_type(), fc::raw::pack(next_ids) );
 }
 
-void object_database::wipe()
+void object_database::wipe(const fc::path& data_dir)
 {
    close();
-   fc::remove_all(_data_dir / "object_database" / "objects");
+   ilog("Wiping object_database.");
+   fc::remove_all(data_dir / "object_database");
+   assert(!fc::exists(data_dir / "object_database"));
 }
 
 void object_database::open( const fc::path& data_dir )
