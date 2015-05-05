@@ -285,6 +285,7 @@ namespace bts { namespace app {
 
     void network_api::broadcast_transaction( const signed_transaction& trx )
     {
+       trx.validate();
        _app.chain_database()->push_transaction(trx);
        _app.p2p_node()->broadcast_transaction(trx);
     }

@@ -78,6 +78,7 @@ namespace bts { namespace chain {
     */
 
    /**
+    *  @brief reserves a new ID to refer to a particular key or address.
     *  @ingroup operations
     */
    struct key_create_operation
