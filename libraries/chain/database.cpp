@@ -68,7 +68,7 @@ void database::close(uint32_t blocks_to_rewind)
 {
    _pending_block_session.reset();
 
-   for(int i = 0; i < blocks_to_rewind && head_block_num() > 0; ++i)
+   for(uint32_t i = 0; i < blocks_to_rewind && head_block_num() > 0; ++i)
       pop_block();
 
    object_database::close();
@@ -1479,10 +1479,17 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
 
 operation_result database::apply_operation(transaction_evaluation_state& eval_state, const operation& op)
 {
-   assert("No registered evaluator for this operation." &&
-          _operation_evaluators.size() > op.which() && _operation_evaluators[op.which()]);
+   int i_which = op.which();
+   uint64_t u_which = uint64_t( i_which );
+   if( i_which < 0 )
+      assert( "Negative operation tag" && false );
+   if( u_which >= _operation_evaluators.size() )
+      assert( "No registered evaluator for this operation" && false );
+   unique_ptr<op_evaluator>& eval = _operation_evaluators[ u_which ];
+   if( !eval )
+      assert( "No registered evaluator for this operation" && false );
    auto op_id = push_applied_operation( op );
-   auto result =  _operation_evaluators[op.which()]->evaluate( eval_state, op, true );
+   auto result = eval->evaluate( eval_state, op, true );
    set_applied_operation_result( op_id, result );
    return result;
 }
