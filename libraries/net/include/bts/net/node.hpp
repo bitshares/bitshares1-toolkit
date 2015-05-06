@@ -191,7 +191,7 @@ namespace bts { namespace net {
          *  Specifies the network interface and port upon which incoming
          *  connections should be accepted.
          */
-        void      listen_on_endpoint( const fc::ip::endpoint& ep );
+        void      listen_on_endpoint( const fc::ip::endpoint& ep, bool wait_if_not_available );
 
         /**
          *  Call with true to enable listening for incoming connections

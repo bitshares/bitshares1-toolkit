@@ -72,13 +72,11 @@ class account_update_observer : public bts::chain::evaluation_observer
 class account_history_plugin_impl
 {
    public:
-      account_history_plugin_impl(
-         account_history_plugin& _plugin
-         ) : _self( _plugin ),
-             _create_observer( _plugin ),
-             _update_observer( _plugin ),
-             _chain_db( nullptr )
-         { }
+      account_history_plugin_impl(account_history_plugin& _plugin)
+         : _self( _plugin ),
+           _create_observer( _plugin ),
+           _update_observer( _plugin )
+      { }
       virtual ~account_history_plugin_impl();
 
       void rebuild_key_account_index();
@@ -91,22 +89,16 @@ class account_history_plugin_impl
        */
       void update_account_histories( const signed_block& b );
       void index_account_keys( const account_id_type& account_id );
-      // protected in abstract_plugin interface,
-      //  we publish it here...if you can see this impl class,
-      //  you know what you doing for great justice
+
       bts::chain::database& database()
       {
-         FC_ASSERT( &_self.database() );
          return _self.database();
-         /*
-         return *_chain_db;
-         */
       }
 
       account_history_plugin& _self;
       account_create_observer _create_observer;
       account_update_observer _update_observer;
-      bts::chain::database* _chain_db;
+      flat_set<account_id_type> _tracked_accounts;
 };
 
 struct operation_get_impacted_accounts
@@ -245,11 +237,11 @@ void account_create_observer::post_evaluate(
 
    // if we only care about given accounts, then key -> account mapping
    //   is not maintained
-   if( _plugin._config.accounts.size() > 0 )
+   if( _plugin.my->_tracked_accounts.size() > 0 )
       return;
 
    account_id_type account_id = result.get< object_id_type >();
-   _plugin._my->index_account_keys( account_id );
+   _plugin.my->index_account_keys( account_id );
    return;
 }
 
@@ -272,7 +264,7 @@ void account_update_observer::pre_evaluate(
 
    // if we only care about given accounts, then key -> account mapping
    //   is not maintained
-   if( _plugin._config.accounts.size() > 0 )
+   if( _plugin.my->_tracked_accounts.size() > 0 )
        return;
 
    // is this a tx which affects a key?
@@ -292,7 +284,7 @@ void account_update_observer::pre_evaluate(
    //}
 
    const account_update_operation& update_op = op.get< account_update_operation >();
-   _pre_account_keys = _plugin._my->get_keys_for_account( update_op.account );
+   _pre_account_keys = _plugin.my->get_keys_for_account( update_op.account );
    return;
 }
 
@@ -309,11 +301,11 @@ void account_update_observer::post_evaluate(
    if( !apply )
       return;
 
-   bts::chain::database& db = _plugin._my->database();
+   bts::chain::database& db = _plugin.my->database();
 
    // if we only care about given accounts, then key -> account mapping
    //   is not maintained
-   if( _plugin._config.accounts.size() > 0 )
+   if( _plugin.my->_tracked_accounts.size() > 0 )
        return;
 
    // wild back-of-envelope heuristic:  most account update ops
@@ -325,7 +317,7 @@ void account_update_observer::post_evaluate(
    removed_account_keys.reserve( _pre_account_keys.size() );
 
    const account_update_operation& update_op = op.get< account_update_operation >();
-   post_account_keys = _plugin._my->get_keys_for_account( update_op.account );
+   post_account_keys = _plugin.my->get_keys_for_account( update_op.account );
 
    std::set_difference(
       _pre_account_keys.begin(), _pre_account_keys.end(),
@@ -369,7 +361,7 @@ void account_update_observer::post_evaluate(
       });
    }
 
-   _plugin._my->index_account_keys( update_op.account );
+   _plugin.my->index_account_keys( update_op.account );
 
    return;
 }
@@ -387,7 +379,7 @@ void account_update_observer::evaluation_failed(
 
    // if we only care about given accounts, then key -> account mapping
    //   is not maintained
-   if( _plugin._config.accounts.size() > 0 )
+   if( _plugin.my->_tracked_accounts.size() > 0 )
        return;
 
    // cleaning up here is not strictly necessary, but good "hygiene"
@@ -508,7 +500,7 @@ void account_history_plugin_impl::update_account_histories( const signed_block& 
       op.op.visit( operation_get_impacted_accounts( oho, _self, impacted ) );
 
       // for each operation this account applies to that is in the config link it into the history
-      if( _self._config.accounts.size() == 0 )
+      if( _tracked_accounts.size() == 0 )
       {
          for( auto& account_id : impacted )
          {
@@ -528,7 +520,7 @@ void account_history_plugin_impl::update_account_histories( const signed_block& 
       }
       else
       {
-         for( auto account_id : _self._config.accounts )
+         for( auto account_id : _tracked_accounts )
          {
             if( impacted.find( account_id ) != impacted.end() )
             {
@@ -551,7 +543,7 @@ void account_history_plugin_impl::update_account_histories( const signed_block& 
 } // end namespace detail
 
 account_history_plugin::account_history_plugin() :
-   _my( new detail::account_history_plugin_impl(*this) )
+   my( new detail::account_history_plugin_impl(*this) )
 {
 }
 
@@ -559,24 +551,36 @@ account_history_plugin::~account_history_plugin()
 {
 }
 
-void account_history_plugin::configure(const account_history_plugin::plugin_config& cfg)
+void account_history_plugin::set_program_options_impl(boost::program_options::options_description& cli,
+                                                      boost::program_options::options_description& cfg)
 {
-   _config = cfg;
-   database().applied_block.connect( [&]( const signed_block& b){ _my->update_account_histories(b); } );
+   cli.add_options()
+         ("track-account", bpo::value<std::vector<std::string>>()->composing()->multitoken(), "Account ID to track history for (may specify multiple times)")
+         ;
+   cfg.add(cli);
+}
+
+void account_history_plugin::initialize(const boost::program_options::variables_map& options)
+{
+   database().applied_block.connect( [&]( const signed_block& b){ my->update_account_histories(b); } );
    database().add_index< primary_index< simple_index< operation_history_object > > >();
    database().add_index< primary_index< simple_index< account_transaction_history_object > > >();
    database().add_index< primary_index< key_account_index >>();
 
-   database().register_evaluation_observer<account_create_evaluator>( _my->_create_observer );
-   database().register_evaluation_observer< bts::chain::account_update_evaluator >( _my->_update_observer );
+   database().register_evaluation_observer<account_create_evaluator>( my->_create_observer );
+   database().register_evaluation_observer< bts::chain::account_update_evaluator >( my->_update_observer );
 
+   LOAD_VALUE_SET(options, "tracked-accounts", my->_tracked_accounts, bts::chain::account_id_type);
 }
 
-void account_history_plugin::init()
+void account_history_plugin::startup()
 {
-   _my->_chain_db = &database();
-   _my->rebuild_key_account_index();
+   my->rebuild_key_account_index();
 }
 
+flat_set<account_id_type> account_history_plugin::tracked_accounts() const
+{
+   return my->_tracked_accounts;
+}
 
 } }

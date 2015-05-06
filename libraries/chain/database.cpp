@@ -90,7 +90,7 @@ void database::wipe(const fc::path& data_dir, bool include_blocks)
    close();
    object_database::wipe(data_dir);
    if( include_blocks )
-      fc::remove_all( data_dir / "database" / "block_id_to_block" );
+      fc::remove_all( data_dir / "database" );
 }
 
 void database::open( const fc::path& data_dir, const genesis_allocation& initial_allocation )

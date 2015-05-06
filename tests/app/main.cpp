@@ -4,9 +4,11 @@
 #include <bts/chain/key_object.hpp>
 #include <bts/chain/time.hpp>
 
+#include <bts/account_history/account_history_plugin.hpp>
+
 #include <fc/thread/thread.hpp>
 
-#include <bts/account_history/account_history_plugin.hpp>
+#include <boost/filesystem/path.hpp>
 
 #define BOOST_TEST_MODULE Test Application
 #include <boost/test/included/unit_test.hpp>
@@ -20,24 +22,28 @@ BOOST_AUTO_TEST_CASE( two_node_network )
    try {
       fc::temp_directory app_dir;
       fc::temp_directory app2_dir;
+      fc::temp_file genesis_json;
+      fc::json::save_to_file(genesis_allocation(), genesis_json.path());
 
       start_simulated_time(fc::time_point::now());
 
       bts::app::application app;
       app.register_plugin<bts::account_history::account_history_plugin>();
-      application::daemon_configuration config;
-      config.initial_allocation.clear();
-      config.websocket_endpoint = fc::ip::endpoint();
-      config.p2p_endpoint = fc::ip::endpoint::from_string("127.0.0.1:3939");
-      app.configure(app_dir.path(), config);
-      app.apply_configuration();
+      bpo::variables_map cfg;
+      cfg.emplace("p2p-endpoint", bpo::variable_value(string("127.0.0.1:3939"), false));
+      cfg.emplace("genesis-json", bpo::variable_value(boost::filesystem::path(genesis_json.path()), false));
+      app.initialize(app_dir.path(), cfg);
 
       bts::app::application app2;
       app2.register_plugin<account_history::account_history_plugin>();
-      config.p2p_endpoint = fc::ip::endpoint::from_string("127.0.0.1:4040");
-      config.seed_nodes = {fc::ip::endpoint::from_string("127.0.0.1:3939")};
-      app2.configure(app2_dir.path(), config);
-      app2.apply_configuration();
+      auto cfg2 = cfg;
+      cfg2.erase("p2p-endpoint");
+      cfg2.emplace("p2p-endpoint", bpo::variable_value(string("127.0.0.1:4040"), false));
+      cfg2.emplace("seed-nodes", bpo::variable_value(vector<string>{"127.0.0.1:3939"}, false));
+      app2.initialize(app2_dir.path(), cfg2);
+
+      app.startup();
+      app2.startup();
       fc::usleep(fc::milliseconds(500));
 
       BOOST_CHECK_EQUAL(app.p2p_node()->get_connection_count(), 1);

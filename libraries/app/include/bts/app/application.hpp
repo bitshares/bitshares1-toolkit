@@ -3,8 +3,11 @@
 #include <bts/net/node.hpp>
 #include <bts/chain/database.hpp>
 
+#include <boost/program_options.hpp>
+
 namespace bts { namespace app {
    namespace detail { class application_impl; }
+   namespace bpo = boost::program_options;
    using std::string;
 
    class abstract_plugin;
@@ -15,43 +18,25 @@ namespace bts { namespace app {
          application();
          ~application();
 
-         typedef std::map<string,fc::variant> config;
-
-         struct daemon_configuration
-         {
-            fc::ip::endpoint              p2p_endpoint;
-            std::vector<fc::ip::endpoint> seed_nodes;
-            fc::ip::endpoint              websocket_endpoint = fc::ip::endpoint::from_string("127.0.0.1:8090");
-            chain::genesis_allocation     initial_allocation = {
-               {bts::chain::public_key_type(fc::ecc::private_key::regenerate(fc::sha256::hash(string("nathan"))).get_public_key()), 1}
-            };
-         };
-
-         void configure( const fc::path& data_dir );
-         void configure( const fc::path& data_dir, const daemon_configuration& config );
-         void init();
-         /**
-          * Partial initialization for testing.
-          *
-          * - Doesn't intialize network
-          * - Doesn't have datadir (everything is in memory)
-          */
-         void configure_without_network( const application::daemon_configuration& config );
+         void set_program_options( bpo::options_description& command_line_options,
+                                   bpo::options_description& configuration_file_options )const;
+         void initialize(const fc::path& data_dir, const bpo::variables_map&options);
+         void startup();
 
          template<typename PluginType>
          std::shared_ptr<PluginType> register_plugin()
          {
             auto plug = std::make_shared<PluginType>();
-            typename PluginType::plugin_config cfg;
-            try {
-               cfg = configuration()[plug->plugin_name()].template as<decltype(cfg)>();
-            } catch(fc::exception& e) {
-               ilog("Initializing new configuration for '${name}' plugin.", ("name", plug->plugin_name()));
-               configuration()[plug->plugin_name()] = cfg;
-            }
-            plug->configure_plugin( *this, cfg);
-            add_plugin( plug->plugin_name(), plug );
+            plug->set_app(this);
 
+            bpo::options_description plugin_cli_options("Options for plugin " + plug->plugin_name()), plugin_cfg_options;
+            plug->set_program_options(plugin_cli_options, plugin_cfg_options);
+            if( !plugin_cli_options.options().empty() )
+               _cli_options.add(plugin_cli_options);
+            if( !plugin_cfg_options.options().empty() )
+               _cfg_options.add(plugin_cfg_options);
+
+            add_plugin( plug->plugin_name(), plug );
             return plug;
          }
          std::shared_ptr<abstract_plugin> get_plugin( const string& name )const;
@@ -65,20 +50,15 @@ namespace bts { namespace app {
             return result;
          }
 
-         config&        configuration();
-         const config&  configuration()const;
-         void           apply_configuration();
-         void           save_configuration()const;
-
          net::node_ptr                    p2p_node();
          std::shared_ptr<chain::database> chain_database()const;
 
       private:
          void add_plugin( const string& name, std::shared_ptr<abstract_plugin> p );
          std::shared_ptr<detail::application_impl> my;
+
+         bpo::options_description _cli_options;
+         bpo::options_description _cfg_options;
    };
 
 } }
-
-FC_REFLECT( bts::app::application::daemon_configuration,
-            (p2p_endpoint)(websocket_endpoint)(seed_nodes)(initial_allocation) )

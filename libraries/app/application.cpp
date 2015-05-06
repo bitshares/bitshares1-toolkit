@@ -11,6 +11,10 @@
 #include <fc/rpc/api_connection.hpp>
 #include <fc/rpc/websocket_api.hpp>
 
+#include <boost/filesystem/path.hpp>
+
+#include <iostream>
+
 namespace bts { namespace app {
 using net::item_hash_t;
 using net::item_id;
@@ -27,24 +31,31 @@ namespace detail {
 
    class application_impl : public net::node_delegate
    {
-      application::daemon_configuration _config;
       fc::optional<fc::temp_file> _lock_file;
 
-      void reset_p2p_node(const fc::path& data_dir, const application::daemon_configuration& cfg)
+      void reset_p2p_node(const fc::path& data_dir)
       { try {
          _p2p_network = std::make_shared<net::node>("Graphene Reference Implementation");
 
          _p2p_network->load_configuration(data_dir / "p2p");
          _p2p_network->set_node_delegate(this);
 
-         for( const fc::ip::endpoint& node : cfg.seed_nodes )
+         if( _options->count("seed-node") )
          {
-            ilog("Adding seed node ${ip}", ("ip", node));
-            _p2p_network->add_node(node);
-            _p2p_network->connect_to_endpoint(node);
+            auto seeds = _options->at("seed-node").as<vector<string>>();
+            for( const string& ep : seeds )
+            {
+               fc::ip::endpoint node = fc::ip::endpoint::from_string(ep);
+               ilog("Adding seed node ${ip}", ("ip", node));
+               _p2p_network->add_node(node);
+               _p2p_network->connect_to_endpoint(node);
+            }
          }
 
-         _p2p_network->listen_on_port(cfg.p2p_endpoint.port(), true);
+         if( _options->count("p2p-endpoint") )
+            _p2p_network->listen_on_endpoint(fc::ip::endpoint::from_string(_options->at("p2p-endpoint").as<string>()), true);
+         else
+            _p2p_network->listen_on_port(0, false);
          _p2p_network->listen_to_p2p_network();
          ilog("Configured p2p node to listen on ${ip}", ("ip", _p2p_network->get_actual_listening_endpoint()));
 
@@ -52,10 +63,13 @@ namespace detail {
          _p2p_network->sync_from(net::item_id(net::core_message_type_enum::block_message_type,
                                               _chain_db->head_block_id()),
                                  std::vector<uint32_t>());
-      } FC_CAPTURE_AND_RETHROW( (cfg) ) }
+      } FC_CAPTURE_AND_RETHROW() }
 
-      void reset_websocket_server(const application::daemon_configuration& cfg)
+      void reset_websocket_server()
       { try {
+         if( !_options->count("rpc-endpoint") )
+            return;
+
          _websocket_server = std::make_shared<fc::http::websocket_server>();
 
          _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
@@ -64,29 +78,11 @@ namespace detail {
             wsc->register_api(fc::api<bts::app::login_api>(login));
             c->set_session_data( wsc );
          });
-         _websocket_server->listen( cfg.websocket_endpoint );
+         _websocket_server->listen( fc::ip::endpoint::from_string(_options->at("rpc-endpoint").as<string>()) );
          _websocket_server->start_accept();
-      } FC_CAPTURE_AND_RETHROW( (cfg) ) }
-
-      void initialize_configuration()
-      {
-         application::daemon_configuration config;
-         _configuration["daemon"] = config;
-         _save_config_when_initialized = true;
-         auto key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("nathan")));
-         if(config.initial_allocation.size() == 1 &&
-               config.initial_allocation.front().first.get<public_key_type>() == key.get_public_key())
-            dlog("Stake has been allocated to account ${id}, which has private key ${key} public key ${pubkey}.",
-                 ("id", account_id_type(11))("key", bts::utilities::key_to_wif(key))
-                 ("pubkey", public_key_type(key.get_public_key())));
-      }
+      } FC_CAPTURE_AND_RETHROW() }
 
    public:
-      void save_configuration()
-      {
-         fc::json::save_to_file(_configuration, _data_dir/"config.json");
-      }
-
       application_impl(application* self)
          : _self(self),
            _chain_db(std::make_shared<chain::database>())
@@ -98,75 +94,31 @@ namespace detail {
          fc::remove_all(_data_dir / "blockchain/dblock");
       }
 
-      void configure( const fc::path& data_dir)
-      {
-         _data_dir = data_dir;
-         if( fc::exists(data_dir / "config.json") )
-         {
-            try
-            {
-               _configuration = fc::json::from_file(data_dir / "config.json").as<application::config>();
-            }
-            catch( fc::exception& e )
-            {
-               elog("Failed to read config file:\n${e}", ("e", e.to_detail_string()));
-               initialize_configuration();
-            }
-         }
-         else
-         {
-            ilog("Initializing new configuration file.");
-            initialize_configuration();
-         }
-
-         configure(data_dir, _configuration["daemon"].as<application::daemon_configuration>());
-      }
-
-      void configure( const fc::path& data_dir, const application::daemon_configuration& config )
-      {
-         _data_dir = data_dir;
-         _config   = config;
-         _configuration["daemon"] = config;
-      }
-
-      void init()
+      void startup()
       { try {
          bool clean = !fc::exists(_data_dir / "blockchain/dblock");
          fc::create_directories(_data_dir / "blockchain/dblock");
 
-         if( clean )
-            _chain_db->open(_data_dir / "blockchain", _config.initial_allocation);
+         genesis_allocation initial_allocation = {{bts::chain::public_key_type(fc::ecc::private_key::regenerate(fc::sha256::hash(string("nathan"))).get_public_key()), 1}};
+         if( _options->count("genesis-json") )
+            initial_allocation = fc::json::from_file(_options->at("genesis-json").as<boost::filesystem::path>()).as<genesis_allocation>();
+
+         if( _options->count("resync-blockchain") )
+            _chain_db->wipe(_data_dir / "blockchain", true);
+
+         if( _options->count("replay-blockchain") )
+         {
+            ilog("Replaying blockchain on user request.");
+            _chain_db->reindex(_data_dir/"blockchain", initial_allocation);
+         } else if( clean )
+            _chain_db->open(_data_dir / "blockchain", initial_allocation);
          else {
             wlog("Detected unclean shutdown. Replaying blockchain...");
-            _chain_db->reindex(_data_dir / "blockchain", _config.initial_allocation);
+            _chain_db->reindex(_data_dir / "blockchain", initial_allocation);
          }
 
-         for( const auto& p : _plugins )
-            p.second->init();
-
-         if( _save_config_when_initialized )
-            save_configuration();
-
-         reset_p2p_node(_data_dir, _config);
-         reset_websocket_server(_config);
-      } FC_CAPTURE_AND_RETHROW() }
-
-      void configure_without_network( const application::daemon_configuration& config )
-      {
-         _configuration["daemon"] = config;
-         _chain_db->init_genesis( config.initial_allocation );
-         for( const auto& p : _plugins )
-            p.second->init();
-         return;
-      }
-
-      void apply_configuration()
-      { try {
-         save_configuration();
-
-         auto daemon_config = _configuration["daemon"].as<application::daemon_configuration>();
-         reset_p2p_node(_data_dir, daemon_config);
-         reset_websocket_server(daemon_config);
+         reset_p2p_node(_data_dir);
+         reset_websocket_server();
       } FC_CAPTURE_AND_RETHROW() }
 
       /**
@@ -376,12 +328,11 @@ namespace detail {
       application* _self;
 
       fc::path _data_dir;
+      const bpo::variables_map* _options = nullptr;
 
       std::shared_ptr<bts::chain::database>        _chain_db;
       std::shared_ptr<bts::net::node>              _p2p_network;
       std::shared_ptr<fc::http::websocket_server>  _websocket_server;
-      application::config                          _configuration;
-      bool                                         _save_config_when_initialized = false;
 
       std::map<string, std::shared_ptr<abstract_plugin>> _plugins;
    };
@@ -406,49 +357,36 @@ application::~application()
    }
 }
 
-void application::configure( const fc::path& data_dir )
+void application::set_program_options(boost::program_options::options_description& command_line_options,
+                                      boost::program_options::options_description& configuration_file_options) const
 {
-   my->configure( data_dir );
+   command_line_options.add_options()
+         ("p2p-endpoint", bpo::value<string>(), "Endpoint for P2P node to listen on")
+         ("seed-node,s", bpo::value<vector<string>>()->composing(), "P2P nodes to connect to on startup (may specify multiple times)")
+         ("rpc-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8090"), "Endpoint for websocket RPC to listen on")
+         ("genesis-json", bpo::value<boost::filesystem::path>(), "File to read Genesis State from")
+         ("replay-blockchain", "Rebuild object graph by replaying all blocks")
+         ("resync-blockchain", "Delete all blocks and re-sync with network from scratch")
+         ;
+   configuration_file_options.add(command_line_options);
+   command_line_options.add(_cli_options);
+   configuration_file_options.add(_cfg_options);
 }
 
-void application::init()
+void application::initialize(const fc::path& data_dir, const boost::program_options::variables_map& options)
 {
-   my->init();
+   my->_data_dir = data_dir;
+   my->_options = &options;
 }
 
-void application::configure(const fc::path& data_dir, const application::daemon_configuration& config)
+void application::startup()
 {
-   my->configure(data_dir, config);
-}
-
-void application::configure_without_network( const application::daemon_configuration& config )
-{
-   my->configure_without_network( config );
+   my->startup();
 }
 
 std::shared_ptr<abstract_plugin> application::get_plugin(const string& name) const
 {
    return my->_plugins[name];
-}
-
-application::config& application::configuration()
-{
-   return my->_configuration;
-}
-
-const application::config& application::configuration() const
-{
-   return my->_configuration;
-}
-
-void application::apply_configuration()
-{
-   my->apply_configuration();
-}
-
-void application::save_configuration() const
-{
-   my->save_configuration();
 }
 
 net::node_ptr application::p2p_node()
