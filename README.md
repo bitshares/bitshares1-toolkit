@@ -83,6 +83,8 @@ Tests also show the way to do many things, but are often cluttered with code tha
 
 Visitors are at the end of `operations.hpp` after the large typedef for `operation` as a `static_variant`.  TODO:  They should be refactored into a separate header.
 
+When using `modify()`, you can pass in either an `object_id` or an `object`.  Passing in an `object` is faster as it avoids a lookup.
+
 Downcasting stuff
 -----------------
 
