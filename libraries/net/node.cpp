@@ -690,7 +690,7 @@ namespace bts { namespace net { namespace detail {
       void add_node( const fc::ip::endpoint& ep );
       void initiate_connect_to(const peer_connection_ptr& peer);
       void connect_to_endpoint(const fc::ip::endpoint& ep);
-      void listen_on_endpoint( const fc::ip::endpoint& ep );
+      void listen_on_endpoint(const fc::ip::endpoint& ep , bool wait_if_not_available);
       void accept_incoming_connections(bool accept);
       void listen_on_port( uint16_t port, bool wait_if_not_available );
 
@@ -4437,10 +4437,11 @@ namespace bts { namespace net { namespace detail {
       // peer_to_disconnect->close_connection();
     }
 
-    void node_impl::listen_on_endpoint( const fc::ip::endpoint& ep )
+    void node_impl::listen_on_endpoint( const fc::ip::endpoint& ep, bool wait_if_not_available )
     {
       VERIFY_CORRECT_THREAD();
       _node_configuration.listen_endpoint = ep;
+      _node_configuration.wait_if_endpoint_is_busy = wait_if_not_available;
       save_node_configuration();
     }
 
@@ -4799,9 +4800,9 @@ namespace bts { namespace net { namespace detail {
     INVOKE_IN_IMPL(connect_to_endpoint, remote_endpoint);
   }
 
-  void node::listen_on_endpoint( const fc::ip::endpoint& ep )
+  void node::listen_on_endpoint(const fc::ip::endpoint& ep , bool wait_if_not_available)
   {
-    INVOKE_IN_IMPL(listen_on_endpoint, ep);
+    INVOKE_IN_IMPL(listen_on_endpoint, ep, wait_if_not_available);
   }
 
   void node::accept_incoming_connections(bool accept)

@@ -7,6 +7,7 @@
 
 namespace bts { namespace account_history {
 using namespace chain;
+namespace bpo = boost::program_options;
 
 //
 // Plugins should #define their SPACE_ID's so plugins with
@@ -56,7 +57,7 @@ namespace detail
     class account_history_plugin_impl;
 }
 
-class account_history_plugin : public bts::app::plugin<account_history_plugin> 
+class account_history_plugin : public bts::app::plugin<account_history_plugin>
 {
    public:
       account_history_plugin();
@@ -67,18 +68,14 @@ class account_history_plugin : public bts::app::plugin<account_history_plugin>
          return name;
       }
 
-      struct plugin_config {
-         /**
-          *  If this is empty then all accounts will be tracked.
-          */
-         flat_set<account_id_type>  accounts;
-      };
+      void set_program_options_impl(bpo::options_description& cli, bpo::options_description& cfg);
+      void initialize(const bpo::variables_map& options);
+      void startup();
 
-      void configure( const plugin_config& cfg );
-      virtual void init() override;
+      flat_set<account_id_type> tracked_accounts()const;
 
-      plugin_config _config;
-      std::unique_ptr<detail::account_history_plugin_impl> _my;
+      friend class detail::account_history_plugin_impl;
+      std::unique_ptr<detail::account_history_plugin_impl> my;
 };
 
 } } //bts::account_history
@@ -88,7 +85,3 @@ FC_REFLECT_DERIVED( bts::account_history::key_account_object,
             (key)
             (account_ids)
           )
-
-FC_REFLECT( bts::account_history::account_history_plugin::plugin_config,
-            (accounts)
-           )

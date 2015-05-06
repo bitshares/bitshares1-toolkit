@@ -171,7 +171,7 @@ struct database_fixture {
 
       const std::shared_ptr<bts::account_history::account_history_plugin> pin =
          app.get_plugin<bts::account_history::account_history_plugin>( "account_history" );
-      if( pin->_config.accounts.size() == 0 )
+      if( pin->tracked_accounts().size() == 0 )
       {
          vector< pair< account_id_type, address > > tuples_from_db;
          const auto& primary_account_idx = db.get_index_type<account_index>().indices().get<by_id>();
@@ -248,11 +248,7 @@ struct database_fixture {
    database_fixture()
       : app(), db( *app.chain_database() )
    {
-      bts::app::application::daemon_configuration cfg;
       app.register_plugin<bts::account_history::account_history_plugin>();
-      cfg.initial_allocation = genesis_allocation();
-      app.configure_without_network( cfg );
-      //app.init();
 
       genesis_key(db); // attempt to deref
       trx.relative_expiration = 1000;

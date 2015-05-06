@@ -6,6 +6,7 @@
 #include <fc/thread/future.hpp>
 
 namespace bts { namespace witness_plugin {
+namespace bpo = boost::program_options;
 
 class witness_plugin : public bts::app::plugin<witness_plugin> {
 public:
@@ -25,41 +26,23 @@ public:
       return name;
    }
 
+   void set_program_options_impl(boost::program_options::options_description &command_line_options,
+                                 boost::program_options::options_description &config_file_options);
+
    void set_block_production(bool allow) { _production_enabled = allow; }
 
-   struct plugin_config {
-      std::map<bts::chain::witness_id_type, fc::ecc::private_key> witness_keys = {
-         {bts::chain::witness_id_type(0), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
-         {bts::chain::witness_id_type(1), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
-         {bts::chain::witness_id_type(2), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
-         {bts::chain::witness_id_type(3), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
-         {bts::chain::witness_id_type(4), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
-         {bts::chain::witness_id_type(5), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
-         {bts::chain::witness_id_type(6), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
-         {bts::chain::witness_id_type(7), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
-         {bts::chain::witness_id_type(8), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))},
-         {bts::chain::witness_id_type(9), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis")))}
-      };
-      /// Only set to true when starting a new network, or all delegates are offline.
-      bool allow_production_on_stale_chain = false;
-   };
-
-   void configure( const plugin_config& cfg );
-   void init();
+   void initialize(const bpo::variables_map& options);
+   void startup();
 
 private:
    void schedule_next_production(const bts::chain::chain_parameters& global_parameters);
    void block_production_loop();
 
-   /// This will be set to false until we see a head block at time now (give or take an interval)
-   /// Suppress this behavior by setting allow_production_on_stale_chain to true in the config file.
+   bpo::variables_map _options;
    bool _production_enabled = false;
-   plugin_config _config;
+   std::map<chain::key_id_type, fc::ecc::private_key> _private_keys;
+   std::set<chain::witness_id_type> _witnesses;
    fc::future<void> _block_production_task;
 };
 
 } } //bts::delegate
-
-FC_REFLECT( bts::witness_plugin::witness_plugin::plugin_config,
-            (witness_keys)(allow_production_on_stale_chain)
-           )
