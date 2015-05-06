@@ -237,6 +237,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          p.active_delegates = init_delegates;
          p.active_witnesses = init_witnesses;
          p.next_available_vote_id = delegates_and_witnesses * 2;
+         p.chain_id = fc::digest(initial_allocation);
       });
    (void)properties;
 

@@ -15,7 +15,7 @@ void witness_plugin::set_program_options_impl(boost::program_options::options_de
    command_line_options.add_options()
          ("enable-stale-production", bpo::bool_switch()->notifier([this](bool e){_production_enabled = e;}), "Enable block production, even if the chain is stale")
          ("witness-id,w", bpo::value<vector<string>>()->composing()->multitoken(),
-          "ID of witness controlled by this node (e.g. \"1.7.0\", may specify multiple times)")
+          "ID of witness controlled by this node (e.g. \"1.7.0\", quotes are required, may specify multiple times)")
          ("private-key", bpo::value<vector<string>>()->composing()->multitoken()->
           DEFAULT_VALUE_VECTOR(std::make_pair(chain::key_id_type(), fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("genesis"))))),
           "Tuple of [key ID, private key] (may specify multiple times)")

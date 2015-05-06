@@ -231,7 +231,7 @@ namespace detail {
 
       virtual fc::sha256 get_chain_id()const override
       {
-         return fc::sha256();
+         return _chain_db->get_global_properties().chain_id;
       }
 
       /**
@@ -360,15 +360,17 @@ application::~application()
 void application::set_program_options(boost::program_options::options_description& command_line_options,
                                       boost::program_options::options_description& configuration_file_options) const
 {
-   command_line_options.add_options()
+   configuration_file_options.add_options()
          ("p2p-endpoint", bpo::value<string>(), "Endpoint for P2P node to listen on")
          ("seed-node,s", bpo::value<vector<string>>()->composing(), "P2P nodes to connect to on startup (may specify multiple times)")
          ("rpc-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8090"), "Endpoint for websocket RPC to listen on")
          ("genesis-json", bpo::value<boost::filesystem::path>(), "File to read Genesis State from")
+         ;
+   command_line_options.add(configuration_file_options);
+   command_line_options.add_options()
          ("replay-blockchain", "Rebuild object graph by replaying all blocks")
          ("resync-blockchain", "Delete all blocks and re-sync with network from scratch")
          ;
-   configuration_file_options.add(command_line_options);
    command_line_options.add(_cli_options);
    configuration_file_options.add(_cfg_options);
 }

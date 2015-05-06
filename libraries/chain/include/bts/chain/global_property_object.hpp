@@ -25,6 +25,8 @@ namespace bts { namespace chain {
          vector<delegate_id_type>   active_delegates; // updated once per maintenance interval
          vector<witness_id_type>    active_witnesses; // shuffled once per round
          flat_set<account_id_type>  witness_accounts; // updated once per maintenance interval
+
+         fc::sha256                 chain_id;
    };
 
    /**
@@ -63,4 +65,5 @@ FC_REFLECT_DERIVED( bts::chain::global_property_object, (bts::db::object),
                     (next_available_vote_id)
                     (active_delegates)
                     (active_witnesses)
+                    (chain_id)
                   )
