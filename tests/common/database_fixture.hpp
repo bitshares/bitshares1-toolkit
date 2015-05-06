@@ -15,6 +15,7 @@
 
 #include <fc/crypto/digest.hpp>
 
+#include <boost/program_options.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <iostream>
@@ -248,7 +249,15 @@ struct database_fixture {
    database_fixture()
       : app(), db( *app.chain_database() )
    {
-      app.register_plugin<bts::account_history::account_history_plugin>();
+      auto ahplugin = app.register_plugin<bts::account_history::account_history_plugin>();
+
+      boost::program_options::variables_map options;
+
+      // app.initialize();
+      ahplugin->initialize_plugin( options );
+
+      db.init_genesis();
+      ahplugin->startup_plugin();
 
       genesis_key(db); // attempt to deref
       trx.relative_expiration = 1000;
