@@ -32,7 +32,7 @@ namespace bts { namespace app {
          vector<optional<asset_object>>    lookup_asset_symbols( const vector<string>& asset_symbols )const;
 
          vector<asset>                     get_account_balances( account_id_type id, const flat_set<asset_id_type>& assets )const;
-         uint64_t                          get_account_count()const; 
+         uint64_t                          get_account_count()const;
          map<string,account_id_type>       lookup_accounts( const string& lower_bound_name, uint32_t limit )const;
          vector<operation_history_object>  get_account_history( account_id_type, operation_history_id_type stop = operation_history_id_type() )const;
 
@@ -51,11 +51,7 @@ namespace bts { namespace app {
 
          bool                              unsubscribe_from_objects( const vector<object_id_type>& ids );
 
-
-
-
-         // implementation details 
-
+      private:
          /** called every time a block is applied to report the objects that were changed */
          void on_objects_changed( const vector<object_id_type>& ids );
 
@@ -74,6 +70,7 @@ namespace bts { namespace app {
          */
         vector<operation_history_object>  get_account_history( account_id_type id, operation_history_id_type limit_id  = operation_history_id_type() )const;
 
+      private:
         application&              _app;
    };
 
@@ -101,6 +98,7 @@ namespace bts { namespace app {
          signed_transaction     sign_transaction( signed_transaction trx, const map< key_id_type, string >& wif_keys )const;
          string                 serialize_transaction( signed_transaction trx, bool hex )const;
 
+      private:
          application&                      _app;
          optional< fc::api<database_api> > _database_api;
          optional< fc::api<network_api> >  _network_api;
@@ -108,7 +106,7 @@ namespace bts { namespace app {
 
 }}  // bts::app
 
-FC_API( bts::app::database_api, 
+FC_API( bts::app::database_api,
         (get_objects)
         (get_block)
         (get_global_properties)
@@ -121,7 +119,7 @@ FC_API( bts::app::database_api,
         (lookup_accounts)
         (get_account_balances)
         (get_account_history)
-        (lookup_asset_symbols) 
+        (lookup_asset_symbols)
         (get_limit_orders)
         (get_short_orders)
         (get_call_orders)
