@@ -12,6 +12,7 @@
 #include <bts/chain/time.hpp>
 #include <bts/chain/witness_object.hpp>
 #include <bts/chain/bond_object.hpp>
+#include <bts/chain/vesting_balance_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -157,6 +158,8 @@ struct database_fixture {
       {
          total_balances[ bond_offer.amount.asset_id ] += bond_offer.amount.amount;
       }
+      for( const vesting_balance_object& vbo : db.get_index_type< simple_index<vesting_balance_object> >() )
+         total_balances[ vbo.balance.asset_id ] += vbo.balance.amount;
       for( auto item : total_debts )
          BOOST_CHECK_EQUAL(item.first(db).dynamic_asset_data_id(db).current_supply.value, item.second.value);
 
