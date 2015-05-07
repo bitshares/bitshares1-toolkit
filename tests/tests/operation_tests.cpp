@@ -2180,7 +2180,7 @@ BOOST_AUTO_TEST_CASE( vesting_balance_withdraw_test )
       //    in the past
       db.modify( vbo, [&]( vesting_balance_object& _vbo )
       {
-         _vbo.coin_seconds_earned_last_update -= dt_secs;
+         _vbo.policy.get<cdd_vesting_policy>().coin_seconds_earned_last_update -= dt_secs;
       } );
    };
 

@@ -32,9 +32,13 @@ object_id_type vesting_balance_create_evaluator::do_apply( const vesting_balance
    {
       obj.owner = op.owner;
       obj.balance = op.amount;
-      obj.vesting_seconds = op.vesting_seconds;
-      obj.coin_seconds_earned = 0;
-      obj.coin_seconds_earned_last_update = now;
+
+      cdd_vesting_policy policy;
+      policy.vesting_seconds = op.vesting_seconds;
+      policy.coin_seconds_earned = 0;
+      policy.coin_seconds_earned_last_update = now;
+
+      obj.policy = policy;
    } );
 
    FC_ASSERT( _db.get_balance( op.creator, op.amount.asset_id ) >= op.amount );
@@ -49,13 +53,8 @@ object_id_type vesting_balance_withdraw_evaluator::do_evaluate( const vesting_ba
 
    const vesting_balance_object& vbo = op.vesting_balance( _db );
    FC_ASSERT( op.owner == vbo.owner );
-   FC_ASSERT( op.amount <= vbo.balance );
-
-   fc::uint128_t coin_seconds_earned = vbo.compute_coin_seconds_earned( now );
-   fc::uint128_t coin_seconds_needed = op.amount.amount.value;
-   coin_seconds_needed *= vbo.vesting_seconds;
-
-   FC_ASSERT( coin_seconds_earned >= coin_seconds_needed );
+   FC_ASSERT( vbo.is_withdraw_allowed( now, op.amount ) );
+   assert( op.amount <= vbo.balance );      // is_withdraw_allowed should fail before this check is reached
 
    /* const account_object& owner_account = */ op.owner( _db );
 
@@ -76,7 +75,7 @@ object_id_type vesting_balance_withdraw_evaluator::do_apply( const vesting_balan
 
    _db.modify( vbo, [&]( vesting_balance_object& vbo )
    {
-      vbo.withdraw_vesting( now, op.amount );
+      vbo.withdraw( now, op.amount );
    } );
 
    _db.adjust_balance( op.owner, op.amount );

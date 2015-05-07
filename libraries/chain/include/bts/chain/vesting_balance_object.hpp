@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include <fc/static_variant.hpp>
 #include <fc/uint128.hpp>
 
 #include <bts/chain/asset.hpp>
@@ -11,6 +12,68 @@ namespace bts { namespace chain {
    using namespace bts::db;
 
    class vesting_balance_object;
+
+   struct vesting_policy_context
+   {
+      vesting_policy_context(
+         asset _balance,
+         fc::time_point_sec _now,
+         asset _amount )
+         : balance( _balance ), now( _now ), amount( _amount ) {}
+   
+      asset balance;
+      fc::time_point_sec now;
+      asset amount;
+   };
+
+   /**
+    * Linear vesting balance.
+    */
+   struct linear_vesting_policy
+   {
+      uint32_t                          vesting_seconds; // must be greater than zero
+      fc::time_point_sec                begin_date;
+      share_type                        begin_balance;   // same asset as balance
+      share_type                        total_withdrawn; // same asset as balance
+
+      asset get_allowed_withdraw( const vesting_policy_context& ctx )const;
+      bool is_deposit_allowed( const vesting_policy_context& ctx )const;
+      bool is_withdraw_allowed( const vesting_policy_context& ctx )const;
+      void on_deposit( const vesting_policy_context& ctx );
+      void on_withdraw( const vesting_policy_context& ctx );
+   };
+
+   struct cdd_vesting_policy
+   {
+      uint32_t                       vesting_seconds;
+      fc::uint128_t                  coin_seconds_earned;
+      fc::time_point_sec             coin_seconds_earned_last_update;
+
+      /**
+       * Compute coin_seconds_earned.  Used to
+       * non-destructively figure out how many coin seconds
+       * are available.
+       */
+      fc::uint128_t compute_coin_seconds_earned( const vesting_policy_context& ctx )const;
+
+      /**
+       * Update coin_seconds_earned and
+       * coin_seconds_earned_last_update fields; called by both
+       * on_deposit() and on_withdraw().
+       */
+      void update_coin_seconds_earned( const vesting_policy_context& ctx );
+
+      asset get_allowed_withdraw( const vesting_policy_context& ctx )const;
+      bool is_deposit_allowed( const vesting_policy_context& ctx )const;
+      bool is_withdraw_allowed( const vesting_policy_context& ctx )const;
+      void on_deposit( const vesting_policy_context& ctx );
+      void on_withdraw( const vesting_policy_context& ctx );
+   };
+
+   typedef fc::static_variant<
+      linear_vesting_policy,
+      cdd_vesting_policy
+      > vesting_policy;
 
    /**
     * Timelocked balance object is a balance that is locked by the
@@ -24,75 +87,15 @@ namespace bts { namespace chain {
 
          account_id_type                owner;
          asset                          balance;
-         uint32_t                       vesting_seconds;
-         fc::uint128_t                  coin_seconds_earned;
-         fc::time_point_sec             coin_seconds_earned_last_update;
+         vesting_policy                 policy;
 
          vesting_balance_object() {}
 
-         void _check_cap()const
-         {
-            fc::uint128_t coin_seconds_earned_cap = balance.amount.value;
-            coin_seconds_earned_cap *= vesting_seconds;
-            assert( coin_seconds_earned <= coin_seconds_earned_cap );
-            return;
-         }
-
          /**
-          * Compute coin_seconds_earned.  Used during do_evaluate() to
-          * non-destructively figure out whether enough coin seconds
-          * are available.
+          * Used to increase existing vesting balances.
           */
-         fc::uint128_t compute_coin_seconds_earned( const fc::time_point_sec& t )const
-         {
-            assert( t >= coin_seconds_earned_last_update );
-            int64_t delta_seconds = (t - coin_seconds_earned_last_update).to_seconds();
-            assert( delta_seconds >= 0 );
-
-            fc::uint128_t delta_coin_seconds = balance.amount.value;
-            delta_coin_seconds *= delta_seconds;
-
-            fc::uint128_t coin_seconds_earned_cap = balance.amount.value;
-            coin_seconds_earned_cap *= vesting_seconds;
-
-            return std::min(
-               coin_seconds_earned + delta_coin_seconds,
-               coin_seconds_earned_cap
-               );
-          }
-
-         /**
-          * Update coin_seconds_earned and
-          * coin_seconds_earned_last_update fields.
-          * After calling this method, it is safe to increase
-          * or decrease balance.
-          */
-         void update_coin_seconds_earned( const fc::time_point_sec& t )
-         {
-            coin_seconds_earned = compute_coin_seconds_earned( t );
-            coin_seconds_earned_last_update = t;
-            _check_cap();
-            return;
-         }
-
-         /**
-          * Used internally to increase vesting balances.  Vesting
-          * balances can only be increased by the blockchain.  So this
-          * method should be called by paths such as cashback and
-          * worker pay.  The functionality is intentionally not
-          * directly accessible to users -- and it is necessary
-          * for it to be inaccessible in order for the economics
-          * of vesting to function as intended.
-          */
-         void deposit_vesting( const fc::time_point_sec& t, asset amount )
-         {
-            assert( amount.asset_id == asset_id_type() );
-            assert( amount.asset_id == balance.asset_id );
-            update_coin_seconds_earned( t );
-            balance += amount;
-            _check_cap();
-            return;
-         }
+         void deposit( const fc::time_point_sec& now, const asset& amount );
+         bool is_deposit_allowed( const fc::time_point_sec& now, const asset& amount )const;
 
          /**
           * Used to remove a vesting balance from the VBO.  As well
@@ -102,37 +105,27 @@ namespace bts { namespace chain {
           * The money doesn't "go" anywhere; the caller is responsible
           * for crediting it to the proper account.
           */
-         void withdraw_vesting( const fc::time_point_sec& t, asset amount )
-         {
-            //
-            // Failing any of these assert checks should have already tripped an FC_ASSERT in do_evaluate().
-            //
-            // For neatness this method is organized so fields are read-only
-            // until we're sure we won't assert(), although this is not strictly necessary.
-            //
-            assert( amount.asset_id == balance.asset_id );
-            assert( amount <= balance );
-
-            fc::uint128_t coin_seconds_needed = amount.amount.value;
-            coin_seconds_needed *= vesting_seconds;
-
-            fc::uint128_t new_coin_seconds_earned = compute_coin_seconds_earned( t );
-            assert( new_coin_seconds_earned >= coin_seconds_needed );
-
-            coin_seconds_earned = new_coin_seconds_earned - coin_seconds_needed;
-            coin_seconds_earned_last_update = t;
-            balance -= amount;
-            _check_cap();
-            return;
-         }
+         void withdraw( const fc::time_point_sec& now, const asset& amount );
+         bool is_withdraw_allowed( const fc::time_point_sec& now, const asset& amount )const;
    };
 
 } } // bts::chain
 
+FC_REFLECT( bts::chain::linear_vesting_policy,
+   (vesting_seconds)
+   (begin_date)
+   (begin_balance)
+   (total_withdrawn)
+)
+
+FC_REFLECT( bts::chain::cdd_vesting_policy,
+   (vesting_seconds)
+   (coin_seconds_earned)
+   (coin_seconds_earned_last_update)
+)
+
 FC_REFLECT_DERIVED( bts::chain::vesting_balance_object, (bts::db::object),
-                    (owner)
-                    (balance)
-                    (vesting_seconds)
-                    (coin_seconds_earned)
-                    (coin_seconds_earned_last_update)
-                  )
+   (owner)
+   (balance)
+   (policy)
+)
