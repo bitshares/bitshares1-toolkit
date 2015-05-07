@@ -268,8 +268,11 @@ struct database_fixture {
       chain::start_simulated_time(bts::chain::now());
    }
    ~database_fixture(){
-      verify_asset_supplies();
-      verify_account_history_plugin_index();
+      if( !std::uncaught_exception() )
+      {
+         verify_asset_supplies();
+         verify_account_history_plugin_index();
+      }
       shutdown_ntp_time();
 
       if( data_dir )
