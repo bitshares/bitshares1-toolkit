@@ -380,17 +380,18 @@ namespace bts { namespace chain {
 
    struct chain_parameters
    {
-      fee_schedule_type       current_fees; // indexed by fee_type
-      uint32_t                witness_pay_percent_of_accumulated  = BTS_DEFAULT_WITNESS_PAY_PERCENT_OF_ACCUMULATED;
-      uint8_t                 block_interval                      = BTS_DEFAULT_BLOCK_INTERVAL; // seconds
-      uint32_t                maintenance_interval                = BTS_DEFAULT_MAINTENANCE_INTERVAL;
-      uint32_t                maximum_transaction_size            = BTS_DEFAULT_MAX_TRANSACTION_SIZE;
-      uint32_t                maximum_block_size                  = BTS_DEFAULT_MAX_BLOCK_SIZE;
-      uint32_t                maximum_undo_history                = BTS_DEFAULT_MAX_UNDO_HISTORY;
-      uint32_t                maximum_time_until_expiration       = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION;
-      uint32_t                maximum_proposal_lifetime           = BTS_DEFAULT_MAX_PROPOSAL_LIFETIME_SEC;
-      uint32_t                genesis_proposal_review_period      = BTS_DEFAULT_GENESIS_PROPOSAL_REVIEW_PERIOD_SEC;
-      uint8_t                 maximum_asset_whitelist_authorities = BTS_DEFAULT_MAX_ASSET_WHITELIST_AUTHORITIES;
+      fee_schedule_type       current_fees; ///< current schedule of fees, indexed by @ref fee_type
+      uint32_t                witness_pay_percent_of_accumulated  = BTS_DEFAULT_WITNESS_PAY_PERCENT_OF_ACCUMULATED; ///< percentage of accumulated fees in core asset to pay to witnesses for block production
+      uint8_t                 block_interval                      = BTS_DEFAULT_BLOCK_INTERVAL; ///< interval in seconds between blocks
+      uint32_t                maintenance_interval                = BTS_DEFAULT_MAINTENANCE_INTERVAL; ///< interval in sections between blockchain maintenance events
+      uint32_t                maximum_transaction_size            = BTS_DEFAULT_MAX_TRANSACTION_SIZE; ///< maximum allowable size in bytes for a transaction
+      uint32_t                maximum_block_size                  = BTS_DEFAULT_MAX_BLOCK_SIZE; ///< maximum allowable size in bytes for a block
+      uint32_t                maximum_undo_history                = BTS_DEFAULT_MAX_UNDO_HISTORY; ///< maximum number of undo states to keep in RAM
+      uint32_t                maximum_time_until_expiration       = BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION; ///< maximum lifetime in seconds for transactions to be valid, before expiring
+      uint32_t                maximum_proposal_lifetime           = BTS_DEFAULT_MAX_PROPOSAL_LIFETIME_SEC; ///< maximum lifetime in seconds for proposed transactions to be kept, before expiring
+      uint32_t                genesis_proposal_review_period      = BTS_DEFAULT_GENESIS_PROPOSAL_REVIEW_PERIOD_SEC; ///< minimum time in seconds that a proposed transaction requiring genesis authority may not be signed, prior to expiration
+      uint8_t                 maximum_asset_whitelist_authorities = BTS_DEFAULT_MAX_ASSET_WHITELIST_AUTHORITIES; ///< maximum number of accounts which an asset may list as authorities for its whitelist OR blacklist
+      uint8_t                 maximum_asset_feed_publishers       = BTS_DEFAULT_MAX_ASSET_FEED_PUBLISHERS; ///< the maximum number of feed publishers for a given asset
       uint16_t                maximum_witness_count               = BTS_DEFAULT_NUM_WITNESSES; ///< maximum number of active witnesses
       uint16_t                maximum_committee_count             = BTS_DEFAULT_NUM_COMMITTEE; ///< maximum number of active delegates
       uint16_t                maximum_authority_membership        = BTS_DEFAULT_MAX_AUTHORITY_MEMBERSHIP; ///< largest number of keys/accounts an authority can have
@@ -400,7 +401,6 @@ namespace bts { namespace chain {
       uint16_t                max_bulk_discount_percent_of_fee    = BTS_DEFAULT_MAX_BULK_DISCOUNT_PERCENT; ///< the maximum percentage discount for bulk discounts
       share_type              bulk_discount_threshold_min         = BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MIN; ///< the minimum amount of fees paid to qualify for bulk discounts
       share_type              bulk_discount_threshold_max         = BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MAX; ///< the amount of fees paid to qualify for the max bulk discount percent
-      uint8_t                 maximum_asset_feed_publishers       = BTS_DEFAULT_MAX_ASSET_FEED_PUBLISHERS; ///< the maximum number of feed publishers for a given asset
 
       void validate()const
       {
@@ -532,6 +532,7 @@ FC_REFLECT( bts::chain::chain_parameters,
             (maximum_time_until_expiration)
             (maximum_proposal_lifetime)
             (maximum_asset_whitelist_authorities)
+            (maximum_asset_feed_publishers)
             (maximum_authority_membership)
             (burn_percent_of_fee)
             (witness_percent_of_fee)

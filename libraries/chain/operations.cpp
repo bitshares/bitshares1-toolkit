@@ -535,7 +535,6 @@ void withdraw_permission_claim_operation::validate()const
    FC_ASSERT( withdraw_to_account != withdraw_from_account );
    FC_ASSERT( amount_to_withdraw.amount > 0 );
    FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( withdraw_permission.instance.value != 0 );
 }
 
 share_type withdraw_permission_claim_operation::calculate_fee( const fee_schedule_type& schedule )const
@@ -568,6 +567,7 @@ void withdraw_permission_create_operation::get_required_auth(flat_set<account_id
 void withdraw_permission_create_operation::validate() const
 {
    FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( withdraw_from_account != authorized_account );
    FC_ASSERT( withdrawal_limit.amount > 0 );
    //TODO: better bounds checking on these values
    FC_ASSERT( withdrawal_period_sec > 0 );
@@ -647,7 +647,7 @@ void            file_write_operation::validate()const
    FC_ASSERT( flags <= 0x2f );
    FC_ASSERT( file_size > 0 );
    /** less than 10 years to prevent overflow of 64 bit numbers in the value*lease_seconds*file_size calculation */
-   FC_ASSERT( lease_seconds < 60*60*24*365*10 ); 
+   FC_ASSERT( lease_seconds < 60*60*24*365*10 );
 }
 
 share_type      file_write_operation::calculate_fee( const fee_schedule_type& k )const

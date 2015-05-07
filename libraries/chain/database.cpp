@@ -34,6 +34,7 @@
 #include <bts/chain/bond_evaluator.hpp>
 #include <bts/chain/vesting_balance_evaluator.hpp>
 #include <bts/chain/vesting_balance_object.hpp>
+#include <bts/chain/withdraw_permission_evaluator.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/crypto/digest.hpp>
@@ -146,6 +147,8 @@ void database::initialize_evaluators()
    register_evaluator<bond_create_offer_evaluator>();
    register_evaluator<vesting_balance_create_evaluator>();
    register_evaluator<vesting_balance_withdraw_evaluator>();
+   register_evaluator<withdraw_permission_create_evaluator>();
+   register_evaluator<withdraw_permission_claim_evaluator>();
 }
 
 void database::initialize_indexes()

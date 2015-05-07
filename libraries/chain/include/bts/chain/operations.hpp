@@ -996,7 +996,7 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-      void         get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -1031,7 +1031,12 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
+      {
+         acc.adjust( fee_payer(), -fee );
+         acc.adjust( withdraw_to_account, amount_to_withdraw );
+         acc.adjust( withdraw_from_account, -amount_to_withdraw );
+      }
    };
 
    /**
@@ -1331,6 +1336,7 @@ namespace bts { namespace chain {
             proposal_create_operation,
             proposal_update_operation,
             proposal_delete_operation,
+            withdraw_permission_create_operation,
             withdraw_permission_update_operation,
             withdraw_permission_claim_operation,
             fill_order_operation,

@@ -5,6 +5,7 @@
 #include <bts/chain/key_object.hpp>
 #include <bts/chain/delegate_object.hpp>
 #include <bts/chain/vesting_balance_object.hpp>
+#include <bts/chain/withdraw_permission_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -2366,6 +2367,119 @@ BOOST_AUTO_TEST_CASE( vesting_balance_withdraw_test )
       FC_ASSERT( db.get_balance( alice_account,       core ).amount == 1000000 );
    }
    // TODO:  Test with non-core asset and Bob account
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( withdraw_permission_test )
+{ try {
+   auto nathan_private_key = generate_private_key("nathan");
+   auto dan_private_key = generate_private_key("dan");
+   key_id_type nathan_key_id = register_key(nathan_private_key.get_public_key()).id;
+   key_id_type dan_key_id = register_key(dan_private_key.get_public_key()).id;
+   account_id_type nathan_id = create_account("nathan", nathan_key_id).id;
+   account_id_type dan_id = create_account("dan", dan_key_id).id;
+   transfer(account_id_type(), nathan_id, asset(1000));
+   generate_block();
+   trx.set_expiration(db.head_block_time() + BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION);
+
+   {
+      withdraw_permission_create_operation op;
+      op.authorized_account = dan_id;
+      op.withdraw_from_account = nathan_id;
+      op.withdrawal_limit = asset(5);
+      op.withdrawal_period_sec = fc::hours(1).to_seconds();
+      op.periods_until_expiration = 5;
+      op.period_start_time = db.head_block_time() + db.get_global_properties().parameters.block_interval*5;
+      trx.operations.push_back(op);
+      REQUIRE_OP_VALIDATION_FAILURE(op, withdrawal_limit, asset());
+      REQUIRE_OP_VALIDATION_FAILURE(op, periods_until_expiration, 0);
+      REQUIRE_OP_VALIDATION_FAILURE(op, withdraw_from_account, dan_id);
+      REQUIRE_OP_VALIDATION_FAILURE(op, withdrawal_period_sec, 0);
+      REQUIRE_THROW_WITH_VALUE(op, withdrawal_limit, asset(10, 10));
+      REQUIRE_THROW_WITH_VALUE(op, authorized_account, account_id_type(1000));
+      REQUIRE_THROW_WITH_VALUE(op, period_start_time, fc::time_point_sec(10000));
+      REQUIRE_THROW_WITH_VALUE(op, withdrawal_period_sec, 1);
+      trx.operations.back() = op;
+   }
+
+   trx.sign(nathan_key_id, nathan_private_key);
+   withdraw_permission_id_type permit = db.push_transaction(trx).operation_results.front().get<object_id_type>();
+   trx.clear();
+
+   fc::time_point_sec first_start_time;
+   {
+      const withdraw_permission_object& permit_object = permit(db);
+      FC_ASSERT(permit_object.authorized_account == dan_id);
+      FC_ASSERT(permit_object.withdraw_from_account == nathan_id);
+      FC_ASSERT(permit_object.next_period_start_time > db.head_block_time());
+      first_start_time = permit_object.next_period_start_time;
+      FC_ASSERT(permit_object.withdrawal_limit == asset(5));
+      FC_ASSERT(permit_object.withdrawal_period_sec == fc::hours(1).to_seconds());
+      FC_ASSERT(permit_object.remaining_periods == 5);
+   }
+
+   generate_blocks(2);
+
+   {
+      withdraw_permission_claim_operation op;
+      op.withdraw_permission = permit;
+      op.withdraw_from_account = nathan_id;
+      op.withdraw_to_account = dan_id;
+      op.amount_to_withdraw = asset(2);
+      trx.operations.push_back(op);
+      //Throws because we haven't entered the first withdrawal period yet.
+      BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
+      //Get to the actual withdrawal period
+      generate_blocks(permit(db).next_period_start_time);
+
+      REQUIRE_THROW_WITH_VALUE(op, withdraw_permission, withdraw_permission_id_type(5));
+      REQUIRE_THROW_WITH_VALUE(op, withdraw_from_account, dan_id);
+      REQUIRE_THROW_WITH_VALUE(op, withdraw_from_account, account_id_type());
+      REQUIRE_THROW_WITH_VALUE(op, withdraw_to_account, nathan_id);
+      REQUIRE_THROW_WITH_VALUE(op, withdraw_to_account, account_id_type());
+      REQUIRE_THROW_WITH_VALUE(op, amount_to_withdraw, asset(10));
+      REQUIRE_THROW_WITH_VALUE(op, amount_to_withdraw, asset(6));
+      trx.clear();
+      trx.operations.push_back(op);
+      trx.sign(dan_key_id, dan_private_key);
+      db.push_transaction(trx);
+      //Make sure we can't withdraw again this period, even if we're not exceeding the periodic limit
+      REQUIRE_THROW_WITH_VALUE(op, amount_to_withdraw, asset(1));
+      trx.clear();
+   }
+
+   BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 998);
+   BOOST_CHECK_EQUAL(get_balance(dan_id, asset_id_type()), 2);
+
+   {
+      const withdraw_permission_object& permit_object = permit(db);
+      FC_ASSERT(permit_object.authorized_account == dan_id);
+      FC_ASSERT(permit_object.withdraw_from_account == nathan_id);
+      FC_ASSERT(permit_object.next_period_start_time == first_start_time + permit_object.withdrawal_period_sec);
+      FC_ASSERT(permit_object.withdrawal_limit == asset(5));
+      FC_ASSERT(permit_object.withdrawal_period_sec == fc::hours(1).to_seconds());
+      FC_ASSERT(permit_object.remaining_periods == 4);
+      generate_blocks(permit_object.next_period_start_time + permit_object.withdrawal_period_sec);
+   }
+
+   {
+      transfer(nathan_id, dan_id, asset(997));
+      withdraw_permission_claim_operation op;
+      op.withdraw_permission = permit;
+      op.withdraw_from_account = nathan_id;
+      op.withdraw_to_account = dan_id;
+      op.amount_to_withdraw = asset(5);
+      trx.operations.push_back(op);
+      trx.sign(dan_key_id, dan_private_key);
+      //Throws because nathan doesn't have the money
+      BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
+      op.amount_to_withdraw = asset(1);
+      trx.operations.back() = op;
+      trx.sign(dan_key_id, dan_private_key);
+      db.push_transaction(trx);
+   }
+
+   BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 0);
+   BOOST_CHECK_EQUAL(get_balance(dan_id, asset_id_type()), 1000);
 } FC_LOG_AND_RETHROW() }
 
 // TODO:  Write linear VBO tests

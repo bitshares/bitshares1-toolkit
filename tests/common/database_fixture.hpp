@@ -584,6 +584,10 @@ struct database_fixture {
       return processed.operation_results[0].get<asset>();
    }
 
+   void transfer( account_id_type from, account_id_type to, const asset& amount, const asset& fee = asset() )
+   {
+      transfer(from(db), to(db), amount, fee);
+   }
    void transfer( const account_object& from, const account_object& to, const asset& amount, const asset& fee = asset() )
    { try {
       trx.operations.push_back(transfer_operation({from.id, to.id, amount, fee, vector<char>() }));
