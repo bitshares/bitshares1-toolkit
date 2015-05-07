@@ -4,13 +4,13 @@
 
 namespace bts { namespace chain {
 
-class create_bond_offer_evaluator : public evaluator<create_bond_offer_evaluator>
+class bond_create_offer_evaluator : public evaluator<bond_create_offer_evaluator>
 {
     public:
-        typedef create_bond_offer_operation operation_type;
+        typedef bond_create_offer_operation operation_type;
 
-        object_id_type do_evaluate( const create_bond_offer_operation& op );
-        object_id_type do_apply( const create_bond_offer_operation& op );
+        object_id_type do_evaluate( const bond_create_offer_operation& op );
+        object_id_type do_apply( const bond_create_offer_operation& op );
 };
 
 } } // bts::chain

@@ -176,7 +176,7 @@ BOOST_AUTO_TEST_CASE( undo_pending )
          }
 
          signed_transaction trx;
-         trx.relative_expiration = 1000;
+         trx.set_expiration(bts::chain::now() + db.get_global_properties().parameters.maximum_time_until_expiration);
          account_id_type nathan_id = account_idx.get_next_id();
          account_create_operation cop;
          cop.registrar = account_id_type(1);
@@ -192,13 +192,13 @@ BOOST_AUTO_TEST_CASE( undo_pending )
 
          BOOST_CHECK(nathan_id(db).name == "nathan");
 
-         trx = decltype(trx)();
-         trx.relative_expiration = 1000;
+         trx.clear();
+         trx.set_expiration(bts::chain::now() + db.get_global_properties().parameters.maximum_time_until_expiration-1);
          trx.operations.push_back(transfer_operation({account_id_type(1), nathan_id, asset(5000), asset(1)}));
          trx.sign( key_id_type(), delegate_priv_key );
          db.push_transaction(trx);
-         trx = decltype(trx)();
-         trx.relative_expiration = 1001;
+         trx.clear();
+         trx.set_expiration(bts::chain::now() + db.get_global_properties().parameters.maximum_time_until_expiration-2);
          trx.operations.push_back(transfer_operation({account_id_type(1), nathan_id, asset(5000), asset(1)}));
          trx.sign( key_id_type(), delegate_priv_key );
          db.push_transaction(trx);
@@ -228,7 +228,7 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
       const bts::db::index& account_idx = db1.get_index(protocol_ids, account_object_type);
 
       signed_transaction trx;
-      trx.relative_expiration = 1000;
+      trx.set_expiration(bts::chain::now() + db1.get_global_properties().parameters.maximum_time_until_expiration);
       account_id_type nathan_id = account_idx.get_next_id();
       account_create_operation cop;
       cop.registrar = account_id_type(1);

@@ -121,7 +121,6 @@ struct database_fixture {
          total_balances[s.balance.asset_id] += s.balance.amount;
       for( const account_statistics_object& a : statistics_index )
       {
-         total_balances[asset_id_type()] += a.cashback_rewards;
          reported_core_in_orders += a.total_core_in_orders;
       }
       for( const limit_order_object& o : db.get_index_type<limit_order_index>().indices() )
@@ -268,8 +267,11 @@ struct database_fixture {
       chain::start_simulated_time(bts::chain::now());
    }
    ~database_fixture(){
-      verify_asset_supplies();
-      verify_account_history_plugin_index();
+      if( !std::uncaught_exception() )
+      {
+         verify_asset_supplies();
+         verify_account_history_plugin_index();
+      }
       shutdown_ntp_time();
 
       if( data_dir )
@@ -582,6 +584,10 @@ struct database_fixture {
       return processed.operation_results[0].get<asset>();
    }
 
+   void transfer( account_id_type from, account_id_type to, const asset& amount, const asset& fee = asset() )
+   {
+      transfer(from(db), to(db), amount, fee);
+   }
    void transfer( const account_object& from, const account_object& to, const asset& amount, const asset& fee = asset() )
    { try {
       trx.operations.push_back(transfer_operation({from.id, to.id, amount, fee, vector<char>() }));

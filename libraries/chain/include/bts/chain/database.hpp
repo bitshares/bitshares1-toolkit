@@ -219,6 +219,9 @@ namespace bts { namespace chain {
          asset pay_market_fees( const asset_object& recv_asset, const asset& receives );
          asset calculate_market_fee(const asset_object& recv_asset, const asset& trade_amount);
 
+         // helper to handle cashback rewards
+         void deposit_cashback( const account_object& acct, share_type amount );
+
          ///@}
 
          /**

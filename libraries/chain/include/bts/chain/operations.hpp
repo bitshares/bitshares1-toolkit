@@ -996,7 +996,7 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-      void         get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
    /**
@@ -1031,7 +1031,12 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
+      {
+         acc.adjust( fee_payer(), -fee );
+         acc.adjust( withdraw_to_account, amount_to_withdraw );
+         acc.adjust( withdraw_from_account, -amount_to_withdraw );
+      }
    };
 
    /**
@@ -1081,7 +1086,7 @@ namespace bts { namespace chain {
          /**
           * THe account that is paying the update fee
           */
-         account_id_type         payer; 
+         account_id_type         payer;
 
          /** file_id 0 indicates a new file should be created */
          file_id_type            file_id;
@@ -1108,9 +1113,9 @@ namespace bts { namespace chain {
 
          /**
           *  The length of time to extend the lease on the file, must be less
-          *  than 10 years. 
+          *  than 10 years.
           */
-         uint32_t                lease_seconds = 0; 
+         uint32_t                lease_seconds = 0;
 
          /**
           * File size must be greater than 0
@@ -1119,7 +1124,7 @@ namespace bts { namespace chain {
 
          /**
           *  If file_id is not 0, then precondition checksum verifies that
-          *  the file contents are as expected prior to writing data. 
+          *  the file contents are as expected prior to writing data.
           */
          optional<checksum_type> precondition_checksum;
 
@@ -1144,7 +1149,7 @@ namespace bts { namespace chain {
     *
     *  @return bond_offer_id
     */
-   struct create_bond_offer_operation
+   struct bond_create_offer_operation
    {
       asset                   fee;
       account_id_type         creator;
@@ -1171,7 +1176,7 @@ namespace bts { namespace chain {
     * @ingroup operations
     *  Subtracts refund from bond_offer.amount and frees bond_offer if refund == bond_offer.amount
     */
-   struct cancel_bond_offer_operation
+   struct bond_cancel_offer_operation
    {
       asset                 fee;
       account_id_type       creator;
@@ -1193,7 +1198,7 @@ namespace bts { namespace chain {
     * @ingroup operations
     *  @return new bond_id
     */
-   struct accept_bond_offer_operation
+   struct bond_accept_offer_operation
    {
       asset               fee;
       account_id_type     claimer;
@@ -1217,7 +1222,7 @@ namespace bts { namespace chain {
     *  the collateral, prior to the loan period expiring
     *  the borrower can claim it by paying off the loan
     */
-   struct claim_bond_collateral_operation
+   struct bond_claim_collateral_operation
    {
       asset            fee;
       account_id_type  claimer;
@@ -1331,14 +1336,15 @@ namespace bts { namespace chain {
             proposal_create_operation,
             proposal_update_operation,
             proposal_delete_operation,
+            withdraw_permission_create_operation,
             withdraw_permission_update_operation,
             withdraw_permission_claim_operation,
             fill_order_operation,
             global_parameters_update_operation,
-            create_bond_offer_operation,
             file_write_operation,
             vesting_balance_create_operation,
-            vesting_balance_withdraw_operation
+            vesting_balance_withdraw_operation,
+            bond_create_offer_operation
             /*
             * TODO: once methods on these ops are implemented
             cancel_bond_offer_operation,
@@ -1541,11 +1547,11 @@ FC_REFLECT( bts::chain::withdraw_permission_update_operation, (fee)(withdraw_fro
 FC_REFLECT( bts::chain::withdraw_permission_claim_operation, (fee)(withdraw_permission)(withdraw_from_account)(withdraw_to_account)(amount_to_withdraw)(memo) );
 FC_REFLECT( bts::chain::withdraw_permission_delete_operation, (fee)(withdraw_from_account)(authorized_account)
             (withdrawal_permission) )
-FC_REFLECT( bts::chain::create_bond_offer_operation, (fee)(creator)(offer_to_borrow)(amount)(collateral_rate)(min_loan_period_sec)(loan_period_sec)(interest_apr) )
-FC_REFLECT( bts::chain::cancel_bond_offer_operation, (fee)(creator)(offer_id)(refund) )
-FC_REFLECT( bts::chain::accept_bond_offer_operation, (fee)(claimer)(offer_id)(amount) )
-FC_REFLECT( bts::chain::claim_bond_collateral_operation, (fee)(claimer)(bond_id)(payoff_amount)(collateral_claimed) )
 FC_REFLECT( bts::chain::file_write_operation, (fee)(payer)(file_id)(owner)(group)(flags)(offset)(data)(lease_seconds)(file_size)(precondition_checksum) )
+FC_REFLECT( bts::chain::bond_create_offer_operation, (fee)(creator)(offer_to_borrow)(amount)(collateral_rate)(min_loan_period_sec)(loan_period_sec)(interest_apr) )
+FC_REFLECT( bts::chain::bond_cancel_offer_operation, (fee)(creator)(offer_id)(refund) )
+FC_REFLECT( bts::chain::bond_accept_offer_operation, (fee)(claimer)(offer_id)(amount) )
+FC_REFLECT( bts::chain::bond_claim_collateral_operation, (fee)(claimer)(bond_id)(payoff_amount)(collateral_claimed) )
 
 FC_REFLECT( bts::chain::vesting_balance_create_operation, (fee)(creator)(owner)(amount)(vesting_seconds) )
 FC_REFLECT( bts::chain::vesting_balance_withdraw_operation, (fee)(vesting_balance)(owner)(amount) )

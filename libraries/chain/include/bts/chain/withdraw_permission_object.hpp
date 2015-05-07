@@ -6,10 +6,14 @@
 namespace bts { namespace chain {
 
   /**
-   *  @class withdraw_permission_object
-   *  @brief grants another account authority to withdraw a limited amount of funds per period
+   * @class withdraw_permission_object
+   * @brief Grants another account authority to withdraw a limited amount of funds per interval
    *
-   *  The primary purpose of this object is to enable recurring payments on the blockchain.
+   * The primary purpose of this object is to enable recurring payments on the blockchain. An account which wishes to
+   * process a recurring payment may use a @ref withdraw_permission_claim_operation to reference an object of this type
+   * and withdraw up to @ref withdrawal_limit from @ref withdraw_from_account. Only @ref authorized_account may do this,
+   * and it may only be done once per withdrawal period (as defined by @ref withdrawal_period_sec), even if the first
+   * withdrawal in the period was less than the limit.
    */
   class withdraw_permission_object : public bts::db::abstract_object<withdraw_permission_object>
   {
@@ -17,23 +21,18 @@ namespace bts { namespace chain {
         static const uint8_t space_id = protocol_ids;
         static const uint8_t type_id  = withdraw_permission_object_type;
 
+        /// The account authorizing @ref authorized_account to withdraw from it
         account_id_type    withdraw_from_account;
+        /// The account authorized to make withdrawals from @ref withdraw_from_account
         account_id_type    authorized_account;
+        /// The maximum amount which may be withdrawn. All withdrawals must be of this asset type
         asset              withdrawal_limit;
-        uint32_t           period_sec;
-        /**
-         *  The maximum number of withdraws authorized
-         */
-        uint32_t           recurring;
-        /**
-         *  Tracks the start of the first withdraw period
-         */
-        time_point_sec     starting_time;
-
-        /**
-         *  Tracks the last time funds were withdrawn
-         */
-        time_point_sec     last_withdraw_time;
+        /// The duration of a withdrawal period in seconds
+        uint32_t           withdrawal_period_sec;
+        /// The remaining number of withdrawals authorized
+        uint32_t           remaining_periods;
+        /// The beginning of the next withdrawal period
+        time_point_sec     next_period_start_time;
   };
 
    struct by_from{};
@@ -58,7 +57,7 @@ FC_REFLECT_DERIVED( bts::chain::withdraw_permission_object, (bts::db::object),
                    (withdraw_from_account)
                    (authorized_account)
                    (withdrawal_limit)
-                   (period_sec)
-                   (recurring)
-                   (starting_time)
-                   (last_withdraw_time) )
+                   (withdrawal_period_sec)
+                   (remaining_periods)
+                   (next_period_start_time)
+                 )

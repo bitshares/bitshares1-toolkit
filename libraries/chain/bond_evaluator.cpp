@@ -5,7 +5,7 @@
 
 namespace bts { namespace chain {
 
-object_id_type create_bond_offer_evaluator::do_evaluate( const create_bond_offer_operation& op )
+object_id_type bond_create_offer_evaluator::do_evaluate( const bond_create_offer_operation& op )
 {
     const auto& d = db();
 
@@ -22,7 +22,7 @@ object_id_type create_bond_offer_evaluator::do_evaluate( const create_bond_offer
     return object_id_type();
 }
 
-object_id_type create_bond_offer_evaluator::do_apply( const create_bond_offer_operation& op )
+object_id_type bond_create_offer_evaluator::do_apply( const bond_create_offer_operation& op )
 {
     db().adjust_balance( op.creator, -op.amount );
 

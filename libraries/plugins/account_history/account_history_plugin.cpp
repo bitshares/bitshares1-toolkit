@@ -215,8 +215,8 @@ struct operation_get_impacted_accounts
       _impacted.insert( account_id_type() );
    }
 
-   void operator()( const create_bond_offer_operation& o )const { }
-   
+   void operator()( const bond_create_offer_operation& o )const { }
+
    void operator()( const vesting_balance_create_operation& o )const
    {
       _impacted.insert( o.creator );

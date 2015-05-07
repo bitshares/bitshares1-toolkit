@@ -34,6 +34,7 @@
 #include <bts/chain/bond_evaluator.hpp>
 #include <bts/chain/vesting_balance_evaluator.hpp>
 #include <bts/chain/vesting_balance_object.hpp>
+#include <bts/chain/withdraw_permission_evaluator.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/crypto/digest.hpp>
@@ -143,9 +144,11 @@ void database::initialize_evaluators()
    register_evaluator<global_parameters_update_evaluator>();
    register_evaluator<witness_create_evaluator>();
    register_evaluator<witness_withdraw_pay_evaluator>();
-   register_evaluator<create_bond_offer_evaluator>();
+   register_evaluator<bond_create_offer_evaluator>();
    register_evaluator<vesting_balance_create_evaluator>();
    register_evaluator<vesting_balance_withdraw_evaluator>();
+   register_evaluator<withdraw_permission_create_evaluator>();
+   register_evaluator<withdraw_permission_claim_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -763,6 +766,55 @@ bool database::convert_fees( const asset_object& mia )
    return false;
 }
 
+void database::deposit_cashback( const account_object& acct, share_type amount )
+{
+   // If we don't have a VBO, or if it has the wrong maturity
+   // due to a policy change, cut it loose.
+
+   if( amount == 0 )
+      return;
+
+   uint32_t global_vesting_seconds = get_global_properties().parameters.cashback_vesting_period_seconds;
+   fc::time_point_sec now = head_block_time();
+
+   while( true )
+   {
+      if( !acct.cashback_vb.valid() )
+         break;
+      const vesting_balance_object& cashback_vb = (*acct.cashback_vb)(*this);
+      if( cashback_vb.policy.which() != vesting_policy::tag< cdd_vesting_policy >::value )
+         break;
+      if( cashback_vb.policy.get< cdd_vesting_policy >().vesting_seconds != global_vesting_seconds )
+         break;
+
+      modify( cashback_vb, [&]( vesting_balance_object& obj )
+      {
+         obj.deposit( now, amount );
+      } );
+      return;
+   }
+
+   const vesting_balance_object& cashback_vb = create< vesting_balance_object >( [&]( vesting_balance_object& obj )
+   {
+      obj.owner = acct.id;
+      obj.balance = amount;
+
+      cdd_vesting_policy policy;
+      policy.vesting_seconds = global_vesting_seconds;
+      policy.coin_seconds_earned = 0;
+      policy.coin_seconds_earned_last_update = now;
+
+      obj.policy = policy;
+   } );
+
+   modify( acct, [&]( account_object& _acct )
+   {
+      _acct.cashback_vb = cashback_vb.id;
+   } );
+
+   return;
+}
+
 bool database::fill_order( const limit_order_object& order, const asset& pays, const asset& receives )
 {
    assert( order.amount_for_sale().asset_id == pays.asset_id );
@@ -1244,10 +1296,12 @@ void database::update_vote_totals(const global_property_object& props)
 
     for( const account_object& account : account_idx.indices() )
     {
+       // TODO:  Remove true from here
        if( true || account.is_prime() )
        {
           const auto& stats = account.statistics(*this);
-          share_type voting_stake = stats.total_core_in_orders + stats.cashback_rewards
+          share_type voting_stake = stats.total_core_in_orders
+                   + (account.cashback_vb.valid() ? (*account.cashback_vb)(*this).balance.amount : share_type(0))
                    + get_balance(account.get_id(), asset_id_type()).amount;
           for( vote_id_type id : account.votes )
              _vote_tally_buffer[id] += voting_stake;
@@ -1433,7 +1487,10 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
       {
          //wdump((sig.first));
          //wdump((sig.first(*this)));
-         FC_ASSERT( sig.first(*this).key_address() == fc::ecc::public_key( sig.second, trx.digest() ), "", ("sig.first",sig.first)("key_address",sig.first(*this).key_address())("addr", address(fc::ecc::public_key( sig.second, trx.digest() ))) );
+         FC_ASSERT( sig.first(*this).key_address() == fc::ecc::public_key( sig.second, trx.digest() ), "",
+                    ("sig.first",sig.first)
+                    ("key_address",sig.first(*this).key_address())
+                    ("addr", address(fc::ecc::public_key( sig.second, trx.digest() ))) );
       }
    }
    eval_state.operation_results.reserve( trx.operations.size() );
@@ -1824,7 +1881,6 @@ void database::debug_dump()
    for( const account_statistics_object& s : statistics_index )
    {
       idump(("statistics")(s));
-      total_balances[asset_id_type()] += s.cashback_rewards;
       reported_core_in_orders += s.total_core_in_orders;
    }
    for( const limit_order_object& o : db.get_index_type<limit_order_index>().indices() )
@@ -1863,6 +1919,7 @@ void database::debug_dump()
    {
       edump( (total_balances[asset_id_type()].value)(core_asset_data.current_supply.value ));
    }
+   // TODO:  Add vesting_balance_object to this method
 }
 
 } } // namespace bts::chain

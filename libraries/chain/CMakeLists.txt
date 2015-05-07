@@ -20,12 +20,13 @@ add_library( bts_chain
              limit_order_evaluator.cpp
              bond_evaluator.cpp
              vesting_balance_evaluator.cpp
-             vesting_balance_object.cpp
+             withdraw_permission_evaluator.cpp
 
              key_object.cpp
              account_object.cpp
              asset_object.cpp
              proposal_object.cpp
+             vesting_balance_object.cpp
 
              transaction.cpp
              block.cpp

@@ -467,6 +467,7 @@ BOOST_FIXTURE_TEST_CASE( fired_delegates, database_fixture )
       op.account = nathan->id;
       op.vote = delegates;
       trx.operations.push_back(op);
+      trx.set_expiration(db.head_block_time() + BTS_DEFAULT_MAX_TIME_UNTIL_EXPIRATION);
       db.push_transaction(trx, ~0);
       trx.operations.clear();
    }

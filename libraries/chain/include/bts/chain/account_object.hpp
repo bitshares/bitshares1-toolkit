@@ -22,12 +22,6 @@ namespace bts { namespace chain {
          static const uint8_t type_id  = impl_account_statistics_object_type;
 
          /**
-          *  When funds are added to the cashback fund they must adjust the average maturity
-          *  weighted by the amount of funds and the maturity of those new funds.
-          */
-         void adjust_cashback( share_type amount, time_point_sec maturity, time_point_sec current_time );
-
-         /**
           * Keep the most recent operation as a root pointer to
           * a linked list of the transaction history. This field is
           * not required by core validation and could in theory be
@@ -54,19 +48,6 @@ namespace bts { namespace chain {
           *  of calculating bulk discounts.
           */
          share_type            lifetime_fees_paid;
-
-         /**
-          *  Tracks the total cash back accrued from bulk discounts and
-          *  referrals.
-          */
-         share_type            cashback_rewards;
-
-         /**
-          *  Cashback rewards from prime membership upgrades mature
-          *  over X months to prevent abuse of the prime membership
-          *  program.
-          */
-         time_point_sec        cashback_maturity;
    };
 
    /**
@@ -175,6 +156,11 @@ namespace bts { namespace chain {
          flat_set<account_id_type>        blacklisting_accounts;
 
          /**
+          * Vesting balance which receives cashback_reward deposits.
+          */
+         optional<vesting_balance_id_type> cashback_vb;
+
+         /**
           * @return true if this is a prime account, false otherwise.
           */
          bool is_prime()const
@@ -254,7 +240,7 @@ namespace bts { namespace chain {
 FC_REFLECT_DERIVED( bts::chain::account_object,
                     (bts::db::annotated_object<bts::chain::account_object>),
                     (registrar)(referrer)(referrer_percent)(name)(owner)(active)(memo_key)(voting_account)(num_witness)(num_committee)(votes)
-                    (statistics)(whitelisting_accounts)(blacklisting_accounts) )
+                    (statistics)(whitelisting_accounts)(blacklisting_accounts)(cashback_vb) )
 
 FC_REFLECT_DERIVED( bts::chain::account_balance_object,
                     (bts::db::object),
@@ -268,7 +254,5 @@ FC_REFLECT_DERIVED( bts::chain::account_statistics_object, (bts::chain::object),
                     (most_recent_op)
                     (total_core_in_orders)
                     (lifetime_fees_paid)
-                    (cashback_rewards)
-                    (cashback_maturity)
                   )
 
