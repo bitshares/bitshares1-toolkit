@@ -46,7 +46,7 @@ namespace bts { namespace chain {
    { try {
       asset core_fee_subtotal(core_fee_paid);
       const auto& gp = db().get_global_properties();
-      auto bulk_cashback  = share_type(0);
+      share_type bulk_cashback  = share_type(0);
       if( fee_paying_account_statistics->lifetime_fees_paid > gp.parameters.bulk_discount_threshold_min &&
           fee_paying_account->is_prime() )
       {
@@ -68,12 +68,11 @@ namespace bts { namespace chain {
          assert( bulk_cashback <= core_fee_subtotal.amount );
       }
 
-      auto core_fee_total = core_fee_subtotal.amount - bulk_cashback;
-      auto accumulated = (core_fee_total.value  * gp.parameters.witness_percent_of_fee)/BTS_100_PERCENT;
-      auto burned     = (core_fee_total.value  * gp.parameters.burn_percent_of_fee)/BTS_100_PERCENT;
-      auto referral   = core_fee_total.value - accumulated - burned;
+      share_type core_fee_total = core_fee_subtotal.amount - bulk_cashback;
+      share_type accumulated = (core_fee_total.value  * gp.parameters.witness_percent_of_fee)/BTS_100_PERCENT;
+      share_type burned     = (core_fee_total.value  * gp.parameters.burn_percent_of_fee)/BTS_100_PERCENT;
+      share_type referral   = core_fee_total.value - accumulated - burned;
       auto& d = db();
-      auto now = d.head_block_time();
 
       assert( accumulated + burned <= core_fee_total );
 
@@ -85,13 +84,13 @@ namespace bts { namespace chain {
       d.modify(dynamic_asset_data_id_type()(d), [burned,accumulated](asset_dynamic_data_object& d) {
          d.accumulated_fees += accumulated + burned;
       });
-      d.modify(fee_paying_account->referrer(d).statistics(d), [referral,now](account_statistics_object& s) {
-         s.adjust_cashback(referral, now, now);
-      });
-      d.modify(fee_paying_account->statistics(d), [bulk_cashback,core_fee_total,now](account_statistics_object& s) {
+
+      d.modify(fee_paying_account->statistics(d), [core_fee_total](account_statistics_object& s) {
          s.lifetime_fees_paid += core_fee_total;
-         s.adjust_cashback(bulk_cashback, now, now);
       });
+
+      d.deposit_cashback( fee_paying_account->referrer(d), referral );
+      d.deposit_cashback( *fee_paying_account, bulk_cashback );
 
       assert( referral + bulk_cashback + accumulated + burned == core_fee_subtotal.amount );
    } FC_CAPTURE_AND_RETHROW() }

@@ -121,7 +121,6 @@ struct database_fixture {
          total_balances[s.balance.asset_id] += s.balance.amount;
       for( const account_statistics_object& a : statistics_index )
       {
-         total_balances[asset_id_type()] += a.cashback_rewards;
          reported_core_in_orders += a.total_core_in_orders;
       }
       for( const limit_order_object& o : db.get_index_type<limit_order_index>().indices() )
