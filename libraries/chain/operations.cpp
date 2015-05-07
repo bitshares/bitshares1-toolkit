@@ -656,4 +656,38 @@ share_type      file_write_operation::calculate_fee( const fee_schedule_type& k 
 }
 
 
+void vesting_balance_create_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
+{
+   // owner's authorization isn't needed since this is effectively a transfer of value TO the owner
+   active_auth_set.insert( creator );
+}
+
+share_type vesting_balance_create_operation::calculate_fee( const fee_schedule_type& k )const
+{
+   return k.at( vesting_balance_create_fee_type );
+}
+
+void vesting_balance_create_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( amount.amount > 0 );
+   FC_ASSERT( vesting_seconds > 0 );
+}
+
+void vesting_balance_withdraw_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
+{
+   active_auth_set.insert( owner );
+}
+
+void vesting_balance_withdraw_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( amount.amount > 0 );
+}
+
+share_type vesting_balance_withdraw_operation::calculate_fee( const fee_schedule_type& k )const
+{
+   return k.at( vesting_balance_withdraw_fee_type );
+}
+
 } } // namespace bts::chain

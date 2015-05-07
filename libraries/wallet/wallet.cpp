@@ -41,12 +41,10 @@ class wallet_api_impl
 
       bool copy_wallet_file( string destination_filename );
 
-      signed_transaction create_account_with_brain_key(
-         string brain_key,
+      signed_transaction create_account_with_brain_key(string brain_key,
          string account_name,
          string registrar_account,
          string referrer_account,
-         uint8_t referrer_percent,
          bool broadcast = false
          );
 
@@ -105,7 +103,7 @@ struct help_visitor
    }
 };
 
-// BLOCK  TRX  OP  VOP  
+// BLOCK  TRX  OP  VOP
 struct operation_printer
 {
    operation_result _result;
@@ -398,7 +396,6 @@ signed_transaction wallet_api_impl::create_account_with_brain_key(
    string account_name,
    string registrar_account,
    string referrer_account,
-   uint8_t referrer_percent,
    bool broadcast /* = false */
    )
 {
@@ -419,13 +416,10 @@ signed_transaction wallet_api_impl::create_account_with_brain_key(
 
    account_id_type registrar_account_id = registrar_account_object.id;
 
-   if( referrer_percent > 0 )
-   {
-      account_object referrer_account_object =
+   account_object referrer_account_object =
          this->get_account( referrer_account );
-      account_create_op.referrer = referrer_account_object.id;
-      account_create_op.referrer_percent = referrer_percent;
-   }
+   account_create_op.referrer = referrer_account_object.id;
+   account_create_op.referrer_percent = referrer_account_object.referrer_percent;
 
    // get pay_from_account_id
    key_create_operation owner_key_create_op;
@@ -740,7 +734,10 @@ signed_transaction wallet_api_impl::transfer(
    xfer_op.to = to_id;
    xfer_op.amount = asset( amount, asset_id );
 
+   static int count = 0;
+
    signed_transaction tx;
+   tx.set_expiration(_remote_db->get_dynamic_global_properties().head_block_id, ++count);
    tx.operations.push_back( xfer_op );
    tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
    tx.validate();
@@ -867,13 +864,12 @@ signed_transaction wallet_api::create_account_with_brain_key(
    string account_name,
    string registrar_account,
    string referrer_account,
-   uint8_t referrer_percent,
    bool broadcast /* = false */
    )
 {
    return _my->create_account_with_brain_key(
       brain_key, account_name, registrar_account,
-      referrer_account, referrer_percent, broadcast
+      referrer_account, broadcast
       );
 }
 

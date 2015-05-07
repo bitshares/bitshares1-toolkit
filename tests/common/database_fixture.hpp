@@ -12,9 +12,11 @@
 #include <bts/chain/time.hpp>
 #include <bts/chain/witness_object.hpp>
 #include <bts/chain/bond_object.hpp>
+#include <bts/chain/vesting_balance_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 
+#include <boost/program_options.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <iostream>
@@ -156,6 +158,8 @@ struct database_fixture {
       {
          total_balances[ bond_offer.amount.asset_id ] += bond_offer.amount.amount;
       }
+      for( const vesting_balance_object& vbo : db.get_index_type< simple_index<vesting_balance_object> >() )
+         total_balances[ vbo.balance.asset_id ] += vbo.balance.amount;
       for( auto item : total_debts )
          BOOST_CHECK_EQUAL(item.first(db).dynamic_asset_data_id(db).current_supply.value, item.second.value);
 
@@ -248,10 +252,18 @@ struct database_fixture {
    database_fixture()
       : app(), db( *app.chain_database() )
    {
-      app.register_plugin<bts::account_history::account_history_plugin>();
+      auto ahplugin = app.register_plugin<bts::account_history::account_history_plugin>();
+
+      boost::program_options::variables_map options;
+
+      // app.initialize();
+      ahplugin->initialize_plugin( options );
+
+      db.init_genesis();
+      ahplugin->startup_plugin();
 
       genesis_key(db); // attempt to deref
-      trx.relative_expiration = 1000;
+      trx.set_expiration(chain::now() + fc::minutes(1));
 
       chain::start_simulated_time(bts::chain::now());
    }

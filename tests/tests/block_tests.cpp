@@ -646,6 +646,10 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    sop.amount.amount = 2000;
    trx.operations.push_back(sop);
    trx.sign(key_id_type(),private_key);
+   //Trx has expired by now. Make sure it throws.
+   BOOST_CHECK_THROW(settle_id = db.push_transaction(trx).operation_results.front().get<object_id_type>(), fc::exception);
+   trx.set_expiration(db.head_block_time() + fc::minutes(1));
+   trx.sign(key_id_type(),private_key);
    settle_id = db.push_transaction(trx).operation_results.front().get<object_id_type>();
    trx.clear();
 
@@ -653,6 +657,7 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    BOOST_CHECK(db.find(settle_id) == nullptr);
    BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 2029);
    BOOST_CHECK(db.find(call_id) == nullptr);
+   trx.set_expiration(db.head_block_time() + fc::minutes(1));
 
    //Settle all existing asset
    sop.amount = db.get_balance(nathan_id, bit_usd);

@@ -53,6 +53,8 @@ namespace bts { namespace app {
          net::node_ptr                    p2p_node();
          std::shared_ptr<chain::database> chain_database()const;
 
+         void set_block_production(bool producing_blocks);
+
       private:
          void add_plugin( const string& name, std::shared_ptr<abstract_plugin> p );
          std::shared_ptr<detail::application_impl> my;

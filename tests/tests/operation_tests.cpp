@@ -4,6 +4,7 @@
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/key_object.hpp>
 #include <bts/chain/delegate_object.hpp>
+#include <bts/chain/vesting_balance_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -1842,6 +1843,7 @@ BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
    account_update_operation uop;
    uop.account = nathan->get_id();
    uop.upgrade_to_prime = true;
+   trx.set_expiration(db.head_block_id());
    trx.operations.push_back(uop);
    trx.visit(operation_set_fee(db.current_fee_schedule()));
    trx.validate();
@@ -2087,6 +2089,278 @@ BOOST_AUTO_TEST_CASE( create_bond_offer_test )
 
    // This op should be fully valid
    REQUIRE_OP_EVALUATION_SUCCESS( op, offer_to_borrow, false );
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( vesting_balance_create_test )
+{ try {
+   INVOKE( create_uia );
+
+   const asset_object& core = asset_id_type()(db);
+   const asset_object& test_asset = get_asset( "TEST" );
+
+   vesting_balance_create_operation op;
+   op.fee = core.amount( 0 );
+   op.creator = account_id_type();
+   op.owner = account_id_type();
+   op.amount = test_asset.amount( 100 );
+   op.vesting_seconds = 60*60*24;
+
+   // Fee must be non-negative
+   REQUIRE_OP_VALIDATION_SUCCESS( op, fee, core.amount(  1 )  );
+   REQUIRE_OP_VALIDATION_SUCCESS( op, fee, core.amount(  0 )  );
+   REQUIRE_OP_VALIDATION_FAILURE( op, fee, core.amount( -1 ) );
+
+   // Amount must be positive
+   REQUIRE_OP_VALIDATION_SUCCESS( op, amount, core.amount(  1 ) );
+   REQUIRE_OP_VALIDATION_FAILURE( op, amount, core.amount(  0 ) );
+   REQUIRE_OP_VALIDATION_FAILURE( op, amount, core.amount( -1 ) );
+
+   // Min vesting period must be at least 1 sec
+   REQUIRE_OP_VALIDATION_SUCCESS( op, vesting_seconds, 1 );
+   REQUIRE_OP_VALIDATION_FAILURE( op, vesting_seconds, 0 );
+
+   // Setup world state we will need to test actual evaluation
+   const account_object& alice_account = create_account( "alice" );
+   const account_object& bob_account = create_account( "bob" );
+
+   transfer( genesis_account(db), alice_account, core.amount( 100000 ) );
+
+   op.creator = alice_account.get_id();
+   op.owner = alice_account.get_id();
+
+   account_id_type nobody = account_id_type( 1234 );
+
+   trx.operations.push_back( op );
+   // Invalid account_id's
+   REQUIRE_THROW_WITH_VALUE( op, creator, nobody );
+   REQUIRE_THROW_WITH_VALUE( op,   owner, nobody );
+
+   // Insufficient funds
+   REQUIRE_THROW_WITH_VALUE( op, amount, core.amount( 999999999 ) );
+   // Alice can fund a bond to herself or to Bob
+   op.amount = core.amount( 1000 );
+   REQUIRE_OP_EVALUATION_SUCCESS( op, owner, alice_account.get_id() );
+   REQUIRE_OP_EVALUATION_SUCCESS( op, owner,   bob_account.get_id() );
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( vesting_balance_withdraw_test )
+{ try {
+   INVOKE( create_uia );
+   // required for head block time
+   generate_block();
+
+   const asset_object& core = asset_id_type()(db);
+   const asset_object& test_asset = get_asset( "TEST" );
+
+   vesting_balance_withdraw_operation op;
+   op.fee = core.amount( 0 );
+   op.vesting_balance = vesting_balance_id_type();
+   op.owner = account_id_type();
+   op.amount = test_asset.amount( 100 );
+
+   // Fee must be non-negative
+   REQUIRE_OP_VALIDATION_SUCCESS( op, fee, core.amount(  1 )  );
+   REQUIRE_OP_VALIDATION_SUCCESS( op, fee, core.amount(  0 )  );
+   REQUIRE_OP_VALIDATION_FAILURE( op, fee, core.amount( -1 ) );
+
+   // Amount must be positive
+   REQUIRE_OP_VALIDATION_SUCCESS( op, amount, core.amount(  1 ) );
+   REQUIRE_OP_VALIDATION_FAILURE( op, amount, core.amount(  0 ) );
+   REQUIRE_OP_VALIDATION_FAILURE( op, amount, core.amount( -1 ) );
+
+   // Setup world state we will need to test actual evaluation
+   const account_object& alice_account = create_account( "alice" );
+   const account_object& bob_account = create_account( "bob" );
+
+   transfer( genesis_account(db), alice_account, core.amount( 1000000 ) );
+
+   auto spin_vbo_clock = [&]( const vesting_balance_object& vbo, uint32_t dt_secs )
+   {
+      // HACK:  This just modifies the DB creation record to be further
+      //    in the past
+      db.modify( vbo, [&]( vesting_balance_object& _vbo )
+      {
+         _vbo.policy.get<cdd_vesting_policy>().coin_seconds_earned_last_update -= dt_secs;
+      } );
+   };
+
+   auto create_vbo = [&](
+      account_id_type creator, account_id_type owner,
+      asset amount, uint32_t vesting_seconds, uint32_t elapsed_seconds
+      ) -> const vesting_balance_object&
+   {
+      transaction tx;
+
+      vesting_balance_create_operation create_op;
+      create_op.fee = core.amount( 0 );
+      create_op.creator = creator;
+      create_op.owner = owner;
+      create_op.amount = amount;
+      create_op.vesting_seconds = vesting_seconds;
+      tx.operations.push_back( create_op );
+
+      processed_transaction ptx = db.push_transaction( tx, ~0 );
+      const vesting_balance_object& vbo = vesting_balance_id_type(
+         ptx.operation_results[0].get<object_id_type>())(db);
+
+      if( elapsed_seconds > 0 )
+         spin_vbo_clock( vbo, elapsed_seconds );
+      return vbo;
+   };
+
+   auto top_up = [&]()
+   {
+      trx.clear();
+      transfer( genesis_account(db),
+         alice_account,
+         core.amount( 1000000 - db.get_balance( alice_account, core ).amount )
+         );
+      FC_ASSERT( db.get_balance( alice_account, core ).amount == 1000000 );
+      trx.clear();
+      trx.operations.push_back( op );
+   };
+
+   trx.clear();
+   trx.operations.push_back( op );
+
+   {
+      // Try withdrawing a single satoshi
+      const vesting_balance_object& vbo = create_vbo(
+         alice_account.id, alice_account.id, core.amount( 10000 ), 1000, 0);
+
+      FC_ASSERT( db.get_balance( alice_account,       core ).amount ==  990000 );
+
+      op.vesting_balance = vbo.id;
+      op.owner = alice_account.id;
+
+      REQUIRE_THROW_WITH_VALUE( op, amount, core.amount(1) );
+
+      // spin the clock and make sure we can withdraw 1/1000 in 1 second
+      spin_vbo_clock( vbo, 1 );
+      // Alice shouldn't be able to withdraw 11, it's too much
+      REQUIRE_THROW_WITH_VALUE( op, amount, core.amount(11) );
+      op.amount = core.amount( 1 );
+      // Bob shouldn't be able to withdraw anything
+      REQUIRE_THROW_WITH_VALUE( op, owner, bob_account.id );
+      // Shouldn't be able to get out different asset than was put in
+      REQUIRE_THROW_WITH_VALUE( op, amount, test_asset.amount(1) );
+      // Withdraw the max, we are OK...
+      REQUIRE_OP_EVALUATION_SUCCESS( op, amount, core.amount(10) );
+      FC_ASSERT( db.get_balance( alice_account,       core ).amount ==  990010 );
+      top_up();
+   }
+
+   // Make sure we can withdraw the correct amount after 999 seconds
+   {
+      const vesting_balance_object& vbo = create_vbo(
+         alice_account.id, alice_account.id, core.amount( 10000 ), 1000, 999);
+
+      FC_ASSERT( db.get_balance( alice_account,       core ).amount ==  990000 );
+
+      op.vesting_balance = vbo.id;
+      op.owner = alice_account.id;
+      // Withdraw one satoshi too much, no dice
+      REQUIRE_THROW_WITH_VALUE( op, amount, core.amount(9991) );
+      // Withdraw just the right amount, success!
+      REQUIRE_OP_EVALUATION_SUCCESS( op, amount, core.amount(9990) );
+      FC_ASSERT( db.get_balance( alice_account,       core ).amount ==  999990 );
+      top_up();
+   }
+
+   // Make sure we can withdraw the whole thing after 1000 seconds
+   {
+      const vesting_balance_object& vbo = create_vbo(
+         alice_account.id, alice_account.id, core.amount( 10000 ), 1000, 1000);
+
+      FC_ASSERT( db.get_balance( alice_account,       core ).amount ==  990000 );
+
+      op.vesting_balance = vbo.id;
+      op.owner = alice_account.id;
+      // Withdraw one satoshi too much, no dice
+      REQUIRE_THROW_WITH_VALUE( op, amount, core.amount(10001) );
+      // Withdraw just the right amount, success!
+      REQUIRE_OP_EVALUATION_SUCCESS( op, amount, core.amount(10000) );
+      FC_ASSERT( db.get_balance( alice_account,       core ).amount == 1000000 );
+   }
+
+   // Make sure that we can't withdraw a single extra satoshi no matter how old it is
+   {
+      const vesting_balance_object& vbo = create_vbo(
+         alice_account.id, alice_account.id, core.amount( 10000 ), 1000, 123456);
+
+      FC_ASSERT( db.get_balance( alice_account,       core ).amount ==  990000 );
+
+      op.vesting_balance = vbo.id;
+      op.owner = alice_account.id;
+      // Withdraw one satoshi too much, no dice
+      REQUIRE_THROW_WITH_VALUE( op, amount, core.amount(10001) );
+      // Withdraw just the right amount, success!
+      REQUIRE_OP_EVALUATION_SUCCESS( op, amount, core.amount(10000) );
+      FC_ASSERT( db.get_balance( alice_account,       core ).amount == 1000000 );
+   }
+
+   // Try withdrawing in three max installments:
+   //   5000 after  500      seconds
+   //   2000 after  400 more seconds
+   //   3000 after 1000 more seconds
+   {
+      const vesting_balance_object& vbo = create_vbo(
+         alice_account.id, alice_account.id, core.amount( 10000 ), 1000, 0);
+
+      FC_ASSERT( db.get_balance( alice_account,       core ).amount ==  990000 );
+
+      op.vesting_balance = vbo.id;
+      op.owner = alice_account.id;
+      REQUIRE_THROW_WITH_VALUE     ( op, amount, core.amount(   1) );
+      spin_vbo_clock( vbo, 499 );
+      REQUIRE_THROW_WITH_VALUE     ( op, amount, core.amount(5000) );
+      spin_vbo_clock( vbo,   1 );
+      REQUIRE_THROW_WITH_VALUE     ( op, amount, core.amount(5001) );
+      REQUIRE_OP_EVALUATION_SUCCESS( op, amount, core.amount(5000) );
+      FC_ASSERT( db.get_balance( alice_account,       core ).amount ==  995000 );
+
+      spin_vbo_clock( vbo, 399 );
+      REQUIRE_THROW_WITH_VALUE     ( op, amount, core.amount(2000) );
+      spin_vbo_clock( vbo,   1 );
+      REQUIRE_THROW_WITH_VALUE     ( op, amount, core.amount(2001) );
+      REQUIRE_OP_EVALUATION_SUCCESS( op, amount, core.amount(2000) );
+      FC_ASSERT( db.get_balance( alice_account,       core ).amount ==  997000 );
+
+      spin_vbo_clock( vbo, 999 );
+      REQUIRE_THROW_WITH_VALUE     ( op, amount, core.amount(3000) );
+      spin_vbo_clock( vbo, 1   );
+      REQUIRE_THROW_WITH_VALUE     ( op, amount, core.amount(3001) );
+      REQUIRE_OP_EVALUATION_SUCCESS( op, amount, core.amount(3000) );
+      FC_ASSERT( db.get_balance( alice_account,       core ).amount == 1000000 );
+   }
+
+   //
+   // Increase by 10,000 csd / sec initially.
+   // After 500 seconds, we have 5,000,000 csd.
+   // Withdraw 2,000, we are now at 8,000 csd / sec.
+   // At 8,000 csd / sec, it will take us 625 seconds to mature.
+   //
+   {
+      const vesting_balance_object& vbo = create_vbo(
+         alice_account.id, alice_account.id, core.amount( 10000 ), 1000, 0);
+
+      FC_ASSERT( db.get_balance( alice_account,       core ).amount ==  990000 );
+
+      op.vesting_balance = vbo.id;
+      op.owner = alice_account.id;
+      REQUIRE_THROW_WITH_VALUE     ( op, amount, core.amount(   1) );
+      spin_vbo_clock( vbo, 500 );
+      REQUIRE_OP_EVALUATION_SUCCESS( op, amount, core.amount(2000) );
+      FC_ASSERT( db.get_balance( alice_account,       core ).amount ==  992000 );
+
+      spin_vbo_clock( vbo, 624 );
+      REQUIRE_THROW_WITH_VALUE     ( op, amount, core.amount(8000) );
+      spin_vbo_clock( vbo,   1 );
+      REQUIRE_THROW_WITH_VALUE     ( op, amount, core.amount(8001) );
+      REQUIRE_OP_EVALUATION_SUCCESS( op, amount, core.amount(8000) );
+      FC_ASSERT( db.get_balance( alice_account,       core ).amount == 1000000 );
+   }
+   // TODO:  Test with non-core asset and Bob account
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

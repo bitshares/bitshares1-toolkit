@@ -1238,6 +1238,69 @@ namespace bts { namespace chain {
    };
 
    /**
+    * @brief Create a vesting balance.
+    * @ingroup operations
+    *
+    *  The chain allows a user to create a vesting balance.
+    *  Normally, vesting balances are created automatically as part
+    *  of cashback and worker operations.  This operation allows
+    *  vesting balances to be created manually as well.
+    *
+    *  Manual creation of vesting balances can be used by a stakeholder
+    *  to publicly demonstrate that they are committed to the chain.
+    *  It can also be used as a building block to create transactions
+    *  that function like public debt.  Finally, it is useful for
+    *  testing vesting balance functionality.
+    *
+    * @return ID of newly created vesting_balance_object
+    */
+   struct vesting_balance_create_operation
+   {
+      asset            fee;
+      account_id_type  creator;         ///< Who provides funds initially
+      account_id_type  owner;           ///< Who is able to withdraw the balance
+      asset            amount;
+      uint32_t         vesting_seconds;
+
+      account_id_type   fee_payer()const { return creator; }
+      void              get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void              validate()const;
+      share_type        calculate_fee( const fee_schedule_type& k )const;
+      void              get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
+      {
+         acc.adjust( fee_payer(), -fee );
+         acc.adjust( creator, -amount );
+      }
+   };
+
+   /**
+    * @brief Withdraw from a vesting balance.
+    * @ingroup operations
+    *
+    * Withdrawal from a not-completely-mature vesting balance
+    * will result in paying fees.
+    *
+    * @return Nothing
+    */
+   struct vesting_balance_withdraw_operation
+   {
+      asset                   fee;
+      vesting_balance_id_type vesting_balance;
+      account_id_type         owner;              ///< Must be vesting_balance.owner
+      asset                   amount;
+
+      account_id_type   fee_payer()const { return owner; }
+      void              get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void              validate()const;
+      share_type        calculate_fee( const fee_schedule_type& k )const;
+      void              get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
+      {
+         acc.adjust( fee_payer(), -fee );
+         acc.adjust( owner, amount );
+      }
+   };
+
+   /**
     * @ingroup operations
     *
     * Defines the set of valid operations as a discriminated union type.
@@ -1273,7 +1336,9 @@ namespace bts { namespace chain {
             fill_order_operation,
             global_parameters_update_operation,
             create_bond_offer_operation,
-            file_write_operation
+            file_write_operation,
+            vesting_balance_create_operation,
+            vesting_balance_withdraw_operation
             /*
             * TODO: once methods on these ops are implemented
             cancel_bond_offer_operation,
@@ -1481,3 +1546,6 @@ FC_REFLECT( bts::chain::cancel_bond_offer_operation, (fee)(creator)(offer_id)(re
 FC_REFLECT( bts::chain::accept_bond_offer_operation, (fee)(claimer)(offer_id)(amount) )
 FC_REFLECT( bts::chain::claim_bond_collateral_operation, (fee)(claimer)(bond_id)(payoff_amount)(collateral_claimed) )
 FC_REFLECT( bts::chain::file_write_operation, (fee)(payer)(file_id)(owner)(group)(flags)(offset)(data)(lease_seconds)(file_size)(precondition_checksum) )
+
+FC_REFLECT( bts::chain::vesting_balance_create_operation, (fee)(creator)(owner)(amount)(vesting_seconds) )
+FC_REFLECT( bts::chain::vesting_balance_withdraw_operation, (fee)(vesting_balance)(owner)(amount) )

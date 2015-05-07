@@ -216,6 +216,17 @@ struct operation_get_impacted_accounts
    }
 
    void operator()( const create_bond_offer_operation& o )const { }
+   
+   void operator()( const vesting_balance_create_operation& o )const
+   {
+      _impacted.insert( o.creator );
+      _impacted.insert( o.owner );
+   }
+
+   void operator()( const vesting_balance_withdraw_operation& o )const
+   {
+      _impacted.insert( o.owner );
+   }
 };
 
 account_create_observer::~account_create_observer()

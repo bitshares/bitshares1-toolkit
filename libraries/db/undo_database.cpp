@@ -73,7 +73,7 @@ void undo_database::undo()
       _db.modify( _db.get_object( item.second->id ), [&]( object& obj ){ obj.move_from( *item.second ); } );
    }
 
-   for( auto ritr = state.new_ids.rbegin(); ritr != state.new_ids.rend(); ++ritr  )
+   for( auto ritr = state.new_ids.begin(); ritr != state.new_ids.end(); ++ritr  )
    {
       _db.remove( _db.get_object(*ritr) );
    }
@@ -141,7 +141,7 @@ void undo_database::pop_commit()
          _db.modify( _db.get_object( item.second->id ), [&]( object& obj ){ obj.move_from( *item.second ); } );
       }
 
-      for( auto ritr = state.new_ids.rbegin(); ritr != state.new_ids.rend(); ++ritr  )
+      for( auto ritr = state.new_ids.begin(); ritr != state.new_ids.end(); ++ritr  )
       {
          _db.remove( _db.get_object(*ritr) );
       }

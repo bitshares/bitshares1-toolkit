@@ -32,6 +32,8 @@
 #include <bts/chain/witness_object.hpp>
 #include <bts/chain/witness_evaluator.hpp>
 #include <bts/chain/bond_evaluator.hpp>
+#include <bts/chain/vesting_balance_evaluator.hpp>
+#include <bts/chain/vesting_balance_object.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/crypto/digest.hpp>
@@ -69,7 +71,7 @@ void database::close(uint32_t blocks_to_rewind)
 {
    _pending_block_session.reset();
 
-   for(int i = 0; i < blocks_to_rewind && head_block_num() > 0; ++i)
+   for(uint32_t i = 0; i < blocks_to_rewind && head_block_num() > 0; ++i)
       pop_block();
 
    object_database::close();
@@ -142,6 +144,8 @@ void database::initialize_evaluators()
    register_evaluator<witness_create_evaluator>();
    register_evaluator<witness_withdraw_pay_evaluator>();
    register_evaluator<create_bond_offer_evaluator>();
+   register_evaluator<vesting_balance_create_evaluator>();
+   register_evaluator<vesting_balance_withdraw_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -163,6 +167,7 @@ void database::initialize_indexes()
    add_index< primary_index< bond_index > >();
    add_index< primary_index< bond_offer_index > >();
    add_index< primary_index< file_object_index> >();
+   add_index< primary_index< simple_index<vesting_balance_object> > >();
 
    //Implementation object indexes
    add_index< primary_index< transaction_index                             > >();
@@ -1010,7 +1015,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
        * for transactions when validating broadcast transactions or
        * when building a block.
        */
-      apply_transaction( trx, skip );
+      apply_transaction( trx, skip | skip_transaction_signatures );
       ++_current_trx_in_block;
    }
 
@@ -1443,28 +1448,30 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    }
    ptrx.operation_results = std::move( eval_state.operation_results );
 
-   //If we're skipping tapos check, but not expiration check, assume all transactions have maximum expiration time.
+   //If we're skipping tapos check, but not dupe check, assume all transactions have maximum expiration time.
    fc::time_point_sec trx_expiration = _pending_block.timestamp + chain_parameters.maximum_time_until_expiration;
-   if( !(skip & skip_tapos_check) )
+
+   //Skip all manner of expiration and TaPoS checking if we're on block 1; It's impossible that the transaction is
+   //expired, and TaPoS makes no sense as no blocks exist.
+   if( BOOST_LIKELY(head_block_num() > 0) )
    {
-      //Check the TaPoS reference and expiration time
-      //Remember that the TaPoS block number is abbreviated; it contains only the lower 16 bits.
-      //Lookup TaPoS block summary by block number (remember block summary instances are the block numbers)
-      const block_summary_object& tapos_block_summary
-            = static_cast<const block_summary_object&>(get_index<block_summary_object>()
-                                                       .get(block_summary_id_type((head_block_num() & ~0xffff)
-                                                                                  + trx.ref_block_num)));
-      //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
-      FC_ASSERT( trx.ref_block_prefix == tapos_block_summary.block_id._hash[1] );
-      trx_expiration = tapos_block_summary.timestamp + chain_parameters.block_interval*trx.relative_expiration.value;
-      if( tapos_block_summary.timestamp == time_point_sec() )
-         trx_expiration = now() + chain_parameters.block_interval*trx.relative_expiration.value;
-      FC_ASSERT( _pending_block.timestamp <= trx_expiration ||
-                 (trx.ref_block_prefix == 0 && trx.ref_block_num == 0 && head_block_num() < trx.relative_expiration)
-                 , "", ("exp", trx_expiration) );
-      FC_ASSERT( trx_expiration <= head_block_time() + chain_parameters.maximum_time_until_expiration
-                 //Allow transactions through on block 1
-                 || head_block_num() == 0 );
+      if( !(skip & skip_tapos_check) && trx.relative_expiration != 0 )
+      {
+         //Check the TaPoS reference and expiration time
+         //Remember that the TaPoS block number is abbreviated; it contains only the lower 16 bits.
+         //Lookup TaPoS block summary by block number (remember block summary instances are the block numbers)
+         const block_summary_object& tapos_block_summary
+               = static_cast<const block_summary_object&>(get_index<block_summary_object>()
+                                                          .get(block_summary_id_type((head_block_num() & ~0xffff)
+                                                                                     + trx.ref_block_num)));
+         //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
+         FC_ASSERT( trx.ref_block_prefix == tapos_block_summary.block_id._hash[1] );
+         trx_expiration = tapos_block_summary.timestamp + chain_parameters.block_interval*trx.relative_expiration;
+      } else if( trx.relative_expiration == 0 ) {
+         trx_expiration = fc::time_point_sec(trx.ref_block_prefix);
+         FC_ASSERT( trx_expiration <= _pending_block.timestamp + chain_parameters.maximum_time_until_expiration );
+      }
+      FC_ASSERT( _pending_block.timestamp <= trx_expiration );
    }
 
    //Insert transaction into unique transactions database.
@@ -1481,10 +1488,17 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
 
 operation_result database::apply_operation(transaction_evaluation_state& eval_state, const operation& op)
 {
-   assert("No registered evaluator for this operation." &&
-          _operation_evaluators.size() > op.which() && _operation_evaluators[op.which()]);
+   int i_which = op.which();
+   uint64_t u_which = uint64_t( i_which );
+   if( i_which < 0 )
+      assert( "Negative operation tag" && false );
+   if( u_which >= _operation_evaluators.size() )
+      assert( "No registered evaluator for this operation" && false );
+   unique_ptr<op_evaluator>& eval = _operation_evaluators[ u_which ];
+   if( !eval )
+      assert( "No registered evaluator for this operation" && false );
    auto op_id = push_applied_operation( op );
-   auto result =  _operation_evaluators[op.which()]->evaluate( eval_state, op, true );
+   auto result = eval->evaluate( eval_state, op, true );
    set_applied_operation_result( op_id, result );
    return result;
 }

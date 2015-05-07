@@ -31,7 +31,9 @@ namespace detail {
 
    class application_impl : public net::node_delegate
    {
+   public:
       fc::optional<fc::temp_file> _lock_file;
+      bool _is_block_producer = false;
 
       void reset_p2p_node(const fc::path& data_dir)
       { try {
@@ -82,7 +84,6 @@ namespace detail {
          _websocket_server->start_accept();
       } FC_CAPTURE_AND_RETHROW() }
 
-   public:
       application_impl(application* self)
          : _self(self),
            _chain_db(std::make_shared<chain::database>())
@@ -150,7 +151,7 @@ namespace detail {
       { try {
          ilog("Got block #${n} from network", ("n", blk_msg.block.block_num()));
          try {
-            return _chain_db->push_block( blk_msg.block );
+            return _chain_db->push_block( blk_msg.block, _is_block_producer? database::skip_nothing : database::skip_transaction_signatures );
          } catch( const fc::exception& e ) {
             elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
             throw;
@@ -349,6 +350,7 @@ application::~application()
    {
       ilog("Closing p2p node");
       my->_p2p_network->close();
+      my->_p2p_network.reset();
    }
    if( my->_chain_db )
    {
@@ -399,6 +401,11 @@ net::node_ptr application::p2p_node()
 std::shared_ptr<chain::database> application::chain_database() const
 {
    return my->_chain_db;
+}
+
+void application::set_block_production(bool producing_blocks)
+{
+   my->_is_block_producer = producing_blocks;
 }
 
 void bts::app::application::add_plugin(const string& name, std::shared_ptr<bts::app::abstract_plugin> p)
