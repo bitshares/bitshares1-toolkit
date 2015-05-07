@@ -65,10 +65,8 @@ bool is_valid_name( const string& s )
          return true;
    }
 }
-bool is_premium_name( const string& n )
-{
-   return false;
-}
+bool is_premium_name( const string& n );
+
 bool is_cheap_name( const string& n )
 {
    for( auto c : n )

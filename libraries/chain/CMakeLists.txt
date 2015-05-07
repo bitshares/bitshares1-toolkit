@@ -2,7 +2,6 @@ file(GLOB HEADERS "include/bts/chain/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
 add_library( bts_chain
-
              types.cpp
              address.cpp
              asset.cpp
@@ -35,6 +34,7 @@ add_library( bts_chain
              transaction_evaluation_state.cpp
              database.cpp
              fork_database.cpp
+             is_premium_name.cpp
              ${HEADERS}
            )
 
