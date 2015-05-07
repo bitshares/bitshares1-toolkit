@@ -185,7 +185,6 @@ void vesting_balance_object::deposit(
    const time_point_sec& now,
    const asset& amount)
 {
-   assert( amount <= balance );
    on_deposit_visitor vtor( balance, now, amount );
    policy.visit( vtor );
    balance += amount;
