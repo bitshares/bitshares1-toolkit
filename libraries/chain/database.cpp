@@ -143,7 +143,7 @@ void database::initialize_evaluators()
    register_evaluator<global_parameters_update_evaluator>();
    register_evaluator<witness_create_evaluator>();
    register_evaluator<witness_withdraw_pay_evaluator>();
-   register_evaluator<create_bond_offer_evaluator>();
+   register_evaluator<bond_create_offer_evaluator>();
    register_evaluator<vesting_balance_create_evaluator>();
    register_evaluator<vesting_balance_withdraw_evaluator>();
 }
@@ -1433,7 +1433,10 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
       {
          //wdump((sig.first));
          //wdump((sig.first(*this)));
-         FC_ASSERT( sig.first(*this).key_address() == fc::ecc::public_key( sig.second, trx.digest() ), "", ("sig.first",sig.first)("key_address",sig.first(*this).key_address())("addr", address(fc::ecc::public_key( sig.second, trx.digest() ))) );
+         FC_ASSERT( sig.first(*this).key_address() == fc::ecc::public_key( sig.second, trx.digest() ), "",
+                    ("sig.first",sig.first)
+                    ("key_address",sig.first(*this).key_address())
+                    ("addr", address(fc::ecc::public_key( sig.second, trx.digest() ))) );
       }
    }
    eval_state.operation_results.reserve( trx.operations.size() );

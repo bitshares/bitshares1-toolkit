@@ -595,12 +595,12 @@ share_type asset_settle_operation::calculate_fee(const fee_schedule_type& k) con
    return k.at(asset_settle_fee_type);
 }
 
-void create_bond_offer_operation::get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const
+void bond_create_offer_operation::get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const
 {
    active_auth_set.insert( creator );
 }
 
-void create_bond_offer_operation::validate()const
+void bond_create_offer_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( amount.amount > 0 );
@@ -611,7 +611,7 @@ void create_bond_offer_operation::validate()const
    FC_ASSERT( interest_apr <= MAX_INTEREST_APR );
 }
 
-share_type create_bond_offer_operation::calculate_fee( const fee_schedule_type& schedule )const
+share_type bond_create_offer_operation::calculate_fee( const fee_schedule_type& schedule )const
 {
    return schedule.at( create_bond_offer_fee_type );
 }

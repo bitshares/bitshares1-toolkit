@@ -2028,9 +2028,9 @@ BOOST_AUTO_TEST_CASE( transfer_cashback_test )
    }
 }
 
-BOOST_AUTO_TEST_CASE( create_bond_offer_test )
+BOOST_AUTO_TEST_CASE( bond_create_offer_test )
 { try {
-   create_bond_offer_operation op;
+   bond_create_offer_operation op;
    op.fee = asset( 0, 0 );
    op.creator = account_id_type();
    op.amount = asset( 1, 0 );
