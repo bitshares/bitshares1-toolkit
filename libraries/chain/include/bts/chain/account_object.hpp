@@ -216,13 +216,14 @@ namespace bts { namespace chain {
       indexed_by<
          hashed_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
          //TODO: make these ordered_... indices hashed instead
-         ordered_unique< tag<by_balance>, composite_key<
+         //ordered_unique< tag<by_balance>, composite_key<
+         hashed_unique< tag<by_balance>, composite_key<
             account_balance_object,
             member<account_balance_object, account_id_type, &account_balance_object::owner>,
             member<account_balance_object, asset_id_type, &account_balance_object::asset_type> >
          >,
-         ordered_non_unique< tag<by_account>, member<account_balance_object, account_id_type, &account_balance_object::owner> >,
-         ordered_non_unique< tag<by_asset>, member<account_balance_object, asset_id_type, &account_balance_object::asset_type> >
+         hashed_non_unique< tag<by_account>, member<account_balance_object, account_id_type, &account_balance_object::owner> >,
+         hashed_non_unique< tag<by_asset>, member<account_balance_object, asset_id_type, &account_balance_object::asset_type> >
       >
    > account_balance_object_multi_index_type;
 

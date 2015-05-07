@@ -12,6 +12,7 @@
 #include <bts/chain/proposal_object.hpp>
 #include <bts/chain/withdraw_permission_object.hpp>
 #include <bts/chain/bond_object.hpp>
+#include <bts/chain/file_object.hpp>
 #include <bts/db/simple_index.hpp>
 #include <bts/db/flat_index.hpp>
 
@@ -161,6 +162,7 @@ void database::initialize_indexes()
    add_index< primary_index< withdraw_permission_index > >();
    add_index< primary_index< bond_index > >();
    add_index< primary_index< bond_offer_index > >();
+   add_index< primary_index< file_object_index> >();
 
    //Implementation object indexes
    add_index< primary_index< transaction_index                             > >();

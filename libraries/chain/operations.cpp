@@ -456,22 +456,6 @@ share_type  account_transfer_operation::calculate_fee( const fee_schedule_type& 
 }
 
 
-void account_claim_cashback_operation::validate()const
-{
-   FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( amount >= 0 );
-}
-
-void account_claim_cashback_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
-{
-   active_auth_set.insert( account );
-}
-
-share_type  account_claim_cashback_operation::calculate_fee( const fee_schedule_type& k )const
-{
-   return k.at(transfer_fee_type);
-}
-
 void proposal_delete_operation::validate() const
 {
    FC_ASSERT( fee.amount >= 0 );
@@ -657,5 +641,19 @@ void asset_update_feed_producers_operation::validate() const
 {
    FC_ASSERT( fee.amount >= 0 );
 }
+void            file_write_operation::validate()const
+{
+   FC_ASSERT( uint32_t(offset) + data.size() <= file_size );
+   FC_ASSERT( flags <= 0x2f );
+   FC_ASSERT( file_size > 0 );
+   /** less than 10 years to prevent overflow of 64 bit numbers in the value*lease_seconds*file_size calculation */
+   FC_ASSERT( lease_seconds < 60*60*24*365*10 ); 
+}
+
+share_type      file_write_operation::calculate_fee( const fee_schedule_type& k )const
+{
+   return ((((k.at( file_storage_fee_per_day_type ).value * lease_seconds)/(60*60*24))*file_size)/0xff) + ((data.size() * k.at( data_fee_type ).value)/1024);
+}
+
 
 } } // namespace bts::chain

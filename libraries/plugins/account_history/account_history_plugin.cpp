@@ -149,13 +149,14 @@ struct operation_get_impacted_accounts
    {
       _impacted.insert( o.new_owner );
    }
-   void operator()( const account_claim_cashback_operation& o )const{}
 
    void operator()( const account_whitelist_operation& o )const {
        _impacted.insert( o.account_to_list );
    }
 
-   void operator()( const asset_create_operation& o )const {
+   void operator()( const asset_create_operation& o )const { } 
+   void operator()( const file_write_operation& o )const { 
+      _impacted.insert( o.owner );
    }
 
    void operator()( const asset_update_operation& o )const {

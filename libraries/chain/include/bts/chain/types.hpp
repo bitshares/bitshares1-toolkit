@@ -99,6 +99,7 @@ namespace bts { namespace chain {
       cancel_bond_offer_fee_type,
       accept_bond_offer_fee_type,
       claim_bond_collateral_fee_type,
+      file_storage_fee_per_day_type, ///< the cost of leasing a file with 2^16 bytes for 1 day
       FEE_TYPE_COUNT ///< Sentry value which contains the number of different fee types
    };
 
@@ -127,7 +128,8 @@ namespace bts { namespace chain {
       operation_history_object_type,
       withdraw_permission_object_type,
       bond_offer_object_type,
-      bond_object_type
+      bond_object_type,
+      file_object_type
    };
 
    enum impl_object_type
@@ -170,6 +172,7 @@ namespace bts { namespace chain {
    class withdraw_permission_object;
    class bond_object;
    class bond_offer_object;
+   class file_object;
 
 
    typedef object_id< protocol_ids, key_object_type,                key_object>                   key_id_type;
@@ -187,6 +190,7 @@ namespace bts { namespace chain {
    typedef object_id< protocol_ids, withdraw_permission_object_type,withdraw_permission_object>   withdraw_permission_id_type;
    typedef object_id< protocol_ids, bond_offer_object_type,         bond_offer_object>            bond_offer_id_type;
    typedef object_id< protocol_ids, bond_object_type,               bond_object>                  bond_id_type;
+   typedef object_id< protocol_ids, file_object_type,               file_object>                  file_id_type;
 
    typedef object_id< relative_protocol_ids, key_object_type, key_object>           relative_key_id_type;
    typedef object_id< relative_protocol_ids, account_object_type, account_object>   relative_account_id_type;
@@ -221,6 +225,7 @@ namespace bts { namespace chain {
 
    typedef fc::array<char,BTS_MAX_SYMBOL_NAME_LENGTH>   symbol_type;
    typedef fc::ripemd160                                block_id_type;
+   typedef fc::ripemd160                                checksum_type;
    typedef fc::ripemd160                                transaction_id_type;
    typedef fc::sha256                                   digest_type;
    typedef fc::ecc::compact_signature                   signature_type;
@@ -456,6 +461,7 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (withdraw_permission_object_type)
                  (bond_offer_object_type)
                  (bond_object_type)
+                 (file_object_type)
                )
 FC_REFLECT_ENUM( bts::chain::impl_object_type,
                  (impl_global_property_object_type)
@@ -500,6 +506,7 @@ FC_REFLECT_ENUM( bts::chain::fee_type,
                  (cancel_bond_offer_fee_type)
                  (accept_bond_offer_fee_type)
                  (claim_bond_collateral_fee_type)
+                 (file_storage_fee_per_day_type)
                  (FEE_TYPE_COUNT)
                )
 

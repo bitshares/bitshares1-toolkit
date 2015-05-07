@@ -88,6 +88,7 @@ namespace bts { namespace db {
       {
          return a.instance.value < b.instance.value;
       }
+      friend size_t hash_value( object_id v ) { return std::hash<uint64_t>()(v.instance.value); }
 
       unsigned_int instance;
    };

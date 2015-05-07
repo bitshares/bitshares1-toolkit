@@ -223,29 +223,6 @@ namespace bts { namespace chain {
       void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
    };
 
-   /**
-    *  @brief transfers the cashback rewards to balance
-    *  @ingroup operations
-    *
-    *  This is defined as a separate operation because cashback rewards would end up creating many
-    *  small 'micro-payments' and this helps keep the ledger clean.
-    */
-   struct account_claim_cashback_operation
-   {
-      account_id_type account;
-      asset           fee;
-      share_type      amount;
-
-      account_id_type fee_payer()const { return account; }
-      void        get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
-      void        validate()const;
-      share_type  calculate_fee( const fee_schedule_type& k )const;
-
-      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const {
-         acc.adjust( fee_payer(), -fee );
-         acc.adjust( account, asset(amount) );
-      }
-   };
 
    /**
     *  @brief transfers the account to another account while clearing the white list
@@ -1087,6 +1064,77 @@ namespace bts { namespace chain {
    };
 
    /**
+    *  @brief create/update the contents of a file.
+    *
+    *  Any account may pay a fee and write no data to extend the lease seconds
+    *  on a file.
+    *
+    *  @see file_object
+    */
+   struct file_write_operation
+   {
+      public:
+         /**
+          *  The fee charges is proportional to @ref file_size * @ref lease_seconds
+          */
+         asset                   fee;
+         /**
+          * THe account that is paying the update fee
+          */
+         account_id_type         payer; 
+
+         /** file_id 0 indicates a new file should be created */
+         file_id_type            file_id;
+
+         /** may read/write accoding to flags, write permission is required to change owner/group/flags */
+         account_id_type         owner;
+
+         /** may read/write according fo flags, but may not update flags or owner */
+         account_id_type         group;
+
+         /**
+          *  Must be less than or equal to 0x2f
+          */
+         uint8_t                 flags = 0;
+
+         /**
+          *  If the file doesn't exist, it will be intialized to file_size with 0
+          *  before writing data.
+          *
+          *  @pre  data.size() + offset <=  2^16
+          */
+         uint16_t                offset = 0;
+         vector<char>            data;
+
+         /**
+          *  The length of time to extend the lease on the file, must be less
+          *  than 10 years. 
+          */
+         uint32_t                lease_seconds = 0; 
+
+         /**
+          * File size must be greater than 0
+          */
+         uint16_t                file_size = 0;
+
+         /**
+          *  If file_id is not 0, then precondition checksum verifies that
+          *  the file contents are as expected prior to writing data. 
+          */
+         optional<checksum_type> precondition_checksum;
+
+         account_id_type fee_payer()const { return payer; }
+         void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const { active_auth_set.insert(fee_payer()); }
+         void            validate()const;
+         share_type      calculate_fee( const fee_schedule_type& k )const;
+
+         void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
+         {
+            acc.adjust( fee_payer(), -fee );
+         }
+   };
+
+   /**
     * @ingroup operations
     *
     * Bond offers are objects that exist on the blockchain and can be
@@ -1205,7 +1253,6 @@ namespace bts { namespace chain {
             account_create_operation,
             account_update_operation,
             account_whitelist_operation,
-            account_claim_cashback_operation,
             account_transfer_operation,
             asset_create_operation,
             asset_update_operation,
@@ -1225,7 +1272,8 @@ namespace bts { namespace chain {
             withdraw_permission_claim_operation,
             fill_order_operation,
             global_parameters_update_operation,
-            create_bond_offer_operation
+            create_bond_offer_operation,
+            file_write_operation
             /*
             * TODO: once methods on these ops are implemented
             cancel_bond_offer_operation,
@@ -1360,7 +1408,6 @@ FC_REFLECT_ENUM( bts::chain::account_whitelist_operation::account_listing,
                 (no_listing)(white_listed)(black_listed)(white_and_black_listed))
 
 FC_REFLECT( bts::chain::account_whitelist_operation, (authorizing_account)(account_to_list)(new_listing)(fee))
-FC_REFLECT( bts::chain::account_claim_cashback_operation,      (account)(fee)(amount) )
 FC_REFLECT( bts::chain::account_transfer_operation, (account_id)(new_owner)(fee) )
 
 FC_REFLECT( bts::chain::delegate_create_operation,
@@ -1433,3 +1480,4 @@ FC_REFLECT( bts::chain::create_bond_offer_operation, (fee)(creator)(offer_to_bor
 FC_REFLECT( bts::chain::cancel_bond_offer_operation, (fee)(creator)(offer_id)(refund) )
 FC_REFLECT( bts::chain::accept_bond_offer_operation, (fee)(claimer)(offer_id)(amount) )
 FC_REFLECT( bts::chain::claim_bond_collateral_operation, (fee)(claimer)(bond_id)(payoff_amount)(collateral_claimed) )
+FC_REFLECT( bts::chain::file_write_operation, (fee)(payer)(file_id)(owner)(group)(flags)(offset)(data)(lease_seconds)(file_size)(precondition_checksum) )
