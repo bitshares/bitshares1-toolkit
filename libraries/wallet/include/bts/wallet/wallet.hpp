@@ -45,7 +45,7 @@ class wallet_api
    public:
       wallet_api( fc::api<login_api> rapi );
       virtual ~wallet_api();
-      
+
       bool copy_wallet_file( string destination_filename );
 
       fc::ecc::private_key derive_private_key(
@@ -85,7 +85,6 @@ class wallet_api
          string account_name,
          string registrar_account,
          string referrer_account,
-         uint8_t referrer_percent,
          bool broadcast = false
          );
       signed_transaction transfer(

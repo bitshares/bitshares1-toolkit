@@ -50,6 +50,7 @@ void witness_plugin::startup()
    if( !_witnesses.empty() )
    {
       ilog("Launching block production for ${n} witnesses.", ("n", _witnesses.size()));
+      app().set_block_production(true);
       schedule_next_production(database().get_global_properties().parameters);
    } else
       elog("No witnesses configured! Please add witness IDs and private keys to configuration.");

@@ -61,6 +61,9 @@ int main(int argc, char** argv) {
          bpo::store(bpo::parse_config_file<char>((data_dir / "config.ini").preferred_string().c_str(), cfg_options), options);
       else {
          ilog("Writing new config file at ${path}", ("path", data_dir/"config.ini"));
+         if( !fc::exists(data_dir) )
+            fc::create_directories(data_dir);
+
          std::ofstream out_cfg((data_dir / "config.ini").preferred_string());
          for( const boost::shared_ptr<bpo::option_description> od : cfg_options.options() )
          {

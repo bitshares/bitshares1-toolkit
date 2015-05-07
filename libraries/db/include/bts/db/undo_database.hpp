@@ -13,7 +13,7 @@ namespace bts { namespace db {
    {
       unordered_map<object_id_type, unique_ptr<object> > old_values;
       unordered_map<object_id_type, object_id_type>      old_index_next_ids;
-      flat_set<object_id_type>                           new_ids;
+      std::unordered_set<object_id_type>                 new_ids;
       unordered_map<object_id_type, unique_ptr<object> > removed;
    };
 
@@ -60,7 +60,7 @@ namespace bts { namespace db {
                }
 
             private:
-               friend undo_database;
+               friend class undo_database;
                session(undo_database& db): _db(db) {}
                undo_database& _db;
                bool _apply_undo = true;
@@ -115,7 +115,7 @@ namespace bts { namespace db {
          bool                    _disabled = true;
          std::deque<undo_state>  _stack;
          object_database&        _db;
-         size_t                  _max_size = 1024;
+         size_t                  _max_size = 256;
    };
 
 } } // bts::db
