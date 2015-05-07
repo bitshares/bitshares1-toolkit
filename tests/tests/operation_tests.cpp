@@ -1843,6 +1843,7 @@ BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
    account_update_operation uop;
    uop.account = nathan->get_id();
    uop.upgrade_to_prime = true;
+   trx.set_expiration(db.head_block_id());
    trx.operations.push_back(uop);
    trx.visit(operation_set_fee(db.current_fee_schedule()));
    trx.validate();
@@ -2281,7 +2282,7 @@ BOOST_AUTO_TEST_CASE( vesting_balance_withdraw_test )
       REQUIRE_OP_EVALUATION_SUCCESS( op, amount, core.amount(10000) );
       FC_ASSERT( db.get_balance( alice_account,       core ).amount == 1000000 );
    }
-   
+
    // Make sure that we can't withdraw a single extra satoshi no matter how old it is
    {
       const vesting_balance_object& vbo = create_vbo(
@@ -2338,7 +2339,7 @@ BOOST_AUTO_TEST_CASE( vesting_balance_withdraw_test )
    // After 500 seconds, we have 5,000,000 csd.
    // Withdraw 2,000, we are now at 8,000 csd / sec.
    // At 8,000 csd / sec, it will take us 625 seconds to mature.
-   // 
+   //
    {
       const vesting_balance_object& vbo = create_vbo(
          alice_account.id, alice_account.id, core.amount( 10000 ), 1000, 0);

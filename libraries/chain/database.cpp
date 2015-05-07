@@ -1446,28 +1446,30 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    }
    ptrx.operation_results = std::move( eval_state.operation_results );
 
-   //If we're skipping tapos check, but not expiration check, assume all transactions have maximum expiration time.
+   //If we're skipping tapos check, but not dupe check, assume all transactions have maximum expiration time.
    fc::time_point_sec trx_expiration = _pending_block.timestamp + chain_parameters.maximum_time_until_expiration;
-   if( !(skip & skip_tapos_check) )
+
+   //Skip all manner of expiration and TaPoS checking if we're on block 1; It's impossible that the transaction is
+   //expired, and TaPoS makes no sense as no blocks exist.
+   if( BOOST_LIKELY(head_block_num() > 0) )
    {
-      //Check the TaPoS reference and expiration time
-      //Remember that the TaPoS block number is abbreviated; it contains only the lower 16 bits.
-      //Lookup TaPoS block summary by block number (remember block summary instances are the block numbers)
-      const block_summary_object& tapos_block_summary
-            = static_cast<const block_summary_object&>(get_index<block_summary_object>()
-                                                       .get(block_summary_id_type((head_block_num() & ~0xffff)
-                                                                                  + trx.ref_block_num)));
-      //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
-      FC_ASSERT( trx.ref_block_prefix == tapos_block_summary.block_id._hash[1] );
-      trx_expiration = tapos_block_summary.timestamp + chain_parameters.block_interval*trx.relative_expiration.value;
-      if( tapos_block_summary.timestamp == time_point_sec() )
-         trx_expiration = now() + chain_parameters.block_interval*trx.relative_expiration.value;
-      FC_ASSERT( _pending_block.timestamp <= trx_expiration ||
-                 (trx.ref_block_prefix == 0 && trx.ref_block_num == 0 && head_block_num() < trx.relative_expiration)
-                 , "", ("exp", trx_expiration) );
-      FC_ASSERT( trx_expiration <= head_block_time() + chain_parameters.maximum_time_until_expiration
-                 //Allow transactions through on block 1
-                 || head_block_num() == 0 );
+      if( !(skip & skip_tapos_check) && trx.relative_expiration != 0 )
+      {
+         //Check the TaPoS reference and expiration time
+         //Remember that the TaPoS block number is abbreviated; it contains only the lower 16 bits.
+         //Lookup TaPoS block summary by block number (remember block summary instances are the block numbers)
+         const block_summary_object& tapos_block_summary
+               = static_cast<const block_summary_object&>(get_index<block_summary_object>()
+                                                          .get(block_summary_id_type((head_block_num() & ~0xffff)
+                                                                                     + trx.ref_block_num)));
+         //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
+         FC_ASSERT( trx.ref_block_prefix == tapos_block_summary.block_id._hash[1] );
+         trx_expiration = tapos_block_summary.timestamp + chain_parameters.block_interval*trx.relative_expiration;
+      } else if( trx.relative_expiration == 0 ) {
+         trx_expiration = fc::time_point_sec(trx.ref_block_prefix);
+         FC_ASSERT( trx_expiration <= _pending_block.timestamp + chain_parameters.maximum_time_until_expiration );
+      }
+      FC_ASSERT( _pending_block.timestamp <= trx_expiration );
    }
 
    //Insert transaction into unique transactions database.

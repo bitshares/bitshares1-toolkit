@@ -11,6 +11,9 @@ namespace bts { namespace chain {
    }
    void transaction::validate() const
    {
+      if( relative_expiration == 0 )
+         FC_ASSERT( ref_block_num == 0 && ref_block_prefix > 0 );
+
       for( const auto& op : operations )
          op.visit(operation_validator());
    }

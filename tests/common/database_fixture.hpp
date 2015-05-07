@@ -263,7 +263,7 @@ struct database_fixture {
       ahplugin->startup_plugin();
 
       genesis_key(db); // attempt to deref
-      trx.relative_expiration = 1000;
+      trx.set_expiration(chain::now() + fc::minutes(1));
 
       chain::start_simulated_time(bts::chain::now());
    }

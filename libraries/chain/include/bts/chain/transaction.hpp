@@ -13,66 +13,78 @@
 namespace bts { namespace chain {
 
    /**
-    *  @defgroup transactions Transactions
+    * @defgroup transactions Transactions
     *
-    *  All transactions are sets of operations that must be
-    *  applied atomically.  Transactions must refer to a recent
-    *  block that defines the context of the operation so that
-    *  they assert a known binding to the object id's referenced
-    *  in the transaction.
+    * All transactions are sets of operations that must be applied atomically. Transactions must refer to a recent
+    * block that defines the context of the operation so that they assert a known binding to the object id's referenced
+    * in the transaction.
     *
-    *  Rather than specify a full block number, we only specify
-    *  the lower 16 bits of the block number which means you can
-    *  reference any block within the last 65,536 blocks which
-    *  is 3.5 days with a 5 second block interval or 18 hours
-    *  with a 1 second interval.
+    * Rather than specify a full block number, we only specify the lower 16 bits of the block number which means you
+    * can reference any block within the last 65,536 blocks which is 3.5 days with a 5 second block interval or 18
+    * hours with a 1 second interval.
     *
-    *  All transactions must expire so that the network does
-    *  not have to maintain a permanent record of all transactions
-    *  ever published.  Because the network processes transactions
-    *  rapidly there is no need to have an expiration time more
-    *  than 1 round in the future.  If there are 101 delegates and
-    *  a 5 second interval that means 8 minutes.  We can therefore
-    *  specify an expiration time as the number of block intervals
-    *  since the reference block's time.
+    * All transactions must expire so that the network does not have to maintain a permanent record of all transactions
+    * ever published. There are two accepted ways to specify the transaction's expiration time. The first is to choose
+    * a reference block, which is generally the most recent block the wallet is aware of when it signs the transaction,
+    * and specify a number of block intervals after the reference block until the transaction expires. The second
+    * expiration mechanism is to explicitly specify a timestamp of expiration.
     *
-    *  Note: The number of block intervals is different than
-    *  the number of blocks.  In effect the maximum period that
-    *  a transaction is theoretically valid is 18 hours (1 sec interval) to
-    *  3.5 days (5 sec interval) if the reference block was
-    *  the most recent block.
+    * Note: The number of block intervals is different than the number of blocks. In effect the maximum period that a
+    * transaction is theoretically valid is 18 hours (1 sec interval) to 3.5 days (5 sec interval) if the reference
+    * block was the most recent block.
     *
-    *  The block prefix is the first 4 bytes of the block hash of
-    *  the reference block number.
+    * If a transaction is to expire after a number of block intervals from a reference block, the reference block
+    * should be identified in the transaction header using the @ref ref_block_num, @ref ref_block_prefix, and @ref
+    * relative_expiration fields. If the transaction is instead to expire at an absolute timestamp, @ref
+    * ref_block_prefix should be treated as a 32-bit timestamp of the expiration time, and @ref ref_block_num and @ref
+    * relative_expiration must both be set to zero.
     *
-    *  Note: A transaction cannot be migrated between forks outside
-    *  the period of ref_block_num.time to (ref_block_num.time + rel_exp * interval).
-    *  This fact can be used to protect market orders which should specify
-    *  a relatively short re-org window of perhaps less than 1 minute.  Normal
-    *  payments should probably have a longer re-org window to ensure
-    *  their transaction can still go through in the event of a
-    *  momentary disruption in service.
+    * The block prefix is the first 4 bytes of the block hash of the reference block number, which is the second 4
+    * bytes of the @ref block_id_type (the first 4 bytes of the block ID are the block number)
     *
-    *  @{
+    * Note: A transaction which selects a reference block cannot be migrated between forks outside the period of
+    * ref_block_num.time to (ref_block_num.time + rel_exp * interval). This fact can be used to protect market orders
+    * which should specify a relatively short re-org window of perhaps less than 1 minute. Normal payments should
+    * probably have a longer re-org window to ensure their transaction can still go through in the event of a momentary
+    * disruption in service.
+    *
+    * @{
     */
 
    /**
-    *  @brief groups operations that should be applied atomically 
+    *  @brief groups operations that should be applied atomically
     */
    struct transaction
    {
-      /** most recent block number with the same lower bits */
+      /**
+       * Least significant 16 bits from the reference block number. If @ref relative_expiration is zero, this field
+       * must be zero as well.
+       */
       uint16_t           ref_block_num    = 0;
-      /** first 32 bits of the ref_block hash */
+      /**
+       * The first non-block-number 32-bits of the reference block ID. Recall that block IDs have 32 bits of block
+       * number followed by the actual block hash, so this field should be set using the second 32 bits in the
+       * @ref block_id_type
+       */
       uint32_t           ref_block_prefix = 0;
-      /** block intervals since ref_block.time_stamp */
-      unsigned_int       relative_expiration = 1;
+      /**
+       * This field specifies the number of block intervals after the reference block until this transaction becomes
+       * invalid. If this field is set to zero, the @ref ref_block_prefix is interpreted as an absolute timestamp of
+       * the time the transaction becomes invalid.
+       */
+      uint16_t           relative_expiration = 1;
       vector<operation>  operations;
 
       digest_type digest()const;
       transaction_id_type id()const;
       void validate() const;
 
+      void set_expiration( fc::time_point_sec expiration_time )
+      {
+         ref_block_num = 0;
+         relative_expiration = 0;
+         ref_block_prefix = expiration_time.sec_since_epoch();
+      }
       void set_expiration( const block_id_type& reference_block, unsigned_int lifetime_intervals = 3 )
       {
          ref_block_num = ntohl(reference_block._hash[0]);
@@ -106,7 +118,7 @@ namespace bts { namespace chain {
 
    /**
     *  @brief captures the result of evaluating the operations contained in the transaction
-    *  
+    *
     *  When processing a transaction some operations generate
     *  new object IDs and these IDs cannot be known until the
     *  transaction is actually included into a block.  When a
