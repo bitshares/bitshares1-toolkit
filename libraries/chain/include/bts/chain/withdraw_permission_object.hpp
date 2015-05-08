@@ -33,18 +33,33 @@ namespace bts { namespace chain {
         uint32_t           remaining_periods;
         /// The beginning of the next withdrawal period
         time_point_sec     next_period_start_time;
-  };
+        /// True if the permission may still be claimed for this period; false if it has already been used
+        bool               claimable;
 
-   struct by_from{};
-   struct by_authorized{};
+        /// Updates @ref remaining_periods and @ref next_period_start_time
+        /// @return true if permission is expired; false otherwise
+        bool update_period(fc::time_point_sec current_time) {
+           while( remaining_periods > 0 && next_period_start_time <= current_time )
+           {
+              next_period_start_time += withdrawal_period_sec;
+              --remaining_periods;
+              claimable = true;
+           }
+           return remaining_periods == 0 && next_period_start_time <= current_time;
+        }
+   };
 
-   /// TODO: implement boost::hash for account_id_type and switch ot hashed_non_unique
+   struct by_from;
+   struct by_authorized;
+   struct by_next_period;
+
    typedef multi_index_container<
       withdraw_permission_object,
       indexed_by<
          hashed_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
-         ordered_non_unique< tag<by_from>, member<withdraw_permission_object, account_id_type, &withdraw_permission_object::withdraw_from_account> >,
-         ordered_non_unique< tag<by_authorized>, member<withdraw_permission_object, account_id_type, &withdraw_permission_object::authorized_account> >
+         hashed_non_unique< tag<by_from>, member<withdraw_permission_object, account_id_type, &withdraw_permission_object::withdraw_from_account> >,
+         hashed_non_unique< tag<by_authorized>, member<withdraw_permission_object, account_id_type, &withdraw_permission_object::authorized_account> >,
+         ordered_non_unique< tag<by_next_period>, member<withdraw_permission_object, time_point_sec, &withdraw_permission_object::next_period_start_time> >
       >
    > withdraw_permission_object_multi_index_type;
 
@@ -54,10 +69,11 @@ namespace bts { namespace chain {
 } } // bts::chain
 
 FC_REFLECT_DERIVED( bts::chain::withdraw_permission_object, (bts::db::object),
-                   (withdraw_from_account)
-                   (authorized_account)
-                   (withdrawal_limit)
-                   (withdrawal_period_sec)
-                   (remaining_periods)
-                   (next_period_start_time)
+                    (withdraw_from_account)
+                    (authorized_account)
+                    (withdrawal_limit)
+                    (withdrawal_period_sec)
+                    (remaining_periods)
+                    (next_period_start_time)
+                    (claimable)
                  )
