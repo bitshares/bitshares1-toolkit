@@ -313,7 +313,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
                                                            account_id,
                                                            amount,
                                                            asset(),
-                                                           vector<char>()
+                                                           memo_data()//vector<char>()
                                                         }));
          trx.validate();
          apply_transaction(trx, ~0);

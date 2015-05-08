@@ -1,5 +1,6 @@
 #include <bts/chain/database.hpp>
 #include <bts/chain/operations.hpp>
+#include <fc/crypto/aes.hpp>
 
 namespace bts { namespace chain {
 
@@ -126,7 +127,10 @@ share_type asset_create_operation::calculate_fee( const fee_schedule_type& sched
 share_type transfer_operation::calculate_fee( const fee_schedule_type& schedule )const
 {
    auto bts_fee_required = schedule.at( transfer_fee_type );
-   bts_fee_required += share_type((memo.size() * schedule.at( data_fee_type ).value)/1024);
+   if( memo )
+   {
+      bts_fee_required += share_type((memo->message.size() * schedule.at( data_fee_type ).value)/1024);
+   }
    return bts_fee_required;
 }
 
@@ -538,7 +542,8 @@ void withdraw_permission_claim_operation::validate()const
 share_type withdraw_permission_claim_operation::calculate_fee( const fee_schedule_type& schedule )const
 {
    auto bts_fee_required = schedule.at( transfer_fee_type );
-   bts_fee_required += share_type((memo.size() * schedule.at( data_fee_type ).value)/1024);
+   if( memo )
+      bts_fee_required += share_type((memo->message.size() * schedule.at( data_fee_type ).value)/1024);
    return bts_fee_required;
 }
 
@@ -687,5 +692,37 @@ share_type vesting_balance_withdraw_operation::calculate_fee( const fee_schedule
 {
    return k.at( vesting_balance_withdraw_fee_type );
 }
+
+void         memo_data::set_message( const fc::ecc::private_key& priv, 
+                                     const fc::ecc::public_key& pub, const string& msg )
+{
+   if( from )
+   {
+      auto secret = priv.get_shared_secret(pub);
+      message = fc::aes_encrypt( secret, fc::raw::pack( memo_message( secret._hash[0], msg ) ) );
+   }
+   else
+   {
+      message = fc::raw::pack( memo_message( 0, msg ) );
+   }
+}
+
+memo_message memo_data::get_message( const fc::ecc::private_key& priv, 
+                                    const fc::ecc::public_key& pub )const
+{
+   if( from )
+   {
+      auto secret = priv.get_shared_secret(pub);
+      auto plain_text = fc::aes_decrypt( secret, message );
+      auto result = fc::raw::unpack<memo_message>(plain_text);
+      FC_ASSERT( result.checksum == secret._hash[0] );
+      return result;
+   }
+   else
+   {
+      return fc::raw::unpack<memo_message>(message);
+   }
+}
+
 
 } } // namespace bts::chain

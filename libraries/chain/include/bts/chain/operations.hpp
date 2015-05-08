@@ -185,7 +185,7 @@ namespace bts { namespace chain {
       optional<authority>                     owner;
       optional<authority>                     active;
       optional<account_id_type>               voting_account;
-      optional<object_id_type>                memo_key = key_id_type();
+      optional<object_id_type>                memo_key;
       optional<flat_set<vote_id_type>>        vote;
       uint16_t                                num_witness = 0;
       uint16_t                                num_committee = 0;
@@ -323,6 +323,51 @@ namespace bts { namespace chain {
    };
 
    /**
+    * @brief defines a message and checksum to enable validation of successful decryption
+    *
+    * When encrypting/decrypting a checksum is required to determine whether or not
+    * decrytpion was successful.
+    */
+   struct memo_message
+   {
+      memo_message(){}
+      memo_message( uint32_t c, const std::string& t )
+      :checksum(c),text(t){}
+      /**
+       *  First 4 bytes of the shared secret
+       */
+      uint32_t    checksum = 0;
+      std::string text;
+   };
+
+   /**
+    *  @brief defines the keys used to derive the shared secret
+    *
+    *  Because account authorities and keys can change at any time, each memo must
+    *  capture the specific keys used to derive the shared secret.  In order to read
+    *  the cipher message you will need one of the two private keys.
+    *
+    *  If @ref from == @ref to and @ref from == 0 then no encryption is used, the memo is public. 
+    *  If @ref from == @ref to and @ref from != 0 then invalid memo data
+    *
+    */
+   struct memo_data
+   {
+      key_id_type  from;
+      key_id_type  to;
+      /**
+       * This field contains the AES encrypted packed @ref memo_message
+       */
+      vector<char> message;
+
+      void         set_message( const fc::ecc::private_key& priv, 
+                                const fc::ecc::public_key& pub, const string& msg );
+
+      memo_message get_message( const fc::ecc::private_key& priv, 
+                                const fc::ecc::public_key& pub )const;
+   };
+
+   /**
     * @ingroup operations
     *
     * @brief Transfers an amount of one asset from one account to another
@@ -347,9 +392,9 @@ namespace bts { namespace chain {
 
       /** paid by the from account, may be of any asset for which there is a funded fee pool
        **/
-      asset           fee;
+      asset                fee;
       /** user provided data encrypted to the memo key of the "to" account */
-      vector<char>    memo;
+      optional<memo_data>  memo;
 
       account_id_type fee_payer()const { return from; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
@@ -1025,7 +1070,7 @@ namespace bts { namespace chain {
       /// Amount to withdraw. Must not exceed withdraw_permission->withdrawal_limit
       asset                       amount_to_withdraw;
       /// Memo for withdraw_from_account. Should generally be encrypted with withdraw_from_account->memo_key
-      vector<char>                memo;
+      optional<memo_data>         memo;
 
       account_id_type fee_payer()const { return withdraw_to_account; }
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
@@ -1455,6 +1500,8 @@ namespace bts { namespace chain {
 
 } } // bts::chain
 FC_REFLECT( bts::chain::op_wrapper, (op) )
+FC_REFLECT( bts::chain::memo_message, (checksum)(text) )
+FC_REFLECT( bts::chain::memo_data, (from)(to)(message) )
 
 FC_REFLECT( bts::chain::key_create_operation,
             (fee_paying_account)(fee)
