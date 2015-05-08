@@ -51,13 +51,16 @@ namespace bts { namespace chain {
 
    enum asset_issuer_permission_flags
    {
-      charge_market_fee   = 0x01,
-      white_list          = 0x02,
-      halt_transfer       = 0x04,
-      override_authority  = 0x08,
-      market_issued       = 0x10
+      charge_market_fee    = 0x01,
+      white_list           = 0x02,
+      halt_transfer        = 0x04,
+      override_authority   = 0x08,
+      market_issued        = 0x10,
+      disable_force_settle = 0x20, /** diable force settleing */
+      global_settle        = 0x40  /** allow the bitasset issuer to force a global settling   */
    };
-   const static uint32_t ASSET_ISSUER_PERMISSION_MASK = 0x1f;
+   const static uint32_t ASSET_ISSUER_PERMISSION_MASK = charge_market_fee|white_list|halt_transfer|override_authority|market_issued|disable_force_settle|global_settle; 
+   const static uint32_t UIA_ASSET_ISSUER_PERMISSION_MASK = charge_market_fee|white_list|halt_transfer|override_authority;
 
    enum reserved_spaces
    {
@@ -109,6 +112,7 @@ namespace bts { namespace chain {
       file_storage_fee_per_day_type, ///< the cost of leasing a file with 2^16 bytes for 1 day
       vesting_balance_create_fee_type,
       vesting_balance_withdraw_fee_type,
+      global_settle_fee_type,
       FEE_TYPE_COUNT ///< Sentry value which contains the number of different fee types
    };
 
@@ -533,6 +537,7 @@ FC_REFLECT_ENUM( bts::chain::fee_type,
                  (file_storage_fee_per_day_type)
                  (vesting_balance_create_fee_type)
                  (vesting_balance_withdraw_fee_type)
+                 (global_settle_fee_type)
                  (FEE_TYPE_COUNT)
                )
 

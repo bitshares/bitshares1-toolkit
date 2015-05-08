@@ -131,6 +131,7 @@ void database::initialize_evaluators()
    register_evaluator<asset_update_bitasset_evaluator>();
    register_evaluator<asset_update_feed_producers_evaluator>();
    register_evaluator<asset_settle_evaluator>();
+   register_evaluator<asset_global_settle_evaluator>();
    register_evaluator<limit_order_create_evaluator>();
    register_evaluator<limit_order_cancel_evaluator>();
    register_evaluator<short_order_create_evaluator>();

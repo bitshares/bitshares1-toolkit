@@ -439,6 +439,30 @@ namespace bts { namespace chain {
    };
 
    /**
+    *  @brief allows global settling of bitassets (black swan or prediction markets)
+    *
+    *  In order to use this operation, @ref asset_to_settle must have the global_settle flag set
+    *
+    *  When this operation is executed all balances are converted into the backing asset at the
+    *  settle_price and all open margin positions are called at the settle price.  If this asset is
+    *  used as backing for other bitassets, those bitassets will be force settled at their current
+    *  feed price.  
+    */
+   struct asset_global_settle_operation
+   {
+      asset           fee;
+      account_id_type issuer; ///< must equal @ref asset_to_settle->issuer
+      asset_id_type   asset_to_settle;
+      price           settle_price;
+
+      account_id_type fee_payer()const { return issuer; }
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+      void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
+   };
+
+   /**
     * @brief Schedules a market-issued asset for automatic settlement
     * @ingroup operations
     *
@@ -1398,6 +1422,7 @@ namespace bts { namespace chain {
             asset_burn_operation,
             asset_fund_fee_pool_operation,
             asset_settle_operation,
+            asset_global_settle_operation,
             asset_publish_feed_operation,
             delegate_create_operation,
             witness_create_operation,
@@ -1598,6 +1623,7 @@ FC_REFLECT( bts::chain::asset_update_feed_producers_operation,
 FC_REFLECT( bts::chain::asset_publish_feed_operation,
             (publisher)(fee)(feed) )
 FC_REFLECT( bts::chain::asset_settle_operation, (fee)(account)(amount) )
+FC_REFLECT( bts::chain::asset_global_settle_operation, (fee)(issuer)(asset_to_settle)(settle_price) )
 
 FC_REFLECT( bts::chain::asset_issue_operation,
             (issuer)(asset_to_issue)(fee)(issue_to_account) )

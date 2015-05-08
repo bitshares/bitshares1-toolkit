@@ -28,10 +28,18 @@ object_id_type asset_create_evaluator::do_evaluate( const asset_create_operation
    core_fee_paid -= op.calculate_fee(d.current_fee_schedule()).value/2;
    assert( core_fee_paid >= 0 );
 
-   FC_ASSERT( !op.bitasset_options.valid() ||
-              (d.find_object(op.bitasset_options->short_backing_asset) &&
-               op.bitasset_options->feed_lifetime_sec > chain_parameters.block_interval &&
-               op.bitasset_options->force_settlement_delay_sec > chain_parameters.block_interval) );
+   if( op.bitasset_options )
+   {
+      const asset_object&  backing = op.bitasset_options->short_backing_asset(d);
+      if( backing.bitasset_data_id )
+      {
+         const asset_bitasset_data_object& backing_bitasset_data = (*(backing.bitasset_data_id))(d);
+         const asset_object& backing_backing = backing_bitasset_data.short_backing_asset(d);
+         FC_ASSERT( !backing_backing.bitasset_data_id );
+      }
+      FC_ASSERT( op.bitasset_options->feed_lifetime_sec > chain_parameters.block_interval &&
+                 op.bitasset_options->force_settlement_delay_sec > chain_parameters.block_interval );
+   }
 
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (op) ) }
@@ -268,11 +276,32 @@ object_id_type asset_update_feed_producers_evaluator::do_apply(const asset_updat
    return object_id_type();
 }
 
+
+object_id_type asset_global_settle_evaluator::do_evaluate(const asset_global_settle_evaluator::operation_type& op)
+{
+   const database& d = db();
+   asset_to_settle = &op.asset_to_settle(d);
+   FC_ASSERT(asset_to_settle->is_market_issued());
+   FC_ASSERT(asset_to_settle->can_global_settle());
+   FC_ASSERT(asset_to_settle->issuer == op.issuer );
+
+   return object_id_type();
+}
+
+object_id_type asset_global_settle_evaluator::do_apply(const asset_global_settle_evaluator::operation_type& op)
+{
+   database& d = db();
+   d.settle_black_swan( op.asset_to_settle(db()), op.settle_price );
+   return object_id_type();
+}
+
+
 object_id_type asset_settle_evaluator::do_evaluate(const asset_settle_evaluator::operation_type& op)
 {
    const database& d = db();
    asset_to_settle = &op.amount.asset_id(d);
    FC_ASSERT(asset_to_settle->is_market_issued());
+   FC_ASSERT(asset_to_settle->can_force_settle());
    FC_ASSERT(d.get_balance(d.get(op.account), *asset_to_settle) >= op.amount);
 
    return d.get_index_type<force_settlement_index>().get_next_id();

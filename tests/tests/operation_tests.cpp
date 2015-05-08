@@ -460,7 +460,7 @@ BOOST_AUTO_TEST_CASE( create_uia )
       creator.common_options.max_supply = 100000000;
       creator.precision = 2;
       creator.common_options.market_fee_percent = BTS_MAX_MARKET_FEE_PERCENT/100; /*1%*/
-      creator.common_options.issuer_permissions = ASSET_ISSUER_PERMISSION_MASK & ~market_issued;
+      creator.common_options.issuer_permissions = UIA_ASSET_ISSUER_PERMISSION_MASK;
       creator.common_options.flags = charge_market_fee;
       creator.common_options.core_exchange_rate = price({asset(2),asset(1,1)});
       trx.operations.push_back(std::move(creator));
@@ -544,7 +544,7 @@ BOOST_AUTO_TEST_CASE( update_uia )
       op.new_options.issuer_permissions = test.options.issuer_permissions;
       op.new_options.flags = test.options.flags;
       BOOST_CHECK(!(test.options.issuer_permissions & white_list));
-      REQUIRE_THROW_WITH_VALUE(op, new_options.issuer_permissions, ASSET_ISSUER_PERMISSION_MASK & ~market_issued);
+      REQUIRE_THROW_WITH_VALUE(op, new_options.issuer_permissions, UIA_ASSET_ISSUER_PERMISSION_MASK);
       REQUIRE_THROW_WITH_VALUE(op, new_options.flags, white_list);
       op.new_issuer = account_id_type();
       trx.operations.back() = op;
@@ -1899,6 +1899,54 @@ BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
  */
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( delegate_groups_test, 1 )
 BOOST_AUTO_TEST_CASE( delegate_groups_test )
+{
+   assert( !"not implemented" );
+}
+
+
+/**
+ * This test should simulate a prediction market which means the following:
+ *
+ * 1) Issue a BitAsset without Forced Settling & With Global Settling
+ * 2) Don't Publish any Price Feeds
+ * 3) Ensure that margin calls do not occur even if the highest bid would indicate it
+ * 4) Match some Orders 
+ * 5) Trigger Global Settle on the Asset 
+ * 6) The maitenance collateral must always be 1:1 
+ */
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( prediction_market_test, 1 )
+BOOST_AUTO_TEST_CASE( prediction_market_test )
+{
+   assert( !"not implemented" );
+}
+
+/**
+ *  This test should verify that the asset_global_settle operation works as expected,
+ *  make sure that global settling cannot be performed by anyone other than the
+ *  issuer and only if the global settle bit is set.
+ */
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( global_settle_test, 1 )
+BOOST_AUTO_TEST_CASE( global_settle_test )
+{
+   assert( !"not implemented" );
+}
+
+/**
+ *  This test should verify that force settling can be disabled for
+ *  some BitAssets
+ */
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( disable_force_settle, 1 )
+BOOST_AUTO_TEST_CASE( disable_force_settle_test )
+{
+   assert( !"not implemented" );
+}
+
+/**
+ *  Asset Burn Test should make sure that all assets except bitassets
+ *  can be burned and all supplies add up.
+ */
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( burn_asset_test, 1 )
+BOOST_AUTO_TEST_CASE( burn_asset_test )
 {
    assert( !"not implemented" );
 }

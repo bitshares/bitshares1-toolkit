@@ -175,9 +175,8 @@ struct operation_get_impacted_accounts
    }
 
    void operator()( const asset_burn_operation& o )const { }
-
-   void operator()( const asset_settle_operation& o )const {
-   }
+   void operator()( const asset_global_settle_operation& o )const { }
+   void operator()( const asset_settle_operation& o )const { }
 
    void operator()( const asset_fund_fee_pool_operation& o )const { }
    void operator()( const asset_publish_feed_operation& o )const { }

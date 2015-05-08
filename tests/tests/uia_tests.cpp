@@ -24,8 +24,8 @@ BOOST_AUTO_TEST_CASE( create_advanced_uia )
       creator.common_options.max_supply = 100000000;
       creator.precision = 2;
       creator.common_options.market_fee_percent = BTS_MAX_MARKET_FEE_PERCENT/100; /*1%*/
-      creator.common_options.issuer_permissions = ASSET_ISSUER_PERMISSION_MASK & ~market_issued;
-      creator.common_options.flags = ASSET_ISSUER_PERMISSION_MASK & ~market_issued;
+      creator.common_options.issuer_permissions = ASSET_ISSUER_PERMISSION_MASK & ~(market_issued|disable_force_settle|global_settle);
+      creator.common_options.flags = ASSET_ISSUER_PERMISSION_MASK & ~(market_issued|disable_force_settle|global_settle);
       creator.common_options.core_exchange_rate = price({asset(2),asset(1,1)});
       creator.common_options.whitelist_authorities = creator.common_options.blacklist_authorities = {account_id_type()};
       trx.operations.push_back(std::move(creator));
@@ -162,5 +162,23 @@ BOOST_AUTO_TEST_CASE( transfer_whitelist_uia )
    }
 }
 
+
+/**
+ * verify that issuers can halt transfers
+ */
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( halt_transfers_flag_test, 1 )
+BOOST_AUTO_TEST_CASE( halt_transfers_flag_test )
+{
+   assert( !"not implemented" );
+}
+
+/**
+ * verify that issuers can retract funds
+ */
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( fund_retraction_test, 1 )
+BOOST_AUTO_TEST_CASE( fund_retraction_test )
+{
+   assert( !"not implemented" );
+}
 
 BOOST_AUTO_TEST_SUITE_END()

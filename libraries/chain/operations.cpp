@@ -220,6 +220,8 @@ void  asset_create_operation::validate()const
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( is_valid_symbol( symbol ) );
    common_options.validate();
+   if( common_options.flags & (disable_force_settle|global_settle) )
+      FC_ASSERT( common_options.flags & market_issued );
    FC_ASSERT( bitasset_options.valid() == bool(common_options.flags & market_issued) );
    if( bitasset_options ) bitasset_options->validate();
 
@@ -610,6 +612,24 @@ void withdraw_permission_create_operation::validate() const
 share_type withdraw_permission_create_operation::calculate_fee(const fee_schedule_type& k) const
 {
    return k.at(withdraw_permission_update_fee_type);
+}
+
+
+void        asset_global_settle_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
+{
+   active_auth_set.insert( fee_payer() );
+
+}
+
+void        asset_global_settle_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( asset_to_settle == settle_price.base.asset_id );
+}
+
+share_type  asset_global_settle_operation::calculate_fee( const fee_schedule_type& k )const
+{
+   return k.at(global_settle_fee_type);
 }
 
 void asset_settle_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const

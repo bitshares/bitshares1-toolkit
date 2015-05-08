@@ -81,6 +81,16 @@ namespace bts { namespace chain {
          const asset_dynamic_data_object* asset_dyn_data = nullptr;
    };
 
+   class asset_global_settle_evaluator : public evaluator<asset_global_settle_evaluator>
+   {
+      public:
+         typedef asset_global_settle_operation operation_type;
+
+         object_id_type do_evaluate(const operation_type& op);
+         object_id_type do_apply(const operation_type& op);
+
+         const asset_object* asset_to_settle = nullptr;
+   };
    class asset_settle_evaluator : public evaluator<asset_settle_evaluator>
    {
       public:

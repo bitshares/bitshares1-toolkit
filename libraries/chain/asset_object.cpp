@@ -49,6 +49,7 @@ void asset_object::asset_options::validate()const
    FC_ASSERT( min_market_fee >= 0 && min_market_fee <= BTS_MAX_SHARE_SUPPLY );
    // There must be no high bits in permissions whose meaning is not known.
    FC_ASSERT( !(issuer_permissions & ~ASSET_ISSUER_PERMISSION_MASK) );
+   FC_ASSERT( (issuer_permissions & (disable_force_settle|global_settle)) ? issuer_permissions & market_issued : true, "", ("issuer_pemissions", issuer_permissions) );
    // There must be no high bits in flags which are not also high in permissions.
    FC_ASSERT( !(flags & ~issuer_permissions ) );
    core_exchange_rate.validate();
