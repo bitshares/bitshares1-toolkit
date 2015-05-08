@@ -54,6 +54,8 @@ class wallet_api_impl
       account_id_type                   get_account_id( string account_name_or_id ) const;
       asset_id_type                     get_asset_id( string asset_name_or_id ) const;
       string                            get_wallet_filename() const;
+      fc::ecc::private_key              get_private_key( key_id_type id )const;
+      fc::ecc::public_key               get_public_key( key_id_type id )const;
 
       bool import_key( string account_name_or_id, string wif_key );
       bool load_wallet_file( string wallet_filename = "" );
@@ -706,6 +708,22 @@ signed_transaction wallet_api_impl::sign_transaction(
 
    return tx;
 }
+fc::ecc::public_key  wallet_api_impl::get_public_key( key_id_type id )const
+{
+   vector<optional<key_object>> keys = _remote_db->get_keys( {id} );
+   FC_ASSERT( keys.size() == 1 );
+   FC_ASSERT( keys[0].valid() );
+   return keys[0]->key();
+}
+fc::ecc::private_key wallet_api_impl::get_private_key( key_id_type id )const
+{
+   auto it = _wallet.keys.find(id);
+   FC_ASSERT( it != _wallet.keys.end() );
+
+   fc::optional< fc::ecc::private_key > privkey = wif_to_key( it->second );
+   FC_ASSERT( privkey );
+   return *privkey;
+}
 
 signed_transaction wallet_api_impl::transfer(
    string from,
@@ -721,6 +739,7 @@ signed_transaction wallet_api_impl::transfer(
    FC_ASSERT( opt_asset[0].valid() );
 
    account_object from_account = get_account( from );
+   account_object to_account = get_account( to );
    account_id_type from_id = from_account.id;
    account_id_type to_id = get_account_id( to );
 
@@ -733,6 +752,14 @@ signed_transaction wallet_api_impl::transfer(
    xfer_op.from = from_id;
    xfer_op.to = to_id;
    xfer_op.amount = asset( amount, asset_id );
+
+   if( memo.size() )
+   {
+      xfer_op.memo = memo_data();
+      xfer_op.memo->set_message( get_private_key( from_account.memo_key ), 
+                     get_public_key( to_account.memo_key ), memo );
+   }
+
 
    static int count = 0;
 
