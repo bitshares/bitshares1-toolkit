@@ -18,13 +18,12 @@ BOOST_AUTO_TEST_CASE( share_supply )
    try {
       database db;
 
-      fc::ecc::private_key the_key = fc::ecc::private_key::generate();
       int count = 1;
       //Find a number of genesis recipients we can't distribute evenly to
       while( BTS_INITIAL_SUPPLY % ++count == 0 );
       genesis_allocation genesis;
       for( int i = 0; i < count; ++i )
-         genesis.push_back(std::make_pair(public_key_type(the_key.get_public_key()), BTS_INITIAL_SUPPLY / count));
+         genesis.push_back(std::make_pair(public_key_type(fc::ecc::private_key::regenerate(fc::digest(fc::to_string(i))).get_public_key()), BTS_INITIAL_SUPPLY / count));
       db.init_genesis(genesis);
 
       BOOST_CHECK( db.get_balance(account_id_type(), asset_id_type()).amount == 0 );
