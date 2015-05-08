@@ -53,6 +53,17 @@ object_id_type account_create_evaluator::do_evaluate( const account_create_opera
       FC_ASSERT( current_account_itr == acnt_indx.indices().get<by_name>().end() );
    }
 
+   // TODO: this check can be removed after BTS_LEGACY_NAME_IMPORT_PERIOD
+   // legacy account check
+   if( db().get_dynamic_global_properties().head_block_number < BTS_LEGACY_NAME_IMPORT_PERIOD )
+   {
+      auto legacy_account_itr = acnt_indx.indices().get<by_name>().find( "bts-"+op.name );
+      if( legacy_account_itr != acnt_indx.indices().get<by_name>().end() )
+      {
+         FC_ASSERT( fee_paying_account->id == legacy_account_itr->id );
+      }
+   }
+
    // verify child account authority
    auto pos = op.name.find( '/' );
    if( pos != string::npos )

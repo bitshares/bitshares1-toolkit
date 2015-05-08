@@ -63,3 +63,5 @@
 #define BTS_WITNESS_PAY_PERCENT_PRECISION                1000000000
 
 #define MAX_INTEREST_APR                                uint16_t( 10000 )
+#define BTS_LEGACY_NAME_IMPORT_PERIOD                   3000000 /** 3 million blocks */
+
