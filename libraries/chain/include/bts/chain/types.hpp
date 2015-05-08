@@ -401,6 +401,7 @@ namespace bts { namespace chain {
       uint16_t                max_bulk_discount_percent_of_fee    = BTS_DEFAULT_MAX_BULK_DISCOUNT_PERCENT; ///< the maximum percentage discount for bulk discounts
       share_type              bulk_discount_threshold_min         = BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MIN; ///< the minimum amount of fees paid to qualify for bulk discounts
       share_type              bulk_discount_threshold_max         = BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MAX; ///< the amount of fees paid to qualify for the max bulk discount percent
+      bool                    count_non_prime_votes               = true; ///< set to false to restrict voting privlegages to prime accounts
 
       void validate()const
       {
@@ -540,6 +541,7 @@ FC_REFLECT( bts::chain::chain_parameters,
             (cashback_vesting_period_seconds)
             (bulk_discount_threshold_min)
             (bulk_discount_threshold_max)
+            (count_non_prime_votes)
           )
 
 FC_REFLECT_TYPENAME( bts::chain::account_id_type )

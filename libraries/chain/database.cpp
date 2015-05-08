@@ -1294,22 +1294,26 @@ void database::update_vote_totals(const global_property_object& props)
     const account_index& account_idx = get_index_type<account_index>();
     _total_voting_stake = 0;
 
+    bool count_non_prime_votes = props.parameters.count_non_prime_votes;
     for( const account_object& account : account_idx.indices() )
     {
-       // TODO:  Remove true from here
-       if( true || account.is_prime() )
+       if( count_non_prime_votes || account.is_prime() )
        {
-          const auto& stats = account.statistics(*this);
+          const account_object* acnt = &account;
+          if( account.voting_account != account_id_type() )
+             acnt = &account.voting_account(*this);
+
+          const auto& stats = acnt->statistics(*this);
           share_type voting_stake = stats.total_core_in_orders
-                   + (account.cashback_vb.valid() ? (*account.cashback_vb)(*this).balance.amount : share_type(0))
-                   + get_balance(account.get_id(), asset_id_type()).amount;
-          for( vote_id_type id : account.votes )
+                   + (acnt->cashback_vb.valid() ? (*acnt->cashback_vb)(*this).balance.amount : share_type(0))
+                   + get_balance(acnt->get_id(), asset_id_type()).amount;
+          for( vote_id_type id : acnt->votes )
              _vote_tally_buffer[id] += voting_stake;
 
-          if( account.num_witness <= props.parameters.maximum_witness_count )
-             _witness_count_histogram_buffer[account.num_witness] += voting_stake;
-          if( account.num_committee <= props.parameters.maximum_committee_count )
-             _committee_count_histogram_buffer[account.num_committee] += voting_stake;
+          if( acnt->num_witness <= props.parameters.maximum_witness_count )
+             _witness_count_histogram_buffer[acnt->num_witness] += voting_stake;
+          if( acnt->num_committee <= props.parameters.maximum_committee_count )
+             _committee_count_histogram_buffer[acnt->num_committee] += voting_stake;
 
           _total_voting_stake += voting_stake;
        }
