@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE( transfer_core_asset )
                                                    nathan_account.id,
                                                    asset(10000),
                                                    asset(),
-                                                   vector<char>()
+                                                   memo_data()
                                                   }));
       trx.visit( operation_set_fee( db.current_fee_schedule() ) );
 
@@ -207,7 +207,7 @@ BOOST_AUTO_TEST_CASE( transfer_core_asset )
                                                    genesis_account,
                                                    asset(2000),
                                                    asset(),
-                                                   vector<char>()
+                                                   memo_data()
                                                   }));
       trx.visit( operation_set_fee( db.current_fee_schedule() ) );
 

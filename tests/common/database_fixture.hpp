@@ -590,7 +590,7 @@ struct database_fixture {
    }
    void transfer( const account_object& from, const account_object& to, const asset& amount, const asset& fee = asset() )
    { try {
-      trx.operations.push_back(transfer_operation({from.id, to.id, amount, fee, vector<char>() }));
+      trx.operations.push_back(transfer_operation({from.id, to.id, amount, fee, memo_data() }));
 
       if( fee == asset() )
       {

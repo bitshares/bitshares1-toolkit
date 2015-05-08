@@ -919,7 +919,7 @@ BOOST_FIXTURE_TEST_CASE( bogus_signature, database_fixture )
           bob_account_object.id,
           core.amount( 5000 ),
           core.amount( 0 ),
-          vector<char>() });
+          memo_data() });
       xfer_op.visit( operation_set_fee( db.current_fee_schedule() ) );
 
       trx.operations.clear();
