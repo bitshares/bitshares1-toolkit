@@ -51,6 +51,8 @@ namespace bts { namespace app {
 
          bool                              unsubscribe_from_objects( const vector<object_id_type>& ids );
 
+         bool                              is_premium_name(const string& name )const;
+
       private:
          /** called every time a block is applied to report the objects that were changed */
          void on_objects_changed( const vector<object_id_type>& ids );
@@ -127,6 +129,7 @@ FC_API( bts::app::database_api,
         (list_assets)
         (subscribe_to_objects)
         (unsubscribe_from_objects)
+        (is_premium_name)
      )
 FC_API( bts::app::network_api, (broadcast_transaction)(add_node)(get_connected_peers) )
 FC_API( bts::app::login_api,

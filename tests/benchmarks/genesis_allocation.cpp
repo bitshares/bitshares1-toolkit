@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
          for( int i = 0; i < blocks_to_produce; ++i )
          {
             signed_transaction trx;
-            trx.operations.emplace_back(transfer_operation({account_id_type(i + 11), account_id_type(), asset(1), asset(1), vector<char>()}));
+            trx.operations.emplace_back(transfer_operation({account_id_type(i + 11), account_id_type(), asset(1), asset(1), memo_data()}));
             db.push_transaction(trx, ~0);
 
             aw = db.get_global_properties().active_witnesses;
