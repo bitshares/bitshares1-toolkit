@@ -636,6 +636,29 @@ namespace bts { namespace chain {
    };
 
    /**
+    * @brief used to take an asset out of circulation 
+    * @ingroup operations
+    *
+    * @note You cannot burn market issued assets.
+    */
+   struct asset_burn_operation
+   {
+      asset             fee;
+      account_id_type   payer;
+      asset             amount_to_burn;
+
+      account_id_type fee_payer()const { return payer; }
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void            validate()const;
+      share_type      calculate_fee( const fee_schedule_type& k )const;
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const 
+      { 
+         acc.adjust( fee_payer(), -fee ); 
+         acc.adjust( fee_payer(), -amount_to_burn );
+      }
+   };
+
+   /**
     *  @class limit_order_create_operation
     *  @brief instructs the blockchain to attempt to sell one asset for another
     *  @ingroup operations
@@ -1372,6 +1395,7 @@ namespace bts { namespace chain {
             asset_update_bitasset_operation,
             asset_update_feed_producers_operation,
             asset_issue_operation,
+            asset_burn_operation,
             asset_fund_fee_pool_operation,
             asset_settle_operation,
             asset_publish_feed_operation,
@@ -1577,6 +1601,9 @@ FC_REFLECT( bts::chain::asset_settle_operation, (fee)(account)(amount) )
 
 FC_REFLECT( bts::chain::asset_issue_operation,
             (issuer)(asset_to_issue)(fee)(issue_to_account) )
+
+FC_REFLECT( bts::chain::asset_burn_operation,
+            (fee)(payer)(amount_to_burn) )
 
 FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(expiration_time)
             (proposed_ops)(review_period_seconds) )

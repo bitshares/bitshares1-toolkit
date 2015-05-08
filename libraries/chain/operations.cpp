@@ -255,6 +255,25 @@ share_type asset_update_operation::calculate_fee( const fee_schedule_type& k )co
    return k.at( asset_update_fee_type );
 }
 
+void asset_burn_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
+{
+   active_auth_set.insert(payer);
+}
+
+void asset_burn_operation::validate()const
+{
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( amount_to_burn.amount.value <= BTS_MAX_SHARE_SUPPLY );
+   FC_ASSERT( amount_to_burn.amount.value > 0 );
+}
+
+share_type asset_burn_operation::calculate_fee( const fee_schedule_type& k )const
+{
+   return k.at( asset_issue_fee_type );
+}
+
+
+
 void asset_issue_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
 {
    active_auth_set.insert(issuer);

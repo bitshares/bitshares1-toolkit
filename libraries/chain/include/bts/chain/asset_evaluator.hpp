@@ -25,6 +25,18 @@ namespace bts { namespace chain {
          const account_object*            to_account = nullptr;
    };
 
+   class asset_burn_evaluator : public evaluator<asset_burn_evaluator>
+   {
+      public:
+         typedef asset_burn_operation operation_type;
+         object_id_type do_evaluate( const asset_burn_operation& o );
+         object_id_type do_apply( const asset_burn_operation& o );
+
+         const asset_dynamic_data_object* asset_dyn_data = nullptr;
+         const account_object*            from_account = nullptr;
+   };
+
+
    class asset_update_evaluator : public evaluator<asset_update_evaluator>
    {
       public:
