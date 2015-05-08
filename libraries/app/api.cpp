@@ -33,11 +33,6 @@ namespace bts { namespace app {
        return _db.fetch_block_by_number( block_num );
     }
 
-    bool database_api::is_premium_name( const string& name )const
-    {
-       return bts::chain::is_premium_name(name);
-    }
-
     vector<optional<account_object>>  database_api::lookup_account_names( const vector<string>& account_names )const
     {
        const auto& account_idx = _db.get_index_type<account_index>();
