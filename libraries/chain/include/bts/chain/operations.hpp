@@ -347,7 +347,7 @@ namespace bts { namespace chain {
     *  capture the specific keys used to derive the shared secret.  In order to read
     *  the cipher message you will need one of the two private keys.
     *
-    *  If @ref from == @ref to and @ref from == 0 then no encryption is used, the memo is public. 
+    *  If @ref from == @ref to and @ref from == 0 then no encryption is used, the memo is public.
     *  If @ref from == @ref to and @ref from != 0 then invalid memo data
     *
     */
@@ -360,10 +360,10 @@ namespace bts { namespace chain {
        */
       vector<char> message;
 
-      void         set_message( const fc::ecc::private_key& priv, 
+      void         set_message( const fc::ecc::private_key& priv,
                                 const fc::ecc::public_key& pub, const string& msg );
 
-      memo_message get_message( const fc::ecc::private_key& priv, 
+      memo_message get_message( const fc::ecc::private_key& priv,
                                 const fc::ecc::public_key& pub )const;
    };
 
@@ -1048,7 +1048,7 @@ namespace bts { namespace chain {
       uint32_t          withdrawal_period_sec;
       /// The number of withdrawal periods this permission is valid for
       uint32_t          periods_until_expiration;
-      /// Time at which the first withdrawal period begins
+      /// Time at which the first withdrawal period begins; must be in the future
       time_point_sec    period_start_time;
 
       account_id_type fee_payer()const { return withdraw_from_account; }
@@ -1062,7 +1062,10 @@ namespace bts { namespace chain {
     * @brief Update an existing withdraw permission
     * @ingroup operations
     *
-    * This oeration is used to update the settings for an existing withdrawal permission.
+    * This oeration is used to update the settings for an existing withdrawal permission. The accounts to withdraw to
+    * and from may never be updated. The fields which may be updated are the withdrawal limit (both amount and asset
+    * type may be updated), the withdrawal period length, the remaining number of periods until expiration, and the
+    * starting time of the new period.
     *
     * Fee is paid by withdraw_from_account, which is required to authorize this operation
     */
@@ -1079,8 +1082,8 @@ namespace bts { namespace chain {
       asset                         withdrawal_limit;
       /// New length of the period between withdrawals
       uint32_t                      withdrawal_period_sec;
-      /// New beginning of the next withdrawal period
-      time_point_sec                starting_time;
+      /// New beginning of the next withdrawal period; must be in the future
+      time_point_sec                period_start_time;
       /// The new number of withdrawal periods for which this permission will be valid
       uint32_t                      periods_until_expiration;
 
@@ -1153,7 +1156,6 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-
       void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
       {
          acc.adjust( fee_payer(), -fee );
@@ -1433,6 +1435,7 @@ namespace bts { namespace chain {
             withdraw_permission_create_operation,
             withdraw_permission_update_operation,
             withdraw_permission_claim_operation,
+            withdraw_permission_delete_operation,
             fill_order_operation,
             global_parameters_update_operation,
             file_write_operation,
@@ -1643,7 +1646,7 @@ FC_REFLECT( bts::chain::global_parameters_update_operation, (new_parameters)(fee
 FC_REFLECT( bts::chain::withdraw_permission_create_operation, (fee)(withdraw_from_account)(authorized_account)
             (withdrawal_limit)(withdrawal_period_sec)(periods_until_expiration)(period_start_time) )
 FC_REFLECT( bts::chain::withdraw_permission_update_operation, (fee)(withdraw_from_account)(authorized_account)
-            (permission_to_update)(withdrawal_limit)(withdrawal_period_sec)(starting_time)(periods_until_expiration) )
+            (permission_to_update)(withdrawal_limit)(withdrawal_period_sec)(period_start_time)(periods_until_expiration) )
 FC_REFLECT( bts::chain::withdraw_permission_claim_operation, (fee)(withdraw_permission)(withdraw_from_account)(withdraw_to_account)(amount_to_withdraw)(memo) );
 FC_REFLECT( bts::chain::withdraw_permission_delete_operation, (fee)(withdraw_from_account)(authorized_account)
             (withdrawal_permission) )

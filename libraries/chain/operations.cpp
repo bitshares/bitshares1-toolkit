@@ -84,7 +84,7 @@ bool is_cheap_name( const string& n )
             v = true;
       }
    }
-   if( !v ) 
+   if( !v )
       return true;
    return false;
 }
@@ -121,7 +121,7 @@ void account_update_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( account != account_id_type() );
-   FC_ASSERT( owner || active || voting_account || memo_key || vote );
+   FC_ASSERT( owner || active || voting_account || memo_key || vote || upgrade_to_prime );
 }
 
 
@@ -552,6 +552,8 @@ void withdraw_permission_update_operation::validate()const
    FC_ASSERT( withdrawal_limit.amount > 0 );
    FC_ASSERT( fee.amount >= 0 );
    FC_ASSERT( withdrawal_period_sec > 0 );
+   FC_ASSERT( withdraw_from_account != authorized_account );
+   FC_ASSERT( periods_until_expiration > 0 );
 }
 
 share_type withdraw_permission_update_operation::calculate_fee( const fee_schedule_type& schedule )const
@@ -587,6 +589,7 @@ void withdraw_permission_delete_operation::get_required_auth(flat_set<account_id
 void withdraw_permission_delete_operation::validate() const
 {
    FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( withdraw_from_account != authorized_account );
 }
 
 share_type withdraw_permission_delete_operation::calculate_fee(const fee_schedule_type& k) const
@@ -743,7 +746,7 @@ share_type vesting_balance_withdraw_operation::calculate_fee( const fee_schedule
    return k.at( vesting_balance_withdraw_fee_type );
 }
 
-void         memo_data::set_message( const fc::ecc::private_key& priv, 
+void         memo_data::set_message( const fc::ecc::private_key& priv,
                                      const fc::ecc::public_key& pub, const string& msg )
 {
    if( from )
@@ -757,7 +760,7 @@ void         memo_data::set_message( const fc::ecc::private_key& priv,
    }
 }
 
-memo_message memo_data::get_message( const fc::ecc::private_key& priv, 
+memo_message memo_data::get_message( const fc::ecc::private_key& priv,
                                     const fc::ecc::public_key& pub )const
 {
    if( from )

@@ -50,14 +50,19 @@ void undo_database::on_remove( const object& obj )
 
    if( _stack.empty() )
       _stack.emplace_back();
-   auto& state = _stack.back();
-   if( state.new_ids.find(obj.id) != state.new_ids.end() )
+   undo_state& state = _stack.back();
+   if( state.new_ids.count(obj.id) )
    {
       state.new_ids.erase(obj.id);
       return;
    }
-   auto itr =  state.removed.find(obj.id);
-   if( itr != state.removed.end() ) return;
+   if( state.old_values.count(obj.id) )
+   {
+      state.removed[obj.id] = std::move(state.old_values[obj.id]);
+      state.old_values.erase(obj.id);
+      return;
+   }
+   if( state.removed.count(obj.id) ) return;
    state.removed[obj.id] = obj.clone();
 }
 

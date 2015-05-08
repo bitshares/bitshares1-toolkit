@@ -151,6 +151,8 @@ void database::initialize_evaluators()
    register_evaluator<vesting_balance_withdraw_evaluator>();
    register_evaluator<withdraw_permission_create_evaluator>();
    register_evaluator<withdraw_permission_claim_evaluator>();
+   register_evaluator<withdraw_permission_update_evaluator>();
+   register_evaluator<withdraw_permission_delete_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -1093,6 +1095,9 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    clear_expired_transactions();
    clear_expired_proposals();
    clear_expired_orders();
+   //TODO: Fix this...
+//   update_expired_feeds();
+   update_withdraw_permissions();
 
    // notify observers that the block has been applied
    applied_block( next_block ); //emit
@@ -1861,6 +1866,21 @@ void database::update_expired_feeds()
       modify(*asset_idx.begin(), [this](asset_bitasset_data_object& a) {
          a.update_median_feeds(head_block_time());
       });
+}
+
+void database::update_withdraw_permissions()
+{
+   auto& permit_index = get_index_type<withdraw_permission_index>().indices().get<by_next_period>();
+   while( !permit_index.empty() && permit_index.begin()->next_period_start_time <= head_block_time() )
+   {
+      const withdraw_permission_object& permit = *permit_index.begin();
+      bool expired = false;
+      modify(permit, [this, &expired](withdraw_permission_object& p) {
+         expired = p.update_period(head_block_time());
+      });
+      if( expired )
+         remove(permit);
+   }
 }
 
 /**
