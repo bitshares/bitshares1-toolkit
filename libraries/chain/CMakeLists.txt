@@ -35,7 +35,6 @@ add_library( bts_chain
              transaction_evaluation_state.cpp
              database.cpp
              fork_database.cpp
-             is_premium_name.cpp
              ${HEADERS}
            )
 

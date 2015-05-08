@@ -32,7 +32,7 @@ bool is_valid_symbol( const string& symbol )
  */
 bool is_valid_name( const string& s )
 {
-   if( s.size() <  3  ) return false;
+   if( s.size() <  2  ) return false;
    if( s.size() >= 64 ) return false;
 
    int num_slash = 0;
@@ -65,15 +65,27 @@ bool is_valid_name( const string& s )
          return true;
    }
 }
-bool is_premium_name( const string& n );
 
 bool is_cheap_name( const string& n )
 {
+   bool v = false;
    for( auto c : n )
    {
       if( c >= '0' && c <= '9' ) return true;
       if( c == '.' || c == '-' || c == '/' ) return true;
+      switch( c )
+      {
+         case 'a':
+         case 'e':
+         case 'i':
+         case 'o':
+         case 'u':
+         case 'y':
+            v = true;
+      }
    }
+   if( !v ) 
+      return true;
    return false;
 }
 
@@ -82,8 +94,7 @@ share_type account_create_operation::calculate_fee( const fee_schedule_type& sch
    auto bts_fee_required = schedule.at(account_create_fee_type);
 
    uint32_t s = name.size();
-   if( is_premium_name( name ) )    s = 2;
-   else if( is_cheap_name( name ) ) s = 63;
+   if( is_cheap_name( name ) ) s = 63;
 
    FC_ASSERT( s >= 2 );
 
