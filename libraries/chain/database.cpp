@@ -204,6 +204,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
    });
    const account_object& genesis_account =
       create<account_object>( [&](account_object& n) {
+         n.name = "genesis";
          n.owner.add_authority(genesis_key.get_id(), 1);
          n.owner.weight_threshold = 1;
          n.active = n.owner;
@@ -286,6 +287,21 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
       for( const auto& handout : initial_allocation )
          total_allocation += handout.second;
 
+      auto mangle_to_name = [](const fc::static_variant<public_key_type, address>& key) {
+         string addr = string(key.which() == std::decay<decltype(key)>::type::tag<address>::value? key.get<address>()
+                                                                                                 : key.get<public_key_type>());
+         string result = "bts";
+         string key_string = string(addr).substr(sizeof(BTS_ADDRESS_PREFIX)-1);
+         for( char c : key_string )
+         {
+            if( isupper(c) )
+               result += string("-") + char(tolower(c));
+            else
+               result += c;
+         }
+         return result;
+      };
+
       fc::time_point start_time = fc::time_point::now();
 
       for( const auto& handout : initial_allocation )
@@ -303,6 +319,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          relative_key_id_type key_id(0);
          authority account_authority(1, key_id, 1);
          account_create_operation cop;
+         cop.name = mangle_to_name(handout.first);
          cop.registrar = account_id_type(1);
          cop.active = account_authority;
          cop.owner = account_authority;

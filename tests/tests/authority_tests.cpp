@@ -839,14 +839,14 @@ BOOST_FIXTURE_TEST_CASE( max_authority_membership, database_fixture )
       for( int i=0; i<keys_to_create; i++ )
           key_ids.push_back( key_id_type( ptx.operation_results[i].get<object_id_type>() ) );
 
-      // now try registering unnamed accounts with n keys, 0 < n < 20
+      // now try registering accounts with n keys, 0 < n < 20
 
       // TODO:  Make sure it throws / accepts properly when
       //   max_account_authority is changed in global parameteres
 
       for( int num_keys=0; num_keys<=keys_to_create; num_keys++ )
       {
-         // try registering unnamed account with n keys
+         // try registering account with n keys
 
          authority test_authority;
          test_authority.weight_threshold = num_keys;
