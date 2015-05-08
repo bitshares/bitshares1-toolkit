@@ -32,7 +32,6 @@ bool is_valid_symbol( const string& symbol )
  */
 bool is_valid_name( const string& s )
 {
-   if( s.size() == 0  ) return true;
    if( s.size() <  3  ) return false;
    if( s.size() >= 64 ) return false;
 
@@ -82,14 +81,15 @@ share_type account_create_operation::calculate_fee( const fee_schedule_type& sch
 {
    auto bts_fee_required = schedule.at(account_create_fee_type);
 
-   if( name.size() )
-   {
-      uint32_t s = name.size();
-      if( is_premium_name( name ) )    s = 2;
-      else if( is_cheap_name( name ) ) s = 63;
-      while( s <= 8 ) {  bts_fee_required *= 10; ++s; }
+   uint32_t s = name.size();
+   if( is_premium_name( name ) )    s = 2;
+   else if( is_cheap_name( name ) ) s = 63;
 
-   }
+   FC_ASSERT( s >= 2 );
+
+   if( s <= 8 )
+     bts_fee_required = schedule.at(account_create_fee_type+9-s);
+
    return bts_fee_required;
 }
 share_type account_update_operation::calculate_fee( const fee_schedule_type& schedule )const

@@ -76,6 +76,13 @@ namespace bts { namespace chain {
    {
       key_create_fee_type, ///< the cost to register a public key with the blockchain
       account_create_fee_type, ///< the cost to register the cheapest non-free account
+      account_len8_fee_type,
+      account_len7_fee_type,
+      account_len6_fee_type,
+      account_len5_fee_type,
+      account_len4_fee_type,
+      account_len3_fee_type,
+      account_premium_fee_type,  ///< accounts on the reserved list of top 100K domains
       account_whitelist_fee_type, ///< the fee to whitelist an account
       delegate_create_fee_type, ///< fixed fee for registering as a delegate, used to discourage frivioulous delegates
       witness_withdraw_pay_fee_type, ///< fee for withdrawing witness pay
@@ -493,6 +500,13 @@ FC_REFLECT_ENUM( bts::chain::meta_info_object_type, (meta_account_object_type)(m
 FC_REFLECT_ENUM( bts::chain::fee_type,
                  (key_create_fee_type)
                  (account_create_fee_type)
+                 (account_len8_fee_type)
+                 (account_len7_fee_type)
+                 (account_len6_fee_type)
+                 (account_len5_fee_type)
+                 (account_len4_fee_type)
+                 (account_len3_fee_type)
+                 (account_premium_fee_type) 
                  (account_whitelist_fee_type)
                  (delegate_create_fee_type)
                  (witness_withdraw_pay_fee_type)
