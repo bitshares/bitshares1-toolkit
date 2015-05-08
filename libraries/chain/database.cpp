@@ -18,6 +18,7 @@
 
 #include <bts/chain/transaction_evaluation_state.hpp>
 #include <bts/chain/key_evaluator.hpp>
+#include <bts/chain/custom_evaluator.hpp>
 #include <bts/chain/account_evaluator.hpp>
 #include <bts/chain/delegate_evaluator.hpp>
 #include <bts/chain/asset_evaluator.hpp>
@@ -124,6 +125,7 @@ void database::initialize_evaluators()
    register_evaluator<account_update_evaluator>();
    register_evaluator<account_whitelist_evaluator>();
    register_evaluator<delegate_create_evaluator>();
+   register_evaluator<custom_evaluator>();
    register_evaluator<asset_create_evaluator>();
    register_evaluator<asset_issue_evaluator>();
    register_evaluator<asset_burn_evaluator>();

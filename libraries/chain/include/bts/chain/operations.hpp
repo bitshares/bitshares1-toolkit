@@ -1168,6 +1168,10 @@ namespace bts { namespace chain {
     *  Any account may pay a fee and write no data to extend the lease seconds
     *  on a file.
     *
+    *  If the file size increasees, the current lease_seconds will be adjusted downward to maintain
+    *  the same byte-days-leased.   Then any new leased seconds will be added based upon the
+    *  new file size.
+    *
     *  @see file_object
     */
    struct file_write_operation
@@ -1400,6 +1404,31 @@ namespace bts { namespace chain {
    };
 
    /**
+    * @brief provides a generic way to add higher level protocols on top of witness consensus 
+    * @ingroup operations
+    *
+    * There is no validation for this operation other than that required auths are valid and a fee
+    * is paid that is appropriate for the data contained. 
+    */
+   struct custom_operation
+   {
+      asset                     fee;
+      account_id_type           payer;
+      flat_set<account_id_type> required_auths;
+      uint16_t                  id;
+      vector<char>              data;
+
+      account_id_type   fee_payer()const { return payer; }
+      void              get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void              validate()const;
+      share_type        calculate_fee( const fee_schedule_type& k )const;
+      void              get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
+      {
+         acc.adjust( fee_payer(), -fee );
+      }
+   };
+
+   /**
     * @ingroup operations
     *
     * Defines the set of valid operations as a discriminated union type.
@@ -1441,7 +1470,8 @@ namespace bts { namespace chain {
             file_write_operation,
             vesting_balance_create_operation,
             vesting_balance_withdraw_operation,
-            bond_create_offer_operation
+            bond_create_offer_operation,
+            custom_operation
             /*
             * TODO: once methods on these ops are implemented
             cancel_bond_offer_operation,
@@ -1658,3 +1688,4 @@ FC_REFLECT( bts::chain::bond_claim_collateral_operation, (fee)(claimer)(bond_id)
 
 FC_REFLECT( bts::chain::vesting_balance_create_operation, (fee)(creator)(owner)(amount)(vesting_seconds) )
 FC_REFLECT( bts::chain::vesting_balance_withdraw_operation, (fee)(vesting_balance)(owner)(amount) )
+FC_REFLECT( bts::chain::custom_operation, (fee)(payer)(required_auths)(id)(data) )

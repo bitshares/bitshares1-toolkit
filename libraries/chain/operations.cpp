@@ -777,5 +777,18 @@ memo_message memo_data::get_message( const fc::ecc::private_key& priv,
    }
 }
 
+void        custom_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
+{
+   for( auto item : required_auths )
+      active_auth_set.insert(item);
+}
+void        custom_operation::validate()const
+{
+   FC_ASSERT( fee.amount > 0 );
+}
+share_type  custom_operation::calculate_fee( const fee_schedule_type& k )const
+{
+   return (data.size() * k.at( data_fee_type ).value)/1024;
+}
 
 } } // namespace bts::chain
