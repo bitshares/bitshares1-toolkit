@@ -11,3 +11,6 @@ libraries/utilities/git_revision.cpp
 tests/app_test
 tests/chain_bench
 tests/chain_test
+
+/html
+/latex
