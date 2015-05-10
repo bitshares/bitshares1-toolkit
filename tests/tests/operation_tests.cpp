@@ -1868,7 +1868,21 @@ BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
    const witness_object* witness = &db.fetch_block_by_number(db.head_block_num())->witness(db);
 
    BOOST_CHECK_GT(core->dynamic_asset_data_id(db).accumulated_fees.value, 0);
-   BOOST_CHECK_GT(witness->accumulated_income.value, 0);
+   BOOST_CHECK_EQUAL(witness->accumulated_income.value, 0);
+
+   // now we do maintenance
+   db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& _dpo )
+   {
+      _dpo.next_maintenance_time = db.head_block_time() + 1;
+   } );
+   // the witness that did the maintenance is out of luck...
+   generate_block();
+   witness = &db.fetch_block_by_number(db.head_block_num())->witness(db);
+   BOOST_CHECK_EQUAL( witness->accumulated_income.value, 0 );
+   // but the next witness is in!
+   generate_block();
+   witness = &db.fetch_block_by_number(db.head_block_num())->witness(db);
+   BOOST_CHECK_GT( witness->accumulated_income.value, 0 );
 
    // Withdraw the witness's pay
    enable_fees(1);

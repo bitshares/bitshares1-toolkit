@@ -414,6 +414,8 @@ namespace bts { namespace chain {
       share_type              bulk_discount_threshold_max         = BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MAX; ///< the amount of fees paid to qualify for the max bulk discount percent
       bool                    count_non_prime_votes               = true; ///< set to false to restrict voting privlegages to prime accounts
       bool                    allow_non_prime_whitelists          = false; ///< true if non-prime accounts may set whitelists and blacklists; false otherwise
+      share_type              witness_pay_per_block               = BTS_DEFAULT_WITNESS_PAY_PER_BLOCK; ///< BTS to be allocated to witnesses (per block)
+      share_type              worker_budget_per_day               = BTS_DEFAULT_WORKER_BUDGET_PER_DAY; ///< BTS to be allocated to workers (per day)
 
       void validate()const
       {
@@ -563,6 +565,8 @@ FC_REFLECT( bts::chain::chain_parameters,
             (bulk_discount_threshold_max)
             (count_non_prime_votes)
             (allow_non_prime_whitelists)
+            (witness_pay_per_block)
+            (worker_budget_per_day)
           )
 
 FC_REFLECT_TYPENAME( bts::chain::account_id_type )

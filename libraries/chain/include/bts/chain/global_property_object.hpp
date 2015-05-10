@@ -52,6 +52,8 @@ namespace bts { namespace chain {
          time_point_sec    time;
          witness_id_type   current_witness;
          time_point_sec    next_maintenance_time;
+         time_point_sec    last_budget_time;
+         share_type        witness_budget;
    };
 }}
 
@@ -62,7 +64,9 @@ FC_REFLECT_DERIVED( bts::chain::dynamic_global_property_object, (bts::db::object
                     (head_block_id)
                     (time)
                     (current_witness)
-                    (next_maintenance_time) )
+                    (next_maintenance_time)
+                    (witness_budget)
+                  )
 
 FC_REFLECT_DERIVED( bts::chain::global_property_object, (bts::db::object),
                     (parameters)
