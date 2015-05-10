@@ -1935,7 +1935,7 @@ BOOST_AUTO_TEST_CASE( global_settle_test )
  *  This test should verify that force settling can be disabled for
  *  some BitAssets
  */
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( disable_force_settle, 1 )
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( disable_force_settle_test, 1 )
 BOOST_AUTO_TEST_CASE( disable_force_settle_test )
 {
    assert( !"not implemented" );
