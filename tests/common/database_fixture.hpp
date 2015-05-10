@@ -87,10 +87,18 @@ struct database_fixture {
    const key_object* key3= nullptr;
    optional<fc::temp_directory> data_dir;
    bool skip_key_index_test = false;
+   uint32_t anon_acct_count;
 
    static fc::ecc::private_key generate_private_key(string seed)
    {
       return fc::ecc::private_key::regenerate(fc::sha256::hash(seed));
+   }
+
+   string generate_anon_acct_name()
+   {
+      // names of the form "anon-acct-x123" ; the "x" is necessary
+      //    to workaround issue #46
+      return "anon-acct-x" + std::to_string( anon_acct_count++ );
    }
 
    void _push_transaction( const signed_transaction& tx, uint32_t skip_flags, const char* file, int line )
