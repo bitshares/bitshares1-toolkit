@@ -256,6 +256,101 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_delete )
    db.push_transaction(trx);
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE( mia_feeds )
+{ try {
+   auto nathan_private_key = generate_private_key("nathan");
+   auto nathan_key_id = register_key(nathan_private_key.get_public_key()).get_id();
+   account_id_type nathan_id = create_account("nathan", nathan_key_id).id;
+   auto dan_private_key = generate_private_key("dan");
+   auto dan_key_id = register_key(dan_private_key.get_public_key()).get_id();
+   account_id_type dan_id = create_account("dan", dan_key_id).id;
+   auto ben_private_key = generate_private_key("ben");
+   auto ben_key_id = register_key(ben_private_key.get_public_key()).get_id();
+   account_id_type ben_id = create_account("ben", ben_key_id).id;
+   auto vikram_private_key = generate_private_key("vikram");
+   auto vikram_key_id = register_key(vikram_private_key.get_public_key()).get_id();
+   account_id_type vikram_id = create_account("vikram", vikram_key_id).id;
+   asset_id_type bit_usd_id = create_bitasset("BITUSD").id;
+
+   {
+      asset_update_operation op;
+      const asset_object& obj = bit_usd_id(db);
+      op.asset_to_update = bit_usd_id;
+      op.issuer = obj.issuer;
+      op.new_issuer = nathan_id;
+      op.new_options = obj.options;
+      trx.operations.push_back(op);
+      db.push_transaction(trx, ~0);
+      generate_block();
+      trx.clear();
+   }
+   {
+      asset_update_feed_producers_operation op;
+      op.asset_to_update = bit_usd_id;
+      op.issuer = nathan_id;
+      op.new_feed_producers = {dan_id, ben_id, vikram_id};
+      trx.operations.push_back(op);
+      trx.sign(nathan_key_id, nathan_private_key);
+      db.push_transaction(trx);
+      generate_block(database::skip_nothing);
+   }
+   {
+      const asset_bitasset_data_object& obj = bit_usd_id(db).bitasset_data(db);
+      BOOST_CHECK_EQUAL(obj.feeds.size(), 3);
+      BOOST_CHECK(obj.current_feed == price_feed());
+   }
+   {
+      const asset_object& bit_usd = bit_usd_id(db);
+      asset_publish_feed_operation op({vikram_id, asset()});
+      op.feed.call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(30));
+      op.feed.short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(10));
+      // We'll expire margins after a month
+      op.feed.max_margin_period_sec = fc::days(30).to_seconds();
+      // Accept defaults for required collateral
+      trx.operations.emplace_back(op);
+      db.push_transaction(trx, ~0);
+
+      const asset_bitasset_data_object& bitasset = bit_usd.bitasset_data(db);
+      BOOST_CHECK(bitasset.current_feed.call_limit.to_real() == BTS_BLOCKCHAIN_PRECISION / 30.0);
+      BOOST_CHECK_EQUAL(bitasset.current_feed.short_limit.to_real(), 10.0 / BTS_BLOCKCHAIN_PRECISION);
+      BOOST_CHECK(bitasset.current_feed.max_margin_period_sec == fc::days(30).to_seconds());
+      BOOST_CHECK(bitasset.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
+      BOOST_CHECK(bitasset.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);
+
+      op.publisher = ben_id;
+      op.feed.call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(25));
+      op.feed.short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(20));
+      op.feed.max_margin_period_sec = fc::days(10).to_seconds();
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+
+      BOOST_CHECK_EQUAL(bitasset.current_feed.call_limit.to_real(), BTS_BLOCKCHAIN_PRECISION / 25.0);
+      BOOST_CHECK_EQUAL(bitasset.current_feed.short_limit.to_real(), 20.0 / BTS_BLOCKCHAIN_PRECISION);
+      BOOST_CHECK(bitasset.current_feed.max_margin_period_sec == fc::days(30).to_seconds());
+      BOOST_CHECK(bitasset.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
+      BOOST_CHECK(bitasset.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);
+
+      op.publisher = dan_id;
+      op.feed.call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(40));
+      op.feed.short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(10));
+      op.feed.max_margin_period_sec = fc::days(100).to_seconds();
+      op.feed.required_initial_collateral = 1001;
+      op.feed.required_maintenance_collateral = 1000;
+      trx.operations.back() = op;
+      db.push_transaction(trx, ~0);
+
+      BOOST_CHECK_EQUAL(bitasset.current_feed.call_limit.to_real(), BTS_BLOCKCHAIN_PRECISION / 30.0);
+      BOOST_CHECK_EQUAL(bitasset.current_feed.short_limit.to_real(), 10.0 / BTS_BLOCKCHAIN_PRECISION);
+      BOOST_CHECK(bitasset.current_feed.max_margin_period_sec == fc::days(30).to_seconds());
+      BOOST_CHECK(bitasset.current_feed.required_initial_collateral == BTS_DEFAULT_INITIAL_COLLATERAL_RATIO);
+      BOOST_CHECK(bitasset.current_feed.required_maintenance_collateral == BTS_DEFAULT_MAINTENANCE_COLLATERAL_RATIO);
+
+      op.publisher = nathan_id;
+      trx.operations.back() = op;
+      BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
+   }
+} FC_LOG_AND_RETHROW() }
+
 // TODO:  Write linear VBO tests
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -1879,12 +1879,12 @@ void database::clear_expired_orders()
 
 void database::update_expired_feeds()
 {
-   auto& asset_idx = get_index_type<asset_bitasset_data_index>().indices().get<by_feed_expiration>();
-   if( asset_idx.empty() ) return;
-   while( asset_idx.begin()->feed_is_expired(head_block_time()) )
-      modify(*asset_idx.begin(), [this](asset_bitasset_data_object& a) {
-         a.update_median_feeds(head_block_time());
-      });
+   auto& asset_idx = get_index_type<asset_bitasset_data_index>();
+   for( const asset_bitasset_data_object* b : asset_idx )
+      if( b->feed_is_expired(head_block_time()) )
+         modify(*b, [this](asset_bitasset_data_object& a) {
+            a.update_median_feeds(head_block_time());
+         });
 }
 
 void database::update_withdraw_permissions()

@@ -77,7 +77,7 @@ namespace bts { namespace db {
                const_iterator( const typename vector<T>::const_iterator& a ):_itr(a){}
                friend bool operator==( const const_iterator& a, const const_iterator& b ) { return a._itr == b._itr; }
                friend bool operator!=( const const_iterator& a, const const_iterator& b ) { return a._itr != b._itr; }
-               const T* operator*()const { return static_cast<const T*>(_itr->get()); }
+               const T* operator*()const { return static_cast<const T*>(&*_itr); }
                const_iterator& operator++(int){ ++_itr; return *this; }
                const_iterator& operator++()   { ++_itr; return *this; }
             private:

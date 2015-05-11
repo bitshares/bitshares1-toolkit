@@ -1,6 +1,7 @@
 #pragma once
 #include <boost/multi_index/composite_key.hpp>
 #include <bts/chain/asset.hpp>
+#include <bts/db/flat_index.hpp>
 #include <bts/db/generic_index.hpp>
 
 
@@ -11,11 +12,11 @@ namespace bts { namespace chain {
    /**
     *  @brief tracks the asset information that changes frequently
     *  @ingroup object
-    *  @ingroup implementation 
+    *  @ingroup implementation
     *
     *  Because the asset_object is very large it doesn't make sense to save an undo state
     *  for all of the parameters that never change.   This object factors out the parameters
-    *  of an asset that change in almost every transaction that involves the asset. 
+    *  of an asset that change in almost every transaction that involves the asset.
     *
     *  This object exists as an implementation detail and its ID should never be referenced by
     *  a blockchain operation.
@@ -36,11 +37,11 @@ namespace bts { namespace chain {
    };
 
    /**
-    *  @brief tracks the parameters of an asset 
+    *  @brief tracks the parameters of an asset
     *  @ingroup object
     *
     *  All assets have a globally unique symbol name that controls how they are traded and an issuer who
-    *  has authority over the parameters of the asset. 
+    *  has authority over the parameters of the asset.
     */
    class asset_object : public bts::db::annotated_object<asset_object>
    {
@@ -192,7 +193,7 @@ namespace bts { namespace chain {
          >
       >
    > asset_bitasset_data_object_multi_index_type;
-   typedef generic_index<asset_bitasset_data_object, asset_bitasset_data_object_multi_index_type> asset_bitasset_data_index;
+   typedef flat_index<asset_bitasset_data_object> asset_bitasset_data_index;
 
    struct by_symbol;
    typedef multi_index_container<

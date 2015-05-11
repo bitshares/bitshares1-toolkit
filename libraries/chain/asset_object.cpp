@@ -4,13 +4,6 @@ using namespace bts::chain;
 
 void bts::chain::asset_bitasset_data_object::update_median_feeds(time_point_sec current_time)
 {
-   if( feeds.size() == 1 )
-   {
-      current_feed_publication_time = feeds.begin()->second.first;
-      current_feed = feeds.begin()->second.second;
-      return;
-   }
-
    current_feed_publication_time = current_time;
    vector<std::reference_wrapper<const price_feed>> current_feeds;
    for( const pair<account_id_type, pair<time_point_sec,price_feed>>& f : feeds )
@@ -21,6 +14,18 @@ void bts::chain::asset_bitasset_data_object::update_median_feeds(time_point_sec 
          current_feeds.emplace_back(f.second.second);
          current_feed_publication_time = std::min(current_feed_publication_time, f.second.first);
       }
+   }
+
+   if( current_feeds.empty() )
+   {
+      current_feed_publication_time = current_time;
+      current_feed = price_feed();
+      return;
+   }
+   if( current_feeds.size() == 1 )
+   {
+      current_feed = std::move(current_feeds.front());
+      return;
    }
 
    // *** Begin Median Calculations ***
