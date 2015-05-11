@@ -448,12 +448,13 @@ int database::match( const limit_order_object& usd, const OrderType& core, const
    return result;
 }
 
-int database::match( const call_order_object& call, const force_settlement_object& settle, const price& match_price )
+asset database::match( const call_order_object& call, const force_settlement_object& settle, const price& match_price,
+                     asset max_settlement )
 {
    assert(call.get_debt().asset_id == settle.balance.asset_id );
    assert(call.debt > 0 && call.collateral > 0 && settle.balance.amount > 0);
 
-   auto settle_for_sale = settle.balance;
+   auto settle_for_sale = std::min(settle.balance, max_settlement);
    auto call_debt = call.get_debt();
 
    asset call_receives = std::min(settle_for_sale, call_debt),
@@ -461,14 +462,12 @@ int database::match( const call_order_object& call, const force_settlement_objec
          settle_pays = call_receives,
          settle_receives = call_pays;
 
-   assert( settle_pays == settle.balance || call_receives == call.get_debt() );
+   assert( settle_pays == settle_for_sale || call_receives == call.get_debt() );
 
-   int result = 0;
-   result |= fill_order(call, call_pays, call_receives);
-   result |= fill_order(settle, settle_pays, settle_receives) << 1;
+   fill_order(call, call_pays, call_receives);
+   fill_order(settle, settle_pays, settle_receives);
 
-   assert(result != 0);
-   return result;
+   return call_receives;
 }
 
 int database::match( const limit_order_object& bid, const limit_order_object& ask, const price& match_price )
@@ -1114,8 +1113,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    clear_expired_transactions();
    clear_expired_proposals();
    clear_expired_orders();
-   //TODO: Fix this...
-//   update_expired_feeds();
+   update_expired_feeds();
    update_withdraw_permissions();
 
    // notify observers that the block has been applied
@@ -1781,6 +1779,10 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
    modify(get_dynamic_global_properties(), [next_maintenance_time](dynamic_global_property_object& d) {
       d.next_maintenance_time = next_maintenance_time;
    });
+
+   // Reset all BitAsset force settlement volumes to zero
+   for( const asset_bitasset_data_object* d : get_index_type<asset_bitasset_data_index>() )
+      modify(*d, [](asset_bitasset_data_object& d) { d.force_settled_volume = 0; });
 }
 
 void database::create_block_summary(const signed_block& next_block)
@@ -1856,24 +1858,56 @@ void database::clear_expired_orders()
    //Process expired force settlement orders
    //TODO: Do this on an asset-by-asset basis, and skip the current asset if it's maximally settled or has settlements disabled
    auto& settlement_index = get_index_type<force_settlement_index>().indices().get<by_expiration>();
-   while( !settlement_index.empty() && settlement_index.begin()->settlement_date <= head_block_time() )
+   if( !settlement_index.empty() )
    {
-      const force_settlement_object& order = *settlement_index.begin();
-      auto order_id = order.id;
-      const asset_bitasset_data_object mia = get(order.balance.asset_id).bitasset_data(*this);
-      auto& pays = order.balance;
-      auto receives = (order.balance * mia.current_feed.settlement_price);
-      receives.amount = (fc::uint128_t(receives.amount.value) *
-                         (BTS_100_PERCENT - mia.options.force_settlement_offset_percent) / BTS_100_PERCENT).to_uint64();
-      assert(receives <= order.balance * mia.current_feed.settlement_price);
+      asset_id_type current_asset = settlement_index.begin()->settlement_asset_id();
+      asset max_settlement_volume;
 
-      price settlement_price = pays / receives;
+      // At each iteration, we either consume the current order and remove it, or we move to the next asset
+      for( auto itr = settlement_index.lower_bound(current_asset);
+           itr != settlement_index.end();
+           itr = settlement_index.lower_bound(current_asset) )
+      {
+         const force_settlement_object& order = *itr;
+         auto order_id = order.id;
+         current_asset = order.settlement_asset_id();
+         const asset_object& mia_object = get(current_asset);
+         const asset_bitasset_data_object mia = mia_object.bitasset_data(*this);
 
-      auto& call_index = get_index_type<call_order_index>().indices().get<by_collateral>();
-      // Match against the least collateralized short until the settlement is finished
-      while( !call_index.empty() && !(match(*call_index.begin(), order, settlement_price) & 2) );
-      // Under no circumstances should the settlement not be finished now
-      assert(find_object(order_id) == nullptr);
+         // Can we still settle in this asset?
+         if( max_settlement_volume.asset_id != current_asset )
+            max_settlement_volume = mia_object.amount(mia.max_force_settlement_volume(mia_object.dynamic_data(*this).current_supply));
+         if( mia.current_feed.settlement_price.is_null() || mia.force_settled_volume >= max_settlement_volume.amount )
+         {
+            auto bound = settlement_index.upper_bound(boost::make_tuple(current_asset));
+            if( bound == settlement_index.end() )
+               break;
+            current_asset = bound->settlement_asset_id();
+            continue;
+         }
+
+         auto& pays = order.balance;
+         auto receives = (order.balance * mia.current_feed.settlement_price);
+         receives.amount = (fc::uint128_t(receives.amount.value) *
+                            (BTS_100_PERCENT - mia.options.force_settlement_offset_percent) / BTS_100_PERCENT).to_uint64();
+         assert(receives <= order.balance * mia.current_feed.settlement_price);
+
+         price settlement_price = pays / receives;
+
+         auto& call_index = get_index_type<call_order_index>().indices().get<by_collateral>();
+         asset settled = mia_object.amount(mia.force_settled_volume);
+         // Match against the least collateralized short until the settlement is finished or we reach max settlements
+         while( settled < max_settlement_volume && find_object(order_id) )
+         {
+            // There should always be a call order, since asset exists!
+            assert(!call_index.empty());
+            asset max_settlement = max_settlement_volume - settled;
+            settled += match(*call_index.begin(), order, settlement_price, max_settlement);
+         }
+         modify(mia, [settled](asset_bitasset_data_object& b) {
+            b.force_settled_volume = settled.amount;
+         });
+      }
    }
 }
 

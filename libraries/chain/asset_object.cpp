@@ -1,6 +1,16 @@
 #include <bts/chain/asset_object.hpp>
 
+#include <fc/uint128.hpp>
+
 using namespace bts::chain;
+
+share_type asset_bitasset_data_object::max_force_settlement_volume(share_type current_supply) const
+{
+   fc::uint128 volume = current_supply.value;
+   volume *= options.maximum_force_settlement_volume;
+   volume /= BTS_100_PERCENT;
+   return volume.to_uint64();
+}
 
 void bts::chain::asset_bitasset_data_object::update_median_feeds(time_point_sec current_time)
 {
