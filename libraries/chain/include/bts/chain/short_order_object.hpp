@@ -79,7 +79,7 @@ namespace bts { namespace chain {
    *  @brief tracks bitassets scheduled for force settlement at some point in the future.
    *
    *  On the @ref settlement_date the @ref balance will be converted to the collateral asset
-   *  and paid to @ref owner and then this object will be deleted. 
+   *  and paid to @ref owner and then this object will be deleted.
    */
   class force_settlement_object : public bts::db::annotated_object<force_settlement_object>
   {
@@ -90,6 +90,9 @@ namespace bts { namespace chain {
         account_id_type   owner;
         asset             balance;
         time_point_sec    settlement_date;
+
+        asset_id_type settlement_asset_id()const
+        { return balance.asset_id; }
   };
 
   struct by_id;
@@ -150,7 +153,10 @@ namespace bts { namespace chain {
             member<force_settlement_object, account_id_type, &force_settlement_object::owner>
          >,
          ordered_non_unique< tag<by_expiration>,
-            member<force_settlement_object, time_point_sec, &force_settlement_object::settlement_date>
+            composite_key< force_settlement_object,
+               const_mem_fun<force_settlement_object, asset_id_type, &force_settlement_object::settlement_asset_id>,
+               member<force_settlement_object, time_point_sec, &force_settlement_object::settlement_date>
+            >
          >
       >
    > force_settlement_object_multi_index_type;

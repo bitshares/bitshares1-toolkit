@@ -580,6 +580,17 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    transfer(account_id_type()(db), shorter2_id(db), asset(100000000));
    transfer(account_id_type()(db), shorter3_id(db), asset(100000000));
    asset_id_type bit_usd = create_bitasset("BITUSD", 0).get_id();
+   {
+      asset_update_bitasset_operation op;
+      op.asset_to_update = bit_usd;
+      op.issuer = bit_usd(db).issuer;
+      op.new_options = bit_usd(db).bitasset_data(db).options;
+      op.new_options.maximum_force_settlement_volume = 9000;
+      trx.clear();
+      trx.operations.push_back(op);
+      db.push_transaction(trx, ~0);
+      trx.clear();
+   }
    generate_block();
 
    create_short(shorter1_id(db), asset(1000, bit_usd), asset(1000));
@@ -659,7 +670,7 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    BOOST_CHECK(db.find(call_id) == nullptr);
    trx.set_expiration(db.head_block_time() + fc::minutes(1));
 
-   //Settle all existing asset
+   //Attempt to settle all existing asset
    sop.amount = db.get_balance(nathan_id, bit_usd);
    trx.operations.push_back(sop);
    trx.sign(key_id_type(),private_key);
@@ -667,9 +678,17 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    trx.clear();
 
    generate_blocks(settle_id(db).settlement_date);
-   BOOST_CHECK(db.find(settle_id) == nullptr);
-   BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 5938);
-   BOOST_CHECK(db.get_index_type<call_order_index>().indices().empty());
+   //We've hit the max force settlement. Can't settle more now.
+   BOOST_CHECK(db.find(settle_id));
+   BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 3517);
+   BOOST_CHECK(!db.get_index_type<call_order_index>().indices().empty());
+
+   generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
+   //Now it's been another maintenance interval, so we should have some more settlement.
+   //I can't force settle all existing asset, but with a 90% limit, I get pretty close.
+   BOOST_CHECK(db.find(settle_id));
+   BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 5694);
+   BOOST_CHECK(!db.get_index_type<call_order_index>().indices().empty());
 } FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE( pop_block_twice, database_fixture )

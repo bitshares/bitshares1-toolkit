@@ -200,7 +200,11 @@ namespace bts { namespace chain {
          int match( const limit_order_object& bid, const OrderType& ask, const price& match_price );
          int match( const limit_order_object& bid, const limit_order_object& ask, const price& trade_price );
          int match( const limit_order_object& bid, const short_order_object& ask, const price& trade_price );
-         int match( const call_order_object& call, const force_settlement_object& settle , const price& match_price );
+         /// @return the amount of asset settled
+         asset match(const call_order_object& call,
+                   const force_settlement_object& settle,
+                   const price& match_price,
+                   asset max_settlement);
          ///@}
 
          /**

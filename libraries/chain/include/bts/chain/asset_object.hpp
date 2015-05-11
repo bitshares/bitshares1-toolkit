@@ -145,6 +145,9 @@ namespace bts { namespace chain {
          template<class DB>
          const asset_bitasset_data_object& bitasset_data(const DB& db)const
          { assert(bitasset_data_id); return db.get(*bitasset_data_id); }
+         template<class DB>
+         const asset_dynamic_data_object& dynamic_data(const DB& db)const
+         { return db.get(dynamic_asset_data_id); }
    };
 
    /**
@@ -174,6 +177,11 @@ namespace bts { namespace chain {
          price_feed current_feed;
          /// This is the publication time of the oldest feed which was factored into current_feed.
          time_point_sec current_feed_publication_time;
+
+         /// This is the volume of this asset which has been force-settled this maintanence interval
+         share_type force_settled_volume;
+         /// Calculate the maximum force settlement volume per maintenance interval, given the current share supply
+         share_type max_force_settlement_volume(share_type current_supply)const;
 
          time_point_sec feed_expiration_time()const
          { return current_feed_publication_time + options.feed_lifetime_sec; }
@@ -216,6 +224,7 @@ FC_REFLECT_DERIVED( bts::chain::asset_bitasset_data_object, (bts::db::object),
                     (current_feed_publication_time)
                     (short_backing_asset)
                     (options)
+                    (force_settled_volume)
                   )
 
 FC_REFLECT( bts::chain::asset_object::asset_options,
