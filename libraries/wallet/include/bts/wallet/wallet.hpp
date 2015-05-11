@@ -51,11 +51,11 @@ class wallet_api
       fc::ecc::private_key derive_private_key(
          const std::string& prefix_string, int sequence_number) const;
 
-      optional<signed_block> get_block( uint32_t num );
-      uint64_t  get_account_count()const;
-      map<string,account_id_type> list_accounts( const string& lowerbound, uint32_t limit);
-      vector<asset> list_account_balances( const account_id_type& id );
-      vector<asset_object> list_assets( const string& lowerbound, uint32_t limit )const;
+      optional<signed_block>            get_block( uint32_t num );
+      uint64_t                          get_account_count()const;
+      map<string,account_id_type>       list_accounts( const string& lowerbound, uint32_t limit);
+      vector<asset>                     list_account_balances( const account_id_type& id );
+      vector<asset_object>              list_assets( const string& lowerbound, uint32_t limit )const;
       vector<operation_history_object>  get_account_history( account_id_type id )const;
       vector<limit_order_object>        get_limit_orders( asset_id_type a, asset_id_type b, uint32_t limit )const;
       vector<short_order_object>        get_short_orders( asset_id_type a, uint32_t limit )const;
@@ -80,6 +80,7 @@ class wallet_api
 
       bool import_key( string account_name_or_id, string wif_key );
       string normalize_brain_key( string s ) const;
+
       signed_transaction create_account_with_brain_key(
          string brain_key,
          string account_name,
@@ -87,6 +88,7 @@ class wallet_api
          string referrer_account,
          bool broadcast = false
          );
+
       signed_transaction transfer(
          string from,
          string to,
@@ -95,6 +97,14 @@ class wallet_api
          string memo,
          bool broadcast = false
          );
+
+      signed_transaction create_asset( string issuer, 
+                                       string symbol, 
+                                       uint8_t precision, 
+                                       asset_object::asset_options common,
+                                       fc::optional<asset_object::bitasset_options> bitasset_opts,
+                                       bool broadcast = false );
+
 
       signed_transaction sign_transaction(
          signed_transaction tx,
@@ -105,7 +115,7 @@ class wallet_api
       std::map<string,std::function<string(fc::variant,const fc::variants&)> >
       _get_result_formatters() const;
 
-      std::unique_ptr<detail::wallet_api_impl> _my;
+      std::unique_ptr<detail::wallet_api_impl> my;
 };
 
 } }
@@ -128,6 +138,7 @@ FC_API( bts::wallet::wallet_api,
    (suggest_brain_key)
    (create_account_with_brain_key)
    (transfer)
+   (create_asset)
    (get_account)
    (get_account_id)
    (get_block)

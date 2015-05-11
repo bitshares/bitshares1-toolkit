@@ -227,6 +227,7 @@ void  asset_create_operation::validate()const
 
    asset dummy = asset(1) * common_options.core_exchange_rate;
    FC_ASSERT(dummy.asset_id == asset_id_type(1));
+   FC_ASSERT(precision <= 12);
 }
 
 asset_update_operation::asset_update_operation(const asset_object& old)

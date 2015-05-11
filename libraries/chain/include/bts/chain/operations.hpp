@@ -418,7 +418,7 @@ namespace bts { namespace chain {
       asset                   fee;
       /// The ticker symbol of this asset
       string                  symbol;
-      /// Number of digits to the right of decimal point
+      /// Number of digits to the right of decimal point, must be less than or equal to 12
       uint8_t                 precision = 0;
 
       /// Options common to all assets.

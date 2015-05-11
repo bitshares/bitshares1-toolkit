@@ -52,6 +52,7 @@ class wallet_api_impl
       dynamic_global_property_object    get_dynamic_global_properties() const;
       account_object                    get_account( string account_name_or_id ) const;
       account_id_type                   get_account_id( string account_name_or_id ) const;
+      optional<asset_object>            get_asset( string asset_symbol_or_id )const;
       asset_id_type                     get_asset_id( string asset_name_or_id ) const;
       string                            get_wallet_filename() const;
       fc::ecc::private_key              get_private_key( key_id_type id )const;
@@ -60,6 +61,13 @@ class wallet_api_impl
       bool import_key( string account_name_or_id, string wif_key );
       bool load_wallet_file( string wallet_filename = "" );
       void save_wallet_file( string wallet_filename = "" );
+
+      signed_transaction create_asset( string issuer, 
+                                       string symbol, 
+                                       uint8_t precision, 
+                                       asset_object::asset_options common,
+                                       fc::optional<asset_object::bitasset_options> bitasset_opts,
+                                       bool broadcast = false );
 
       signed_transaction sign_transaction(
          signed_transaction tx,
@@ -509,6 +517,16 @@ account_id_type wallet_api_impl::get_account_id( string account_name_or_id ) con
    return opt_account.front()->id;
 }
 
+optional<asset_object> wallet_api_impl::get_asset( string asset_symbol_or_id )const
+{
+   FC_ASSERT( asset_symbol_or_id.size() > 0 );
+   vector<optional<asset_object>> opt_asset;
+   if( std::isdigit( asset_symbol_or_id.front() ) )
+      return _remote_db->get_assets( {fc::variant(asset_symbol_or_id).as<asset_id_type>()}).front();
+   opt_asset = _remote_db->lookup_asset_symbols( {asset_symbol_or_id} );
+   return opt_asset.front();
+}
+
 asset_id_type wallet_api_impl::get_asset_id( string asset_symbol_or_id ) const
 {
    FC_ASSERT( asset_symbol_or_id.size() > 0 );
@@ -725,6 +743,37 @@ fc::ecc::private_key wallet_api_impl::get_private_key( key_id_type id )const
    return *privkey;
 }
 
+signed_transaction wallet_api_impl::create_asset( string issuer, 
+                                       string symbol, 
+                                       uint8_t precision, 
+                                       asset_object::asset_options common,
+                                       fc::optional<asset_object::bitasset_options> bitasset_opts,
+                                       bool broadcast  )
+{ try {
+   account_object issuer_account = get_account( issuer );
+   auto current_asset = get_asset(symbol);
+   if( current_asset.valid() ) FC_ASSERT( !current_asset, "Symbol already in use.", ("current", *current_asset) );
+
+   asset_create_operation create_op;
+   create_op.issuer = issuer_account.id;
+   create_op.symbol = symbol;
+   create_op.precision = precision;
+   create_op.common_options = common;
+   create_op.bitasset_options = bitasset_opts;
+
+   static int count = 3;
+
+   signed_transaction tx;
+   tx.set_expiration(_remote_db->get_dynamic_global_properties().head_block_id, ++count);
+   tx.operations.push_back( create_op );
+   tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
+   tx.validate();
+
+   return sign_transaction( tx, broadcast );
+} FC_CAPTURE_AND_RETHROW( (issuer)(symbol)(precision)(common)(bitasset_opts)(broadcast) ) }
+
+
+
 signed_transaction wallet_api_impl::transfer(
    string from,
    string to,
@@ -761,7 +810,8 @@ signed_transaction wallet_api_impl::transfer(
    }
 
 
-   static int count = 0;
+   /** note: this is a hack to generate unique transfers for a performance test */
+   static int count = 3;
 
    signed_transaction tx;
    tx.set_expiration(_remote_db->get_dynamic_global_properties().head_block_id, ++count);
@@ -775,7 +825,7 @@ signed_transaction wallet_api_impl::transfer(
 } // end namespace detail
 
 wallet_api::wallet_api( fc::api<login_api> rapi )
-   : _my( new detail::wallet_api_impl( rapi ) )
+   : my( new detail::wallet_api_impl( rapi ) )
 {
    return;
 }
@@ -787,57 +837,57 @@ wallet_api::~wallet_api()
 
 bool wallet_api::copy_wallet_file( string destination_filename )
 {
-   return _my->copy_wallet_file( destination_filename );
+   return my->copy_wallet_file( destination_filename );
 }
 
 optional<signed_block> wallet_api::get_block( uint32_t num )
 {
-   return _my->_remote_db->get_block(num);
+   return my->_remote_db->get_block(num);
 }
 
 uint64_t wallet_api::get_account_count() const
 {
-   return _my->_remote_db->get_account_count();
+   return my->_remote_db->get_account_count();
 }
 
 map<string,account_id_type> wallet_api::list_accounts( const string& lowerbound, uint32_t limit)
 {
-   return _my->_remote_db->lookup_accounts( lowerbound, limit );
+   return my->_remote_db->lookup_accounts( lowerbound, limit );
 }
 
 vector<asset> wallet_api::list_account_balances( const account_id_type& id )
 {
-   return _my->_remote_db->get_account_balances( id, flat_set<asset_id_type>() );
+   return my->_remote_db->get_account_balances( id, flat_set<asset_id_type>() );
 }
 
 vector<asset_object> wallet_api::list_assets( const string& lowerbound, uint32_t limit )const
 {
-   return _my->_remote_db->list_assets( lowerbound, limit );
+   return my->_remote_db->list_assets( lowerbound, limit );
 }
 
 vector<operation_history_object> wallet_api::get_account_history( account_id_type id )const
 {
-   return _my->_remote_db->get_account_history( id, operation_history_id_type() );
+   return my->_remote_db->get_account_history( id, operation_history_id_type() );
 }
 
 vector<limit_order_object> wallet_api::get_limit_orders( asset_id_type a, asset_id_type b, uint32_t limit )const
 {
-   return _my->_remote_db->get_limit_orders( a, b, limit );
+   return my->_remote_db->get_limit_orders( a, b, limit );
 }
 
 vector<short_order_object> wallet_api::get_short_orders( asset_id_type a, uint32_t limit )const
 {
-   return _my->_remote_db->get_short_orders( a, limit );
+   return my->_remote_db->get_short_orders( a, limit );
 }
 
 vector<call_order_object> wallet_api::get_call_orders( asset_id_type a, uint32_t limit )const
 {
-   return _my->_remote_db->get_call_orders( a, limit );
+   return my->_remote_db->get_call_orders( a, limit );
 }
 
 vector<force_settlement_object> wallet_api::get_settle_orders( asset_id_type a, uint32_t limit )const
 {
-   return _my->_remote_db->get_settle_orders( a, limit );
+   return my->_remote_db->get_settle_orders( a, limit );
 }
 
 string wallet_api::suggest_brain_key()const
@@ -847,32 +897,32 @@ string wallet_api::suggest_brain_key()const
 
 string wallet_api::serialize_transaction( signed_transaction tx )const
 {
-   return _my->_remote_api->serialize_transaction( tx, true );
+   return my->_remote_api->serialize_transaction( tx, true );
 }
 
 variant wallet_api::get_object( object_id_type id ) const
 {
-   return _my->_remote_db->get_objects({id});
+   return my->_remote_db->get_objects({id});
 }
 
 account_object wallet_api::get_account( string account_name_or_id ) const
 {
-   return _my->get_account( account_name_or_id );
+   return my->get_account( account_name_or_id );
 }
 
 account_id_type wallet_api::get_account_id( string account_name_or_id ) const
 {
-   return _my->get_account_id( account_name_or_id );
+   return my->get_account_id( account_name_or_id );
 }
 
 asset_id_type wallet_api::get_asset_id( string asset_symbol_or_id ) const
 {
-   return _my->get_asset_id( asset_symbol_or_id );
+   return my->get_asset_id( asset_symbol_or_id );
 }
 
 bool wallet_api::import_key( string account_name_or_id, string wif_key )
 {
-   return _my->import_key( account_name_or_id, wif_key );
+   return my->import_key( account_name_or_id, wif_key );
 }
 
 string wallet_api::normalize_brain_key( string s ) const
@@ -894,7 +944,7 @@ signed_transaction wallet_api::create_account_with_brain_key(
    bool broadcast /* = false */
    )
 {
-   return _my->create_account_with_brain_key(
+   return my->create_account_with_brain_key(
       brain_key, account_name, registrar_account,
       referrer_account, broadcast
       );
@@ -909,12 +959,22 @@ signed_transaction wallet_api::transfer(
    bool broadcast /* = false */
    )
 {
-   return _my->transfer( from, to, amount, asset_symbol, memo, broadcast );
+   return my->transfer( from, to, amount, asset_symbol, memo, broadcast );
+}
+signed_transaction wallet_api::create_asset( string issuer, 
+                                             string symbol, 
+                                             uint8_t precision, 
+                                             asset_object::asset_options common,
+                                             fc::optional<asset_object::bitasset_options> bitasset_opts,
+                                             bool broadcast )
+
+{
+   return my->create_asset( issuer, symbol, precision, common, bitasset_opts, broadcast );
 }
 
 void wallet_api::set_wallet_filename( string wallet_filename )
 {
-   _my->_wallet_filename = wallet_filename;
+   my->_wallet_filename = wallet_filename;
    return;
 }
 
@@ -923,17 +983,17 @@ signed_transaction wallet_api::sign_transaction(
    bool broadcast /* = false */
    )
 {
-   return _my->sign_transaction( tx, broadcast);
+   return my->sign_transaction( tx, broadcast);
 }
 
 global_property_object wallet_api::get_global_properties() const
 {
-   return _my->_remote_db->get_global_properties();
+   return my->_remote_db->get_global_properties();
 }
 
 dynamic_global_property_object wallet_api::get_dynamic_global_properties() const
 {
-   return _my->_remote_db->get_dynamic_global_properties();
+   return my->_remote_db->get_dynamic_global_properties();
 }
 
 string wallet_api::help()const
@@ -946,23 +1006,23 @@ string wallet_api::help()const
 
 bool wallet_api::load_wallet_file( string wallet_filename )
 {
-   return _my->load_wallet_file( wallet_filename );
+   return my->load_wallet_file( wallet_filename );
 }
 
 void wallet_api::save_wallet_file( string wallet_filename )
 {
-   _my->save_wallet_file( wallet_filename );
+   my->save_wallet_file( wallet_filename );
 }
 
 std::map<string,std::function<string(fc::variant,const fc::variants&)> >
 wallet_api::_get_result_formatters() const
 {
-   return _my->_get_result_formatters();
+   return my->_get_result_formatters();
 }
 
 void wallet_api::_start_resync_loop()
 {
-   _my->_start_resync_loop();
+   my->_start_resync_loop();
    return;
 }
 
