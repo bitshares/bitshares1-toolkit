@@ -170,7 +170,7 @@ namespace bts { namespace app {
        
        vector<limit_order_object>  result;
        
-       int count = 0;
+       uint32_t count = 0;
        auto limit_itr = limit_price_idx.lower_bound( price::max(a,b) );
        auto limit_end = limit_price_idx.upper_bound( price::min(a,b) );
        while( limit_itr != limit_end && count < limit )
@@ -199,8 +199,10 @@ namespace bts { namespace app {
       price max_price; // TODO: define this properly.
 
       FC_ASSERT( max_price.max() >= max_price );
-      auto short_itr = sell_price_idx.lower_bound( max_price.max() );
-      auto short_end = sell_price_idx.upper_bound( max_price );
+      // these are commented to silence a compiler warning,
+      // feel free to uncomment them when you implement this method :)
+      //auto short_itr = sell_price_idx.lower_bound( max_price.max() );
+      //auto short_end = sell_price_idx.upper_bound( max_price );
 
       return vector<short_order_object>();
     }
