@@ -1318,29 +1318,34 @@ void database::update_vote_totals(const global_property_object& props)
     _total_voting_stake = 0;
 
     bool count_non_prime_votes = props.parameters.count_non_prime_votes;
-    for( const account_object& account : account_idx.indices() )
+    auto timestamp = fc::time_point::now();
+    for( const account_object& stake_account : account_idx.indices() )
     {
-       if( count_non_prime_votes || account.is_prime() )
+       if( count_non_prime_votes || stake_account.is_prime() )
        {
-          const account_object* acnt = &account;
-          if( account.voting_account != account_id_type() )
-             acnt = &account.voting_account(*this);
+          // There may be a difference between the account whose stake is voting and the one specifying opinions.
+          // Usually they're the same, but if the stake account has specified a voting_account, that account is the one
+          // specifying the opinions.
+          const account_object& opinion_account =
+                (stake_account.voting_account == account_id_type())? stake_account
+                                                                   : get(stake_account.voting_account);
 
-          const auto& stats = acnt->statistics(*this);
+          const auto& stats = stake_account.statistics(*this);
           share_type voting_stake = stats.total_core_in_orders
-                   + (acnt->cashback_vb.valid() ? (*acnt->cashback_vb)(*this).balance.amount : share_type(0))
-                   + get_balance(acnt->get_id(), asset_id_type()).amount;
-          for( vote_id_type id : acnt->votes )
+                   + (stake_account.cashback_vb.valid() ? (*stake_account.cashback_vb)(*this).balance.amount : share_type(0))
+                   + get_balance(stake_account.get_id(), asset_id_type()).amount;
+          for( vote_id_type id : opinion_account.votes )
              _vote_tally_buffer[id] += voting_stake;
 
-          if( acnt->num_witness <= props.parameters.maximum_witness_count )
-             _witness_count_histogram_buffer[acnt->num_witness] += voting_stake;
-          if( acnt->num_committee <= props.parameters.maximum_committee_count )
-             _committee_count_histogram_buffer[acnt->num_committee] += voting_stake;
+          if( opinion_account.num_witness <= props.parameters.maximum_witness_count )
+             _witness_count_histogram_buffer[opinion_account.num_witness] += voting_stake;
+          if( opinion_account.num_committee <= props.parameters.maximum_committee_count )
+             _committee_count_histogram_buffer[opinion_account.num_committee] += voting_stake;
 
           _total_voting_stake += voting_stake;
        }
     }
+    ilog("Tallied votes in ${time} milliseconds.", ("time", (fc::time_point::now() - timestamp).count() / 1000.0));
 } FC_CAPTURE_AND_RETHROW() }
 
 /**

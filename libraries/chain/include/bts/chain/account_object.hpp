@@ -124,7 +124,8 @@ namespace bts { namespace chain {
          /// multiple keys in it.
          key_id_type           memo_key;
 
-         /// The voting key may be used to update the account's votes.
+         /// If this field is set to an account ID other than 0, this account's votes will be ignored and its stake
+         /// will be counted as voting for the referenced account's selected votes instead.
          account_id_type       voting_account;
 
 
