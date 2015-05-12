@@ -8,6 +8,7 @@
 #include <bts/chain/asset_object.hpp>
 #include <bts/chain/key_object.hpp>
 #include <bts/chain/delegate_object.hpp>
+#include <bts/chain/witness_object.hpp>
 #include <bts/chain/vesting_balance_object.hpp>
 #include <bts/chain/withdraw_permission_object.hpp>
 
@@ -262,18 +263,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_delete )
 
 BOOST_AUTO_TEST_CASE( mia_feeds )
 { try {
-   auto nathan_private_key = generate_private_key("nathan");
-   auto nathan_key_id = register_key(nathan_private_key.get_public_key()).get_id();
-   account_id_type nathan_id = create_account("nathan", nathan_key_id).id;
-   auto dan_private_key = generate_private_key("dan");
-   auto dan_key_id = register_key(dan_private_key.get_public_key()).get_id();
-   account_id_type dan_id = create_account("dan", dan_key_id).id;
-   auto ben_private_key = generate_private_key("ben");
-   auto ben_key_id = register_key(ben_private_key.get_public_key()).get_id();
-   account_id_type ben_id = create_account("ben", ben_key_id).id;
-   auto vikram_private_key = generate_private_key("vikram");
-   auto vikram_key_id = register_key(vikram_private_key.get_public_key()).get_id();
-   account_id_type vikram_id = create_account("vikram", vikram_key_id).id;
+   ACTORS((nathan)(dan)(ben)(vikram));
    asset_id_type bit_usd_id = create_bitasset("BITUSD").id;
 
    {
@@ -353,6 +343,38 @@ BOOST_AUTO_TEST_CASE( mia_feeds )
       trx.operations.back() = op;
       BOOST_CHECK_THROW(db.push_transaction(trx, ~0), fc::exception);
    }
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( witness_create )
+{ try {
+   ACTOR(nathan);
+   witness_id_type nathan_witness_id = create_witness(nathan_id, nathan_key_id, nathan_private_key).id;
+   // Give nathan some voting stake
+   transfer(genesis_account, nathan_id, asset(10000000));
+   generate_block();
+
+   {
+      account_update_operation op;
+      op.account = nathan_id;
+      op.vote = nathan_id(db).votes;
+      op.vote->insert(nathan_witness_id(db).vote_id);
+      op.num_witness = std::count_if(op.vote->begin(), op.vote->end(), [](vote_id_type id) { return id.type() == vote_id_type::witness; });
+      op.num_committee = std::count_if(op.vote->begin(), op.vote->end(), [](vote_id_type id) { return id.type() == vote_id_type::committee; });
+      trx.operations.push_back(op);
+      trx.sign(nathan_key_id, nathan_private_key);
+      db.push_transaction(trx);
+      trx.clear();
+   }
+
+   const auto& witnesses = db.get_global_properties().active_witnesses;
+   generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
+   auto itr = std::find(witnesses.begin(), witnesses.end(), nathan_witness_id);
+   BOOST_CHECK(itr != witnesses.end());
+   if( itr != witnesses.begin() )
+      generate_blocks(itr - witnesses.begin() - 1);
+   auto block = generate_block(0, nathan_private_key);
+   BOOST_CHECK(block.witness == nathan_witness_id);
+   generate_block();
 } FC_LOG_AND_RETHROW() }
 
 // TODO:  Write linear VBO tests

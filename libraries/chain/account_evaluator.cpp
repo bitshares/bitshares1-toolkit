@@ -145,12 +145,6 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
       uint32_t max_vote_id = d.get_global_properties().next_available_vote_id;
       for( auto id : *o.vote )
          FC_ASSERT( id < max_vote_id );
-      std::set_difference( acnt->votes.begin(), acnt->votes.end(),
-                           o.vote->begin(), o.vote->end(),
-                           std::inserter( remove_votes, remove_votes.begin() ) );
-      std::set_difference( o.vote->begin(), o.vote->end(),
-                           acnt->votes.begin(), acnt->votes.end(),
-                           std::inserter( add_votes, add_votes.begin() ) );
    }
 
    return object_id_type();

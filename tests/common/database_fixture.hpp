@@ -50,6 +50,14 @@ using namespace bts::db;
 #define PUSH_TX( tx, skip_flags ) \
    _push_transaction( tx, skip_flags, __FILE__, __LINE__ )
 
+#define ACTOR(name) \
+   fc::ecc::private_key name ## _private_key = generate_private_key(BOOST_PP_STRINGIZE(name)); \
+   key_id_type name ## _key_id = register_key(name ## _private_key.get_public_key()).get_id(); \
+   account_id_type name ## _id = create_account(BOOST_PP_STRINGIZE(name), name ## _key_id).id;
+
+#define ACTORS_IMPL(r, data, elem) ACTOR(elem)
+#define ACTORS(names) BOOST_PP_SEQ_FOR_EACH(ACTORS_IMPL, ~, names)
+
 namespace bts { namespace chain {
 
 struct database_fixture {
@@ -61,7 +69,7 @@ struct database_fixture {
    key_id_type genesis_key;
    account_id_type genesis_account;
    fc::ecc::private_key private_key = fc::ecc::private_key::generate();
-   fc::ecc::private_key delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
+   fc::ecc::private_key delegate_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
    const key_object* key1= nullptr;
    const key_object* key2= nullptr;
    const key_object* key3= nullptr;
@@ -78,7 +86,7 @@ struct database_fixture {
    void verify_asset_supplies( )const;
    void verify_account_history_plugin_index( )const;
    void open_database();
-   signed_block generate_block( uint32_t skip = ~0 );
+   signed_block generate_block( uint32_t skip = ~0, const fc::ecc::private_key& key = generate_private_key("genesis") );
 
    /**
     * @brief Generates block_count blocks
@@ -141,6 +149,12 @@ struct database_fixture {
       );
 
    const delegate_object& create_delegate( const account_object& owner );
+   const witness_object& create_witness(account_id_type owner,
+                                        key_id_type signing_key = key_id_type(),
+                                        const fc::ecc::private_key& signing_private_key = generate_private_key("genesis"));
+   const witness_object& create_witness(const account_object& owner,
+                                        key_id_type signing_key = key_id_type(),
+                                        const fc::ecc::private_key& signing_private_key = generate_private_key("genesis"));
    const key_object& register_key( const public_key_type& key );
    const key_object& register_address( const address& addr );
    uint64_t fund( const account_object& account, const asset& amount = asset(500000) );

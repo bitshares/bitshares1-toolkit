@@ -236,14 +236,14 @@ void database_fixture::open_database()
    }
 }
 
-signed_block database_fixture::generate_block( uint32_t skip )
+signed_block database_fixture::generate_block(uint32_t skip, const fc::ecc::private_key& key)
 {
    open_database();
 
    const vector<witness_id_type>& aw = db.get_global_properties().active_witnesses;
    advance_simulated_time_to( db.get_next_generation_time(  aw[db.head_block_num()%aw.size()] ) );
    // skip == ~0 will skip checks specified in database::validation_steps
-   return db.generate_block( delegate_priv_key, aw[db.head_block_num()%aw.size()], skip );
+   return db.generate_block( key, aw[db.head_block_num()%aw.size()], skip );
 }
 
 void database_fixture::generate_blocks( uint32_t block_count )
@@ -492,6 +492,30 @@ const delegate_object& database_fixture::create_delegate( const account_object& 
    trx.operations.clear();
    return db.get<delegate_object>(ptx.operation_results[0].get<object_id_type>());
 }
+
+const witness_object&database_fixture::create_witness(account_id_type owner, key_id_type signing_key, const fc::ecc::private_key& signing_private_key)
+{
+   return create_witness(owner(db), signing_key, signing_private_key);
+}
+
+const witness_object& database_fixture::create_witness( const account_object& owner, key_id_type signing_key,
+                                                        const fc::ecc::private_key& signing_private_key )
+{ try {
+      FC_ASSERT(db.get(signing_key).key_address() == public_key_type(signing_private_key.get_public_key()));
+   witness_create_operation op;
+   op.witness_account = owner.id;
+   op.block_signing_key = signing_key;
+   secret_hash_type::encoder enc;
+   fc::raw::pack(enc, signing_private_key);
+   fc::raw::pack(enc, secret_hash_type());
+   wdump((signing_private_key)(secret_hash_type()));
+   op.initial_secret = secret_hash_type::hash(enc.result());
+   trx.operations.push_back(op);
+   trx.validate();
+   processed_transaction ptx = db.push_transaction(trx, ~0);
+   trx.clear();
+   return db.get<witness_object>(ptx.operation_results[0].get<object_id_type>());
+} FC_CAPTURE_AND_RETHROW() }
 
 const key_object& database_fixture::register_key( const public_key_type& key )
 {
