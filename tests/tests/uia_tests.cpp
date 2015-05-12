@@ -1,9 +1,13 @@
+
+#include <boost/test/unit_test.hpp>
+
 #include <bts/chain/database.hpp>
 #include <bts/chain/operations.hpp>
+
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
-#include <bts/chain/key_object.hpp>
 #include <bts/chain/delegate_object.hpp>
+#include <bts/chain/key_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 

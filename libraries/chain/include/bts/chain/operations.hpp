@@ -363,8 +363,8 @@ namespace bts { namespace chain {
       void         set_message( const fc::ecc::private_key& priv,
                                 const fc::ecc::public_key& pub, const string& msg );
 
-      memo_message get_message( const fc::ecc::private_key& priv,
-                                const fc::ecc::public_key& pub )const;
+      std::string get_message( const fc::ecc::private_key& priv,
+                               const fc::ecc::public_key& pub )const;
    };
 
    /**
