@@ -1,4 +1,8 @@
 
+#include <iostream>
+
+#include <boost/test/unit_test.hpp>
+
 #include <bts/chain/database.hpp>
 #include <bts/chain/operations.hpp>
 #include <bts/chain/time.hpp>

@@ -1,11 +1,18 @@
-#include <bts/chain/database.hpp>
+
+#include <boost/test/unit_test.hpp>
+
 #include <bts/chain/operations.hpp>
+
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/asset_object.hpp>
-#include <bts/chain/key_object.hpp>
+#include <bts/chain/database.hpp>
 #include <bts/chain/delegate_object.hpp>
+#include <bts/chain/key_object.hpp>
+#include <bts/chain/limit_order_object.hpp>
+#include <bts/chain/short_order_object.hpp>
 #include <bts/chain/vesting_balance_object.hpp>
 #include <bts/chain/withdraw_permission_object.hpp>
+#include <bts/chain/witness_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 
