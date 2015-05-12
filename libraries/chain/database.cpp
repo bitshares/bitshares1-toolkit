@@ -43,20 +43,6 @@
 #include <fc/uint128.hpp>
 
 namespace bts { namespace chain {
-   /*
-template<typename T>
-struct restore_on_scope_exit
-{
-   restore_on_scope_exit( T& v)
-   :original_copy(v),value(v){}
-   ~restore_on_scope_exit(){ value = original_copy; }
-   T   original_copy;
-   T&  value;
-};
-
-//template<typename T>
-//restore_on_scope_exit<T> make_restore_on_exit( T& v ) { return restore_on_scope_exit<T>(v); }
-*/
 
 database::database()
 {
@@ -115,6 +101,28 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
    if( last_block_itr.valid() )
       _fork_db.start_block( last_block_itr.value() );
 
+} FC_CAPTURE_AND_RETHROW( (data_dir) ) }
+
+void database::reindex(fc::path data_dir, genesis_allocation initial_allocation)
+{ try {
+   wipe(data_dir, false);
+   open(data_dir, initial_allocation);
+
+   auto start = fc::time_point::now();
+   auto itr = _block_id_to_block.begin();
+   while( itr.valid() )
+   {
+      apply_block( itr.value(), skip_delegate_signature |
+                                skip_transaction_signatures |
+                                skip_undo_block |
+                                skip_undo_transaction |
+                                skip_transaction_dupe_check |
+                                skip_tapos_check |
+                                skip_authority_check );
+      ++itr;
+   }
+   auto end = fc::time_point::now();
+   wdump( ((end-start).count()/1000000.0) );
 } FC_CAPTURE_AND_RETHROW( (data_dir) ) }
 
 void database::initialize_evaluators()
@@ -1041,28 +1049,6 @@ bool database::fill_order(const force_settlement_object& settle, const asset& pa
 
    return filled;
 } FC_CAPTURE_AND_RETHROW( (settle)(pays)(receives) ) }
-
-void database::reindex(fc::path data_dir, genesis_allocation initial_allocation)
-{ try {
-   wipe(data_dir, false);
-   open(data_dir, initial_allocation);
-   assert(head_block_num() == 0);
-
-   auto start = fc::time_point::now();
-   auto itr = _block_id_to_block.begin();
-   while( itr.valid() )
-   {
-      apply_block( itr.value(), skip_delegate_signature |
-                                skip_transaction_signatures |
-                                skip_undo_block |
-                                skip_undo_transaction |
-                                skip_transaction_dupe_check |
-                                skip_tapos_check );
-      ++itr;
-   }
-   auto end = fc::time_point::now();
-   wdump( ((end-start).count()/1000000.0) );
-} FC_CAPTURE_AND_RETHROW( (data_dir)(initial_allocation) ) }
 
 asset database::current_delegate_registration_fee()const
 {

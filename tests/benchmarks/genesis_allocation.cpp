@@ -27,19 +27,20 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
 {
    try {
       genesis_allocation allocation;
-      fc::ecc::private_key private_key = fc::ecc::private_key::generate();
-      public_key_type the_key = private_key.get_public_key();
 
 #ifdef NDEBUG
       ilog("Running in release mode.");
       const int account_count = 2000000;
+      const int blocks_to_produce = 1000000;
 #else
       ilog("Running in debug mode.");
       const int account_count = 30000;
+      const int blocks_to_produce = 1000;
 #endif
 
       for( int i = 0; i < account_count; ++i )
-         allocation.emplace_back(the_key, BTS_INITIAL_SUPPLY / account_count);
+         allocation.emplace_back(public_key_type(fc::ecc::private_key::regenerate(fc::digest(i)).get_public_key()),
+                                 BTS_INITIAL_SUPPLY / account_count);
 
       fc::temp_directory data_dir(fc::current_path());
 
@@ -47,8 +48,6 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
          database db;
          db.open(data_dir.path(), allocation);
 
-         //accounts = db.get_account_index().size();
-         //BOOST_CHECK(accounts >= account_count);
          for( int i = 11; i < account_count + 11; ++i)
             BOOST_CHECK(db.get_balance(account_id_type(i), asset_id_type()).amount == BTS_INITIAL_SUPPLY / account_count);
 
@@ -63,17 +62,11 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
          db.open(data_dir.path());
          ilog("Opened database in ${t} milliseconds.", ("t", (fc::time_point::now() - start_time).count() / 1000));
 
-         //BOOST_CHECK(db.get_account_index().size() == accounts);
          for( int i = 11; i < account_count + 11; ++i)
             BOOST_CHECK(db.get_balance(account_id_type(i), asset_id_type()).amount == BTS_INITIAL_SUPPLY / account_count);
 
          start_simulated_time( bts::chain::now() );
 
-#ifdef NDEBUG
-         int blocks_to_produce = 1000000;
-#else
-         int blocks_to_produce = 1000;
-#endif
          int blocks_out = 0;
          auto delegate_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
          auto aw = db.get_global_properties().active_witnesses;
@@ -97,14 +90,16 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
          start_time = fc::time_point::now();
          db.close();
          ilog("Closed database in ${t} milliseconds.", ("t", (fc::time_point::now() - start_time).count() / 1000));
+      }
+      {
+         database db;
 
-         start_time = fc::time_point::now();
+         auto start_time = fc::time_point::now();
          advance_simulated_time_to( now() + fc::seconds(BTS_MAX_BLOCK_INTERVAL) );
          wlog( "about to start reindex..." );
          db.reindex(data_dir.path(), allocation);
          ilog("Replayed database in ${t} milliseconds.", ("t", (fc::time_point::now() - start_time).count() / 1000));
 
-         //BOOST_CHECK(db.get_account_index().size() == accounts);
          for( int i = 0; i < blocks_to_produce; ++i )
             BOOST_CHECK(db.get_balance(account_id_type(i + 11), asset_id_type()).amount == BTS_INITIAL_SUPPLY / account_count - 2);
       }
