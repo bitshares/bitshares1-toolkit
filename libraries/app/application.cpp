@@ -77,11 +77,36 @@ namespace detail {
          _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
             auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
             auto login = std::make_shared<bts::app::login_api>( std::ref(*_self) );
+            auto db_api = std::make_shared<bts::app::database_api>( std::ref(*_self->chain_database()) );
+            wsc->register_api(fc::api<bts::app::database_api>(db_api));
             wsc->register_api(fc::api<bts::app::login_api>(login));
             c->set_session_data( wsc );
          });
          _websocket_server->listen( fc::ip::endpoint::from_string(_options->at("rpc-endpoint").as<string>()) );
          _websocket_server->start_accept();
+      } FC_CAPTURE_AND_RETHROW() }
+
+
+      void reset_websocket_tls_server()
+      { try {
+         if( !_options->count("rpc-tls-endpoint") )
+            return;
+         if( !_options->count("server-pem") )
+            return;
+
+         string password = _options->count("server-pem-password") ? _options->at("server-pem-password").as<string>() : "";
+         _websocket_tls_server = std::make_shared<fc::http::websocket_tls_server>( _options->at("server-pem").as<string>(), password );
+
+         _websocket_tls_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
+            auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
+            auto login = std::make_shared<bts::app::login_api>( std::ref(*_self) );
+            auto db_api = std::make_shared<bts::app::database_api>( std::ref(*_self->chain_database()) );
+            wsc->register_api(fc::api<bts::app::database_api>(db_api));
+            wsc->register_api(fc::api<bts::app::login_api>(login));
+            c->set_session_data( wsc );
+         });
+         _websocket_tls_server->listen( fc::ip::endpoint::from_string(_options->at("rpc-tls-endpoint").as<string>()) );
+         _websocket_tls_server->start_accept();
       } FC_CAPTURE_AND_RETHROW() }
 
       application_impl(application* self)
@@ -120,6 +145,7 @@ namespace detail {
 
          reset_p2p_node(_data_dir);
          reset_websocket_server();
+         reset_websocket_tls_server();
       } FC_CAPTURE_AND_RETHROW() }
 
       /**
@@ -331,9 +357,10 @@ namespace detail {
       fc::path _data_dir;
       const bpo::variables_map* _options = nullptr;
 
-      std::shared_ptr<bts::chain::database>        _chain_db;
-      std::shared_ptr<bts::net::node>              _p2p_network;
-      std::shared_ptr<fc::http::websocket_server>  _websocket_server;
+      std::shared_ptr<bts::chain::database>            _chain_db;
+      std::shared_ptr<bts::net::node>                  _p2p_network;
+      std::shared_ptr<fc::http::websocket_server>      _websocket_server;
+      std::shared_ptr<fc::http::websocket_tls_server>  _websocket_tls_server;
 
       std::map<string, std::shared_ptr<abstract_plugin>> _plugins;
    };
@@ -366,6 +393,9 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("p2p-endpoint", bpo::value<string>(), "Endpoint for P2P node to listen on")
          ("seed-node,s", bpo::value<vector<string>>()->composing(), "P2P nodes to connect to on startup (may specify multiple times)")
          ("rpc-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8090"), "Endpoint for websocket RPC to listen on")
+         ("rpc-tls-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8089"), "Endpoint for TLS websocket RPC to listen on")
+         ("server-pem,p", bpo::value<string>()->implicit_value("server.pem"), "The TLS certificate file for this server")
+         ("server-pem-password,P", bpo::value<string>()->implicit_value(""), "Password for this certificate")
          ("genesis-json", bpo::value<boost::filesystem::path>(), "File to read Genesis State from")
          ;
    command_line_options.add(configuration_file_options);

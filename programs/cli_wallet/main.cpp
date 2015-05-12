@@ -74,7 +74,7 @@ int main( int argc, char** argv )
       auto apic = std::make_shared<fc::rpc::websocket_api_connection>(*con);
       con->closed.connect( [&](){ elog( "connection closed" ); } );
 
-      auto remote_api = apic->get_remote_api< login_api >();
+      auto remote_api = apic->get_remote_api< login_api >(1);
       FC_ASSERT( remote_api->login( wdata.ws_user, wdata.ws_password ) );
 
       auto wapiptr = std::make_shared<wallet_api>(remote_api);
