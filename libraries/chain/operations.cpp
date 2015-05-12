@@ -753,7 +753,11 @@ void         memo_data::set_message( const fc::ecc::private_key& priv,
    if( from )
    {
       auto secret = priv.get_shared_secret(pub);
-      message = fc::aes_encrypt( secret, fc::raw::pack( memo_message( secret._hash[0], msg ) ) );
+      digest_type::encoder enc;
+      fc::raw::pack(enc, secret);
+      fc::raw::pack(enc, msg);
+      memo_message memo(enc.result()._hash[0], msg);
+      message = fc::aes_encrypt( secret, fc::raw::pack( memo ) );
    }
    else
    {
@@ -761,20 +765,23 @@ void         memo_data::set_message( const fc::ecc::private_key& priv,
    }
 }
 
-memo_message memo_data::get_message( const fc::ecc::private_key& priv,
-                                    const fc::ecc::public_key& pub )const
+string memo_data::get_message( const fc::ecc::private_key& priv,
+                               const fc::ecc::public_key& pub )const
 {
    if( from )
    {
       auto secret = priv.get_shared_secret(pub);
       auto plain_text = fc::aes_decrypt( secret, message );
       auto result = fc::raw::unpack<memo_message>(plain_text);
-      FC_ASSERT( result.checksum == secret._hash[0] );
-      return result;
+      digest_type::encoder enc;
+      fc::raw::pack(enc, secret);
+      fc::raw::pack(enc, result.text);
+      FC_ASSERT( result.checksum == uint32_t(enc.result()._hash[0]) );
+      return result.text;
    }
    else
    {
-      return fc::raw::unpack<memo_message>(message);
+      return fc::raw::unpack<memo_message>(message).text;
    }
 }
 

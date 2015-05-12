@@ -17,7 +17,7 @@
 using namespace bts::chain;
 using namespace bts::db;
 
-BOOST_FIXTURE_TEST_SUITE( basic_unit_tests, database_fixture )
+BOOST_FIXTURE_TEST_SUITE( basic_tests, database_fixture )
 
 BOOST_AUTO_TEST_CASE( price_test )
 {
@@ -53,5 +53,16 @@ BOOST_AUTO_TEST_CASE( serialization_tests )
    k.key_data = address(public_key);
    BOOST_CHECK(k.key_address() == address(public_key));
 }
+
+BOOST_AUTO_TEST_CASE( memo_test )
+{ try {
+   memo_data m;
+   auto sender = generate_private_key("1");
+   auto receiver = generate_private_key("2");
+   m.from = 1;
+   m.to = 2;
+   m.set_message(sender, receiver.get_public_key(), "Hello, world!");
+   BOOST_CHECK_EQUAL(m.get_message(receiver, sender.get_public_key()), "Hello, world!");
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
