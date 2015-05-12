@@ -1300,6 +1300,10 @@ bool database::is_known_transaction( const transaction_id_type& id )const
  */
 void database::update_vote_totals(const global_property_object& props)
 { try {
+    _vote_tally_buffer.resize(props.next_available_vote_id);
+    _witness_count_histogram_buffer.resize(props.parameters.maximum_witness_count / 2 + 1);
+    _committee_count_histogram_buffer.resize(props.parameters.maximum_committee_count / 2 + 1);
+
     const account_index& account_idx = get_index_type<account_index>();
     _total_voting_stake = 0;
 
@@ -1323,20 +1327,39 @@ void database::update_vote_totals(const global_property_object& props)
           for( vote_id_type id : opinion_account.votes )
           {
              uint32_t offset = id.instance();
-             assert( offset < _vote_tally_buffer.size() );
-             _vote_tally_buffer[ offset ] += voting_stake;
+             // if they somehow managed to specify an illegal offset, ignore it.
+             if( offset < _vote_tally_buffer.size() )
+                _vote_tally_buffer[ offset ] += voting_stake;
           }
 
           if( opinion_account.num_witness <= props.parameters.maximum_witness_count )
           {
-             uint16_t offset = opinion_account.num_witness/2;
-             assert( offset < _witness_count_histogram_buffer.size() );
+             uint16_t offset = std::min(
+                size_t(opinion_account.num_witness/2),
+                _witness_count_histogram_buffer.size() - 1
+                );
+             //
+             // votes for a number greater than maximum_witness_count
+             // are turned into votes for maximum_witness_count.
+             //
+             // in particular, this takes care of the case where a
+             // member was voting for a high number, then the
+             // parameter was lowered.
+             //
              _witness_count_histogram_buffer[ offset ] += voting_stake;
           }
           if( opinion_account.num_committee <= props.parameters.maximum_committee_count )
           {
-             uint16_t offset = opinion_account.num_committee/2;
-             assert( offset < _committee_count_histogram_buffer.size() );
+             uint16_t offset = std::min(
+                size_t(opinion_account.num_committee/2),
+                _committee_count_histogram_buffer.size() - 1
+                );
+             //
+             // votes for a number greater than maximum_committee_count
+             // are turned into votes for maximum_committee_count.
+             //
+             // same rationale as for witnesses
+             //
              _committee_count_histogram_buffer[ offset ] += voting_stake;
           }
 
@@ -1732,9 +1755,6 @@ void database::update_pending_block(const signed_block& next_block, uint8_t curr
 
 void database::perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props)
 {
-   _vote_tally_buffer.resize(global_props.next_available_vote_id);
-   _witness_count_histogram_buffer.resize(global_props.parameters.maximum_witness_count);
-   _committee_count_histogram_buffer.resize(global_props.parameters.maximum_committee_count);
    update_vote_totals(global_props);
    update_active_witnesses();
    update_active_delegates();
