@@ -808,6 +808,8 @@ signed_transaction wallet_api_impl::transfer(
    if( memo.size() )
    {
       xfer_op.memo = memo_data();
+      xfer_op.memo->from = from_account.memo_key;
+      xfer_op.memo->to = to_account.memo_key;
       xfer_op.memo->set_message( get_private_key( from_account.memo_key ), 
                      get_public_key( to_account.memo_key ), memo );
    }
