@@ -179,6 +179,8 @@ object_id_type account_whitelist_evaluator::do_evaluate(const account_whitelist_
    database& d = db();
 
    listed_account = &o.account_to_list(d);
+   if( !d.get_global_properties().parameters.allow_non_prime_whitelists )
+      FC_ASSERT(listed_account->is_prime());
 
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (o) ) }
