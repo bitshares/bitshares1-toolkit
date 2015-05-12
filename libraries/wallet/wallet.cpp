@@ -10,6 +10,7 @@
 #include <fc/network/http/websocket.hpp>
 #include <fc/rpc/cli.hpp>
 #include <fc/rpc/websocket_api.hpp>
+#include <fc/crypto/aes.hpp>
 
 #include <bts/app/api.hpp>
 #include <bts/chain/address.hpp>
@@ -29,7 +30,8 @@ namespace detail {
 class wallet_api_impl
 {
    public:
-      wallet_api_impl( fc::api<login_api> rapi );
+      wallet_api& self;
+      wallet_api_impl( wallet_api& s, fc::api<login_api> rapi );
       virtual ~wallet_api_impl();
 
       // methods that start with underscore are not incuded in API
@@ -88,6 +90,9 @@ class wallet_api_impl
 
       string                  _wallet_filename;
       wallet_data             _wallet;
+
+      map<key_id_type,string> _keys;
+      fc::sha512              _checksum;
 
       fc::api<login_api>      _remote_api;
       fc::api<database_api>   _remote_db;
@@ -232,8 +237,8 @@ string normalize_brain_key( string s )
    return result;
 }
 
-wallet_api_impl::wallet_api_impl( fc::api<login_api> rapi )
-   : _remote_api( rapi )
+wallet_api_impl::wallet_api_impl( wallet_api& s, fc::api<login_api> rapi )
+   : self(s), _remote_api( rapi )
 {
    _remote_db  = _remote_api->database();
    _remote_net = _remote_api->network();
@@ -408,7 +413,8 @@ signed_transaction wallet_api_impl::create_account_with_brain_key(
    string referrer_account,
    bool broadcast /* = false */
    )
-{
+{ try {
+   FC_ASSERT( !self.is_locked() );
    string normalized_brain_key = normalize_brain_key( brain_key );
    // TODO:  scan blockchain for accounts that exist with same brain key
    fc::ecc::private_key owner_privkey = derive_private_key( normalized_brain_key, 0 );
@@ -452,8 +458,6 @@ signed_transaction wallet_api_impl::create_account_with_brain_key(
    account_create_op.owner = authority(1, owner_rkid, 1);
    account_create_op.active = authority(1, active_rkid, 1);
    account_create_op.memo_key = active_rkid;
-   // TODO: Doesn't compile
-   //account_create_op.voting_key = active_rkid;
 
    // current_fee_schedule()
    // find_account(pay_from_account)
@@ -474,13 +478,13 @@ signed_transaction wallet_api_impl::create_account_with_brain_key(
 
    for( key_id_type& key : paying_keys )
    {
-      auto it = _wallet.keys.find(key);
-      if( it != _wallet.keys.end() )
+      auto it = _keys.find(key);
+      if( it != _keys.end() )
       {
          fc::optional< fc::ecc::private_key > privkey = wif_to_key( it->second );
          if( !privkey.valid() )
          {
-            FC_ASSERT( false, "Malformed private key in _wallet.keys" );
+            FC_ASSERT( false, "Malformed private key in _keys" );
          }
          tx.sign( key, *privkey );
       }
@@ -492,7 +496,7 @@ signed_transaction wallet_api_impl::create_account_with_brain_key(
    if( broadcast )
       _remote_net->broadcast_transaction( tx );
    return tx;
-}
+} FC_CAPTURE_AND_RETHROW( (account_name)(registrar_account)(referrer_account) ) }
 
 account_object wallet_api_impl::get_account( string account_name_or_id ) const
 {
@@ -577,7 +581,7 @@ bool wallet_api_impl::import_key( string account_name_or_id, string wif_key )
       //    blockchain may not contain a key (i.e. are simply an address)
       if( opt_key->key_address() == wif_key_address )
       {
-         _wallet.keys[ opt_key->id ] = wif_key;
+         _keys[ opt_key->id ] = wif_key;
          save_wallet_file();
          copy_wallet_file( "after-import-key-" + shorthash );
          return true;
@@ -611,8 +615,9 @@ void wallet_api_impl::save_wallet_file( string wallet_filename )
    // This approach lessens the risk of a partially written wallet
    // if exceptions are thrown in serialization
    //
-   // TODO:  Encrypt wallet
-   //
+   
+   /** encrypt keys */
+
 
    if( wallet_filename == "" )
       wallet_filename = _wallet_filename;
@@ -709,13 +714,13 @@ signed_transaction wallet_api_impl::sign_transaction(
 
    for( key_id_type& key : approving_key_set )
    {
-      auto it = _wallet.keys.find(key);
-      if( it != _wallet.keys.end() )
+      auto it = _keys.find(key);
+      if( it != _keys.end() )
       {
          fc::optional< fc::ecc::private_key > privkey = wif_to_key( it->second );
          if( !privkey.valid() )
          {
-            FC_ASSERT( false, "Malformed private key in _wallet.keys" );
+            FC_ASSERT( false, "Malformed private key in _keys" );
          }
          tx.sign( key, *privkey );
       }
@@ -735,8 +740,8 @@ fc::ecc::public_key  wallet_api_impl::get_public_key( key_id_type id )const
 }
 fc::ecc::private_key wallet_api_impl::get_private_key( key_id_type id )const
 {
-   auto it = _wallet.keys.find(id);
-   FC_ASSERT( it != _wallet.keys.end() );
+   auto it = _keys.find(id);
+   FC_ASSERT( it != _keys.end() );
 
    fc::optional< fc::ecc::private_key > privkey = wif_to_key( it->second );
    FC_ASSERT( privkey );
@@ -794,8 +799,6 @@ signed_transaction wallet_api_impl::transfer(
 
    asset_id_type asset_id = get_asset_id( asset_symbol );
 
-   // TODO:  Memo encryption
-
    transfer_operation xfer_op;
 
    xfer_op.from = from_id;
@@ -825,7 +828,7 @@ signed_transaction wallet_api_impl::transfer(
 } // end namespace detail
 
 wallet_api::wallet_api( fc::api<login_api> rapi )
-   : my( new detail::wallet_api_impl( rapi ) )
+   : my( new detail::wallet_api_impl( *this, rapi ) )
 {
    return;
 }
@@ -1011,6 +1014,7 @@ bool wallet_api::load_wallet_file( string wallet_filename )
 
 void wallet_api::save_wallet_file( string wallet_filename )
 {
+   if( !is_locked() ) lock(); // encrypt it
    my->save_wallet_file( wallet_filename );
 }
 
@@ -1024,6 +1028,37 @@ void wallet_api::_start_resync_loop()
 {
    my->_start_resync_loop();
    return;
+}
+bool wallet_api::is_locked()const
+{
+   return my->_checksum == fc::sha512();
+}
+
+void wallet_api::lock()
+{ try {
+   FC_ASSERT( !is_locked() );
+   plain_keys data;
+   data.keys     = std::move( my->_keys );
+   data.checksum = my->_checksum;
+   auto plain_txt = fc::raw::pack(data);
+   my->_wallet.cipher_keys = fc::aes_encrypt( data.checksum, plain_txt );
+   my->_checksum = fc::sha512();
+} FC_CAPTURE_AND_RETHROW() }
+
+void wallet_api::unlock( string password )
+{ try {
+    FC_ASSERT( password.size() > 0  );
+    auto pw = fc::sha512::hash( password.c_str(), password.size() );
+    vector<char> decrypted = fc::aes_decrypt( pw, my->_wallet.cipher_keys );
+    auto pk = fc::raw::unpack<plain_keys>(decrypted);
+    FC_ASSERT( pk.checksum == pw );
+    my->_keys = std::move(pk.keys);
+    my->_checksum = pk.checksum;
+} FC_CAPTURE_AND_RETHROW() }
+
+void wallet_api::set_password( string password )
+{
+    my->_checksum = fc::sha512::hash( password.c_str(), password.size() );
 }
 
 } }

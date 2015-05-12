@@ -17,11 +17,19 @@ namespace bts { namespace wallet {
 
 object* create_object( const variant& v );
 
+struct plain_keys
+{
+   map<key_id_type, string>  keys;
+   fc::sha512                checksum;
+};
+
 struct wallet_data
 {
    flat_set<account_id_type> accounts;
-   // map of key_id -> base58 private key
-   map<key_id_type, string>  keys;
+
+   /** encrypted keys */
+   vector<char>              cipher_keys;
+
    // map of account_name -> base58_private_key for
    //    incomplete account regs
    map<string, string> pending_account_registrations;
@@ -68,6 +76,11 @@ class wallet_api
       asset_id_type                     get_asset_id( string asset_name_or_id ) const;
       variant                           get_object( object_id_type id ) const;
       void                              get_wallet_filename() const;
+
+      bool    is_locked()const;
+      void    lock();
+      void    unlock( string password );
+      void    set_password( string password );
 
       string  help()const;
 
@@ -120,9 +133,11 @@ class wallet_api
 
 } }
 
+FC_REFLECT( bts::wallet::plain_keys, (keys)(checksum) )
+
 FC_REFLECT( bts::wallet::wallet_data,
    (accounts)
-   (keys)
+   (cipher_keys)
    (pending_account_registrations)
    (ws_server)
    (ws_user)
@@ -131,6 +146,8 @@ FC_REFLECT( bts::wallet::wallet_data,
 
 FC_API( bts::wallet::wallet_api,
    (help)
+   (is_locked)
+   (lock)(unlock)(set_password)
    (list_accounts)
    (list_account_balances)
    (list_assets)
