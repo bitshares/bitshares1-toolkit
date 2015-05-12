@@ -167,7 +167,7 @@ BOOST_AUTO_TEST_CASE( undo_pending )
          {
             signed_transaction trx;
             trx.set_expiration(db.head_block_id());
-            trx.operations.push_back(transfer_operation({asset(10000000), account_id_type(), account_id_type(1)}));
+            trx.operations.push_back(transfer_operation({asset(), account_id_type(), account_id_type(1), asset(10000000)}));
             db.push_transaction(trx, ~0);
 
             auto aw = db.get_global_properties().active_witnesses;
@@ -182,7 +182,6 @@ BOOST_AUTO_TEST_CASE( undo_pending )
          cop.registrar = account_id_type(1);
          cop.name = "nathan";
          trx.operations.push_back(cop);
-         //trx.signatures.push_back(delegate_priv_key.sign_compact(fc::digest((transaction&)trx)));
          trx.sign( key_id_type(), delegate_priv_key );
          db.push_transaction(trx);
 
