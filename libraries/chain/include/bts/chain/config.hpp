@@ -51,6 +51,8 @@
 
 #define BTS_DEFAULT_NUM_WITNESSES                        (101)
 #define BTS_DEFAULT_NUM_COMMITTEE                        (11)
+#define BTS_DEFAULT_MAX_WITNESSES                        (1001) // SHOULD BE ODD
+#define BTS_DEFAULT_MAX_COMMITTEE                        (1001) // SHOULD BE ODD
 #define BTS_DEFAULT_MAX_PROPOSAL_LIFETIME_SEC            (60*60*24*7*4) // Four weeks
 #define BTS_DEFAULT_GENESIS_PROPOSAL_REVIEW_PERIOD_SEC   (60*60*24*7*2) // Two weeks
 #define BTS_DEFAULT_WITNESS_PERCENT                      (10000/100) // 1%

@@ -183,6 +183,8 @@ void account_create_operation::validate()const
    }
    FC_ASSERT( num_witness + num_committee >= num_witness );  // no overflow
    FC_ASSERT( num_witness + num_committee <= vote.size() );
+   FC_ASSERT( (num_witness&0x01) == 0, "must be odd number" );    
+   FC_ASSERT( (num_committee&0x01) == 0, "must be odd number" ); 
 }
 
 

@@ -403,8 +403,8 @@ namespace bts { namespace chain {
       uint32_t                genesis_proposal_review_period      = BTS_DEFAULT_GENESIS_PROPOSAL_REVIEW_PERIOD_SEC; ///< minimum time in seconds that a proposed transaction requiring genesis authority may not be signed, prior to expiration
       uint8_t                 maximum_asset_whitelist_authorities = BTS_DEFAULT_MAX_ASSET_WHITELIST_AUTHORITIES; ///< maximum number of accounts which an asset may list as authorities for its whitelist OR blacklist
       uint8_t                 maximum_asset_feed_publishers       = BTS_DEFAULT_MAX_ASSET_FEED_PUBLISHERS; ///< the maximum number of feed publishers for a given asset
-      uint16_t                maximum_witness_count               = BTS_DEFAULT_NUM_WITNESSES; ///< maximum number of active witnesses
-      uint16_t                maximum_committee_count             = BTS_DEFAULT_NUM_COMMITTEE; ///< maximum number of active delegates
+      uint16_t                maximum_witness_count               = BTS_DEFAULT_MAX_WITNESSES; ///< maximum number of active witnesses
+      uint16_t                maximum_committee_count             = BTS_DEFAULT_MAX_COMMITTEE; ///< maximum number of active delegates
       uint16_t                maximum_authority_membership        = BTS_DEFAULT_MAX_AUTHORITY_MEMBERSHIP; ///< largest number of keys/accounts an authority can have
       uint16_t                burn_percent_of_fee                 = BTS_DEFAULT_BURN_PERCENT_OF_FEE; ///< the percentage of every fee that is taken out of circulation
       uint16_t                witness_percent_of_fee              = BTS_DEFAULT_WITNESS_PERCENT; ///< percent of revenue paid to witnesses

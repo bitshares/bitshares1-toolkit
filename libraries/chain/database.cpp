@@ -1194,7 +1194,7 @@ void database::update_active_witnesses()
    while( stake_tally <= stake_target )
       stake_tally += _witness_count_histogram_buffer[++witness_count];
 
-   auto wits = sort_votable_objects<witness_object>(std::max(witness_count, BTS_MIN_WITNESS_COUNT));
+   auto wits = sort_votable_objects<witness_object>(std::max(witness_count*2+1, BTS_MIN_WITNESS_COUNT));
    shuffle_vector(wits);
 
    modify( get_global_properties(), [&]( global_property_object& gp ){
@@ -1221,7 +1221,7 @@ void database::update_active_delegates()
    while( stake_tally <= stake_target )
       stake_tally += _committee_count_histogram_buffer[++delegate_count];
 
-   auto delegates = sort_votable_objects<delegate_object>(std::max(delegate_count, BTS_MIN_DELEGATE_COUNT));
+   auto delegates = sort_votable_objects<delegate_object>(std::max(delegate_count*2+1, BTS_MIN_DELEGATE_COUNT));
 
    // Update genesis authorities
    if( !delegates.empty() )
@@ -1338,9 +1338,9 @@ void database::update_vote_totals(const global_property_object& props)
              _vote_tally_buffer[id] += voting_stake;
 
           if( opinion_account.num_witness <= props.parameters.maximum_witness_count )
-             _witness_count_histogram_buffer[opinion_account.num_witness] += voting_stake;
+             _witness_count_histogram_buffer[opinion_account.num_witness/2] += voting_stake;
           if( opinion_account.num_committee <= props.parameters.maximum_committee_count )
-             _committee_count_histogram_buffer[opinion_account.num_committee] += voting_stake;
+             _committee_count_histogram_buffer[opinion_account.num_committee/2] += voting_stake;
 
           _total_voting_stake += voting_stake;
        }
