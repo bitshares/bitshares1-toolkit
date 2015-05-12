@@ -94,6 +94,14 @@ class wallet_api
       bool import_key( string account_name_or_id, string wif_key );
       string normalize_brain_key( string s ) const;
 
+      signed_transaction register_account( string name, 
+                                           public_key_type owner, 
+                                           public_key_type active,
+                                           string  registrar_account,
+                                           string  referrer_account,
+                                           uint8_t referrer_percent,
+                                           bool broadcast = false );
+
       signed_transaction create_account_with_brain_key(
          string brain_key,
          string account_name,
@@ -158,6 +166,7 @@ FC_API( bts::wallet::wallet_api,
    (list_assets)
    (import_key)
    (suggest_brain_key)
+   (register_account)
    (create_account_with_brain_key)
    (transfer)
    (create_asset)

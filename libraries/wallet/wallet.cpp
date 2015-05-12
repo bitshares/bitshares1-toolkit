@@ -43,12 +43,6 @@ class wallet_api_impl
 
       bool copy_wallet_file( string destination_filename );
 
-      signed_transaction create_account_with_brain_key(string brain_key,
-         string account_name,
-         string registrar_account,
-         string referrer_account,
-         bool broadcast = false
-         );
 
       global_property_object            get_global_properties() const;
       dynamic_global_property_object    get_dynamic_global_properties() const;
@@ -63,6 +57,23 @@ class wallet_api_impl
       bool import_key( string account_name_or_id, string wif_key );
       bool load_wallet_file( string wallet_filename = "" );
       void save_wallet_file( string wallet_filename = "" );
+
+
+      signed_transaction register_account( string name, 
+                                           public_key_type owner, 
+                                           public_key_type active,
+                                           string  registrar_account,
+                                           string  referrer_account,
+                                           uint8_t referrer_percent,
+                                           bool broadcast = false );
+
+      signed_transaction create_account_with_brain_key(string brain_key,
+         string account_name,
+         string registrar_account,
+         string referrer_account,
+         bool broadcast = false
+         );
+
 
       signed_transaction create_asset( string issuer, 
                                        string symbol, 
@@ -411,6 +422,92 @@ bool wallet_api_impl::copy_wallet_file( string destination_filename )
    }
    return true;
 }
+
+signed_transaction wallet_api_impl::register_account( string name,
+                                           public_key_type owner_pubkey, 
+                                           public_key_type active_pubkey,
+                                           string  registrar_account,
+                                           string  referrer_account,
+                                           uint8_t referrer_percent,
+                                           bool broadcast )
+{ try {
+   FC_ASSERT( !self.is_locked() );
+   FC_ASSERT( is_valid_name(name) );
+   account_create_operation account_create_op;
+
+   // TODO:  process when pay_from_account is ID
+
+   account_object registrar_account_object =
+      this->get_account( registrar_account );
+   FC_ASSERT( registrar_account_object.is_prime() );
+
+   account_id_type registrar_account_id = registrar_account_object.id;
+
+   account_object referrer_account_object =
+         this->get_account( referrer_account );
+   account_create_op.referrer = referrer_account_object.id;
+   account_create_op.referrer_percent = referrer_percent;
+
+   // get pay_from_account_id
+   key_create_operation owner_key_create_op;
+   owner_key_create_op.fee_paying_account = registrar_account_id;
+   owner_key_create_op.key_data = owner_pubkey;
+
+   key_create_operation active_key_create_op;
+   active_key_create_op.fee_paying_account = registrar_account_id;
+   active_key_create_op.key_data = active_pubkey;
+
+   // key_create_op.calculate_fee(db.current_fee_schedule());
+
+   // TODO:  Check if keys already exist!!!
+
+   relative_key_id_type owner_rkid(0);
+   relative_key_id_type active_rkid(1);
+
+   account_create_op.registrar = registrar_account_id;
+   account_create_op.name = name;
+   account_create_op.owner = authority(1, owner_rkid, 1);
+   account_create_op.active = authority(1, active_rkid, 1);
+   account_create_op.memo_key = active_rkid;
+
+   signed_transaction tx;
+
+   tx.operations.push_back( owner_key_create_op );
+   tx.operations.push_back( active_key_create_op );
+   tx.operations.push_back( account_create_op );
+
+   tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
+
+   vector<key_id_type> paying_keys = registrar_account_object.active.get_keys();
+
+   tx.validate();
+
+   for( key_id_type& key : paying_keys )
+   {
+      auto it = _keys.find(key);
+      if( it != _keys.end() )
+      {
+         fc::optional< fc::ecc::private_key > privkey = wif_to_key( it->second );
+         if( !privkey.valid() )
+         {
+            FC_ASSERT( false, "Malformed private key in _keys" );
+         }
+         tx.sign( key, *privkey );
+      }
+   }
+
+   if( broadcast )
+      _remote_net->broadcast_transaction( tx );
+   return tx;
+} FC_CAPTURE_AND_RETHROW( (name)(owner_pubkey)(active_pubkey)(registrar_account)(referrer_account)(referrer_percent)(broadcast) ) }
+
+
+
+
+
+
+
+
 
 signed_transaction wallet_api_impl::create_account_with_brain_key(
    string brain_key,
@@ -981,6 +1078,16 @@ fc::ecc::private_key wallet_api::derive_private_key(
    return detail::derive_private_key( prefix_string, sequence_number );
 }
 
+signed_transaction wallet_api::register_account( string name,
+                                           public_key_type owner_pubkey, 
+                                           public_key_type active_pubkey,
+                                           string  registrar_account,
+                                           string  referrer_account,
+                                           uint8_t referrer_percent,
+                                           bool broadcast )
+{
+   return my->register_account( name, owner_pubkey, active_pubkey, registrar_account, referrer_account, referrer_percent, broadcast );
+}
 signed_transaction wallet_api::create_account_with_brain_key(
    string brain_key,
    string account_name,
