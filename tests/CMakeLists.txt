@@ -6,7 +6,7 @@ target_link_libraries( chain_test bts_chain bts_app bts_account_history fc )
 
 file(GLOB BENCH_MARKS "benchmarks/*.cpp")
 add_executable( chain_bench ${BENCH_MARKS} ${COMMON_SOURCES} )
-target_link_libraries( chain_bench bts_chain fc )
+target_link_libraries( chain_bench bts_chain bts_account_history fc )
 
 file(GLOB APP_SOURCES "app/*.cpp")
 add_executable( app_test ${APP_SOURCES} )
