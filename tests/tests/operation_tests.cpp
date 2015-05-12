@@ -1897,8 +1897,8 @@ BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
  *  shuffle we need to restrict the placement of delegates to maintain
  *  this invariant.
  */
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( delegate_groups_test, 1 )
-BOOST_AUTO_TEST_CASE( delegate_groups_test )
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_delegate_groups_test, 1 )
+BOOST_AUTO_TEST_CASE( unimp_delegate_groups_test )
 {
    assert( !"not implemented" );
 }
@@ -1914,8 +1914,8 @@ BOOST_AUTO_TEST_CASE( delegate_groups_test )
  * 5) Trigger Global Settle on the Asset 
  * 6) The maitenance collateral must always be 1:1 
  */
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( prediction_market_test, 1 )
-BOOST_AUTO_TEST_CASE( prediction_market_test )
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_prediction_market_test, 1 )
+BOOST_AUTO_TEST_CASE( unimp_prediction_market_test )
 {
    assert( !"not implemented" );
 }
@@ -1925,8 +1925,8 @@ BOOST_AUTO_TEST_CASE( prediction_market_test )
  *  make sure that global settling cannot be performed by anyone other than the
  *  issuer and only if the global settle bit is set.
  */
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( global_settle_test, 1 )
-BOOST_AUTO_TEST_CASE( global_settle_test )
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_global_settle_test, 1 )
+BOOST_AUTO_TEST_CASE( unimp_global_settle_test )
 {
    assert( !"not implemented" );
 }
@@ -1935,8 +1935,8 @@ BOOST_AUTO_TEST_CASE( global_settle_test )
  *  This test should verify that force settling can be disabled for
  *  some BitAssets
  */
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( disable_force_settle_test, 1 )
-BOOST_AUTO_TEST_CASE( disable_force_settle_test )
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_disable_force_settle_test, 1 )
+BOOST_AUTO_TEST_CASE( unimp_disable_force_settle_test )
 {
    assert( !"not implemented" );
 }
@@ -1945,8 +1945,8 @@ BOOST_AUTO_TEST_CASE( disable_force_settle_test )
  *  Asset Burn Test should make sure that all assets except bitassets
  *  can be burned and all supplies add up.
  */
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( burn_asset_test, 1 )
-BOOST_AUTO_TEST_CASE( burn_asset_test )
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_burn_asset_test, 1 )
+BOOST_AUTO_TEST_CASE( unimp_burn_asset_test )
 {
    assert( !"not implemented" );
 }
@@ -1956,17 +1956,18 @@ BOOST_AUTO_TEST_CASE( burn_asset_test )
  * increase the maintenance collateral ratio above the current market
  * price, perhaps setting it to infinity.
  */
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( cover_with_collateral_test, 1 )
-BOOST_AUTO_TEST_CASE( cover_with_collateral_test )
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_cover_with_collateral_test, 1 )
+BOOST_AUTO_TEST_CASE( unimp_cover_with_collateral_test )
 {
    assert( !"not implemented" );
 }
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( bulk_discount_test, 1 )
-BOOST_AUTO_TEST_CASE( bulk_discount_test )
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_bulk_discount_test, 1 )
+BOOST_AUTO_TEST_CASE( unimp_bulk_discount_test )
 {
-   const account_object& shorter1  = create_account( "alice" );
-   const account_object& shorter2  = create_account( "bob" );
+   // commented out to silence compiler warnings
+   //const account_object& shorter1  = create_account( "alice" );
+   //const account_object& shorter2  = create_account( "bob" );
    assert( !"not implemented" );
 }
 
@@ -2030,8 +2031,8 @@ BOOST_AUTO_TEST_CASE( margin_call_black_swan )
  *  perform a recursive blackswan for any other BitAssets that use
  *  BitUSD as collateral.
  */
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( advanced_black_swan, 1 )
-BOOST_AUTO_TEST_CASE( advanced_black_swan )
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_advanced_black_swan, 1 )
+BOOST_AUTO_TEST_CASE( unimp_advanced_black_swan )
 { try {
   FC_ASSERT( !"Advanced BlackSwan Not Implemented" );
 } FC_LOG_AND_RETHROW() }
@@ -2041,8 +2042,8 @@ BOOST_AUTO_TEST_CASE( advanced_black_swan )
 /**
  *  Assume the referrer gets 99% of transaction fee
  */
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( transfer_cashback_test, 1 )
-BOOST_AUTO_TEST_CASE( transfer_cashback_test )
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_transfer_cashback_test, 1 )
+BOOST_AUTO_TEST_CASE( unimp_transfer_cashback_test )
 {
    try {
    FC_ASSERT( !"Rewrite this test with VBO based cashback" );

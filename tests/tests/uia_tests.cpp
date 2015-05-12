@@ -166,8 +166,8 @@ BOOST_AUTO_TEST_CASE( transfer_whitelist_uia )
 /**
  * verify that issuers can halt transfers
  */
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( halt_transfers_flag_test, 1 )
-BOOST_AUTO_TEST_CASE( halt_transfers_flag_test )
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_halt_transfers_flag_test, 1 )
+BOOST_AUTO_TEST_CASE( unimp_halt_transfers_flag_test )
 {
    assert( !"not implemented" );
 }
@@ -175,8 +175,8 @@ BOOST_AUTO_TEST_CASE( halt_transfers_flag_test )
 /**
  * verify that issuers can retract funds
  */
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( fund_retraction_test, 1 )
-BOOST_AUTO_TEST_CASE( fund_retraction_test )
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_fund_retraction_test, 1 )
+BOOST_AUTO_TEST_CASE( unimp_fund_retraction_test )
 {
    assert( !"not implemented" );
 }
