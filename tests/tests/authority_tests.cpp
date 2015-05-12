@@ -968,4 +968,52 @@ BOOST_FIXTURE_TEST_CASE( bogus_signature, database_fixture )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_FIXTURE_TEST_CASE( voting_account, database_fixture )
+{ try {
+   private_key_type nathan_key = generate_private_key("nathan");
+   private_key_type vikram_key = generate_private_key("vikram");
+   auto nathan_key_id = register_key(nathan_key.get_public_key()).get_id();
+   auto vikram_key_id = register_key(vikram_key.get_public_key()).get_id();
+   account_id_type nathan_id = create_account("nathan", nathan_key_id).get_id();
+   account_id_type vikram_id = create_account("vikram", vikram_key_id).get_id();
+   delegate_id_type nathan_delegate = create_delegate(nathan_id(db)).id;
+   delegate_id_type vikram_delegate = create_delegate(vikram_id(db)).id;
+
+   generate_block();
+
+   transfer(account_id_type(), nathan_id, asset(1000000));
+   transfer(account_id_type(), vikram_id, asset(100));
+
+   {
+      account_update_operation op;
+      op.account = nathan_id;
+      op.voting_account = vikram_id;
+      op.vote = flat_set<vote_id_type>{nathan_delegate(db).vote_id};
+      op.num_committee = 1;
+      trx.operations.push_back(op);
+      trx.sign(nathan_key_id, nathan_key);
+      db.push_transaction(trx);
+      trx.clear();
+   }
+   {
+      account_update_operation op;
+      op.account = vikram_id;
+      op.vote = vikram_id(db).votes;
+      op.vote->insert(vikram_delegate(db).vote_id);
+      op.num_committee = 11;
+      trx.operations.push_back(op);
+      trx.sign(vikram_key_id, vikram_key);
+      db.push_transaction(trx);
+      trx.clear();
+   }
+
+   generate_blocks(db.get_dynamic_global_properties().next_maintenance_time + BTS_DEFAULT_BLOCK_INTERVAL);
+   BOOST_CHECK(std::find(db.get_global_properties().active_delegates.begin(),
+                         db.get_global_properties().active_delegates.end(),
+                         nathan_delegate) == db.get_global_properties().active_delegates.end());
+   BOOST_CHECK(std::find(db.get_global_properties().active_delegates.begin(),
+                         db.get_global_properties().active_delegates.end(),
+                         vikram_delegate) != db.get_global_properties().active_delegates.end());
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()

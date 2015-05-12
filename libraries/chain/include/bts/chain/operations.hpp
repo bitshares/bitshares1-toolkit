@@ -1500,8 +1500,8 @@ namespace bts { namespace chain {
    };
 
    /**
-     * @brief Used to find accounts which must sign off on operations in a polymorphic manner
-     */
+    * @brief Used to find accounts which must sign off on operations in a polymorphic manner
+    */
    struct operation_get_required_auths
    {
       flat_set<account_id_type>& active_auth_set;
