@@ -29,9 +29,6 @@ namespace bts { namespace chain {
 
          /// The number of shares currently in existence
          share_type current_supply;
-         /// This tracks how much of the asset has been burned. burned + current_supply should always equal
-         /// initial_supply
-         share_type burned;
          share_type accumulated_fees; ///< fees accumulate to be paid out over time
          share_type fee_pool;         ///< in core asset
    };
@@ -145,9 +142,14 @@ namespace bts { namespace chain {
          template<class DB>
          const asset_bitasset_data_object& bitasset_data(const DB& db)const
          { assert(bitasset_data_id); return db.get(*bitasset_data_id); }
+
          template<class DB>
          const asset_dynamic_data_object& dynamic_data(const DB& db)const
          { return db.get(dynamic_asset_data_id); }
+
+         template<class DB>
+         share_type burned( const DB& db )const
+         { return options.max_supply - dynamic_data(db).current_supply; }
    };
 
    /**
@@ -216,7 +218,7 @@ namespace bts { namespace chain {
 
 } } // bts::chain
 FC_REFLECT_DERIVED( bts::chain::asset_dynamic_data_object, (bts::db::object),
-                    (current_supply)(burned)(accumulated_fees)(fee_pool) )
+                    (current_supply)(accumulated_fees)(fee_pool) )
 
 FC_REFLECT_DERIVED( bts::chain::asset_bitasset_data_object, (bts::db::object),
                     (feeds)

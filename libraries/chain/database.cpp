@@ -1709,7 +1709,6 @@ void database::update_signing_witness(const witness_object& signing_witness, con
    modify( asset_data, [&]( asset_dynamic_data_object& o ){
               o.accumulated_fees -= witness_pay.to_uint64();
               o.accumulated_fees -= burn.to_uint64();
-              o.burned         += burn.to_uint64();
               o.current_supply -= burn.to_uint64();
            } );
 
