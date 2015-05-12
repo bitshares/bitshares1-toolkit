@@ -11,7 +11,7 @@
 
 using namespace bts::chain;
 
-BOOST_FIXTURE_TEST_SUITE( advanced_uia_unit_tests, database_fixture )
+BOOST_FIXTURE_TEST_SUITE( uia_tests, database_fixture )
 
 BOOST_AUTO_TEST_CASE( create_advanced_uia )
 {
@@ -55,6 +55,8 @@ BOOST_AUTO_TEST_CASE( issue_whitelist_uia )
       INVOKE(create_advanced_uia);
       const asset_object& advanced = get_asset("ADVANCED");
       const account_object& nathan = create_account("nathan");
+      upgrade_to_prime(nathan);
+      trx.clear();
 
       asset_issue_operation op({asset(), advanced.issuer, advanced.amount(1000), nathan.id});
       trx.operations.emplace_back(op);
@@ -85,6 +87,8 @@ BOOST_AUTO_TEST_CASE( transfer_whitelist_uia )
       const asset_object& advanced = get_asset("ADVANCED");
       const account_object& nathan = get_account("nathan");
       const account_object& dan = create_account("dan");
+      upgrade_to_prime(dan);
+      trx.clear();
 
       transfer_operation op({advanced.amount(0), nathan.id, dan.id, advanced.amount(100)});
       trx.operations.push_back(op);
