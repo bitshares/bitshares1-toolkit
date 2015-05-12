@@ -5,6 +5,8 @@
 #include <bts/utilities/key_conversion.hpp>
 #include <bts/chain/operation_history_object.hpp>
 
+#include <fc/crypto/hex.hpp>
+
 namespace bts { namespace app {
 
     database_api::database_api( bts::chain::database& db ):_db(db)
@@ -384,6 +386,10 @@ namespace bts { namespace app {
        for( auto id : ids ) _subscriptions.erase(id);
 
        return true;
+    }
+    std::string  database_api::get_transaction_hex( const signed_transaction& trx )const
+    {
+       return fc::to_hex( fc::raw::pack(trx) );
     }
 
 } } // bts::app

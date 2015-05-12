@@ -52,6 +52,7 @@ namespace bts { namespace app {
          bool                              unsubscribe_from_objects( const vector<object_id_type>& ids );
 
 
+         std::string                       get_transaction_hex( const signed_transaction& trx )const;
       private:
          /** called every time a block is applied to report the objects that were changed */
          void on_objects_changed( const vector<object_id_type>& ids );
@@ -128,6 +129,7 @@ FC_API( bts::app::database_api,
         (list_assets)
         (subscribe_to_objects)
         (unsubscribe_from_objects)
+        (get_transaction_hex)
      )
 FC_API( bts::app::network_api, (broadcast_transaction)(add_node)(get_connected_peers) )
 FC_API( bts::app::login_api,
