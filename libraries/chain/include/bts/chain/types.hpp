@@ -59,7 +59,7 @@ namespace bts { namespace chain {
       disable_force_settle = 0x20, /** diable force settleing */
       global_settle        = 0x40  /** allow the bitasset issuer to force a global settling   */
    };
-   const static uint32_t ASSET_ISSUER_PERMISSION_MASK = charge_market_fee|white_list|halt_transfer|override_authority|market_issued|disable_force_settle|global_settle; 
+   const static uint32_t ASSET_ISSUER_PERMISSION_MASK = charge_market_fee|white_list|halt_transfer|override_authority|market_issued|disable_force_settle|global_settle;
    const static uint32_t UIA_ASSET_ISSUER_PERMISSION_MASK = charge_market_fee|white_list|halt_transfer|override_authority;
 
    enum reserved_spaces
@@ -413,6 +413,7 @@ namespace bts { namespace chain {
       share_type              bulk_discount_threshold_min         = BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MIN; ///< the minimum amount of fees paid to qualify for bulk discounts
       share_type              bulk_discount_threshold_max         = BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MAX; ///< the amount of fees paid to qualify for the max bulk discount percent
       bool                    count_non_prime_votes               = true; ///< set to false to restrict voting privlegages to prime accounts
+      bool                    allow_non_prime_whitelists          = false; ///< true if non-prime accounts may set whitelists and blacklists; false otherwise
 
       void validate()const
       {
@@ -510,7 +511,7 @@ FC_REFLECT_ENUM( bts::chain::fee_type,
                  (account_len5_fee_type)
                  (account_len4_fee_type)
                  (account_len3_fee_type)
-                 (account_premium_fee_type) 
+                 (account_premium_fee_type)
                  (account_whitelist_fee_type)
                  (delegate_create_fee_type)
                  (witness_withdraw_pay_fee_type)
@@ -561,6 +562,7 @@ FC_REFLECT( bts::chain::chain_parameters,
             (bulk_discount_threshold_min)
             (bulk_discount_threshold_max)
             (count_non_prime_votes)
+            (allow_non_prime_whitelists)
           )
 
 FC_REFLECT_TYPENAME( bts::chain::account_id_type )
