@@ -23,7 +23,7 @@ BOOST_AUTO_TEST_CASE( simple_single_signature )
       const asset_object& core = asset_id_type()(db);
       auto old_balance = fund(nathan);
 
-      transfer_operation op = {nathan.id, account_id_type(), core.amount(500)};
+      transfer_operation op = {asset(),nathan.id, account_id_type(), core.amount(500)};
       trx.operations.push_back(op);
       sign(trx, key.id, nathan_key);
       db.push_transaction(trx, database::skip_transaction_dupe_check);
@@ -64,7 +64,7 @@ BOOST_AUTO_TEST_CASE( any_two_of_three )
          trx.signatures.clear();
       } FC_CAPTURE_AND_RETHROW ((nathan.active)(key1))
 
-      transfer_operation op = {nathan.id, account_id_type(), core.amount(500)};
+      transfer_operation op = {asset(), nathan.id, account_id_type(), core.amount(500)};
       trx.operations.push_back(op);
       trx.relative_expiration = 29;
       sign(trx, key1.id,nathan_key1);
@@ -124,7 +124,7 @@ BOOST_AUTO_TEST_CASE( recursive_accounts )
       const account_object& child = get_account("child");
       auto old_balance = fund(child);
 
-      transfer_operation op = {child.id, account_id_type(), core.amount(500)};
+      transfer_operation op = {asset(), child.id, account_id_type(), core.amount(500)};
       trx.operations.push_back(op);
       BOOST_CHECK_THROW(db.push_transaction(trx, database::skip_transaction_dupe_check), fc::exception);
       trx.relative_expiration = 12;
@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE( recursive_accounts )
          trx.relative_expiration = 15;
       }
 
-      op = {child.id, account_id_type(), core.amount(500)};
+      op = {asset(),child.id, account_id_type(), core.amount(500)};
       trx.operations.push_back(op);
       BOOST_CHECK_THROW(db.push_transaction(trx, database::skip_transaction_dupe_check), fc::exception);
       sign(trx, key1.id,parent1_key);
@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE( proposed_single_account )
 
       //Following any_two_of_three, nathan's active authority is satisfied by any two of {key1,key2,key3}
       proposal_create_operation op = {account_id_type(1), asset(),
-                                      {{transfer_operation{nathan.id, account_id_type(1), core.amount(100)}}},
+                                      {{transfer_operation{asset(),nathan.id, account_id_type(1), core.amount(100)}}},
                                       db.head_block_time() + fc::days(1)};
       asset nathan_start_balance = db.get_balance(nathan.get_id(), core.get_id());
       {
@@ -347,7 +347,7 @@ BOOST_AUTO_TEST_CASE( genesis_authority )
       p.parameters.genesis_proposal_review_period = fc::days(1).to_seconds();
    });
 
-   trx.operations.push_back(transfer_operation({account_id_type(), nathan.id, asset(100000)}));
+   trx.operations.push_back(transfer_operation({asset(), account_id_type(), nathan.id, asset(100000)}));
    sign(trx, key_id_type(), genesis_key);
    BOOST_CHECK_THROW(db.push_transaction(trx), fc::exception);
 
@@ -433,7 +433,7 @@ BOOST_FIXTURE_TEST_CASE( fired_delegates, database_fixture )
    proposal_create_operation pop = proposal_create_operation::genesis_proposal(db);
    pop.fee_paying_account = account_id_type(1);
    pop.expiration_time = db.head_block_time() + *pop.review_period_seconds * 3;
-   pop.proposed_ops.emplace_back(transfer_operation({account_id_type(), nathan->id, asset(100000)}));
+   pop.proposed_ops.emplace_back(transfer_operation({asset(),account_id_type(), nathan->id, asset(100000)}));
    trx.operations.push_back(pop);
    sign(trx, key_id_type(), genesis_key);
    const proposal_object& prop = db.get<proposal_object>(db.push_transaction(trx).operation_results.front().get<object_id_type>());
@@ -916,10 +916,10 @@ BOOST_FIXTURE_TEST_CASE( bogus_signature, database_fixture )
       transfer(genesis_account_object, alice_account_object, core.amount(100000));
 
       operation xfer_op = transfer_operation(
-         {alice_account_object.id,
+         {core.amount(0),
+          alice_account_object.id,
           bob_account_object.id,
           core.amount( 5000 ),
-          core.amount( 0 ),
           memo_data() });
       xfer_op.visit( operation_set_fee( db.current_fee_schedule() ) );
 

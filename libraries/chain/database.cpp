@@ -317,7 +317,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          }
 
          signed_transaction trx;
-         trx.operations.emplace_back(key_create_operation({genesis_account.id, asset(), handout.first}));
+         trx.operations.emplace_back(key_create_operation({asset(), genesis_account.id, handout.first}));
          relative_key_id_type key_id(0);
          authority account_authority(1, key_id, 1);
          account_create_operation cop;
@@ -331,11 +331,10 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
          auto ptrx = apply_transaction(trx, ~0);
          trx = signed_transaction();
          account_id_type account_id(ptrx.operation_results.back().get<object_id_type>());
-         trx.operations.emplace_back(transfer_operation({
+         trx.operations.emplace_back(transfer_operation({  asset(),
                                                            genesis_account.id,
                                                            account_id,
                                                            amount,
-                                                           asset(),
                                                            memo_data()//vector<char>()
                                                         }));
          trx.validate();

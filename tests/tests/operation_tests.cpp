@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_CASE( update_account )
 
       transfer(account_id_type()(db), nathan, asset(30000));
 
-      trx.operations.emplace_back(key_create_operation({nathan.id, asset(), address(nathan_new_key.get_public_key())}));
+      trx.operations.emplace_back(key_create_operation({asset(),nathan.id,address(nathan_new_key.get_public_key())}));
       db.push_transaction(trx, ~0);
 
       account_update_operation op;
@@ -184,10 +184,9 @@ BOOST_AUTO_TEST_CASE( transfer_core_asset )
       asset genesis_balance = db.get_balance(account_id_type(), asset_id_type());
 
       const account_object& nathan_account = *db.get_index_type<account_index>().indices().get<by_name>().find("nathan");
-      trx.operations.push_back(transfer_operation({genesis_account,
+      trx.operations.push_back(transfer_operation({asset(),genesis_account,
                                                    nathan_account.id,
                                                    asset(10000),
-                                                   asset(),
                                                    memo_data()
                                                   }));
       trx.visit( operation_set_fee( db.current_fee_schedule() ) );
@@ -203,10 +202,10 @@ BOOST_AUTO_TEST_CASE( transfer_core_asset )
       BOOST_CHECK_EQUAL(get_balance(nathan_account, asset_id_type()(db)), 10000);
 
       trx = signed_transaction();
-      trx.operations.push_back(transfer_operation({nathan_account.id,
+      trx.operations.push_back(transfer_operation({asset(),
+                                                   nathan_account.id,
                                                    genesis_account,
                                                    asset(2000),
-                                                   asset(),
                                                    memo_data()
                                                   }));
       trx.visit( operation_set_fee( db.current_fee_schedule() ) );
@@ -567,7 +566,7 @@ BOOST_AUTO_TEST_CASE( issue_uia )
       const asset_object& test_asset = *db.get_index_type<asset_index>().indices().get<by_symbol>().find("TEST");
       const account_object& nathan_account = *db.get_index_type<account_index>().indices().get<by_name>().find("nathan");
 
-      asset_issue_operation op({test_asset.issuer, test_asset.amount(5000000), asset(), nathan_account.id});
+      asset_issue_operation op({asset(),test_asset.issuer, test_asset.amount(5000000),  nathan_account.id});
       trx.operations.push_back(op);
 
       REQUIRE_THROW_WITH_VALUE(op, asset_to_issue, asset(200));
@@ -605,7 +604,7 @@ BOOST_AUTO_TEST_CASE( transfer_uia )
       const account_object& genesis = account_id_type()(db);
 
       BOOST_CHECK_EQUAL(get_balance(nathan, uia), 10000000);
-      trx.operations.push_back(transfer_operation({nathan.id, genesis.id, uia.amount(5000)}));
+      trx.operations.push_back(transfer_operation({asset(),nathan.id, genesis.id, uia.amount(5000)}));
       db.push_transaction(trx, ~0);
       BOOST_CHECK_EQUAL(get_balance(nathan, uia), 10000000 - 5000);
       BOOST_CHECK_EQUAL(get_balance(genesis, uia), 5000);
@@ -800,7 +799,7 @@ BOOST_AUTO_TEST_CASE( uia_fees )
       fund_fee_pool(genesis_account, test_asset, 1000000);
       BOOST_CHECK(asset_dynamic.fee_pool == 1000000);
 
-      transfer_operation op({nathan_account.id, genesis_account.id, test_asset.amount(100), test_asset.amount(0)});
+      transfer_operation op({test_asset.amount(0), nathan_account.id, genesis_account.id, test_asset.amount(100)});
       op.fee = asset(op.calculate_fee(db.current_fee_schedule())) * test_asset.options.core_exchange_rate;
       BOOST_CHECK(op.fee.asset_id == test_asset.id);
       asset old_balance = db.get_balance(nathan_account.get_id(), test_asset.get_id());
@@ -891,7 +890,7 @@ BOOST_AUTO_TEST_CASE( delegate_feeds )
                                                       global_props.witness_accounts.end());
       BOOST_REQUIRE_EQUAL(active_witnesses.size(), 10);
 
-      asset_publish_feed_operation op({active_witnesses[0], asset()});
+      asset_publish_feed_operation op({asset(), active_witnesses[0]});
       op.feed.call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(30));
       op.feed.short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(10));
       // We'll expire margins after a month

@@ -167,7 +167,7 @@ BOOST_AUTO_TEST_CASE( undo_pending )
          {
             signed_transaction trx;
             trx.set_expiration(db.head_block_id());
-            trx.operations.push_back(transfer_operation({account_id_type(), account_id_type(1), asset(10000000)}));
+            trx.operations.push_back(transfer_operation({asset(10000000), account_id_type(), account_id_type(1)}));
             db.push_transaction(trx, ~0);
 
             auto aw = db.get_global_properties().active_witnesses;
@@ -194,12 +194,12 @@ BOOST_AUTO_TEST_CASE( undo_pending )
 
          trx.clear();
          trx.set_expiration(bts::chain::now() + db.get_global_properties().parameters.maximum_time_until_expiration-1);
-         trx.operations.push_back(transfer_operation({account_id_type(1), nathan_id, asset(5000), asset(1)}));
+         trx.operations.push_back(transfer_operation({asset(1),account_id_type(1), nathan_id, asset(5000)}));
          trx.sign( key_id_type(), delegate_priv_key );
          db.push_transaction(trx);
          trx.clear();
          trx.set_expiration(bts::chain::now() + db.get_global_properties().parameters.maximum_time_until_expiration-2);
-         trx.operations.push_back(transfer_operation({account_id_type(1), nathan_id, asset(5000), asset(1)}));
+         trx.operations.push_back(transfer_operation({asset(1),account_id_type(1), nathan_id, asset(5000)}));
          trx.sign( key_id_type(), delegate_priv_key );
          db.push_transaction(trx);
 
@@ -296,7 +296,7 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
 
       trx = decltype(trx)();
       trx.relative_expiration = 1000;
-      trx.operations.push_back(transfer_operation({account_id_type(), nathan_id, asset(500)}));
+      trx.operations.push_back(transfer_operation({asset(), account_id_type(), nathan_id, asset(500)}));
       trx.sign( key_id_type(), delegate_priv_key );
       db1.push_transaction(trx, skip_sigs);
 
@@ -362,7 +362,7 @@ BOOST_AUTO_TEST_CASE( tapos )
 
       trx.operations.clear();
       trx.signatures.clear();
-      trx.operations.push_back(transfer_operation({account_id_type(), nathan_id, asset(50)}));
+      trx.operations.push_back(transfer_operation({asset(), account_id_type(), nathan_id, asset(50)}));
       trx.sign( key_id_type(), delegate_priv_key );
       //relative_expiration is 1, but ref block is 2 blocks old, so this should fail.
       BOOST_REQUIRE_THROW(db1.push_transaction(trx, database::skip_transaction_signatures), fc::exception);

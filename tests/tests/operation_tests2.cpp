@@ -301,7 +301,7 @@ BOOST_AUTO_TEST_CASE( mia_feeds )
    }
    {
       const asset_object& bit_usd = bit_usd_id(db);
-      asset_publish_feed_operation op({vikram_id, asset()});
+      asset_publish_feed_operation op({asset(), vikram_id});
       op.feed.call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(30));
       op.feed.short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(10));
       // We'll expire margins after a month

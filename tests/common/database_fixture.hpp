@@ -436,7 +436,7 @@ struct database_fixture {
 
    void issue_uia(const account_object& recipient, asset amount)
    {
-      asset_issue_operation op({amount.asset_id(db).issuer, amount, asset(), recipient.id});
+      asset_issue_operation op({asset(),amount.asset_id(db).issuer, amount, recipient.id});
       trx.validate();
       trx.operations.push_back(op);
    }
@@ -530,7 +530,7 @@ struct database_fixture {
 
    const key_object& register_key( const public_key_type& key )
    {
-      trx.operations.push_back(key_create_operation({account_id_type(), asset(), key}));
+      trx.operations.push_back(key_create_operation({asset(),account_id_type(), key}));
       key_id_type new_key = db.push_transaction(trx, ~0).operation_results[0].get<object_id_type>();
       trx.operations.clear();
       return new_key(db);
@@ -538,7 +538,7 @@ struct database_fixture {
 
    const key_object& register_address( const address& addr )
    {
-      trx.operations.push_back(key_create_operation({account_id_type(), asset(), addr}));
+      trx.operations.push_back(key_create_operation({asset(), account_id_type(), addr}));
       key_id_type new_key = db.push_transaction(trx, ~0).operation_results[0].get<object_id_type>();
       trx.operations.clear();
       return new_key(db);
@@ -598,7 +598,7 @@ struct database_fixture {
    }
    void transfer( const account_object& from, const account_object& to, const asset& amount, const asset& fee = asset() )
    { try {
-      trx.operations.push_back(transfer_operation({from.id, to.id, amount, fee, memo_data() }));
+      trx.operations.push_back(transfer_operation({fee,from.id, to.id, amount, memo_data() }));
 
       if( fee == asset() )
       {
@@ -611,7 +611,7 @@ struct database_fixture {
 
    void fund_fee_pool( const account_object& from, const asset_object& asset_to_fund, const share_type amount )
    {
-      trx.operations.push_back(asset_fund_fee_pool_operation({from.id, asset_to_fund.id, amount}));
+      trx.operations.push_back(asset_fund_fee_pool_operation({asset(), from.id, asset_to_fund.id, amount}));
 
       for( auto& op : trx.operations ) op.visit( operation_set_fee( db.current_fee_schedule() ) );
       trx.validate();

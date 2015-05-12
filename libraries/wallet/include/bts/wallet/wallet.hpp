@@ -118,6 +118,11 @@ class wallet_api
                                        fc::optional<asset_object::bitasset_options> bitasset_opts,
                                        bool broadcast = false );
 
+      signed_transaction issue_asset( uint64_t amount, 
+                                      string symbol, 
+                                      string to_account,
+                                      string memo,
+                                      bool broadcast = false );
 
       signed_transaction sign_transaction(
          signed_transaction tx,
@@ -156,6 +161,7 @@ FC_API( bts::wallet::wallet_api,
    (create_account_with_brain_key)
    (transfer)
    (create_asset)
+   (issue_asset)
    (get_account)
    (get_account_id)
    (get_block)

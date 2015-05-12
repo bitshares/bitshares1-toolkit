@@ -85,6 +85,12 @@ class wallet_api_impl
          bool broadcast = false
          );
 
+      signed_transaction issue_asset( uint64_t amount, 
+                                      string symbol, 
+                                      string to_account,
+                                      string memo,
+                                      bool broadcast = false );
+
       std::map<string,std::function<string(fc::variant,const fc::variants&)> >
       _get_result_formatters() const;
 
@@ -778,6 +784,40 @@ signed_transaction wallet_api_impl::create_asset( string issuer,
 } FC_CAPTURE_AND_RETHROW( (issuer)(symbol)(precision)(common)(bitasset_opts)(broadcast) ) }
 
 
+signed_transaction wallet_api_impl::issue_asset( uint64_t amount, string symbol, string to_account, string memo, bool broadcast )
+{
+   vector< optional< asset_object > > opt_asset = _remote_db->lookup_asset_symbols( {symbol} );
+   FC_ASSERT( opt_asset.size() == 1 );
+   FC_ASSERT( opt_asset[0].valid() );
+
+   const asset_object& asset_obj = *opt_asset.front();
+   account_object to = get_account(to_account);
+   account_object issuer = *_remote_db->get_accounts( {asset_obj.id} ).front();
+
+   asset_issue_operation issue_op;
+   issue_op.issuer           = asset_obj.issuer;
+   issue_op.asset_to_issue   = asset( amount, asset_obj.id );
+   issue_op.issue_to_account = to.id;
+
+   if( memo.size() )
+   {
+      issue_op.memo = memo_data();
+      issue_op.memo->from = issuer.memo_key;
+      issue_op.memo->to = to.memo_key;
+      issue_op.memo->set_message( get_private_key( issuer.memo_key ), 
+                     get_public_key( to.memo_key ), memo );
+   }
+   /** note: this is a hack to generate unique transfers for a performance test */
+   static int count = 3;
+
+   signed_transaction tx;
+   tx.set_expiration(_remote_db->get_dynamic_global_properties().head_block_id, ++count);
+   tx.operations.push_back( issue_op );
+   tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
+   tx.validate();
+
+   return sign_transaction( tx, broadcast );
+}
 
 signed_transaction wallet_api_impl::transfer(
    string from,
@@ -953,6 +993,14 @@ signed_transaction wallet_api::create_account_with_brain_key(
       brain_key, account_name, registrar_account,
       referrer_account, broadcast
       );
+}
+signed_transaction wallet_api::issue_asset( uint64_t amount, 
+                                string symbol, 
+                                string to_account,
+                                string memo,
+                                bool broadcast  )
+{
+   return my->issue_asset( amount, symbol, to_account, memo, broadcast);
 }
 
 signed_transaction wallet_api::transfer(

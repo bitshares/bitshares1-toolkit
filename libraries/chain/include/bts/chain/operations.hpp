@@ -83,8 +83,8 @@ namespace bts { namespace chain {
     */
    struct key_create_operation
    {
-      account_id_type  fee_paying_account;
       asset            fee;
+      account_id_type  fee_paying_account;
       static_variant<address,public_key_type> key_data;
 
       account_id_type fee_payer()const { return fee_paying_account; }
@@ -100,8 +100,8 @@ namespace bts { namespace chain {
     */
    struct account_create_operation
    {
-      account_id_type registrar;
       asset           fee;
+      account_id_type registrar;
 
       /**
        *  If fee_paying_account->is_prime then referrer can be
@@ -157,6 +157,8 @@ namespace bts { namespace chain {
          white_and_black_listed = white_listed | black_listed ///< This account is both whitelisted and blacklisted
       };
 
+      /// Paid by authorizing_account
+      asset           fee;
       /// The account which is specifying an opinion of another account
       account_id_type authorizing_account;
       /// The account being opined about
@@ -164,8 +166,6 @@ namespace bts { namespace chain {
       /// The new white and blacklist status of account_to_list, as determined by authorizing_account
       /// This is a bitfield using values defined in the account_listing enum
       uint8_t new_listing;
-      /// Paid by authorizing_account
-      asset           fee;
 
       account_id_type fee_payer()const { return authorizing_account; }
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
@@ -180,8 +180,8 @@ namespace bts { namespace chain {
     */
    struct account_update_operation
    {
-      account_id_type                         account;
       asset                                   fee;
+      account_id_type                         account;
       optional<authority>                     owner;
       optional<authority>                     active;
       optional<account_id_type>               voting_account;
@@ -212,9 +212,9 @@ namespace bts { namespace chain {
     */
    struct delegate_create_operation
    {
+      asset                                 fee;
       /// The account which owns the delegate. This account pays the fee for this operation.
       account_id_type                       delegate_account;
-      asset                                 fee;
 
       account_id_type fee_payer()const { return delegate_account; }
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
@@ -239,9 +239,9 @@ namespace bts { namespace chain {
     */
    struct account_transfer_operation
    {
+      asset           fee;
       account_id_type account_id;
       account_id_type new_owner;
-      asset           fee;
 
       account_id_type fee_payer()const { return account_id; }
       void        get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
@@ -260,9 +260,9 @@ namespace bts { namespace chain {
     */
    struct witness_create_operation
    {
+      asset             fee;
       /// The account which owns the delegate. This account pays the fee for this operation.
       account_id_type   witness_account;
-      asset             fee;
       key_id_type       block_signing_key;
       secret_hash_type  initial_secret;
 
@@ -280,11 +280,11 @@ namespace bts { namespace chain {
     */
    struct witness_withdraw_pay_operation
    {
+      asset            fee;
       /// The account to pay. Must match from_witness->witness_account. This account pays the fee for this operation.
       account_id_type  to_account;
       witness_id_type  from_witness;
       share_type       amount;
-      asset            fee;
 
       account_id_type fee_payer()const { return to_account; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
@@ -311,8 +311,8 @@ namespace bts { namespace chain {
     */
    struct global_parameters_update_operation
    {
-      chain_parameters new_parameters;
       asset fee;
+      chain_parameters new_parameters;
 
       account_id_type fee_payer()const { return account_id_type(); }
       void get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
@@ -383,6 +383,9 @@ namespace bts { namespace chain {
     */
    struct transfer_operation
    {
+      /** paid by the from account, may be of any asset for which there is a funded fee pool
+       **/
+      asset           fee;
       account_id_type from;
       account_id_type to;
       /** the amount and asset type that will be withdrawn from account "from" and added to account "to"
@@ -390,9 +393,6 @@ namespace bts { namespace chain {
        **/
       asset           amount;
 
-      /** paid by the from account, may be of any asset for which there is a funded fee pool
-       **/
-      asset                fee;
       /** user provided data encrypted to the memo key of the "to" account */
       optional<memo_data>  memo;
 
@@ -413,9 +413,9 @@ namespace bts { namespace chain {
     */
    struct asset_create_operation
    {
+      asset                   fee;
       /// This account must sign and pay the fee for this operation. Later, this account may update the asset
       account_id_type         issuer;
-      asset                   fee;
       /// The ticker symbol of this asset
       string                  symbol;
       /// Number of digits to the right of decimal point, must be less than or equal to 12
@@ -499,10 +499,10 @@ namespace bts { namespace chain {
     */
    struct asset_fund_fee_pool_operation
    {
+      asset           fee; ///< core asset
       account_id_type from_account;
       asset_id_type   asset_id;
       share_type      amount; ///< core asset
-      asset           fee; ///< core asset
 
       account_id_type fee_payer()const { return from_account; }
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
@@ -536,9 +536,9 @@ namespace bts { namespace chain {
       /// Initializes the operation to apply changes to the provided asset, and copies old.options into @ref new_options
       asset_update_operation(const asset_object& old);
 
+      asset           fee;
       account_id_type issuer;
       asset_id_type   asset_to_update;
-      asset           fee;
 
       /// If the asset is to be given a new issuer, specify his ID here.
       optional<account_id_type>   new_issuer;
@@ -566,9 +566,9 @@ namespace bts { namespace chain {
     */
    struct asset_update_bitasset_operation
    {
+      asset           fee;
       account_id_type issuer;
       asset_id_type   asset_to_update;
-      asset           fee;
 
       asset_object::bitasset_options new_options;
 
@@ -597,9 +597,9 @@ namespace bts { namespace chain {
     */
    struct asset_update_feed_producers_operation
    {
+      asset           fee;
       account_id_type issuer;
       asset_id_type   asset_to_update;
-      asset           fee;
 
       flat_set<account_id_type> new_feed_producers;
 
@@ -631,8 +631,8 @@ namespace bts { namespace chain {
     */
    struct asset_publish_feed_operation
    {
-      account_id_type        publisher;
       asset                  fee; ///< paid for by publisher
+      account_id_type        publisher;
       price_feed             feed;
 
       account_id_type fee_payer()const { return publisher; }
@@ -647,10 +647,14 @@ namespace bts { namespace chain {
     */
    struct asset_issue_operation
    {
+      asset            fee;
       account_id_type  issuer; ///< Must be asset_to_issue->asset_id->issuer
       asset            asset_to_issue;
-      asset            fee;
       account_id_type  issue_to_account;
+
+
+      /** user provided data encrypted to the memo key of the "to" account */
+      optional<memo_data>  memo;
 
       account_id_type fee_payer()const { return issuer; }
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
@@ -702,9 +706,9 @@ namespace bts { namespace chain {
     */
    struct limit_order_create_operation
    {
+      asset           fee;
       account_id_type seller;
       asset           amount_to_sell;
-      asset           fee;
       asset           min_to_receive;
       /**
        *  This order should expire if not filled by expiration
@@ -1586,12 +1590,12 @@ FC_REFLECT( bts::chain::memo_message, (checksum)(text) )
 FC_REFLECT( bts::chain::memo_data, (from)(to)(message) )
 
 FC_REFLECT( bts::chain::key_create_operation,
-            (fee_paying_account)(fee)
+            (fee)(fee_paying_account)
             (key_data)
           )
 
 FC_REFLECT( bts::chain::account_create_operation,
-            (registrar)(fee)
+            (fee)(registrar)
             (referrer)(referrer_percent)
             (name)
             (owner)(active)(voting_account)(memo_key)
@@ -1600,79 +1604,79 @@ FC_REFLECT( bts::chain::account_create_operation,
 
 FC_REFLECT_TYPENAME( fc::flat_set<bts::chain::vote_id_type> )
 FC_REFLECT( bts::chain::account_update_operation,
-            (account)(fee)(owner)(active)(voting_account)(memo_key)(num_witness)(num_committee)(vote)(upgrade_to_prime)
+            (fee)(account)(owner)(active)(voting_account)(memo_key)(num_witness)(num_committee)(vote)(upgrade_to_prime)
           )
 
 FC_REFLECT_TYPENAME( bts::chain::account_whitelist_operation::account_listing)
 FC_REFLECT_ENUM( bts::chain::account_whitelist_operation::account_listing,
                 (no_listing)(white_listed)(black_listed)(white_and_black_listed))
 
-FC_REFLECT( bts::chain::account_whitelist_operation, (authorizing_account)(account_to_list)(new_listing)(fee))
-FC_REFLECT( bts::chain::account_transfer_operation, (account_id)(new_owner)(fee) )
+FC_REFLECT( bts::chain::account_whitelist_operation, (fee)(authorizing_account)(account_to_list)(new_listing))
+FC_REFLECT( bts::chain::account_transfer_operation, (fee)(account_id)(new_owner) )
 
 FC_REFLECT( bts::chain::delegate_create_operation,
-            (delegate_account)(fee) )
+            (fee)(delegate_account) )
 
-FC_REFLECT( bts::chain::witness_create_operation, (witness_account)(fee)(block_signing_key)(initial_secret) )
+FC_REFLECT( bts::chain::witness_create_operation, (fee)(witness_account)(block_signing_key)(initial_secret) )
 FC_REFLECT( bts::chain::witness_withdraw_pay_operation, (fee)(from_witness)(to_account)(amount) )
 
 FC_REFLECT( bts::chain::limit_order_create_operation,
-            (seller)(amount_to_sell)(fee)(min_to_receive)(expiration)(fill_or_kill)
+            (fee)(seller)(amount_to_sell)(min_to_receive)(expiration)(fill_or_kill)
           )
-FC_REFLECT( bts::chain::fill_order_operation, (order_id)(account_id)(pays)(receives)(fee) )
-FC_REFLECT( bts::chain::limit_order_cancel_operation,(fee_paying_account)(fee)(order) )
-FC_REFLECT( bts::chain::short_order_cancel_operation,(fee_paying_account)(fee)(order) )
-FC_REFLECT( bts::chain::short_order_create_operation, (seller)(fee)(amount_to_sell)(collateral)
+FC_REFLECT( bts::chain::fill_order_operation, (fee)(order_id)(account_id)(pays)(receives) )
+FC_REFLECT( bts::chain::limit_order_cancel_operation,(fee)(fee_paying_account)(order) )
+FC_REFLECT( bts::chain::short_order_cancel_operation,(fee)(fee_paying_account)(order) )
+FC_REFLECT( bts::chain::short_order_create_operation, (fee)(seller)(amount_to_sell)(collateral)
             (initial_collateral_ratio)(maintenance_collateral_ratio)(expiration) )
-FC_REFLECT( bts::chain::call_order_update_operation, (funding_account)(fee)(collateral_to_add)(amount_to_cover)(maintenance_collateral_ratio) )
+FC_REFLECT( bts::chain::call_order_update_operation, (fee)(funding_account)(collateral_to_add)(amount_to_cover)(maintenance_collateral_ratio) )
 
 FC_REFLECT( bts::chain::transfer_operation,
-            (from)(to)(amount)(fee)(memo) )
+            (fee)(from)(to)(amount)(memo) )
 
 FC_REFLECT( bts::chain::asset_create_operation,
-            (issuer)
             (fee)
+            (issuer)
             (symbol)
             (precision)
             (common_options)
             (bitasset_options)
           )
 FC_REFLECT( bts::chain::asset_update_operation,
+            (fee)
             (issuer)
             (asset_to_update)
-            (fee)
             (new_issuer)
             (new_options)
           )
 FC_REFLECT( bts::chain::asset_update_bitasset_operation,
+            (fee)
             (issuer)
             (asset_to_update)
-            (fee)
             (new_options)
           )
 FC_REFLECT( bts::chain::asset_update_feed_producers_operation,
-            (issuer)(asset_to_update)(fee)(new_feed_producers)
+            (fee)(issuer)(asset_to_update)(new_feed_producers)
           )
 FC_REFLECT( bts::chain::asset_publish_feed_operation,
-            (publisher)(fee)(feed) )
+            (fee)(publisher)(feed) )
 FC_REFLECT( bts::chain::asset_settle_operation, (fee)(account)(amount) )
 FC_REFLECT( bts::chain::asset_global_settle_operation, (fee)(issuer)(asset_to_settle)(settle_price) )
 
 FC_REFLECT( bts::chain::asset_issue_operation,
-            (issuer)(asset_to_issue)(fee)(issue_to_account) )
+            (fee)(issuer)(asset_to_issue)(issue_to_account)(memo) )
 
 FC_REFLECT( bts::chain::asset_burn_operation,
             (fee)(payer)(amount_to_burn) )
 
-FC_REFLECT( bts::chain::proposal_create_operation, (fee_paying_account)(fee)(expiration_time)
+FC_REFLECT( bts::chain::proposal_create_operation, (fee)(fee_paying_account)(expiration_time)
             (proposed_ops)(review_period_seconds) )
-FC_REFLECT( bts::chain::proposal_update_operation, (fee_paying_account)(fee)(proposal)
+FC_REFLECT( bts::chain::proposal_update_operation, (fee)(fee_paying_account)(proposal)
             (active_approvals_to_add)(active_approvals_to_remove)(owner_approvals_to_add)(owner_approvals_to_remove)
             (key_approvals_to_add)(key_approvals_to_remove) )
-FC_REFLECT( bts::chain::proposal_delete_operation, (fee_paying_account)(using_owner_authority)(fee)(proposal) )
-FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (from_account)(asset_id)(amount)(fee) );
+FC_REFLECT( bts::chain::proposal_delete_operation, (fee)(fee_paying_account)(using_owner_authority)(proposal) )
+FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (fee)(from_account)(asset_id)(amount) );
 
-FC_REFLECT( bts::chain::global_parameters_update_operation, (new_parameters)(fee) );
+FC_REFLECT( bts::chain::global_parameters_update_operation, (fee)(new_parameters) );
 FC_REFLECT( bts::chain::withdraw_permission_create_operation, (fee)(withdraw_from_account)(authorized_account)
             (withdrawal_limit)(withdrawal_period_sec)(periods_until_expiration)(period_start_time) )
 FC_REFLECT( bts::chain::withdraw_permission_update_operation, (fee)(withdraw_from_account)(authorized_account)
