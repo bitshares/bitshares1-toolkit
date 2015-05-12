@@ -1880,7 +1880,7 @@ BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
    trx.clear();
 
    BOOST_CHECK_EQUAL(get_balance(witness->witness_account(db), *core), 4 - 1/*fee*/);
-   BOOST_CHECK_EQUAL(core->dynamic_asset_data_id(db).burned.value, 80);
+   BOOST_CHECK_EQUAL(core->burned(db).value, 80);
    BOOST_CHECK_EQUAL(core->dynamic_asset_data_id(db).accumulated_fees.value, 210000000 - 84);
    BOOST_CHECK_EQUAL(witness->accumulated_income.value, 0);
 } FC_LOG_AND_RETHROW() }
