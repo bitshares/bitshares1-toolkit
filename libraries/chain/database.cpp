@@ -1321,12 +1321,24 @@ void database::update_vote_totals(const global_property_object& props)
                    + (stake_account.cashback_vb.valid() ? (*stake_account.cashback_vb)(*this).balance.amount : share_type(0))
                    + get_balance(stake_account.get_id(), asset_id_type()).amount;
           for( vote_id_type id : opinion_account.votes )
-             _vote_tally_buffer[id] += voting_stake;
+          {
+             uint32_t offset = id.instance();
+             assert( offset < _vote_tally_buffer.size() );
+             _vote_tally_buffer[ offset ] += voting_stake;
+          }
 
           if( opinion_account.num_witness <= props.parameters.maximum_witness_count )
-             _witness_count_histogram_buffer[opinion_account.num_witness/2] += voting_stake;
+          {
+             uint16_t offset = opinion_account.num_witness/2;
+             assert( offset < _witness_count_histogram_buffer.size() );
+             _witness_count_histogram_buffer[ offset ] += voting_stake;
+          }
           if( opinion_account.num_committee <= props.parameters.maximum_committee_count )
-             _committee_count_histogram_buffer[opinion_account.num_committee/2] += voting_stake;
+          {
+             uint16_t offset = opinion_account.num_committee/2;
+             assert( offset < _committee_count_histogram_buffer.size() );
+             _committee_count_histogram_buffer[ offset ] += voting_stake;
+          }
 
           _total_voting_stake += voting_stake;
        }
