@@ -104,6 +104,7 @@ namespace bts { namespace chain {
       flat_set<account_id_type> active_auths;
       flat_set<account_id_type> owner_auths;
       op.visit(operation_get_required_auths(active_auths, owner_auths));
+
       for( auto id : active_auths )
          FC_ASSERT(verify_authority(id(db()), authority::active) ||
                    verify_authority(id(db()), authority::owner), "", ("id", id));

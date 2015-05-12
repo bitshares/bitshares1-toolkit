@@ -16,8 +16,8 @@ namespace bts { namespace chain {
    class transaction_evaluation_state
    {
       public:
-         transaction_evaluation_state( database* db = nullptr, bool skip_sig_check = false )
-         :_db(db),_skip_signature_check(skip_sig_check){}
+         transaction_evaluation_state( database* db = nullptr, bool skip_authority_check = false )
+         :_db(db),_skip_authority_check(skip_authority_check){}
 
          bool check_authority( const account_object&, authority::classification auth_class = authority::active, int depth = 0 );
 
@@ -25,7 +25,7 @@ namespace bts { namespace chain {
 
          bool signed_by( key_id_type id )const;
 
-         /** derived from signatures on transaction 
+         /** derived from signatures on transaction
          flat_set<address>                                          signed_by;
          */
          /** cached approval (accounts and keys) */
@@ -38,7 +38,7 @@ namespace bts { namespace chain {
 
          const signed_transaction* _trx = nullptr;
          database*                 _db = nullptr;
-         bool                      _skip_signature_check = false;
+         bool                      _skip_authority_check = false;
          bool                      _is_proposed_trx = false;
    };
 } } // namespace bts::chain
