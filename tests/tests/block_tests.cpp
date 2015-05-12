@@ -279,7 +279,7 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
       db1.open(dir1.path());
       db2.open(dir2.path());
 
-      auto skip_sigs = database::skip_transaction_signatures;
+      auto skip_sigs = database::skip_transaction_signatures | database::skip_authority_check;
 
       start_simulated_time(bts::chain::now());
       auto delegate_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
@@ -365,11 +365,11 @@ BOOST_AUTO_TEST_CASE( tapos )
       trx.operations.push_back(transfer_operation({asset(), account_id_type(), nathan_id, asset(50)}));
       trx.sign( key_id_type(), delegate_priv_key );
       //relative_expiration is 1, but ref block is 2 blocks old, so this should fail.
-      BOOST_REQUIRE_THROW(db1.push_transaction(trx, database::skip_transaction_signatures), fc::exception);
+      BOOST_REQUIRE_THROW(db1.push_transaction(trx, database::skip_transaction_signatures | database::skip_authority_check), fc::exception);
       trx.relative_expiration = 2;
       trx.signatures.clear();
       trx.sign( key_id_type(), delegate_priv_key );
-      db1.push_transaction(trx, database::skip_transaction_signatures);
+      db1.push_transaction(trx, database::skip_transaction_signatures | database::skip_authority_check);
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
@@ -709,6 +709,7 @@ BOOST_FIXTURE_TEST_CASE( pop_block_twice, database_fixture )
       uint32_t skip_flags = (
            database::skip_delegate_signature
          | database::skip_transaction_signatures
+         | database::skip_authority_check
          );
 
       const asset_object& core = asset_id_type()(db);

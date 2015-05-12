@@ -446,7 +446,7 @@ namespace bts { namespace chain {
     *  When this operation is executed all balances are converted into the backing asset at the
     *  settle_price and all open margin positions are called at the settle price.  If this asset is
     *  used as backing for other bitassets, those bitassets will be force settled at their current
-    *  feed price.  
+    *  feed price.
     */
    struct asset_global_settle_operation
    {
@@ -664,7 +664,7 @@ namespace bts { namespace chain {
    };
 
    /**
-    * @brief used to take an asset out of circulation 
+    * @brief used to take an asset out of circulation
     * @ingroup operations
     *
     * @note You cannot burn market issued assets.
@@ -679,9 +679,9 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const 
-      { 
-         acc.adjust( fee_payer(), -fee ); 
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
+      {
+         acc.adjust( fee_payer(), -fee );
          acc.adjust( fee_payer(), -amount_to_burn );
       }
    };
@@ -1010,7 +1010,8 @@ namespace bts { namespace chain {
       asset               fee; // paid by receiving account
 
       account_id_type fee_payer()const { return account_id; }
-      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const{}
+      void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
+      { active_auth_set.insert(fee_payer()); }
       void            validate()const { FC_ASSERT( !"virtual operation" ); }
       share_type      calculate_fee( const fee_schedule_type& k )const { return share_type(); }
       void            get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const {
@@ -1408,11 +1409,11 @@ namespace bts { namespace chain {
    };
 
    /**
-    * @brief provides a generic way to add higher level protocols on top of witness consensus 
+    * @brief provides a generic way to add higher level protocols on top of witness consensus
     * @ingroup operations
     *
     * There is no validation for this operation other than that required auths are valid and a fee
-    * is paid that is appropriate for the data contained. 
+    * is paid that is appropriate for the data contained.
     */
    struct custom_operation
    {
@@ -1512,7 +1513,15 @@ namespace bts { namespace chain {
       {}
       typedef void result_type;
       template<typename T>
-      void operator()(const T& v)const { v.get_required_auth(active_auth_set, owner_auth_set); }
+      void operator()(const T& v)const
+      {
+         v.get_required_auth(active_auth_set, owner_auth_set);
+#ifndef NDEBUG
+         if( !(active_auth_set.count(v.fee_payer()) || owner_auth_set.count(v.fee_payer())) )
+            elog("Fee payer not in required auths on ${op}", ("op", fc::get_typename<T>::name()));
+         assert(active_auth_set.count(v.fee_payer()) || owner_auth_set.count(v.fee_payer()));
+#endif
+      }
    };
 
    /**

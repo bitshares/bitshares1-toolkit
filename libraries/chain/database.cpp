@@ -1505,15 +1505,13 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    auto trx_id = trx.id();
    FC_ASSERT( (skip & skip_transaction_dupe_check) ||
               trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end() );
-   transaction_evaluation_state eval_state(this, skip&skip_transaction_signatures );
+   transaction_evaluation_state eval_state(this, skip&skip_authority_check );
    eval_state._trx = &trx;
 
    if( !(skip & skip_transaction_signatures) )
    {
       for( auto sig : trx.signatures )
       {
-         //wdump((sig.first));
-         //wdump((sig.first(*this)));
          FC_ASSERT( sig.first(*this).key_address() == fc::ecc::public_key( sig.second, trx.digest() ), "",
                     ("sig.first",sig.first)
                     ("key_address",sig.first(*this).key_address())
