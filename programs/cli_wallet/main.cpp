@@ -15,16 +15,35 @@
 #include <bts/utilities/key_conversion.hpp>
 #include <bts/wallet/wallet.hpp>
 
+#include <fc/rpc/websocket_api.hpp>
+
+#include <boost/program_options.hpp>
+
 using namespace bts::app;
 using namespace bts::chain;
 using namespace bts::utilities;
 using namespace bts::wallet;
 using namespace std;
+namespace bpo = boost::program_options;
 
 int main( int argc, char** argv )
 {
    try {
-      FC_ASSERT( argc > 1, "usage: ${cmd} WALLET_FILE", ("cmd",argv[0]) );
+      boost::program_options::options_description opts;
+         opts.add_options()
+         ("help,h", "Print this help message and exit.")
+         ("rpc-endpoint,r", bpo::value<string>()->implicit_value("127.0.0.1:8091"), "Endpoint for websocket RPC to listen on")
+         ("wallet-file,w", bpo::value<string>()->implicit_value("wallet.json"), "wallet to load");
+
+      bpo::variables_map options;
+
+      bpo::store( bpo::parse_command_line(argc, argv, opts), options );
+
+      if( options.count("help") )
+      {
+         std::cout << opts << "\n";
+         return 0;
+      }
 
       fc::ecc::private_key genesis_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
 
@@ -41,10 +60,15 @@ int main( int argc, char** argv )
       //    designed.
       //
       wallet_data wdata;
-      fc::path wallet_file(argv[1]);
+      wdump((options.count("wallet-file")));
+
+      ilog(".");
+      fc::path wallet_file( options.count("wallet-file") ? options.at("wallet-file").as<string>() : "wallet.json");
+      ilog(".");
       if( fc::exists( wallet_file ) )
           wdata = fc::json::from_file( wallet_file ).as<wallet_data>();
 
+      ilog(".");
       fc::http::websocket_client client;
       auto con  = client.connect( wdata.ws_server );
       auto apic = std::make_shared<fc::rpc::websocket_api_connection>(*con);
@@ -54,7 +78,7 @@ int main( int argc, char** argv )
       FC_ASSERT( remote_api->login( wdata.ws_user, wdata.ws_password ) );
 
       auto wapiptr = std::make_shared<wallet_api>(remote_api);
-      wapiptr->set_wallet_filename( argv[1] );
+      wapiptr->set_wallet_filename( wallet_file.generic_string() );
       wapiptr->load_wallet_file();
       wapiptr->_start_resync_loop();
 
@@ -64,9 +88,27 @@ int main( int argc, char** argv )
       for( auto& name_formatter : wapiptr->_get_result_formatters() )
          wallet_cli->format_result( name_formatter.first, name_formatter.second );
 
+
+
+      auto _websocket_server = std::make_shared<fc::http::websocket_server>();
+      if( options.count("rpc-endpoint") )
+      {
+         _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
+            auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
+//            auto login = std::make_shared<bts::app::login_api>( std::ref(*_self) );
+            wsc->register_api(wapi);
+            c->set_session_data( wsc );
+         });
+         _websocket_server->listen( fc::ip::endpoint::from_string(options.at("rpc-endpoint").as<string>()) );
+         _websocket_server->start_accept();
+      }
+
+
       wallet_cli->register_api( wapi );
       wallet_cli->start();
       wallet_cli->wait();
+
+      wapi->save_wallet_file(wallet_file.generic_string());
    }
    catch ( const fc::exception& e )
    {
