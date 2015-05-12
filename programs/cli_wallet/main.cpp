@@ -32,7 +32,10 @@ int main( int argc, char** argv )
       boost::program_options::options_description opts;
          opts.add_options()
          ("help,h", "Print this help message and exit.")
-         ("rpc-endpoint,r", bpo::value<string>()->implicit_value("127.0.0.1:8091"), "Endpoint for websocket RPC to listen on")
+         ("server-rpc-endpoint,s", bpo::value<string>()->implicit_value("127.0.0.1:8090"), "Server websocket RPC endpoint")
+         ("server-rpc-user,u", bpo::value<string>(), "Server Username")
+         ("server-rpc-password,p", bpo::value<string>(), "Server Password")
+         ("rpc-endpoint,r", bpo::value<string>()->implicit_value("127.0.0.1:8091"), "Endpoint for wallet websocket RPC to listen on")
          ("wallet-file,w", bpo::value<string>()->implicit_value("wallet.json"), "wallet to load");
 
       bpo::variables_map options;
@@ -67,6 +70,13 @@ int main( int argc, char** argv )
       ilog(".");
       if( fc::exists( wallet_file ) )
           wdata = fc::json::from_file( wallet_file ).as<wallet_data>();
+
+      if( options.count("server-rpc-endpoint") )
+         wdata.ws_server = options.at("server-rpc-endpoint").as<std::string>();
+      if( options.count("server-rpc-user") )
+         wdata.ws_user = options.at("server-rpc-user").as<std::string>();
+      if( options.count("server-rpc-password") )
+         wdata.ws_password = options.at("server-rpc-password").as<std::string>();
 
       ilog(".");
       fc::http::websocket_client client;
