@@ -341,18 +341,20 @@ const account_object& database_fixture::get_account( const string& name )const
 
 const asset_object& database_fixture::create_bitasset(
    const string& name,
-   uint16_t market_fee_percent /* = 100 */ /* 1% */
+   account_id_type issuer /* = 1 */,
+   uint16_t market_fee_percent /* = 100 */ /* 1% */,
+   uint16_t flags /* = market_issued | charge_market_fee */
    )
 {
    asset_create_operation creator;
-   creator.issuer = account_id_type(1);
+   creator.issuer = issuer;
    creator.fee = asset();
    creator.symbol = name;
    creator.common_options.max_supply = BTS_MAX_SHARE_SUPPLY;
    creator.precision = 2;
    creator.common_options.market_fee_percent = market_fee_percent;
-   creator.common_options.issuer_permissions = market_issued | charge_market_fee;
-   creator.common_options.flags = market_issued | charge_market_fee;
+   creator.common_options.issuer_permissions = flags;
+   creator.common_options.flags = flags;
    creator.common_options.core_exchange_rate = price({asset(1,1),asset(1)});
    creator.bitasset_options = asset_object::bitasset_options();
    trx.operations.push_back(std::move(creator));
@@ -389,13 +391,18 @@ void database_fixture::issue_uia( const account_object& recipient, asset amount 
    return;
 }
 
+const short_order_object*database_fixture::create_short(account_id_type seller, const asset& amount_to_sell, const asset& collateral_provided, uint16_t initial_collateral_ratio, uint16_t maintenance_collateral_ratio)
+{
+   return create_short(seller(db), amount_to_sell, collateral_provided, initial_collateral_ratio, maintenance_collateral_ratio);
+}
+
 const short_order_object* database_fixture::create_short(
-   const account_object& seller,
-   const asset& amount_to_sell,
-   const asset& collateral_provided,
-   uint16_t initial_collateral_ratio /* = 2000 */,
-   uint16_t maintenance_collateral_ratio /* = 1750 */
-   )
+      const account_object& seller,
+      const asset& amount_to_sell,
+      const asset& collateral_provided,
+      uint16_t initial_collateral_ratio /* = 2000 */,
+      uint16_t maintenance_collateral_ratio /* = 1750 */
+      )
 {
    short_order_create_operation op;
    op.seller = seller.id;
@@ -545,6 +552,11 @@ uint64_t database_fixture::fund(
 void database_fixture::sign(signed_transaction& trx, key_id_type key_id, const fc::ecc::private_key& key)
 {
   trx.sign( key_id, key );
+}
+
+const limit_order_object*database_fixture::create_sell_order(account_id_type user, const asset& amount, const asset& recv)
+{
+   return create_sell_order(user(db), amount, recv);
 }
 
 const limit_order_object* database_fixture::create_sell_order( const account_object& user, const asset& amount, const asset& recv )

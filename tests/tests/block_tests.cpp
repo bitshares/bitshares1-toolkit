@@ -585,7 +585,7 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    transfer(account_id_type()(db), shorter1_id(db), asset(100000000));
    transfer(account_id_type()(db), shorter2_id(db), asset(100000000));
    transfer(account_id_type()(db), shorter3_id(db), asset(100000000));
-   asset_id_type bit_usd = create_bitasset("BITUSD", 0).get_id();
+   asset_id_type bit_usd = create_bitasset("BITUSD", account_id_type(1), 0).get_id();
    {
       asset_update_bitasset_operation op;
       op.asset_to_update = bit_usd;

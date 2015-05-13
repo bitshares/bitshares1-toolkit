@@ -377,6 +377,52 @@ BOOST_AUTO_TEST_CASE( witness_create )
    generate_block();
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE( global_settle_test )
+{ try {
+   ACTOR(nathan);
+   ACTOR(ben);
+   ACTOR(valentine);
+   ACTOR(dan);
+   asset_id_type bit_usd_id = create_bitasset("BITUSD", nathan_id, 100, market_issued | global_settle | charge_market_fee).get_id();
+   transfer(genesis_account, ben_id, asset(10000));
+   transfer(genesis_account, valentine_id, asset(10000));
+   transfer(genesis_account, dan_id, asset(10000));
+   create_short(ben_id, asset(1000, bit_usd_id), asset(1000));
+   create_sell_order(valentine_id, asset(1000), asset(1000, bit_usd_id));
+   create_short(valentine_id, asset(500, bit_usd_id), asset(600));
+   create_sell_order(dan_id, asset(600), asset(500, bit_usd_id));
+
+   BOOST_CHECK_EQUAL(get_balance(valentine_id, bit_usd_id), 990);
+   BOOST_CHECK_EQUAL(get_balance(valentine_id, asset_id_type()), 8400);
+   BOOST_CHECK_EQUAL(get_balance(ben_id, bit_usd_id), 0);
+   BOOST_CHECK_EQUAL(get_balance(ben_id, asset_id_type()), 9000);
+   BOOST_CHECK_EQUAL(get_balance(dan_id, bit_usd_id), 495);
+   BOOST_CHECK_EQUAL(get_balance(dan_id, asset_id_type()), 9400);
+
+   {
+      asset_global_settle_operation op;
+      op.asset_to_settle = bit_usd_id;
+      op.issuer = nathan_id;
+      op.settle_price = ~price(asset(10), asset(11, bit_usd_id));
+      trx.clear();
+      trx.operations.push_back(op);
+      REQUIRE_THROW_WITH_VALUE(op, settle_price, ~price(asset(2001), asset(1000, bit_usd_id)));
+      REQUIRE_THROW_WITH_VALUE(op, asset_to_settle, asset_id_type());
+      REQUIRE_THROW_WITH_VALUE(op, asset_to_settle, asset_id_type(100));
+      REQUIRE_THROW_WITH_VALUE(op, issuer, account_id_type(2));
+      trx.operations.back() = op;
+      trx.sign(nathan_key_id, nathan_private_key);
+      db.push_transaction(trx);
+   }
+
+   BOOST_CHECK_EQUAL(get_balance(valentine_id, bit_usd_id), 0);
+   BOOST_CHECK_EQUAL(get_balance(valentine_id, asset_id_type()), 10046);
+   BOOST_CHECK_EQUAL(get_balance(ben_id, bit_usd_id), 0);
+   BOOST_CHECK_EQUAL(get_balance(ben_id, asset_id_type()), 10091);
+   BOOST_CHECK_EQUAL(get_balance(dan_id, bit_usd_id), 0);
+   BOOST_CHECK_EQUAL(get_balance(dan_id, asset_id_type()), 9850);
+} FC_LOG_AND_RETHROW() }
+
 // TODO:  Write linear VBO tests
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -284,6 +284,15 @@ object_id_type asset_global_settle_evaluator::do_evaluate(const asset_global_set
    FC_ASSERT(asset_to_settle->is_market_issued());
    FC_ASSERT(asset_to_settle->can_global_settle());
    FC_ASSERT(asset_to_settle->issuer == op.issuer );
+   FC_ASSERT(asset_to_settle->dynamic_data(d).current_supply > 0);
+   const auto& idx = d.get_index_type<call_order_index>().indices().get<by_collateral>();
+   assert( !idx.empty() );
+   auto itr = idx.lower_bound(boost::make_tuple(price::min(asset_to_settle->bitasset_data(d).short_backing_asset,
+                                                           op.asset_to_settle)));
+   assert( itr != idx.end() && itr->debt_type() == op.asset_to_settle );
+   const call_order_object& least_collateralized_short = *itr;
+   FC_ASSERT(least_collateralized_short.get_debt() * op.settle_price <= least_collateralized_short.get_collateral(),
+             "Cannot force settle at supplied price: least collateralized short lacks sufficient collateral to settle.");
 
    return object_id_type();
 }
@@ -291,10 +300,9 @@ object_id_type asset_global_settle_evaluator::do_evaluate(const asset_global_set
 object_id_type asset_global_settle_evaluator::do_apply(const asset_global_settle_evaluator::operation_type& op)
 {
    database& d = db();
-   d.settle_black_swan( op.asset_to_settle(db()), op.settle_price );
+   d.globally_settle_asset( op.asset_to_settle(db()), op.settle_price );
    return object_id_type();
 }
-
 
 object_id_type asset_settle_evaluator::do_evaluate(const asset_settle_evaluator::operation_type& op)
 {

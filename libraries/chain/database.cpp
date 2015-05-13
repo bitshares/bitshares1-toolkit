@@ -559,7 +559,7 @@ bool database::check_call_orders( const asset_object& mia )
        if( usd_to_buy * match_price > call_itr->get_collateral() )
        {
           elog( "black swan, we do not have enough collateral to cover at this price" );
-          settle_black_swan( mia, call_itr->get_debt() / call_itr->get_collateral() );
+          globally_settle_asset( mia, call_itr->get_debt() / call_itr->get_collateral() );
           return true;
        }
 
@@ -631,7 +631,7 @@ void database::cancel_order( const limit_order_object& order, bool create_virtua
        - any prediction markets with usd as the backing get converted to BTS as the backing
     any BTS left over due to rounding errors is paid to accumulated fees
 */
-void database::settle_black_swan( const asset_object& mia, const price& settlement_price )
+void database::globally_settle_asset( const asset_object& mia, const price& settlement_price )
 { try {
    elog( "BLACK SWAN!" );
    debug_dump();
@@ -1918,10 +1918,12 @@ void database::clear_expired_orders()
          // Match against the least collateralized short until the settlement is finished or we reach max settlements
          while( settled < max_settlement_volume && find_object(order_id) )
          {
+            auto itr = call_index.lower_bound(boost::make_tuple(price::min(mia_object.bitasset_data(*this).short_backing_asset,
+                                                                           mia_object.get_id())));
             // There should always be a call order, since asset exists!
-            assert(!call_index.empty());
+            assert(itr != call_index.end() && itr->debt_type() == mia_object.get_id());
             asset max_settlement = max_settlement_volume - settled;
-            settled += match(*call_index.begin(), order, settlement_price, max_settlement);
+            settled += match(*itr, order, settlement_price, max_settlement);
          }
          modify(mia, [settled](asset_bitasset_data_object& b) {
             b.force_settled_volume = settled.amount;
