@@ -4,6 +4,7 @@
 #include <bts/chain/asset.hpp>
 #include <bts/chain/authority.hpp>
 #include <bts/chain/asset_object.hpp>
+#include <bts/chain/worker_object.hpp>
 
 #include <fc/static_variant.hpp>
 #include <fc/uint128.hpp>
@@ -1305,11 +1306,11 @@ namespace bts { namespace chain {
    {
       asset               fee;
       account_id_type     claimer;
-      account_id_type     lender; 
+      account_id_type     lender;
       account_id_type     borrower; ///< included in case of offer to borrow, because borrower will receive funds
       bond_offer_id_type  offer_id;
-      asset               amount_borrowed;       ///< should equal amount_collateral * offer_id->collateral_rate 
-      asset               amount_collateral; ///< should equal amount_borrowed * offer_id->collateral_rate 
+      asset               amount_borrowed;       ///< should equal amount_collateral * offer_id->collateral_rate
+      asset               amount_collateral; ///< should equal amount_borrowed * offer_id->collateral_rate
 
       account_id_type   fee_payer()const { return claimer; }
       void              get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
@@ -1418,6 +1419,56 @@ namespace bts { namespace chain {
    };
 
    /**
+    * @defgroup workers The Blockchain Worker System
+    * @ingroup operations
+    *
+    * Graphene blockchains allow the creation of special "workers" which are elected positions paid by the blockchain
+    * for services they provide. There may be several types of workers, and the semantics of how and when they are paid
+    * are defined by the @ref worker_type_enum enumeration. All workers are elected by core stakeholder approval, by
+    * voting for or against them.
+    *
+    * Workers are paid from the blockchain's daily budget if their total approval (votes for - votes against) is
+    * positive, ordered from most positive approval to least, until the budget is exhausted. Payments are processed at
+    * the blockchain maintenance interval. If a worker does not have positive approval during payment processing, or if
+    * the chain's budget is exhausted before the worker is paid, that worker is simply not paid at that interval.
+    * Payment is not prorated based on percentage of the interval the worker was approved. If the chain attempts to pay
+    * a worker, but the budget is insufficient to cover its entire pay, the worker is paid the remaining budget funds,
+    * even though this does not fulfill his total pay. The worker will not receive extra pay to make up the difference
+    * later. Worker pay is placed in a vesting balance and vests over the number of days specified at the worker's
+    * creation.
+    *
+    * Once created, a worker is immutable and will be kept by the blockchain until its end date, at which point it is
+    * deleted automatically; or it is deleted by its owner.
+    *
+    * @{
+    */
+   /**
+    * @brief Create a new worker object
+    * @ingroup operations
+    */
+   struct worker_create_operation
+   {
+      asset                            fee;
+      account_id_type                  owner;
+      time_point_sec                   work_begin_date;
+      time_point_sec                   work_end_date;
+      share_type                       daily_pay;
+      uint16_t                         pay_vesting_period_days;
+      worker_object::worker_type_enum  worker_type;
+
+      account_id_type   fee_payer()const { return owner; }
+      void              get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
+      void              validate()const;
+      share_type        calculate_fee( const fee_schedule_type& k )const;
+      void              get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
+      {
+         acc.adjust( fee_payer(), -fee );
+      }
+
+   };
+   ///@}
+
+   /**
     * @brief provides a generic way to add higher level protocols on top of witness consensus
     * @ingroup operations
     *
@@ -1488,6 +1539,7 @@ namespace bts { namespace chain {
             bond_cancel_offer_operation,
             bond_accept_offer_operation,
             bond_claim_collateral_operation,
+            worker_create_operation,
             custom_operation
          > operation;
 
@@ -1544,7 +1596,7 @@ namespace bts { namespace chain {
     * @brief Used to calculate fees in a polymorphic manner
     *
     * If you wish to pay fees in an asset other than CORE, use the core_exchange_rate argument to specify the rate of
-    
+
     * exchange rate. It is up to the caller to ensure that the core_exchange_rate converts to an asset accepted by the
     * delegates at a rate which they will accept.
     */
@@ -1676,10 +1728,8 @@ FC_REFLECT( bts::chain::asset_publish_feed_operation,
             (fee)(publisher)(feed) )
 FC_REFLECT( bts::chain::asset_settle_operation, (fee)(account)(amount) )
 FC_REFLECT( bts::chain::asset_global_settle_operation, (fee)(issuer)(asset_to_settle)(settle_price) )
-
 FC_REFLECT( bts::chain::asset_issue_operation,
             (fee)(issuer)(asset_to_issue)(issue_to_account)(memo) )
-
 FC_REFLECT( bts::chain::asset_burn_operation,
             (fee)(payer)(amount_to_burn) )
 
@@ -1689,9 +1739,11 @@ FC_REFLECT( bts::chain::proposal_update_operation, (fee)(fee_paying_account)(pro
             (active_approvals_to_add)(active_approvals_to_remove)(owner_approvals_to_add)(owner_approvals_to_remove)
             (key_approvals_to_add)(key_approvals_to_remove) )
 FC_REFLECT( bts::chain::proposal_delete_operation, (fee)(fee_paying_account)(using_owner_authority)(proposal) )
+
 FC_REFLECT( bts::chain::asset_fund_fee_pool_operation, (fee)(from_account)(asset_id)(amount) );
 
 FC_REFLECT( bts::chain::global_parameters_update_operation, (fee)(new_parameters) );
+
 FC_REFLECT( bts::chain::withdraw_permission_create_operation, (fee)(withdraw_from_account)(authorized_account)
             (withdrawal_limit)(withdrawal_period_sec)(periods_until_expiration)(period_start_time) )
 FC_REFLECT( bts::chain::withdraw_permission_update_operation, (fee)(withdraw_from_account)(authorized_account)
@@ -1699,7 +1751,9 @@ FC_REFLECT( bts::chain::withdraw_permission_update_operation, (fee)(withdraw_fro
 FC_REFLECT( bts::chain::withdraw_permission_claim_operation, (fee)(withdraw_permission)(withdraw_from_account)(withdraw_to_account)(amount_to_withdraw)(memo) );
 FC_REFLECT( bts::chain::withdraw_permission_delete_operation, (fee)(withdraw_from_account)(authorized_account)
             (withdrawal_permission) )
+
 FC_REFLECT( bts::chain::file_write_operation, (fee)(payer)(file_id)(owner)(group)(flags)(offset)(data)(lease_seconds)(file_size)(precondition_checksum) )
+
 FC_REFLECT( bts::chain::bond_create_offer_operation, (fee)(creator)(offer_to_borrow)(amount)(collateral_rate)(min_loan_period_sec)(loan_period_sec)(interest_apr) )
 FC_REFLECT( bts::chain::bond_cancel_offer_operation, (fee)(creator)(offer_id)(refund) )
 FC_REFLECT( bts::chain::bond_accept_offer_operation, (fee)(claimer)(lender)(borrower)(offer_id)(amount_borrowed)(amount_collateral) )
@@ -1707,4 +1761,8 @@ FC_REFLECT( bts::chain::bond_claim_collateral_operation, (fee)(claimer)(lender)(
 
 FC_REFLECT( bts::chain::vesting_balance_create_operation, (fee)(creator)(owner)(amount)(vesting_seconds) )
 FC_REFLECT( bts::chain::vesting_balance_withdraw_operation, (fee)(vesting_balance)(owner)(amount) )
+
+FC_REFLECT( bts::chain::worker_create_operation,
+            (fee)(owner)(work_begin_date)(work_end_date)(daily_pay)(pay_vesting_period_days)(worker_type) )
+
 FC_REFLECT( bts::chain::custom_operation, (fee)(payer)(required_auths)(id)(data) )

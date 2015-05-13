@@ -21,6 +21,7 @@ add_library( bts_chain
              bond_evaluator.cpp
              vesting_balance_evaluator.cpp
              withdraw_permission_evaluator.cpp
+             worker_evaluator.cpp
 
              key_object.cpp
              account_object.cpp

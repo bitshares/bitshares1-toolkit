@@ -13,12 +13,12 @@ object_id_type delegate_create_evaluator::do_apply( const delegate_create_operat
 {
    vote_id_type vote_id;
    db().modify(db().get_global_properties(), [&vote_id](global_property_object& p) {
-      vote_id = p.next_available_vote_id++;
+      vote_id = p.get_next_vote_id(vote_id_type::committee);
    });
 
    const auto& new_del_object = db().create<delegate_object>( [&]( delegate_object& obj ){
-         obj.delegate_account         = op.delegate_account;
-         obj.vote_id                  = vote_id;
+         obj.delegate_account   = op.delegate_account;
+         obj.vote_id            = vote_id;
    });
    return new_del_object.id;
 }

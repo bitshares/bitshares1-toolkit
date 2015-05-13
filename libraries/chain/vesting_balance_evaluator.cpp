@@ -8,28 +8,31 @@ namespace bts { namespace chain {
 
 object_id_type vesting_balance_create_evaluator::do_evaluate( const vesting_balance_create_operation& op )
 {
-   const database& _db = db();
+   const database& d = db();
 
-   const account_object& creator_account = op.creator( _db );
-   /* const account_object& owner_account = */ op.owner( _db );
+   const account_object& creator_account = op.creator( d );
+   /* const account_object& owner_account = */ op.owner( d );
 
    // TODO: Check asset authorizations and withdrawals
 
    FC_ASSERT( op.amount.amount > 0 );
-   FC_ASSERT( _db.get_balance( creator_account.id, op.amount.asset_id ) >= op.amount );
+   FC_ASSERT( d.get_balance( creator_account.id, op.amount.asset_id ) >= op.amount );
 
    return object_id_type();
 }
 
 object_id_type vesting_balance_create_evaluator::do_apply( const vesting_balance_create_operation& op )
 {
-   database& _db = db();
-   const time_point_sec now = _db.head_block_time();
+   database& d = db();
+   const time_point_sec now = d.head_block_time();
 
-   _db.adjust_balance( op.creator, -op.amount );
+   d.adjust_balance( op.creator, -op.amount );
 
-   const vesting_balance_object& vbo = _db.create< vesting_balance_object >( [&]( vesting_balance_object& obj )
+   const vesting_balance_object& vbo = d.create< vesting_balance_object >( [&]( vesting_balance_object& obj )
    {
+      //WARNING: The logic to create a vesting balance object is replicated in worker_create_evaluator.
+      // If making changes to this logic, check if those changes should also be made in
+      // worker_create_evaluator::do_apply
       obj.owner = op.owner;
       obj.balance = op.amount;
 
@@ -41,22 +44,22 @@ object_id_type vesting_balance_create_evaluator::do_apply( const vesting_balance
       obj.policy = policy;
    } );
 
-   FC_ASSERT( _db.get_balance( op.creator, op.amount.asset_id ) >= op.amount );
+   FC_ASSERT( d.get_balance( op.creator, op.amount.asset_id ) >= op.amount );
 
    return vbo.id;
 }
 
 object_id_type vesting_balance_withdraw_evaluator::do_evaluate( const vesting_balance_withdraw_operation& op )
 {
-   const database& _db = db();
-   const time_point_sec now = _db.head_block_time();
+   const database& d = db();
+   const time_point_sec now = d.head_block_time();
 
-   const vesting_balance_object& vbo = op.vesting_balance( _db );
+   const vesting_balance_object& vbo = op.vesting_balance( d );
    FC_ASSERT( op.owner == vbo.owner );
    FC_ASSERT( vbo.is_withdraw_allowed( now, op.amount ) );
    assert( op.amount <= vbo.balance );      // is_withdraw_allowed should fail before this check is reached
 
-   /* const account_object& owner_account = */ op.owner( _db );
+   /* const account_object& owner_account = */ op.owner( d );
 
    // TODO: Check asset authorizations and withdrawals
    return object_id_type();
@@ -64,21 +67,21 @@ object_id_type vesting_balance_withdraw_evaluator::do_evaluate( const vesting_ba
 
 object_id_type vesting_balance_withdraw_evaluator::do_apply( const vesting_balance_withdraw_operation& op )
 {
-   database& _db = db();
-   const time_point_sec now = _db.head_block_time();
+   database& d = db();
+   const time_point_sec now = d.head_block_time();
 
-   const vesting_balance_object& vbo = op.vesting_balance( _db );
+   const vesting_balance_object& vbo = op.vesting_balance( d );
 
    // Allow zero balance objects to stick around, (1) to comply
    // with the chain's "objects live forever" design principle, (2)
    // if it's cashback or worker, it'll be filled up again.
 
-   _db.modify( vbo, [&]( vesting_balance_object& vbo )
+   d.modify( vbo, [&]( vesting_balance_object& vbo )
    {
       vbo.withdraw( now, op.amount );
    } );
 
-   _db.adjust_balance( op.owner, op.amount );
+   d.adjust_balance( op.owner, op.amount );
 
    // TODO: Check asset authorizations and withdrawals
    return object_id_type();

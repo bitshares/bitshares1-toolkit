@@ -36,6 +36,7 @@
 #include <bts/chain/vesting_balance_evaluator.hpp>
 #include <bts/chain/vesting_balance_object.hpp>
 #include <bts/chain/withdraw_permission_evaluator.hpp>
+#include <bts/chain/worker_evaluator.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/crypto/digest.hpp>
@@ -166,6 +167,7 @@ void database::initialize_evaluators()
    register_evaluator<withdraw_permission_claim_evaluator>();
    register_evaluator<withdraw_permission_update_evaluator>();
    register_evaluator<withdraw_permission_delete_evaluator>();
+   register_evaluator<worker_create_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -173,31 +175,32 @@ void database::initialize_indexes()
    reset_indexes();
 
    //Protocol object indexes
-   add_index< primary_index< asset_index> >();
-   add_index< primary_index< force_settlement_index> >();
-   add_index< primary_index< account_index> >();
-   add_index< primary_index< simple_index<key_object>> >();
-   add_index< primary_index< simple_index<delegate_object>> >();
-   add_index< primary_index< simple_index<witness_object>> >();
-   add_index< primary_index< limit_order_index > >();
-   add_index< primary_index< short_order_index > >();
-   add_index< primary_index< call_order_index > >();
-   add_index< primary_index< proposal_index > >();
-   add_index< primary_index< withdraw_permission_index > >();
-   add_index< primary_index< bond_index > >();
-   add_index< primary_index< bond_offer_index > >();
-   add_index< primary_index< file_object_index> >();
-   add_index< primary_index< simple_index<vesting_balance_object> > >();
+   add_index< primary_index<asset_index> >();
+   add_index< primary_index<force_settlement_index> >();
+   add_index< primary_index<account_index> >();
+   add_index< primary_index<simple_index<key_object>> >();
+   add_index< primary_index<simple_index<delegate_object>> >();
+   add_index< primary_index<simple_index<witness_object>> >();
+   add_index< primary_index<limit_order_index > >();
+   add_index< primary_index<short_order_index > >();
+   add_index< primary_index<call_order_index > >();
+   add_index< primary_index<proposal_index > >();
+   add_index< primary_index<withdraw_permission_index > >();
+   add_index< primary_index<bond_index > >();
+   add_index< primary_index<bond_offer_index > >();
+   add_index< primary_index<file_object_index> >();
+   add_index< primary_index<simple_index<vesting_balance_object> > >();
+   add_index< primary_index<worker_index> >();
 
    //Implementation object indexes
-   add_index< primary_index< transaction_index                             > >();
-   add_index< primary_index< account_balance_index                         > >();
-   add_index< primary_index< asset_bitasset_data_index                     > >();
-   add_index< primary_index< simple_index< global_property_object         >> >();
-   add_index< primary_index< simple_index< dynamic_global_property_object >> >();
-   add_index< primary_index< simple_index< account_statistics_object      >> >();
-   add_index< primary_index< simple_index< asset_dynamic_data_object      >> >();
-   add_index< primary_index< flat_index<   block_summary_object           >> >();
+   add_index< primary_index<transaction_index                             > >();
+   add_index< primary_index<account_balance_index                         > >();
+   add_index< primary_index<asset_bitasset_data_index                     > >();
+   add_index< primary_index<simple_index< global_property_object         >> >();
+   add_index< primary_index<simple_index< dynamic_global_property_object >> >();
+   add_index< primary_index<simple_index< account_statistics_object      >> >();
+   add_index< primary_index<simple_index< asset_dynamic_data_object      >> >();
+   add_index< primary_index<flat_index<   block_summary_object           >> >();
 }
 
 void database::init_genesis(const genesis_allocation& initial_allocation)

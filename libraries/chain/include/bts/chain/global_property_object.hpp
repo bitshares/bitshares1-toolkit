@@ -29,6 +29,10 @@ namespace bts { namespace chain {
          flat_set<account_id_type>  witness_accounts; // updated once per maintenance interval
 
          fc::sha256                 chain_id;
+
+         vote_id_type get_next_vote_id(vote_id_type::vote_type type) {
+            return vote_id_type(type, next_available_vote_id++);
+         }
    };
 
    /**

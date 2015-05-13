@@ -155,8 +155,8 @@ struct operation_get_impacted_accounts
        _impacted.insert( o.account_to_list );
    }
 
-   void operator()( const asset_create_operation& o )const { } 
-   void operator()( const file_write_operation& o )const { 
+   void operator()( const asset_create_operation& o )const { }
+   void operator()( const file_write_operation& o )const {
       _impacted.insert( o.owner );
    }
 
@@ -240,6 +240,9 @@ struct operation_get_impacted_accounts
    {
       _impacted.insert( o.owner );
    }
+
+   void operator()( const worker_create_operation& )const
+   {}
 };
 
 account_create_observer::~account_create_observer()

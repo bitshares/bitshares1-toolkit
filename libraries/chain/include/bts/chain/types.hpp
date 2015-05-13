@@ -113,6 +113,8 @@ namespace bts { namespace chain {
       vesting_balance_create_fee_type,
       vesting_balance_withdraw_fee_type,
       global_settle_fee_type,
+      worker_create_fee_type, ///< the cost to create a new worker
+      worker_delete_fee_type, ///< the cost to delete a worker
       FEE_TYPE_COUNT ///< Sentry value which contains the number of different fee types
    };
 
@@ -144,6 +146,7 @@ namespace bts { namespace chain {
       bond_object_type,
       file_object_type,
       vesting_balance_object_type,
+      worker_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -189,7 +192,7 @@ namespace bts { namespace chain {
    class bond_offer_object;
    class file_object;
    class vesting_balance_object;
-
+   class worker_object;
 
    typedef object_id< protocol_ids, key_object_type,                key_object>                   key_id_type;
    typedef object_id< protocol_ids, account_object_type,            account_object>               account_id_type;
@@ -208,6 +211,7 @@ namespace bts { namespace chain {
    typedef object_id< protocol_ids, bond_object_type,               bond_object>                  bond_id_type;
    typedef object_id< protocol_ids, file_object_type,               file_object>                  file_id_type;
    typedef object_id< protocol_ids, vesting_balance_object_type,    vesting_balance_object>       vesting_balance_id_type;
+   typedef object_id< protocol_ids, worker_object_type,             worker_object>                worker_id_type;
 
    typedef object_id< relative_protocol_ids, key_object_type, key_object>           relative_key_id_type;
    typedef object_id< relative_protocol_ids, account_object_type, account_object>   relative_account_id_type;
@@ -485,6 +489,7 @@ FC_REFLECT_ENUM( bts::chain::object_type,
                  (bond_object_type)
                  (file_object_type)
                  (vesting_balance_object_type)
+                 (worker_object_type)
                  (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT_ENUM( bts::chain::impl_object_type,
@@ -541,6 +546,8 @@ FC_REFLECT_ENUM( bts::chain::fee_type,
                  (vesting_balance_create_fee_type)
                  (vesting_balance_withdraw_fee_type)
                  (global_settle_fee_type)
+                 (worker_create_fee_type)
+                 (worker_delete_fee_type)
                  (FEE_TYPE_COUNT)
                )
 

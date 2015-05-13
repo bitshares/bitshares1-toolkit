@@ -183,8 +183,8 @@ void account_create_operation::validate()const
    }
    FC_ASSERT( num_witness + num_committee >= num_witness );  // no overflow
    FC_ASSERT( num_witness + num_committee <= vote.size() );
-   // FC_ASSERT( (num_witness == 0) || (num_witness&0x01) == 0, "must be odd number" );    
-   // FC_ASSERT( (num_committee == 0) || (num_committee&0x01) == 0, "must be odd number" ); 
+   // FC_ASSERT( (num_witness == 0) || (num_witness&0x01) == 0, "must be odd number" );
+   // FC_ASSERT( (num_committee == 0) || (num_committee&0x01) == 0, "must be odd number" );
 }
 
 
@@ -850,6 +850,25 @@ void        bond_claim_collateral_operation::validate()const
 share_type  bond_claim_collateral_operation::calculate_fee( const fee_schedule_type& k )const
 {
    return k.at( claim_bond_collateral_fee_type );
+}
+
+void worker_create_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
+{
+   active_auth_set.insert(owner);
+}
+
+void worker_create_operation::validate() const
+{
+   FC_ASSERT(fee.amount >= 0);
+   FC_ASSERT(work_end_date > work_begin_date);
+   FC_ASSERT(daily_pay > 0);
+   FC_ASSERT(daily_pay < BTS_MAX_SHARE_SUPPLY);
+   FC_ASSERT(worker_type < worker_object::WORKER_TYPE_COUNT);
+}
+
+share_type worker_create_operation::calculate_fee(const fee_schedule_type& k) const
+{
+   return k.at( worker_create_fee_type );
 }
 
 } } // namespace bts::chain
