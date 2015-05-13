@@ -64,6 +64,9 @@ database_fixture::~database_fixture()
 
 fc::ecc::private_key database_fixture::generate_private_key(string seed)
 {
+   static const fc::ecc::private_key genesis = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
+   if( seed == "genesis" )
+      return genesis;
    return fc::ecc::private_key::regenerate(fc::sha256::hash(seed));
 }
 
