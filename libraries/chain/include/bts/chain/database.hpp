@@ -189,7 +189,7 @@ namespace bts { namespace chain {
          void adjust_balance(const account_object* account, asset delta) { adjust_balance(*account, delta); }
 
          /// @{ @group Market Helpers
-         void settle_black_swan( const asset_object& bitasset, const price& settle_price );
+         void globally_settle_asset( const asset_object& bitasset, const price& settle_price );
          void cancel_order( const limit_order_object& order, bool create_virtual_op = true );
 
          /**
@@ -266,6 +266,9 @@ namespace bts { namespace chain {
          void update_active_witnesses();
          void update_active_delegates();
          void update_vote_totals(const global_property_object& props);
+         share_type get_max_budget( fc::time_point_sec now )const;
+         void process_budget();
+         void pay_workers( share_type& budget );
          void perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props);
          ///@}
          void create_block_summary(const signed_block& next_block);

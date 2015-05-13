@@ -61,8 +61,18 @@
 #define BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MAX          ( BTS_DEFAULT_BULK_DISCOUNT_THRESHOLD_MIN*int64_t(100) )
 #define BTS_DEFAULT_CASHBACK_VESTING_PERIOD_SEC          (60*60*24*365) ///< 1 year
 #define BTS_DEFAULT_BURN_PERCENT_OF_FEE                  (10000/5) // 20%
-#define BTS_DEFAULT_WITNESS_PAY_PERCENT_OF_ACCUMULATED   20  /// gives a half life of 1 year assuming 1 second blocks
-#define BTS_WITNESS_PAY_PERCENT_PRECISION                1000000000
+#define BTS_DEFAULT_WITNESS_PAY_PERCENT_OF_ACCUMULATED   (   1728000)  /// gives a half life of 1 year assuming 1 second blocks
+#define BTS_WITNESS_PAY_PERCENT_PRECISION                (1000000000)
+
+/**
+ * every second, the fraction of burned core asset which cycles is
+ * BTS_CORE_ASSET_CYCLE_RATE / (1 << BTS_CORE_ASSET_CYCLE_RATE_BITS)
+ */
+#define BTS_CORE_ASSET_CYCLE_RATE                        17
+#define BTS_CORE_ASSET_CYCLE_RATE_BITS                   32
+
+#define BTS_DEFAULT_WITNESS_PAY_PER_BLOCK            (BTS_BLOCKCHAIN_PRECISION * int64_t( 10) )
+#define BTS_DEFAULT_WORKER_BUDGET_PER_DAY            (BTS_BLOCKCHAIN_PRECISION * int64_t(500) * 1000 )
 
 #define MAX_INTEREST_APR                                uint16_t( 10000 )
 #define BTS_LEGACY_NAME_IMPORT_PERIOD                   3000000 /** 3 million blocks */

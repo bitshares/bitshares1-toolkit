@@ -55,7 +55,9 @@ namespace bts { namespace chain {
          bool enforce_white_list()const { return options.flags & white_list; }
          /// @return true if this is a market-issued asset; false otherwise.
          bool is_market_issued()const { return options.flags & market_issued;    }
+         /// @return true if users may request force-settlement of this market-issued asset; false otherwise
          bool can_force_settle()const { return !(options.flags & disable_force_settle); }
+         /// @return true if the issuer of this market-issued asset may globally settle the asset; false otherwise
          bool can_global_settle()const { return options.flags & global_settle;   }
          /// @return true if this asset charges a fee for the issuer on market operations; false otherwise
          bool charges_market_fees()const { return options.flags & charge_market_fee; }

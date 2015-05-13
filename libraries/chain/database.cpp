@@ -573,7 +573,7 @@ bool database::check_call_orders( const asset_object& mia )
        if( usd_to_buy * match_price > call_itr->get_collateral() )
        {
           elog( "black swan, we do not have enough collateral to cover at this price" );
-          settle_black_swan( mia, call_itr->get_debt() / call_itr->get_collateral() );
+          globally_settle_asset( mia, call_itr->get_debt() / call_itr->get_collateral() );
           return true;
        }
 
@@ -645,7 +645,7 @@ void database::cancel_order( const limit_order_object& order, bool create_virtua
        - any prediction markets with usd as the backing get converted to BTS as the backing
     any BTS left over due to rounding errors is paid to accumulated fees
 */
-void database::settle_black_swan( const asset_object& mia, const price& settlement_price )
+void database::globally_settle_asset( const asset_object& mia, const price& settlement_price )
 { try {
    elog( "BLACK SWAN!" );
    debug_dump();
@@ -734,6 +734,7 @@ void database::settle_black_swan( const asset_object& mia, const price& settleme
     // TODO: convert collateral held in bonds
     // TODO: convert payments held in escrow
     // TODO: convert usd held as prediction market collateral
+    // TODO: convert usd in vesting_balance_object's
 
     modify( mia_dyn, [&]( asset_dynamic_data_object& obj ){
        total_mia_settled.amount += obj.accumulated_fees;
@@ -856,6 +857,10 @@ void database::deposit_cashback( const account_object& acct, share_type amount )
    } );
 
    return;
+}
+
+void database::pay_workers( share_type& budget )
+{
 }
 
 bool database::fill_order( const limit_order_object& order, const asset& pays, const asset& receives )
@@ -1262,7 +1267,13 @@ void database::update_active_delegates()
 
 void database::update_global_dynamic_data( const signed_block& b )
 {
-   modify( dynamic_global_property_id_type(0)(*this), [&]( dynamic_global_property_object& dgp ){
+   const dynamic_global_property_object& _dgp =
+      dynamic_global_property_id_type(0)(*this);
+
+   //
+   // dynamic global properties updating
+   //
+   modify( _dgp, [&]( dynamic_global_property_object& dgp ){
       secret_hash_type::encoder enc;
       fc::raw::pack( enc, dgp.random );
       fc::raw::pack( enc, b.previous_secret );
@@ -1382,6 +1393,110 @@ void database::update_vote_totals(const global_property_object& props)
     }
     ilog("Tallied votes in ${time} milliseconds.", ("time", (fc::time_point::now() - timestamp).count() / 1000.0));
 } FC_CAPTURE_AND_RETHROW() }
+
+share_type database::get_max_budget( fc::time_point_sec now )const
+{
+   const dynamic_global_property_object& dpo = get_dynamic_global_properties();
+   const asset_object& core = asset_id_type(0)(*this);
+
+   if(    (dpo.last_budget_time == fc::time_point_sec())
+       || (now <= dpo.last_budget_time) )
+      return share_type(0);
+
+   int64_t dt = (now - dpo.last_budget_time).to_seconds();
+
+   share_type reserve = core.burned(*this);
+
+   fc::uint128_t budget_u128 = reserve.value;
+   budget_u128 *= uint64_t(dt);
+   budget_u128 *= BTS_CORE_ASSET_CYCLE_RATE;
+   //round up to the nearest satoshi -- this is necessary to ensure
+   //   there isn't an "untouchable" reserve, and we will eventually
+   //   be able to use the entire reserve
+   budget_u128 += ((uint64_t(1) << BTS_CORE_ASSET_CYCLE_RATE_BITS) - 1);
+   budget_u128 >>= BTS_CORE_ASSET_CYCLE_RATE_BITS;
+   share_type budget;
+   if( budget_u128 < reserve.value )
+      budget = share_type(budget_u128.to_uint64());
+   else
+      budget = reserve;
+
+   return budget;
+}
+
+/**
+ * Update the budget for witnesses and workers.
+ */
+void database::process_budget()
+{
+   try
+   {
+      const global_property_object& gpo = get_global_properties();
+      const dynamic_global_property_object& dpo = get_dynamic_global_properties();
+      const asset_dynamic_data_object& core =
+         asset_id_type(0)(*this).dynamic_asset_data_id(*this);
+      fc::time_point_sec now = _pending_block.timestamp;
+
+      int64_t time_to_maint = (dpo.next_maintenance_time - now).to_seconds();
+      //
+      // The code that generates the next maintenance time should
+      //    only produce a result in the future.  If this assert
+      //    fails, then the next maintenance time algorithm is buggy.
+      //
+      assert( time_to_maint > 0 );
+      //
+      // Code for setting chain parameters should validate
+      //    block_interval > 0 (as well as the humans proposing /
+      //    voting on changes to block interval).
+      //
+      assert( gpo.parameters.block_interval > 0 );
+      uint64_t blocks_to_maint = (uint64_t(time_to_maint) + gpo.parameters.block_interval - 1) / gpo.parameters.block_interval;
+
+      // blocks_to_maint > 0 because time_to_maint > 0,
+      // which means numerator is at least equal to block_interval
+
+      share_type available_funds = get_max_budget( now );
+
+      share_type witness_budget = gpo.parameters.witness_pay_per_block.value * blocks_to_maint;
+      witness_budget = std::min( witness_budget, available_funds );
+      available_funds -= witness_budget;
+
+      fc::uint128_t worker_budget_u128 = gpo.parameters.worker_budget_per_day.value;
+      worker_budget_u128 *= uint64_t(time_to_maint);
+      worker_budget_u128 /= 60*60*24;
+
+      share_type worker_budget;
+      if( worker_budget_u128 >= available_funds.value )
+         worker_budget = available_funds;
+      else
+         worker_budget = worker_budget_u128.to_uint64();
+      available_funds -= worker_budget;
+
+      share_type leftover_worker_funds = worker_budget;
+      pay_workers( leftover_worker_funds );
+      available_funds += leftover_worker_funds;
+
+      modify( core, [&]( asset_dynamic_data_object& _core )
+      {
+         _core.current_supply = (_core.current_supply
+            + witness_budget
+            + worker_budget
+            - leftover_worker_funds
+            - dpo.witness_budget
+            - _core.accumulated_fees
+            );
+         _core.accumulated_fees = 0;
+      } );
+      modify( dpo, [&]( dynamic_global_property_object& _dpo )
+      {
+         _dpo.witness_budget = witness_budget;
+      } );
+
+      // available_funds is money we could spend, but don't want to.
+      // we simply let it evaporate back into the reserve.
+   }
+   FC_CAPTURE_AND_RETHROW()
+}
 
 /**
  *  Push block "may fail" in which case every partial change is unwound.  After
@@ -1731,30 +1846,22 @@ const witness_object& database::validate_block_header(uint32_t skip, const signe
 
 void database::update_signing_witness(const witness_object& signing_witness, const signed_block& new_block)
 {
-   const auto& core_asset = get( asset_id_type() );
-   const auto& asset_data = core_asset.dynamic_asset_data_id(*this);
-   const auto& gparams = get_global_properties().parameters;
+   const global_property_object& gpo = get_global_properties();
+   const dynamic_global_property_object& dpo = get_dynamic_global_properties();
 
-   // Slowly pay out income based on configured witness pay rate
-   fc::uint128 witness_pay( asset_data.accumulated_fees.value );
-   witness_pay *= gparams.witness_pay_percent_of_accumulated;
-   witness_pay /= BTS_WITNESS_PAY_PERCENT_PRECISION;
+   share_type witness_pay = std::min( gpo.parameters.witness_pay_per_block, dpo.witness_budget );
 
-   auto burn = witness_pay;
-   burn *= gparams.burn_percent_of_fee;
-   burn /= gparams.witness_percent_of_fee;
+   modify( dpo, [&]( dynamic_global_property_object& _dpo )
+   {
+      _dpo.witness_budget -= witness_pay;
+   } );
 
-   modify( asset_data, [&]( asset_dynamic_data_object& o ){
-              o.accumulated_fees -= witness_pay.to_uint64();
-              o.accumulated_fees -= burn.to_uint64();
-              o.current_supply -= burn.to_uint64();
-           } );
-
-   modify( signing_witness, [&]( witness_object& obj ){
-           obj.last_secret = new_block.previous_secret;
-           obj.next_secret = new_block.next_secret_hash;
-           obj.accumulated_income += witness_pay.to_uint64();
-           });
+   modify( signing_witness, [&]( witness_object& _wit )
+   {
+      _wit.last_secret = new_block.previous_secret;
+      _wit.next_secret = new_block.next_secret_hash;
+      _wit.accumulated_income += witness_pay;
+   } );
 }
 
 void database::update_pending_block(const signed_block& next_block, uint8_t current_block_interval)
@@ -1816,6 +1923,10 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
    // Reset all BitAsset force settlement volumes to zero
    for( const asset_bitasset_data_object* d : get_index_type<asset_bitasset_data_index>() )
       modify(*d, [](asset_bitasset_data_object& d) { d.force_settled_volume = 0; });
+
+   // process_budget needs to run at the bottom because
+   //   it needs to know the next_maintenance_time
+   process_budget();
 }
 
 void database::create_block_summary(const signed_block& next_block)
@@ -1932,10 +2043,12 @@ void database::clear_expired_orders()
          // Match against the least collateralized short until the settlement is finished or we reach max settlements
          while( settled < max_settlement_volume && find_object(order_id) )
          {
+            auto itr = call_index.lower_bound(boost::make_tuple(price::min(mia_object.bitasset_data(*this).short_backing_asset,
+                                                                           mia_object.get_id())));
             // There should always be a call order, since asset exists!
-            assert(!call_index.empty());
+            assert(itr != call_index.end() && itr->debt_type() == mia_object.get_id());
             asset max_settlement = max_settlement_volume - settled;
-            settled += match(*call_index.begin(), order, settlement_price, max_settlement);
+            settled += match(*itr, order, settlement_price, max_settlement);
          }
          modify(mia, [settled](asset_bitasset_data_object& b) {
             b.force_settled_volume = settled.amount;

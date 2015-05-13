@@ -115,10 +115,20 @@ struct database_fixture {
 
    const asset_object& get_asset( const string& symbol )const;
    const account_object& get_account( const string& name )const;
-   const asset_object& create_bitasset( const string& name, uint16_t market_fee_percent = 100 /*1%*/ );
+   const asset_object& create_bitasset(const string& name,
+                                       account_id_type issuer = account_id_type(1),
+                                       uint16_t market_fee_percent = 100 /*1%*/,
+                                       uint16_t flags = market_issued | charge_market_fee);
    const asset_object& create_user_issued_asset( const string& name );
    void issue_uia( const account_object& recipient, asset amount );
 
+   const short_order_object* create_short(
+      account_id_type seller,
+      const asset& amount_to_sell,
+      const asset& collateral_provided,
+      uint16_t initial_collateral_ratio = 2000,
+      uint16_t maintenance_collateral_ratio = 1750
+      );
    const short_order_object* create_short(
       const account_object& seller,
       const asset& amount_to_sell,
@@ -159,6 +169,7 @@ struct database_fixture {
    const key_object& register_address( const address& addr );
    uint64_t fund( const account_object& account, const asset& amount = asset(500000) );
    void sign( signed_transaction& trx, key_id_type key_id, const fc::ecc::private_key& key );
+   const limit_order_object* create_sell_order( account_id_type user, const asset& amount, const asset& recv );
    const limit_order_object* create_sell_order( const account_object& user, const asset& amount, const asset& recv );
    asset cancel_limit_order( const limit_order_object& order );
    asset cancel_short_order( const short_order_object& order );
