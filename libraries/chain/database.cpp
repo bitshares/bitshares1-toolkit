@@ -157,6 +157,9 @@ void database::initialize_evaluators()
    register_evaluator<witness_create_evaluator>();
    register_evaluator<witness_withdraw_pay_evaluator>();
    register_evaluator<bond_create_offer_evaluator>();
+   register_evaluator<bond_cancel_offer_evaluator>();
+   register_evaluator<bond_accept_offer_evaluator>();
+   register_evaluator<bond_claim_collateral_evaluator>();
    register_evaluator<vesting_balance_create_evaluator>();
    register_evaluator<vesting_balance_withdraw_evaluator>();
    register_evaluator<withdraw_permission_create_evaluator>();
@@ -382,7 +385,17 @@ asset database::get_balance(const account_object& owner, const asset_object& ass
    return get_balance(owner.get_id(), asset_obj.get_id());
 }
 
-void database::adjust_balance(account_id_type account, asset delta)
+void database::adjust_core_in_orders( const account_object& acnt, asset delta )
+{
+   if( delta.asset_id == asset_id_type(0) && delta.amount != 0 )
+   {
+      modify( acnt.statistics(*this), [&](account_statistics_object& stat){
+          stat.total_core_in_orders += delta.amount;
+      });
+   }
+}
+
+void database::adjust_balance(account_id_type account, asset delta )
 { try {
    if( delta.amount == 0 )
       return;
@@ -403,6 +416,7 @@ void database::adjust_balance(account_id_type account, asset delta)
          b.adjust_balance(delta);
       });
    }
+
 } FC_CAPTURE_AND_RETHROW( (account)(delta) ) }
 
 /**
@@ -2019,5 +2033,6 @@ void database::debug_dump()
    }
    // TODO:  Add vesting_balance_object to this method
 }
+void database::adjust_balance(const account_object& account, asset delta ){ adjust_balance( account.id, delta); }
 
 } } // namespace bts::chain

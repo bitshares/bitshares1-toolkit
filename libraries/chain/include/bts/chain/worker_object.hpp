@@ -9,25 +9,17 @@ namespace bts { namespace chain {
    class worker_term_object;
 
    /**
-    * Worker balance object contains the worker's running balance,
-    * since it is updated frequently, it contains a minimal set of
-    * information.
-    */
-   class worker_balance_object : public abstract_object<worker_balance_object>
-   {
-      public:
-         static const uint8_t space_id = protocol_ids;
-         static const uint8_t type_id = worker_balance_object_type;
-
-         asset                          balance;
-
-         worker_balance_object( asset_id_type pay_asset ) :
-            balance( 0, pay_asset) {}
-   };
-
-   /**
     * Worker object contains the worker's payment terms.
     * Including work begin/end date, vesting period, and daily pay.
+    *
+    * Each maintenance interval calculate votes for workers, sort
+    * workers by NET votes for/against, then pay workers in order 
+    * until the daily budget is consumed.   
+    *
+    * Pay workers to a vesting balance object that is configured with
+    * vesting_period_days.
+    *
+    * (TIME SINCE LAST Maintenance Interval) / DAY  * daily pay == current pay
     */
    class worker_object : public abstract_object<worker_object>
    {
@@ -35,13 +27,10 @@ namespace bts { namespace chain {
          static const uint8_t space_id = protocol_ids;
          static const uint8_t type_id = worker_object_type;
 
-         account_id_type                worker_account;
-         worker_balance_id_type         balance;
+         vesting_balance_id_type        balance;
          time_point_sec                 work_begin_date;
          time_point_sec                 work_end_date;
-         uint16_t                       vesting_period_days;
-         uint16_t                       vesting_qzn_days;
-         asset                          daily_pay;
+         share_type                     daily_pay; ///< BTS
 
          vote_id_type                   vote_for;
          vote_id_type                   vote_against;

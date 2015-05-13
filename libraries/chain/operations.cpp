@@ -654,26 +654,6 @@ share_type asset_settle_operation::calculate_fee(const fee_schedule_type& k) con
    return k.at(asset_settle_fee_type);
 }
 
-void bond_create_offer_operation::get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const
-{
-   active_auth_set.insert( creator );
-}
-
-void bond_create_offer_operation::validate()const
-{
-   FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( amount.amount > 0 );
-   FC_ASSERT( amount.asset_id == collateral_rate.base.asset_id || amount.asset_id == collateral_rate.quote.asset_id );
-   collateral_rate.validate();
-   FC_ASSERT( min_loan_period_sec > 0 );
-   FC_ASSERT( loan_period_sec >= min_loan_period_sec );
-   FC_ASSERT( interest_apr <= MAX_INTEREST_APR );
-}
-
-share_type bond_create_offer_operation::calculate_fee( const fee_schedule_type& schedule )const
-{
-   return schedule.at( create_bond_offer_fee_type );
-}
 
 void bts::chain::asset_publish_feed_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
 {
@@ -799,6 +779,77 @@ void        custom_operation::validate()const
 share_type  custom_operation::calculate_fee( const fee_schedule_type& k )const
 {
    return (data.size() * k.at( data_fee_type ).value)/1024;
+}
+
+void bond_create_offer_operation::get_required_auth( flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>& )const
+{
+   active_auth_set.insert( creator );
+}
+
+void bond_create_offer_operation::validate()const
+{ try {
+   FC_ASSERT( fee.amount >= 0 );
+   FC_ASSERT( amount.amount > 0 );
+   collateral_rate.validate();
+   FC_ASSERT( (amount * collateral_rate).amount > 0 );
+   FC_ASSERT( min_loan_period_sec > 0 );
+   FC_ASSERT( loan_period_sec >= min_loan_period_sec );
+   FC_ASSERT( interest_apr <= MAX_INTEREST_APR );
+} FC_CAPTURE_AND_RETHROW((*this)) }
+
+share_type bond_create_offer_operation::calculate_fee( const fee_schedule_type& schedule )const
+{
+   return schedule.at( create_bond_offer_fee_type );
+}
+
+
+void        bond_cancel_offer_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
+{
+   active_auth_set.insert( creator );
+}
+void        bond_cancel_offer_operation::validate()const
+{
+   FC_ASSERT( fee.amount > 0 );
+   FC_ASSERT( refund.amount > 0 );
+}
+share_type  bond_cancel_offer_operation::calculate_fee( const fee_schedule_type& k )const
+{
+   return k.at( cancel_bond_offer_fee_type );
+}
+
+void        bond_accept_offer_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
+{
+   active_auth_set.insert( claimer );
+}
+
+void        bond_accept_offer_operation::validate()const
+{
+   FC_ASSERT( fee.amount > 0 );
+   (amount_collateral / amount_borrowed).validate();
+   FC_ASSERT( claimer == borrower || claimer == lender );
+   FC_ASSERT( borrower != lender );
+}
+
+share_type  bond_accept_offer_operation::calculate_fee( const fee_schedule_type& k )const
+{
+   return k.at( accept_bond_offer_fee_type );
+}
+void        bond_claim_collateral_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
+{
+   active_auth_set.insert( claimer );
+}
+
+void        bond_claim_collateral_operation::validate()const
+{
+   FC_ASSERT( fee.amount > 0 );
+   FC_ASSERT(payoff_amount.amount >= 0 );
+   FC_ASSERT(collateral_claimed.amount >= 0 );
+   FC_ASSERT( payoff_amount.asset_id != collateral_claimed.asset_id );
+}
+
+share_type  bond_claim_collateral_operation::calculate_fee( const fee_schedule_type& k )const
+{
+   return k.at( claim_bond_collateral_fee_type );
 }
 
 } } // namespace bts::chain

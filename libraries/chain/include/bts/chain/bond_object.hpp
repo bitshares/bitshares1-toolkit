@@ -21,8 +21,12 @@ namespace bts { namespace chain {
         account_id_type   borrower;
         account_id_type   lender;
         asset             borrowed;
+        /** if collateral is the core asset, then voting rights belong to the borrower 
+         * because the borrower is owner of the collateral until they default
+         */
         asset             collateral;
         uint16_t          interest_apr = 0;
+        time_point_sec    start_date;
         /** after this date the lender can collect the collateral at will or let it float */
         time_point_sec    due_date;
         /** the loan cannot be paid off before this date */
@@ -84,5 +88,6 @@ namespace bts { namespace chain {
 
 }} // bts::chain
 
-FC_REFLECT_DERIVED( bts::chain::bond_object,       (bts::db::object), (borrower)(lender)(borrowed)(collateral)(interest_apr)(due_date)(earliest_payoff_date) )
+FC_REFLECT_DERIVED( bts::chain::bond_object,       (bts::db::object), 
+                    (borrower)(lender)(borrowed)(collateral)(interest_apr)(start_date)(due_date)(earliest_payoff_date) )
 FC_REFLECT_DERIVED( bts::chain::bond_offer_object, (bts::db::object), (offered_by_account)(offer_to_borrow)(amount)(collateral_rate)(min_loan_period_sec)(loan_period_sec)(interest_apr) )

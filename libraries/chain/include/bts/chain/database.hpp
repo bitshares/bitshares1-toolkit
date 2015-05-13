@@ -171,6 +171,12 @@ namespace bts { namespace chain {
          /// This is an overloaded method.
          asset get_balance(const account_object* owner, const asset_object* asset_obj)const
          { return get_balance(*owner, *asset_obj); }
+
+
+         /**
+          * If delta.asset_id is a core asset, adjusts account statistics 
+          */
+         void adjust_core_in_orders( const account_object& acnt, asset delta );
          /**
           * @brief Adjust a particular account's balance in a given asset by a delta
           * @param account ID of account whose balance should be adjusted
@@ -178,7 +184,7 @@ namespace bts { namespace chain {
           */
          void adjust_balance(account_id_type account, asset delta);
          /// This is an overloaded method.
-         void adjust_balance(const account_object& account, asset delta);
+         void adjust_balance(const account_object& account, asset delta );
          /// This is an overloaded method.
          void adjust_balance(const account_object* account, asset delta) { adjust_balance(*account, delta); }
 

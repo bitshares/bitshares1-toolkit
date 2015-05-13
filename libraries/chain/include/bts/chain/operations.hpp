@@ -1256,9 +1256,9 @@ namespace bts { namespace chain {
    {
       asset                   fee;
       account_id_type         creator;
-      bool                    offer_to_borrow = false; // Offer to borrow if true, and offer to lend otherwise
-      asset                   amount; // Amount to lend or secure depending on above
-      price                   collateral_rate; // To derive amount of collateral or principle based on above
+      bool                    offer_to_borrow = false; ///< Offer to borrow if true, and offer to lend otherwise
+      asset                   amount; ///< Amount to lend or secure depending on above
+      price                   collateral_rate; ///< To derive amount of collateral or principle based on above
       /** after this time the lender can let the loan float or collect the collateral at will */
       uint32_t                min_loan_period_sec = 0; ///< the earliest the loan may be paid off
       uint32_t                loan_period_sec = 0;
@@ -1305,8 +1305,11 @@ namespace bts { namespace chain {
    {
       asset               fee;
       account_id_type     claimer;
+      account_id_type     lender; 
+      account_id_type     borrower; ///< included in case of offer to borrow, because borrower will receive funds
       bond_offer_id_type  offer_id;
-      asset               amount; ///< the amount withdrawn from claimers account
+      asset               amount_borrowed;       ///< should equal amount_collateral * offer_id->collateral_rate 
+      asset               amount_collateral; ///< should equal amount_borrowed * offer_id->collateral_rate 
 
       account_id_type   fee_payer()const { return claimer; }
       void              get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
@@ -1315,7 +1318,11 @@ namespace bts { namespace chain {
       void              get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
       {
          acc.adjust( fee_payer(), -fee );
-         acc.adjust( claimer, -amount );
+         if( claimer == lender )
+            acc.adjust( claimer, -amount_borrowed );
+         else // claimer == borrower
+            acc.adjust( claimer, -amount_collateral );
+         acc.adjust( borrower, amount_borrowed );
       }
    };
 
@@ -1328,7 +1335,8 @@ namespace bts { namespace chain {
    struct bond_claim_collateral_operation
    {
       asset            fee;
-      account_id_type  claimer;
+      account_id_type  claimer; ///< must be bond_id->lender or bond_id->borrower
+      account_id_type  lender; ///< must be bond_id->lender
       bond_id_type     bond_id;
       asset            payoff_amount;
       asset            collateral_claimed;
@@ -1342,6 +1350,7 @@ namespace bts { namespace chain {
          acc.adjust( fee_payer(), -fee );
          acc.adjust( claimer, -payoff_amount );
          acc.adjust( claimer, collateral_claimed );
+         acc.adjust( lender, payoff_amount );
       }
    };
 
@@ -1476,13 +1485,10 @@ namespace bts { namespace chain {
             vesting_balance_create_operation,
             vesting_balance_withdraw_operation,
             bond_create_offer_operation,
+            bond_cancel_offer_operation,
+            bond_accept_offer_operation,
+            bond_claim_collateral_operation,
             custom_operation
-            /*
-            * TODO: once methods on these ops are implemented
-            cancel_bond_offer_operation,
-            accept_bond_offer_operation,
-            claim_bond_collateral_operation
-            */
          > operation;
 
    /// @} // operations group
@@ -1538,7 +1544,7 @@ namespace bts { namespace chain {
     * @brief Used to calculate fees in a polymorphic manner
     *
     * If you wish to pay fees in an asset other than CORE, use the core_exchange_rate argument to specify the rate of
-    * conversion you wish to use. The operation's fee will be calculated by multiplying the CORE fee by the provided
+    
     * exchange rate. It is up to the caller to ensure that the core_exchange_rate converts to an asset accepted by the
     * delegates at a rate which they will accept.
     */
@@ -1696,8 +1702,8 @@ FC_REFLECT( bts::chain::withdraw_permission_delete_operation, (fee)(withdraw_fro
 FC_REFLECT( bts::chain::file_write_operation, (fee)(payer)(file_id)(owner)(group)(flags)(offset)(data)(lease_seconds)(file_size)(precondition_checksum) )
 FC_REFLECT( bts::chain::bond_create_offer_operation, (fee)(creator)(offer_to_borrow)(amount)(collateral_rate)(min_loan_period_sec)(loan_period_sec)(interest_apr) )
 FC_REFLECT( bts::chain::bond_cancel_offer_operation, (fee)(creator)(offer_id)(refund) )
-FC_REFLECT( bts::chain::bond_accept_offer_operation, (fee)(claimer)(offer_id)(amount) )
-FC_REFLECT( bts::chain::bond_claim_collateral_operation, (fee)(claimer)(bond_id)(payoff_amount)(collateral_claimed) )
+FC_REFLECT( bts::chain::bond_accept_offer_operation, (fee)(claimer)(lender)(borrower)(offer_id)(amount_borrowed)(amount_collateral) )
+FC_REFLECT( bts::chain::bond_claim_collateral_operation, (fee)(claimer)(lender)(bond_id)(payoff_amount)(collateral_claimed) )
 
 FC_REFLECT( bts::chain::vesting_balance_create_operation, (fee)(creator)(owner)(amount)(vesting_seconds) )
 FC_REFLECT( bts::chain::vesting_balance_withdraw_operation, (fee)(vesting_balance)(owner)(amount) )

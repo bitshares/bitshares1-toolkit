@@ -25,6 +25,7 @@ object_id_type bond_create_offer_evaluator::do_evaluate( const bond_create_offer
 object_id_type bond_create_offer_evaluator::do_apply( const bond_create_offer_operation& op )
 {
     db().adjust_balance( op.creator, -op.amount );
+    db().adjust_core_in_orders( op.creator(db()), op.amount );
 
     const auto& offer = db().create<bond_offer_object>( [&]( bond_offer_object& obj )
     {
@@ -38,6 +39,142 @@ object_id_type bond_create_offer_evaluator::do_apply( const bond_create_offer_op
     } );
 
     return offer.id;
+}
+
+
+object_id_type bond_cancel_offer_evaluator::do_evaluate( const bond_cancel_offer_operation& op )
+{
+    _offer = &op.offer_id(db());
+    FC_ASSERT( op.creator == _offer->offered_by_account );
+    FC_ASSERT( _offer->amount == op.refund );
+    return object_id_type();
+}
+
+object_id_type bond_cancel_offer_evaluator::do_apply( const bond_cancel_offer_operation& op )
+{
+    assert( _offer != nullptr );
+    db().adjust_balance( op.creator, op.refund );
+    db().adjust_core_in_orders( op.creator(db()), -op.refund );
+    db().remove( *_offer );
+    return  object_id_type();
+}
+
+object_id_type bond_accept_offer_evaluator::do_evaluate( const bond_accept_offer_operation& op )
+{ try {
+    _offer = &op.offer_id(db());
+
+    FC_ASSERT( (op.amount_borrowed / op.amount_collateral  == _offer->collateral_rate) ||
+               (op.amount_collateral / op.amount_borrowed  == _offer->collateral_rate)  );
+
+    return object_id_type();
+} FC_CAPTURE_AND_RETHROW((op)) }
+
+object_id_type bond_accept_offer_evaluator::do_apply( const bond_accept_offer_operation& op )
+{ try {
+
+    if( op.claimer == op.lender )
+    {
+       db().adjust_balance( op.lender, -op.amount_borrowed );
+    }
+    else // claimer == borrower
+    {
+       db().adjust_balance( op.borrower, -op.amount_collateral );
+       db().adjust_core_in_orders( op.borrower(db()), op.amount_collateral );
+    }
+    db().adjust_balance( op.borrower, op.amount_borrowed );
+
+    const auto& bond = db().create<bond_object>( [&]( bond_object& obj )
+    {
+        obj.borrowed = op.amount_borrowed;
+        obj.collateral = op.amount_collateral;
+        obj.borrower   = op.borrower;
+        obj.lender     = op.lender;
+
+        auto head_time = db().get_dynamic_global_properties().time;
+        obj.interest_apr         = _offer->interest_apr;
+        obj.start_date           = head_time;
+        obj.due_date             = head_time + fc::seconds( _offer->loan_period_sec ); 
+        obj.earliest_payoff_date = head_time + fc::seconds( _offer->min_loan_period_sec );
+    } );
+
+    if( _offer->offer_to_borrow && op.amount_borrowed < _offer->amount )
+    {
+       db().modify( *_offer, [&]( bond_offer_object& offer ){
+           offer.amount -= op.amount_borrowed;
+       });
+    }
+    else if( !_offer->offer_to_borrow && op.amount_collateral < _offer->amount )
+    {
+       db().modify( *_offer, [&]( bond_offer_object& offer ){
+           offer.amount -= op.amount_collateral;
+       });
+    }
+    else
+    {
+       db().remove( *_offer );
+    }
+    return  bond.id;
+} FC_CAPTURE_AND_RETHROW((op)) }
+
+
+
+object_id_type bond_claim_collateral_evaluator::do_evaluate( const bond_claim_collateral_operation& op )
+{
+    _bond = &op.bond_id(db());
+    auto head_time = db().get_dynamic_global_properties().time;
+    FC_ASSERT( head_time > _bond->earliest_payoff_date );
+
+
+    FC_ASSERT( op.collateral_claimed <= _bond->collateral );
+    if( _bond->borrower == op.claimer )
+    {
+       auto elapsed_time = head_time - _bond->start_date;
+       auto elapsed_days = 1 + elapsed_time.to_seconds() / (60*60*24);
+
+       fc::uint128 tmp = _bond->borrowed.amount.value;
+       tmp *= elapsed_days;
+       tmp *= _bond->interest_apr;
+       tmp /= (365 * BTS_100_PERCENT);
+       FC_ASSERT( tmp < BTS_MAX_SHARE_SUPPLY );
+       _interest_due = asset(tmp.to_uint64(), _bond->borrowed.asset_id);
+
+       FC_ASSERT( _interest_due + _bond->borrowed <= op.payoff_amount );
+
+       if( _interest_due + _bond->borrowed == op.payoff_amount )
+          FC_ASSERT( op.collateral_claimed == _bond->collateral );
+    }
+    else
+    {
+       FC_ASSERT( _bond->lender == op.claimer );
+       FC_ASSERT( head_time > _bond->due_date );
+       FC_ASSERT( _bond->collateral == op.collateral_claimed );
+       FC_ASSERT( op.payoff_amount == asset(0,_bond->borrowed.asset_id ) );
+    }
+    return object_id_type();
+}
+
+object_id_type bond_claim_collateral_evaluator::do_apply( const bond_claim_collateral_operation& op )
+{
+    assert( _bond != nullptr );
+
+    const account_object& claimer = op.claimer(db());
+
+    db().adjust_core_in_orders( _bond->borrower(db()), -op.collateral_claimed );
+
+    if( op.payoff_amount.amount > 0 )
+       db().adjust_balance( claimer, -op.payoff_amount );
+    db().adjust_balance( claimer, op.collateral_claimed );
+    db().adjust_balance( op.lender, op.payoff_amount );
+
+    if( op.collateral_claimed == _bond->collateral )
+       db().remove(*_bond);
+    else
+       db().modify( *_bond, [&]( bond_object& bond ){
+               bond.borrowed  -= op.payoff_amount + _interest_due;
+               bond.start_date = db().get_dynamic_global_properties().time;
+          });
+
+    return  object_id_type();
 }
 
 } } // bts::chain
