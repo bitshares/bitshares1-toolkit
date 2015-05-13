@@ -67,6 +67,8 @@ class wallet_api_impl
                                            uint8_t referrer_percent,
                                            bool broadcast = false );
 
+      signed_transaction upgrade_account( string name, bool broadcast );
+
       signed_transaction create_account_with_brain_key(string brain_key,
          string account_name,
          string registrar_account,
@@ -86,6 +88,15 @@ class wallet_api_impl
          signed_transaction tx,
          bool broadcast = false
          );
+
+      signed_transaction sell_asset( string seller_account,
+                                     uint64_t amount_to_sell,
+                                     string   symbol_to_sell,
+                                     uint64_t min_to_receive,
+                                     string   symbol_to_receive,
+                                     uint32_t timeout_sec = 0,
+                                     bool     fill_or_kill = false,
+                                     bool     broadcast = false );
 
       signed_transaction transfer(
          string from,
@@ -502,6 +513,26 @@ signed_transaction wallet_api_impl::register_account( string name,
 } FC_CAPTURE_AND_RETHROW( (name)(owner_pubkey)(active_pubkey)(registrar_account)(referrer_account)(referrer_percent)(broadcast) ) }
 
 
+signed_transaction wallet_api_impl::upgrade_account( string name, bool broadcast )
+{ try {
+   FC_ASSERT( !self.is_locked() );
+   account_object account_obj = get_account(name);
+   FC_ASSERT( !account_obj.is_prime() );
+
+   account_update_operation   update_op;
+   update_op.account          = account_obj.id;
+   update_op.num_witness      = account_obj.num_witness;
+   update_op.num_committee    = account_obj.num_committee;
+   update_op.upgrade_to_prime = true;
+
+
+   signed_transaction tx;
+   tx.operations.push_back( update_op );
+   tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
+   tx.validate();
+
+   return sign_transaction( tx, broadcast );
+} FC_CAPTURE_AND_RETHROW( (name) ) }
 
 
 
@@ -916,6 +947,35 @@ signed_transaction wallet_api_impl::issue_asset( uint64_t amount, string symbol,
    return sign_transaction( tx, broadcast );
 }
 
+signed_transaction wallet_api_impl::sell_asset( string seller_account,
+                                           uint64_t amount_to_sell,
+                                           string   symbol_to_sell,
+                                           uint64_t min_to_receive,
+                                           string   symbol_to_receive,
+                                           uint32_t timeout_sec,
+                                           bool     fill_or_kill,
+                                           bool     broadcast)
+{
+  account_object seller   = get_account( seller_account );
+
+  limit_order_create_operation op;
+  op.seller = seller.id;
+  op.amount_to_sell.amount = amount_to_sell;
+  op.amount_to_sell.asset_id = get_asset_id( symbol_to_sell );
+  op.min_to_receive.amount = min_to_receive;
+  op.min_to_receive.asset_id = get_asset_id( symbol_to_receive );
+  if( timeout_sec ) 
+     op.expiration = fc::time_point::now() + fc::seconds(timeout_sec);
+  op.fill_or_kill = fill_or_kill;
+
+  signed_transaction tx;
+  tx.operations.push_back(op);
+  tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
+  tx.validate();
+
+  return sign_transaction( tx, broadcast );
+}
+
 signed_transaction wallet_api_impl::transfer(
    string from,
    string to,
@@ -925,6 +985,7 @@ signed_transaction wallet_api_impl::transfer(
    bool broadcast /* = false */
    )
 {
+   FC_ASSERT( !self.is_locked() );
    vector< optional< asset_object > > opt_asset = _remote_db->lookup_asset_symbols( {asset_symbol} );
    FC_ASSERT( opt_asset.size() == 1 );
    FC_ASSERT( opt_asset[0].valid() );
@@ -963,6 +1024,8 @@ signed_transaction wallet_api_impl::transfer(
 
    return sign_transaction( tx, broadcast );
 }
+
+
 
 } // end namespace detail
 
@@ -1220,4 +1283,20 @@ void wallet_api::set_password( string password )
     my->_checksum = fc::sha512::hash( password.c_str(), password.size() );
 }
 
+signed_transaction wallet_api::upgrade_account( string name, bool broadcast )
+{
+   return my->upgrade_account(name,broadcast);
+}
+
+signed_transaction wallet_api::sell_asset( string seller_account,
+                                           uint64_t amount_to_sell,
+                                           string   symbol_to_sell,
+                                           uint64_t min_to_receive,
+                                           string   symbol_to_receive,
+                                           uint32_t expiration,
+                                           bool     fill_or_kill,
+                                           bool     broadcast)
+{
+   return my->sell_asset( seller_account, amount_to_sell, symbol_to_sell, min_to_receive, symbol_to_receive, expiration, fill_or_kill, broadcast );
+}
 } }

@@ -102,6 +102,14 @@ class wallet_api
                                            uint8_t referrer_percent,
                                            bool broadcast = false );
 
+      signed_transaction update_account_active_authority( string name,
+                                                          map<string,uint16_t> active_authority,
+                                                          bool broadcast = false );
+      /**
+       *  Upgrades an account to prime status.
+       */
+      signed_transaction upgrade_account( string name, bool broadcast );
+
       signed_transaction create_account_with_brain_key(
          string brain_key,
          string account_name,
@@ -118,6 +126,15 @@ class wallet_api
          string memo,
          bool broadcast = false
          );
+
+      signed_transaction sell_asset( string seller_account,
+                                     uint64_t amount_to_sell,
+                                     string   symbol_to_sell,
+                                     uint64_t min_to_receive,
+                                     string   symbol_to_receive,
+                                     uint32_t timeout_sec = 0,
+                                     bool     fill_or_kill = false,
+                                     bool     broadcast = false );
 
       signed_transaction create_asset( string issuer, 
                                        string symbol, 
@@ -167,7 +184,9 @@ FC_API( bts::wallet::wallet_api,
    (import_key)
    (suggest_brain_key)
    (register_account)
+   (upgrade_account)
    (create_account_with_brain_key)
+   (sell_asset)
    (transfer)
    (create_asset)
    (issue_asset)
