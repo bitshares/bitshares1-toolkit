@@ -1340,6 +1340,10 @@ namespace bts { namespace chain {
       account_id_type  lender; ///< must be bond_id->lender
       bond_id_type     bond_id;
       asset            payoff_amount;
+
+      /** the borrower can claim a percentage of the collateral propotional to the
+       * percentage of the debt+interest that was paid off
+       */
       asset            collateral_claimed;
 
       account_id_type   fee_payer()const { return claimer; }

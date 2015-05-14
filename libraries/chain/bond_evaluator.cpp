@@ -140,8 +140,13 @@ object_id_type bond_claim_collateral_evaluator::do_evaluate( const bond_claim_co
 
        FC_ASSERT( _interest_due + _bond->borrowed <= op.payoff_amount );
 
-       if( _interest_due + _bond->borrowed == op.payoff_amount )
-          FC_ASSERT( op.collateral_claimed == _bond->collateral );
+       auto total_debt = _interest_due + _bond->borrowed;
+       
+       fc::uint128 max_claim = _bond->collateral.amount.value;
+       max_claim *= op.payoff_amount.amount.value;
+       max_claim /= total_debt.amount.value;
+
+       FC_ASSERT( op.collateral_claimed.amount.value == max_claim.to_uint64() );
     }
     else
     {
@@ -162,15 +167,18 @@ object_id_type bond_claim_collateral_evaluator::do_apply( const bond_claim_colla
     db().adjust_core_in_orders( _bond->borrower(db()), -op.collateral_claimed );
 
     if( op.payoff_amount.amount > 0 )
+    {
        db().adjust_balance( claimer, -op.payoff_amount );
+       db().adjust_balance( op.lender, op.payoff_amount );
+    }
     db().adjust_balance( claimer, op.collateral_claimed );
-    db().adjust_balance( op.lender, op.payoff_amount );
 
     if( op.collateral_claimed == _bond->collateral )
        db().remove(*_bond);
     else
        db().modify( *_bond, [&]( bond_object& bond ){
-               bond.borrowed  -= op.payoff_amount + _interest_due;
+               bond.borrowed   -= op.payoff_amount + _interest_due;
+               bond.collateral -= op.collateral_claimed;
                bond.start_date = db().get_dynamic_global_properties().time;
           });
 
