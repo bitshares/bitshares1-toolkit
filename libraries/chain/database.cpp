@@ -867,7 +867,7 @@ void database::pay_workers( share_type& budget )
    vector<std::reference_wrapper<const worker_object>> active_workers;
    get_index_type<worker_index>().inspect_all_objects([this, &active_workers](const object& o) {
       const worker_object& w = static_cast<const worker_object&>(o);
-      auto now = head_block_time();
+      auto now = _pending_block.timestamp;
       if( w.work_begin_date <= now && w.work_end_date >= now &&
           _vote_tally_buffer[w.vote_for] - _vote_tally_buffer[w.vote_against] > 0 )
          active_workers.emplace_back(w);
@@ -882,15 +882,16 @@ void database::pay_workers( share_type& budget )
    {
       const worker_object& active_worker = active_workers[i];
       share_type requested_pay = active_worker.daily_pay;
-      if( head_block_time() - get_dynamic_global_properties().last_budget_time != fc::days(1) )
+      if( _pending_block.timestamp - get_dynamic_global_properties().last_budget_time != fc::days(1) )
       {
          fc::uint128 pay(requested_pay.value);
-         pay *= (head_block_time() - get_dynamic_global_properties().last_budget_time).count();
+         pay *= (_pending_block.timestamp - get_dynamic_global_properties().last_budget_time).count();
          pay /= fc::days(1).count();
          requested_pay = pay.to_uint64();
       }
 
       share_type actual_pay = std::min(budget, requested_pay);
+      ilog("Paying worker ${w} ${a}", ("w", active_worker.id)("a", actual_pay));
       modify(get(active_worker.balance), [this,actual_pay](vesting_balance_object& b) {
          b.deposit(head_block_time(), actual_pay);
       });
@@ -1528,7 +1529,7 @@ void database::process_budget()
       modify( dpo, [&]( dynamic_global_property_object& _dpo )
       {
          _dpo.witness_budget = witness_budget;
-         _dpo.last_budget_time = head_block_time();
+         _dpo.last_budget_time = now;
       } );
 
       // available_funds is money we could spend, but don't want to.

@@ -1847,7 +1847,7 @@ BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
    {
       _gpo.parameters.witness_pay_per_block = witness_ppb;
    } );
-   
+
    // Make an account and upgrade it to prime, so that witnesses get some pay
    create_account("nathan");
    transfer(account_id_type()(db), get_account("nathan"), asset(10000000000));
