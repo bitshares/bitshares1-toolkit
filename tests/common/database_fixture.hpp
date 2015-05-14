@@ -54,6 +54,10 @@ using namespace bts::db;
    fc::ecc::private_key name ## _private_key = generate_private_key(BOOST_PP_STRINGIZE(name)); \
    key_id_type name ## _key_id = register_key(name ## _private_key.get_public_key()).get_id(); \
    account_id_type name ## _id = create_account(BOOST_PP_STRINGIZE(name), name ## _key_id).id;
+#define GET_ACTOR(name) \
+   fc::ecc::private_key name ## _private_key = generate_private_key(BOOST_PP_STRINGIZE(name)); \
+   account_id_type name ## _id = get_account(BOOST_PP_STRINGIZE(name)).id; \
+   key_id_type name ## _key_id = name ## _id(db).active.auths.begin()->first;
 
 #define ACTORS_IMPL(r, data, elem) ACTOR(elem)
 #define ACTORS(names) BOOST_PP_SEQ_FOR_EACH(ACTORS_IMPL, ~, names)

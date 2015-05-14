@@ -144,6 +144,9 @@ void database_fixture::verify_asset_supplies( )const
    }
    for( const vesting_balance_object& vbo : db.get_index_type< simple_index<vesting_balance_object> >() )
       total_balances[ vbo.balance.asset_id ] += vbo.balance.amount;
+
+   total_balances[asset_id_type()] += db.get_dynamic_global_properties().witness_budget;
+
    for( const auto& item : total_debts )
       BOOST_CHECK_EQUAL(item.first(db).dynamic_asset_data_id(db).current_supply.value, item.second.value);
 

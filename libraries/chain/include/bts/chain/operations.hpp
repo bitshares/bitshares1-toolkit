@@ -361,8 +361,8 @@ namespace bts { namespace chain {
        */
       vector<char> message;
 
-      void         set_message( const fc::ecc::private_key& priv,
-                                const fc::ecc::public_key& pub, const string& msg );
+      void        set_message( const fc::ecc::private_key& priv,
+                               const fc::ecc::public_key& pub, const string& msg );
 
       std::string get_message( const fc::ecc::private_key& priv,
                                const fc::ecc::public_key& pub )const;

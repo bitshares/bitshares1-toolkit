@@ -864,6 +864,38 @@ void database::deposit_cashback( const account_object& acct, share_type amount )
 
 void database::pay_workers( share_type& budget )
 {
+   vector<std::reference_wrapper<const worker_object>> active_workers;
+   get_index_type<worker_index>().inspect_all_objects([this, &active_workers](const object& o) {
+      const worker_object& w = static_cast<const worker_object&>(o);
+      auto now = head_block_time();
+      if( w.work_begin_date <= now && w.work_end_date >= now &&
+          _vote_tally_buffer[w.vote_for] - _vote_tally_buffer[w.vote_against] > 0 )
+         active_workers.emplace_back(w);
+   });
+
+   std::sort(active_workers.begin(), active_workers.end(), [this](const worker_object& wa, const worker_object& wb) {
+      return (_vote_tally_buffer[wa.vote_for] - _vote_tally_buffer[wa.vote_against]) <
+             (_vote_tally_buffer[wb.vote_for] - _vote_tally_buffer[wb.vote_against]);
+   });
+
+   for( int i = 0; i < active_workers.size() && budget > 0; ++i )
+   {
+      const worker_object& active_worker = active_workers[i];
+      share_type requested_pay = active_worker.daily_pay;
+      if( head_block_time() - get_dynamic_global_properties().last_budget_time != fc::days(1) )
+      {
+         fc::uint128 pay(requested_pay.value);
+         pay *= (head_block_time() - get_dynamic_global_properties().last_budget_time).count();
+         pay /= fc::days(1).count();
+         requested_pay = pay.to_uint64();
+      }
+
+      share_type actual_pay = std::min(budget, requested_pay);
+      modify(get(active_worker.balance), [this,actual_pay](vesting_balance_object& b) {
+         b.deposit(head_block_time(), actual_pay);
+      });
+      budget -= actual_pay;
+   }
 }
 
 bool database::fill_order( const limit_order_object& order, const asset& pays, const asset& receives )
@@ -1488,19 +1520,15 @@ void database::process_budget()
 
       modify( core, [&]( asset_dynamic_data_object& _core )
       {
-         _core.current_supply = (_core.current_supply
-            + witness_budget
-            + worker_budget
-            - leftover_worker_funds
-            - dpo.witness_budget
-            - _core.accumulated_fees
-            );
+         _core.current_supply = (_core.current_supply + witness_budget +
+                                 worker_budget - leftover_worker_funds -
+                                 _core.accumulated_fees);
          _core.accumulated_fees = 0;
       } );
       modify( dpo, [&]( dynamic_global_property_object& _dpo )
       {
          _dpo.witness_budget = witness_budget;
-         _dpo.last_budget_time = now;
+         _dpo.last_budget_time = head_block_time();
       } );
 
       // available_funds is money we could spend, but don't want to.
@@ -1888,11 +1916,19 @@ void database::update_pending_block(const signed_block& next_block, uint8_t curr
 void database::perform_chain_maintenance(const signed_block& next_block, const global_property_object& global_props)
 {
    update_vote_totals(global_props);
+
+   struct clear_canary {
+      clear_canary(vector<share_type>& target): target(target){}
+      ~clear_canary() { target.clear(); }
+   private:
+      vector<share_type>& target;
+   };
+   clear_canary a(_witness_count_histogram_buffer),
+                b(_committee_count_histogram_buffer),
+                c(_vote_tally_buffer);
+
    update_active_witnesses();
    update_active_delegates();
-   _vote_tally_buffer.clear();
-   _witness_count_histogram_buffer.clear();
-   _committee_count_histogram_buffer.clear();
 
    const global_property_object& global_properties = get_global_properties();
    if( global_properties.pending_parameters )

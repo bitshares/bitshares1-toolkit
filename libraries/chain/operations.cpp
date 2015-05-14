@@ -268,7 +268,7 @@ void asset_burn_operation::get_required_auth(flat_set<account_id_type>& active_a
 void asset_burn_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( amount_to_burn.amount.value <= BTS_MAX_SHARE_SUPPLY );
+   FC_ASSERT( amount_to_burn.amount.value <= BTS_BLOCKCHAIN_MAX_SHARES );
    FC_ASSERT( amount_to_burn.amount.value > 0 );
 }
 
@@ -276,8 +276,6 @@ share_type asset_burn_operation::calculate_fee( const fee_schedule_type& k )cons
 {
    return k.at( asset_issue_fee_type );
 }
-
-
 
 void asset_issue_operation::get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&) const
 {
@@ -287,7 +285,7 @@ void asset_issue_operation::get_required_auth(flat_set<account_id_type>& active_
 void asset_issue_operation::validate()const
 {
    FC_ASSERT( fee.amount >= 0 );
-   FC_ASSERT( asset_to_issue.amount.value <= BTS_MAX_SHARE_SUPPLY );
+   FC_ASSERT( asset_to_issue.amount.value <= BTS_BLOCKCHAIN_MAX_SHARES );
    FC_ASSERT( asset_to_issue.amount.value > 0 );
    FC_ASSERT( asset_to_issue.asset_id != 0 );
 }
@@ -862,7 +860,7 @@ void worker_create_operation::validate() const
    FC_ASSERT(fee.amount >= 0);
    FC_ASSERT(work_end_date > work_begin_date);
    FC_ASSERT(daily_pay > 0);
-   FC_ASSERT(daily_pay < BTS_MAX_SHARE_SUPPLY);
+   FC_ASSERT(daily_pay < BTS_BLOCKCHAIN_MAX_SHARES);
    FC_ASSERT(worker_type < worker_object::WORKER_TYPE_COUNT);
 }
 

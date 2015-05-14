@@ -1981,9 +1981,9 @@ BOOST_AUTO_TEST_CASE( unimp_delegate_groups_test )
  * 1) Issue a BitAsset without Forced Settling & With Global Settling
  * 2) Don't Publish any Price Feeds
  * 3) Ensure that margin calls do not occur even if the highest bid would indicate it
- * 4) Match some Orders 
- * 5) Trigger Global Settle on the Asset 
- * 6) The maitenance collateral must always be 1:1 
+ * 4) Match some Orders
+ * 5) Trigger Global Settle on the Asset
+ * 6) The maitenance collateral must always be 1:1
  */
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_prediction_market_test, 1 )
 BOOST_AUTO_TEST_CASE( unimp_prediction_market_test )
@@ -2205,6 +2205,7 @@ BOOST_AUTO_TEST_CASE( bond_create_offer_test )
 
    // Invalid creator account
    REQUIRE_THROW_WITH_VALUE( op, creator, account_id_type( 1 ) );
+   db.push_transaction(trx, ~0);
 
    // Insufficient principle
    REQUIRE_THROW_WITH_VALUE( op, amount, asset( 2, 0 ) );
