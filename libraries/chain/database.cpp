@@ -1401,6 +1401,7 @@ share_type database::get_max_budget( fc::time_point_sec now )const
 {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
    const asset_object& core = asset_id_type(0)(*this);
+   const asset_dynamic_data_object& core_dd = core.dynamic_asset_data_id(*this);
 
    if(    (dpo.last_budget_time == fc::time_point_sec())
        || (now <= dpo.last_budget_time) )
@@ -1408,7 +1409,13 @@ share_type database::get_max_budget( fc::time_point_sec now )const
 
    int64_t dt = (now - dpo.last_budget_time).to_seconds();
 
-   share_type reserve = core.burned(*this);
+   // We'll consider accumulated_fees to be burned at the BEGINNING
+   // of the maintenance interval.  However, for speed we only
+   // call modify() on the asset_dynamic_data_object once at the
+   // end of the maintenance interval.  Thus the accumulated_fees
+   // are available for the budget at this point, but not included
+   // in core.burned().
+   share_type reserve = core.burned(*this) + core_dd.accumulated_fees;
 
    fc::uint128_t budget_u128 = reserve.value;
    budget_u128 *= uint64_t(dt);
@@ -1493,6 +1500,7 @@ void database::process_budget()
       modify( dpo, [&]( dynamic_global_property_object& _dpo )
       {
          _dpo.witness_budget = witness_budget;
+         _dpo.last_budget_time = now;
       } );
 
       // available_funds is money we could spend, but don't want to.
