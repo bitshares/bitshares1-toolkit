@@ -2,10 +2,12 @@
 #include <bts/chain/delegate_object.hpp>
 #include <bts/chain/key_object.hpp>
 #include <bts/chain/database.hpp>
+#include <bts/chain/account_object.hpp>
 
 namespace bts { namespace chain {
 object_id_type delegate_create_evaluator::do_evaluate( const delegate_create_operation& op )
 {
+   FC_ASSERT(db().get(op.delegate_account).is_prime());
    return object_id_type();
 }
 

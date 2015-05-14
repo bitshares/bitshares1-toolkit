@@ -348,6 +348,8 @@ BOOST_AUTO_TEST_CASE( mia_feeds )
 BOOST_AUTO_TEST_CASE( witness_create )
 { try {
    ACTOR(nathan);
+   upgrade_to_prime(nathan_id);
+   trx.clear();
    witness_id_type nathan_witness_id = create_witness(nathan_id, nathan_key_id, nathan_private_key).id;
    // Give nathan some voting stake
    transfer(genesis_account, nathan_id, asset(10000000));
@@ -379,10 +381,7 @@ BOOST_AUTO_TEST_CASE( witness_create )
 
 BOOST_AUTO_TEST_CASE( global_settle_test )
 { try {
-   ACTOR(nathan);
-   ACTOR(ben);
-   ACTOR(valentine);
-   ACTOR(dan);
+   ACTORS((nathan)(ben)(valentine)(dan));
    asset_id_type bit_usd_id = create_bitasset("BITUSD", nathan_id, 100, market_issued | global_settle | charge_market_fee).get_id();
    transfer(genesis_account, ben_id, asset(10000));
    transfer(genesis_account, valentine_id, asset(10000));
@@ -426,6 +425,7 @@ BOOST_AUTO_TEST_CASE( global_settle_test )
 BOOST_AUTO_TEST_CASE( worker_create_test )
 { try {
    ACTOR(nathan);
+   upgrade_to_prime(nathan_id);
    generate_block();
 
    {

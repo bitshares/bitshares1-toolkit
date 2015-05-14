@@ -518,7 +518,6 @@ const witness_object& database_fixture::create_witness( const account_object& ow
    secret_hash_type::encoder enc;
    fc::raw::pack(enc, signing_private_key);
    fc::raw::pack(enc, secret_hash_type());
-   wdump((signing_private_key)(secret_hash_type()));
    op.initial_secret = secret_hash_type::hash(enc.result());
    trx.operations.push_back(op);
    trx.validate();
@@ -655,6 +654,11 @@ void database_fixture::enable_fees(
    } );
 }
 
+void database_fixture::upgrade_to_prime(account_id_type account)
+{
+   upgrade_to_prime(account(db));
+}
+
 void database_fixture::upgrade_to_prime( const account_object& account )
 {
    try
@@ -665,6 +669,7 @@ void database_fixture::upgrade_to_prime( const account_object& account )
       trx.operations.emplace_back(operation(op));
       db.push_transaction( trx, ~0 );
       FC_ASSERT( account.is_prime() );
+      trx.clear();
    }
    FC_CAPTURE_AND_RETHROW((account))
 }
