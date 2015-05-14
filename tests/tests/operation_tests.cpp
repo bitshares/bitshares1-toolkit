@@ -2203,9 +2203,8 @@ BOOST_AUTO_TEST_CASE( bond_create_offer_test )
    op.collateral_rate.quote.asset_id = test_asset.get_id();
    trx.operations.emplace_back( op );
 
-   // Invalid creator account
+   // Insufficient funds in creator account
    REQUIRE_THROW_WITH_VALUE( op, creator, account_id_type( 1 ) );
-   db.push_transaction(trx, ~0);
 
    // Insufficient principle
    REQUIRE_THROW_WITH_VALUE( op, amount, asset( 2, 0 ) );
