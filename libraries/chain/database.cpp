@@ -1170,54 +1170,57 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    update_pending_block(next_block, current_block_interval);
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num())(skip) )  }
 
-time_point database::get_next_generation_time( witness_id_type del_id )const
+optional< pair< fc::time_point_sec, witness_id_type > > database::get_scheduled_witness( fc::time_point_sec when )const
 {
-   const auto& gp = get_global_properties();
-   auto now = bts::chain::now();
-   const auto& active_witness = gp.active_witnesses;
-   const auto& interval   = gp.parameters.block_interval;
-   auto witness_slot = ((now.sec_since_epoch()+interval-1) /interval);
-   for( uint32_t i = 0; i < active_witness.size(); ++i )
-   {
-      if( active_witness[ witness_slot % active_witness.size()] == del_id )
-         return time_point_sec() + fc::seconds( witness_slot * interval );
-      ++witness_slot;
-   }
-   FC_ASSERT( !"Not an Active Witness" );
+   const global_property_object& gpo = get_global_properties();
+   uint8_t interval = gpo.parameters.block_interval;
+   uint64_t w_abs_slot = when.sec_since_epoch() / interval;
+   uint64_t h_abs_slot = head_block_time().sec_since_epoch() / interval;
+   optional< pair< fc::time_point_sec, witness_id_type > > result;
+
+   if( w_abs_slot <= h_abs_slot )
+      return result;
+
+   time_point_sec canonical_time = fc::time_point_sec( w_abs_slot * interval );
+   return pair< fc::time_point_sec, witness_id_type >(
+      canonical_time,
+      gpo.active_witnesses[ w_abs_slot % gpo.active_witnesses.size() ]
+      );
 }
 
-std::pair<fc::time_point, witness_id_type> database::get_next_generation_time(const set<bts::chain::witness_id_type>& witnesses) const
+signed_block database::generate_block(
+   fc::time_point_sec when,
+   witness_id_type witness_id,
+   const fc::ecc::private_key& block_signing_private_key,
+   uint32_t skip /* = 0 */
+   )
 {
-   std::pair<fc::time_point, witness_id_type> result;
-   result.first = fc::time_point::maximum();
-   for( witness_id_type id : witnesses )
-      result = std::min(result, std::make_pair(get_next_generation_time(id), id));
-   return result;
-}
+   try {
+   optional< pair< fc::time_point_sec, witness_id_type > > scheduled_witness = get_scheduled_witness( when );
+   FC_ASSERT( scheduled_witness.valid() );
+   FC_ASSERT( scheduled_witness->second == witness_id );
 
-
-signed_block database::generate_block( const fc::ecc::private_key& delegate_key,
-                                       witness_id_type witness_id, uint32_t  skip )
-{ try {
    const auto& witness_obj = witness_id(*this);
 
    if( !(skip & skip_delegate_signature) )
-      FC_ASSERT( witness_obj.signing_key(*this).key() == delegate_key.get_public_key() );
+      FC_ASSERT( witness_obj.signing_key(*this).key() == block_signing_private_key.get_public_key() );
 
-   _pending_block.timestamp = get_next_generation_time( witness_id );
+   // we behave reasonably when given a non-normalized timestamp
+   // after the given block time:  block simply gets normalized timestamp
+   _pending_block.timestamp = scheduled_witness->first;
 
    secret_hash_type::encoder last_enc;
-   fc::raw::pack( last_enc, delegate_key );
+   fc::raw::pack( last_enc, block_signing_private_key );
    fc::raw::pack( last_enc, witness_obj.last_secret );
    _pending_block.previous_secret = last_enc.result();
 
    secret_hash_type::encoder next_enc;
-   fc::raw::pack( next_enc, delegate_key );
+   fc::raw::pack( next_enc, block_signing_private_key );
    fc::raw::pack( next_enc, _pending_block.previous_secret );
    _pending_block.next_secret_hash = secret_hash_type::hash(next_enc.result());
 
    _pending_block.witness = witness_id;
-   if( !(skip & skip_delegate_signature) ) _pending_block.sign( delegate_key );
+   if( !(skip & skip_delegate_signature) ) _pending_block.sign( block_signing_private_key );
 
    FC_ASSERT( fc::raw::pack_size(_pending_block) <= get_global_properties().parameters.maximum_block_size );
    //This line used to std::move(_pending_block) but this is unsafe as _pending_block is later referenced without being
@@ -1889,11 +1892,9 @@ const signed_transaction& database::get_recent_transaction(const transaction_id_
    return itr->trx;
 }
 
-const witness_object& database::validate_block_header(uint32_t skip, const signed_block& next_block)
+const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
 {
-   auto now = bts::chain::now();
    const auto& global_props = get_global_properties();
-   FC_ASSERT( _pending_block.timestamp <= (now  + fc::seconds(1)), "", ("now",now)("pending",_pending_block.timestamp) );
    FC_ASSERT( _pending_block.previous == next_block.previous, "", ("pending.prev",_pending_block.previous)("next.prev",next_block.previous) );
    FC_ASSERT( _pending_block.timestamp <= next_block.timestamp, "", ("_pending_block.timestamp",_pending_block.timestamp)("next",next_block.timestamp)("blocknum",next_block.block_num()) );
    FC_ASSERT( _pending_block.timestamp.sec_since_epoch() % global_props.parameters.block_interval == 0 );
@@ -1901,9 +1902,18 @@ const witness_object& database::validate_block_header(uint32_t skip, const signe
    FC_ASSERT( secret_hash_type::hash(next_block.previous_secret) == witness.next_secret, "",
               ("previous_secret", next_block.previous_secret)("next_secret", witness.next_secret));
    if( !(skip&skip_delegate_signature) ) FC_ASSERT( next_block.validate_signee( witness.signing_key(*this).key() ) );
-   auto expected_witness_num = (next_block.timestamp.sec_since_epoch() /
-                                global_props.parameters.block_interval) % global_props.active_witnesses.size();
-   FC_ASSERT( next_block.witness == global_props.active_witnesses[expected_witness_num] );
+
+   optional< pair< fc::time_point_sec, witness_id_type > > scheduled_witness = get_scheduled_witness( next_block.timestamp );
+
+   // following assert should never trip.  invalid value should
+   // be prevented by _pending_block.timestamp <= next_block.timestamp check above
+   FC_ASSERT( scheduled_witness.valid() );
+
+   // following assert should never trip.  non-normalized timestamp
+   // should be prevented by sec_since_epoch % block_interval == 0 check above
+   FC_ASSERT( scheduled_witness->first == next_block.timestamp );
+
+   FC_ASSERT( next_block.witness == scheduled_witness->second );
 
    return witness;
 }

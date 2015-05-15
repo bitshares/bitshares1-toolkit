@@ -99,5 +99,4 @@ void advance_time( int32_t delta_seconds )
    time_discontinuity_signal();
 }
 
-
 } } // bts::chain

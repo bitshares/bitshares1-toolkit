@@ -74,6 +74,8 @@ struct database_fixture {
    account_id_type genesis_account;
    fc::ecc::private_key private_key = fc::ecc::private_key::generate();
    fc::ecc::private_key delegate_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
+   fc::time_point_sec genesis_time = fc::time_point_sec( BTS_GENESIS_TIMESTAMP );
+   fc::time_point_sec now          = fc::time_point_sec( BTS_GENESIS_TIMESTAMP );
    const key_object* key1= nullptr;
    const key_object* key2= nullptr;
    const key_object* key3= nullptr;

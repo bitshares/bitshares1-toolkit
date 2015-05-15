@@ -41,11 +41,11 @@ database_fixture::database_fixture()
    db.init_genesis();
    ahplugin->startup_plugin();
 
-   chain::start_simulated_time(bts::chain::now());
+   now = db.head_block_time();
    generate_block();
 
    genesis_key(db); // attempt to deref
-   trx.set_expiration(chain::now() + fc::minutes(1));
+   trx.set_expiration(now + fc::minutes(1));
 
    return;
 }
@@ -57,7 +57,6 @@ database_fixture::~database_fixture()
       verify_asset_supplies();
       verify_account_history_plugin_index();
    }
-   shutdown_ntp_time();
 
    if( data_dir )
       db.close();
@@ -248,10 +247,9 @@ signed_block database_fixture::generate_block(uint32_t skip, const fc::ecc::priv
 {
    open_database();
 
-   const vector<witness_id_type>& aw = db.get_global_properties().active_witnesses;
-   advance_simulated_time_to( db.get_next_generation_time(  aw[db.head_block_num()%aw.size()] ) );
+   now += db.block_interval();
    // skip == ~0 will skip checks specified in database::validation_steps
-   return db.generate_block( key, aw[db.head_block_num()%aw.size()], skip );
+   return db.generate_block( now, db.get_scheduled_witness( now )->second, key, skip );
 }
 
 void database_fixture::generate_blocks( uint32_t block_count )

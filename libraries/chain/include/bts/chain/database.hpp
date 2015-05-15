@@ -81,10 +81,25 @@ namespace bts { namespace chain {
          ///@throws fc::exception if the proposed transaction fails to apply.
          processed_transaction push_proposal( const proposal_object& proposal );
 
-         time_point   get_next_generation_time(witness_id_type del_id )const;
-         std::pair<fc::time_point, witness_id_type> get_next_generation_time(const set<witness_id_type>& witnesses )const;
-         signed_block generate_block(const fc::ecc::private_key& delegate_key,
-                                      witness_id_type del_id, uint32_t skip = 0 );
+         /**
+          * Get the last witness scheduled AT or BEFORE the given time.
+          *
+          * If the given time is in the same or earlier absolute slot as
+          * head_block_time, result is invalid (no such witness).
+          *
+          * Blockchain validation should check that the returned time is equal to the input time.
+          *
+          * Witness node will say "it's now time t, who's allowed to broadcast?"
+          * Since timestamps in the future are filtered by the P2P network,
+          * only timestamps of past or present time will be allowed.
+          */
+         optional< pair< fc::time_point_sec, witness_id_type > > get_scheduled_witness( fc::time_point_sec when )const;
+         signed_block generate_block(
+            const fc::time_point_sec when,
+            witness_id_type witness_id,
+            const fc::ecc::private_key& block_signing_private_key,
+            uint32_t skip = 0
+            );
 
          asset current_delegate_registration_fee()const;
 
@@ -233,6 +248,9 @@ namespace bts { namespace chain {
          // helper to handle cashback rewards
          void deposit_cashback( const account_object& acct, share_type amount );
 
+         decltype( chain_parameters::block_interval ) block_interval( )const
+         {   return get_global_properties().parameters.block_interval;   }
+
          ///@}
 
          /**
@@ -257,7 +275,7 @@ namespace bts { namespace chain {
 
          ///Steps involved in applying a new block
          ///@{
-         const witness_object& validate_block_header(uint32_t skip, const signed_block& next_block);
+         const witness_object& validate_block_header( uint32_t skip, const signed_block& next_block )const;
          void update_global_dynamic_data( const signed_block& b );
          void update_signing_witness(const witness_object& signing_witness, const signed_block& new_block);
          void update_pending_block(const signed_block& next_block, uint8_t current_block_interval);
