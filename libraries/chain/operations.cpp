@@ -727,17 +727,16 @@ share_type vesting_balance_withdraw_operation::calculate_fee( const fee_schedule
    return k.at( vesting_balance_withdraw_fee_type );
 }
 
-void         memo_data::set_message( const fc::ecc::private_key& priv,
-                                     const fc::ecc::public_key& pub, const string& msg )
+void memo_data::set_message( const fc::ecc::private_key& priv,
+                             const fc::ecc::public_key& pub, const string& msg )
 {
    if( from )
    {
+      uint64_t entropy = fc::sha224::hash(fc::ecc::private_key::generate())._hash[0] & 0xff00000000000000;
+      nonce = (fc::time_point::now().time_since_epoch().count()                      & 0x00ffffffffffffff) | entropy;
       auto secret = priv.get_shared_secret(pub);
-      digest_type::encoder enc;
-      fc::raw::pack(enc, secret);
-      fc::raw::pack(enc, msg);
-      memo_message memo(enc.result()._hash[0], msg);
-      message = fc::aes_encrypt( secret, fc::raw::pack( memo ) );
+      memo_message memo(digest_type::hash(msg)._hash[0], msg);
+      message = fc::aes_encrypt( fc::sha512::hash(fc::to_string(nonce) + secret.str()), fc::raw::pack( memo ) );
    }
    else
    {
@@ -751,12 +750,9 @@ string memo_data::get_message( const fc::ecc::private_key& priv,
    if( from )
    {
       auto secret = priv.get_shared_secret(pub);
-      auto plain_text = fc::aes_decrypt( secret, message );
+      auto plain_text = fc::aes_decrypt( fc::sha512::hash(fc::to_string(nonce) + secret.str()), message );
       auto result = fc::raw::unpack<memo_message>(plain_text);
-      digest_type::encoder enc;
-      fc::raw::pack(enc, secret);
-      fc::raw::pack(enc, result.text);
-      FC_ASSERT( result.checksum == uint32_t(enc.result()._hash[0]) );
+      FC_ASSERT( result.checksum == uint32_t(digest_type::hash(result.text)._hash[0]) );
       return result.text;
    }
    else

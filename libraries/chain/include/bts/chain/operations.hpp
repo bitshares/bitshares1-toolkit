@@ -354,8 +354,20 @@ namespace bts { namespace chain {
     */
    struct memo_data
    {
-      key_id_type  from;
-      key_id_type  to;
+      key_id_type from;
+      key_id_type to;
+      /**
+       * 64 bit nonce format:
+       * [  8 bits | 56 bits   ]
+       * [ entropy | timestamp ]
+       * Timestamp is number of microseconds since the epoch
+       * Entropy is a byte taken from the hash of a new private key
+       *
+       * This format is not mandated or verified; it is chosen to ensure uniqueness of key-IV pairs only. This should
+       * be unique with high probability as long as the generating host has a high-resolution clock OR a strong source
+       * of entropy for generating private keys.
+       */
+      uint64_t    nonce;
       /**
        * This field contains the AES encrypted packed @ref memo_message
        */
@@ -1658,7 +1670,7 @@ namespace bts { namespace chain {
 } } // bts::chain
 FC_REFLECT( bts::chain::op_wrapper, (op) )
 FC_REFLECT( bts::chain::memo_message, (checksum)(text) )
-FC_REFLECT( bts::chain::memo_data, (from)(to)(message) )
+FC_REFLECT( bts::chain::memo_data, (from)(to)(nonce)(message) )
 
 FC_REFLECT( bts::chain::key_create_operation,
             (fee)(fee_paying_account)
