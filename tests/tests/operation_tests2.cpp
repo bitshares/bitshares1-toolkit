@@ -488,6 +488,7 @@ BOOST_AUTO_TEST_CASE( worker_pay_test )
       trx.clear();
    }
 
+   BOOST_CHECK_EQUAL(worker_id_type()(db).balance(db).balance.amount.value, 0);
    generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
    BOOST_CHECK_EQUAL(worker_id_type()(db).balance(db).balance.amount.value, 1000);
    generate_blocks(db.head_block_time() + fc::hours(12));
@@ -507,6 +508,41 @@ BOOST_AUTO_TEST_CASE( worker_pay_test )
    }
 
    BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 100500);
+   BOOST_CHECK_EQUAL(worker_id_type()(db).balance(db).balance.amount.value, 500);
+
+   {
+      account_update_operation op;
+      op.account = nathan_id;
+      op.vote = nathan_id(db).votes;
+      op.vote->erase(worker_id_type()(db).vote_for);
+      trx.operations.push_back(op);
+      db.push_transaction(trx, ~0);
+      trx.clear();
+   }
+
+   generate_blocks(db.head_block_time() + fc::hours(12));
+   BOOST_CHECK_EQUAL(worker_id_type()(db).balance(db).balance.amount.value, 500);
+
+   {
+      vesting_balance_withdraw_operation op;
+      op.vesting_balance = worker_id_type()(db).balance;
+      op.amount = asset(500);
+      op.owner = nathan_id;
+      trx.set_expiration(db.head_block_id());
+      trx.operations.push_back(op);
+      REQUIRE_THROW_WITH_VALUE(op, amount, asset(500));
+      generate_blocks(db.head_block_time() + fc::hours(12));
+      trx.set_expiration(db.head_block_id());
+      REQUIRE_THROW_WITH_VALUE(op, amount, asset(501));
+      trx.operations.back() = op;
+      trx.sign(nathan_key_id, nathan_private_key);
+      db.push_transaction(trx);
+      trx.signatures.clear();
+      trx.clear();
+   }
+
+   BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 101000);
+   BOOST_CHECK_EQUAL(worker_id_type()(db).balance(db).balance.amount.value, 0);
 } FC_LOG_AND_RETHROW() }
 
 // TODO:  Write linear VBO tests

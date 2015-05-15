@@ -3,16 +3,6 @@
 
 namespace bts { namespace chain {
 
-/*
-         void _check_cap()const
-         {
-            fc::uint128_t coin_seconds_earned_cap = balance.amount.value;
-            coin_seconds_earned_cap *= vesting_seconds;
-            assert( coin_seconds_earned <= coin_seconds_earned_cap );
-            return;
-         }
-*/
-
 inline bool sum_below_max_shares( const asset& a, const asset& b )
 {
    assert( BTS_MAX_SHARE_SUPPLY + BTS_MAX_SHARE_SUPPLY > BTS_MAX_SHARE_SUPPLY );
@@ -161,18 +151,12 @@ VESTING_VISITOR( on_withdraw, );
 VESTING_VISITOR( is_deposit_allowed, const );
 VESTING_VISITOR( is_withdraw_allowed, const );
 
-bool vesting_balance_object::is_deposit_allowed(
-   const time_point_sec& now,
-   const asset& amount
-   )const
+bool vesting_balance_object::is_deposit_allowed(const time_point_sec& now, const asset& amount)const
 {
    return policy.visit( is_deposit_allowed_visitor( balance, now, amount ) );
 }
 
-bool vesting_balance_object::is_withdraw_allowed(
-   const time_point_sec& now,
-   const asset& amount
-   )const
+bool vesting_balance_object::is_withdraw_allowed(const time_point_sec& now, const asset& amount)const
 {
    bool result = policy.visit( is_withdraw_allowed_visitor( balance, now, amount ) );
    // if some policy allows you to withdraw more than your balance,
@@ -181,25 +165,19 @@ bool vesting_balance_object::is_withdraw_allowed(
    return result;
 }
 
-void vesting_balance_object::deposit(
-   const time_point_sec& now,
-   const asset& amount)
+void vesting_balance_object::deposit(const time_point_sec& now, const asset& amount)
 {
    on_deposit_visitor vtor( balance, now, amount );
    policy.visit( vtor );
    balance += amount;
-   return;
 }
 
-void vesting_balance_object::withdraw(
-   const time_point_sec& now,
-   const asset& amount)
+void vesting_balance_object::withdraw(const time_point_sec& now, const asset& amount)
 {
    assert( amount <= balance );
    on_withdraw_visitor vtor( balance, now, amount );
    policy.visit( vtor );
    balance -= amount;
-   return;
 }
 
 } } // bts::chain

@@ -868,14 +868,12 @@ void database::pay_workers( share_type& budget )
    get_index_type<worker_index>().inspect_all_objects([this, &active_workers](const object& o) {
       const worker_object& w = static_cast<const worker_object&>(o);
       auto now = _pending_block.timestamp;
-      if( w.work_begin_date <= now && w.work_end_date >= now &&
-          _vote_tally_buffer[w.vote_for] - _vote_tally_buffer[w.vote_against] > 0 )
+      if( w.is_active(now) && w.approving_stake(_vote_tally_buffer) > 0 )
          active_workers.emplace_back(w);
    });
 
    std::sort(active_workers.begin(), active_workers.end(), [this](const worker_object& wa, const worker_object& wb) {
-      return (_vote_tally_buffer[wa.vote_for] - _vote_tally_buffer[wa.vote_against]) <
-             (_vote_tally_buffer[wb.vote_for] - _vote_tally_buffer[wb.vote_against]);
+      return wa.approving_stake(_vote_tally_buffer) > wb.approving_stake(_vote_tally_buffer);
    });
 
    for( int i = 0; i < active_workers.size() && budget > 0; ++i )
