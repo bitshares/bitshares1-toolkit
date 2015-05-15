@@ -175,6 +175,8 @@ void account_create_operation::validate()const
    FC_ASSERT( is_valid_name( name ) );
    FC_ASSERT( referrer_percent >= 0   );
    FC_ASSERT( referrer_percent <= 100 );
+   FC_ASSERT( !owner.auths.empty() );
+   FC_ASSERT( !active.auths.empty() );
    auto pos = name.find( '/' );
    if( pos != string::npos )
    {
