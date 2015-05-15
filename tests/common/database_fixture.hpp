@@ -54,6 +54,10 @@ using namespace bts::db;
    fc::ecc::private_key name ## _private_key = generate_private_key(BOOST_PP_STRINGIZE(name)); \
    key_id_type name ## _key_id = register_key(name ## _private_key.get_public_key()).get_id(); \
    account_id_type name ## _id = create_account(BOOST_PP_STRINGIZE(name), name ## _key_id).id;
+#define GET_ACTOR(name) \
+   fc::ecc::private_key name ## _private_key = generate_private_key(BOOST_PP_STRINGIZE(name)); \
+   account_id_type name ## _id = get_account(BOOST_PP_STRINGIZE(name)).id; \
+   key_id_type name ## _key_id = name ## _id(db).active.auths.begin()->first;
 
 #define ACTORS_IMPL(r, data, elem) ACTOR(elem)
 #define ACTORS(names) BOOST_PP_SEQ_FOR_EACH(ACTORS_IMPL, ~, names)
@@ -177,6 +181,7 @@ struct database_fixture {
    void transfer( const account_object& from, const account_object& to, const asset& amount, const asset& fee = asset() );
    void fund_fee_pool( const account_object& from, const asset_object& asset_to_fund, const share_type amount );
    void enable_fees( share_type fee = BTS_BLOCKCHAIN_PRECISION );
+   void upgrade_to_prime( account_id_type account );
    void upgrade_to_prime( const account_object& account );
    void print_market( const string& syma, const string& symb )const;
    string pretty( const asset& a )const;

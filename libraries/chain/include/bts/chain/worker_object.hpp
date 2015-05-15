@@ -45,6 +45,13 @@ namespace bts { namespace chain {
          vote_id_type                   vote_for;
          /// Voting ID which represents disapproval of this worker
          vote_id_type                   vote_against;
+
+         bool is_active(fc::time_point_sec now)const {
+            return now >= work_begin_date && now <= work_end_date;
+         }
+         share_type approving_stake(const vector<share_type>& stake_vote_tallies)const {
+            return stake_vote_tallies[vote_for] - stake_vote_tallies[vote_against];
+         }
    };
 
    typedef flat_index<worker_object> worker_index;

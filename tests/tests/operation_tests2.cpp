@@ -348,6 +348,8 @@ BOOST_AUTO_TEST_CASE( mia_feeds )
 BOOST_AUTO_TEST_CASE( witness_create )
 { try {
    ACTOR(nathan);
+   upgrade_to_prime(nathan_id);
+   trx.clear();
    witness_id_type nathan_witness_id = create_witness(nathan_id, nathan_key_id, nathan_private_key).id;
    // Give nathan some voting stake
    transfer(genesis_account, nathan_id, asset(10000000));
@@ -379,10 +381,7 @@ BOOST_AUTO_TEST_CASE( witness_create )
 
 BOOST_AUTO_TEST_CASE( global_settle_test )
 { try {
-   ACTOR(nathan);
-   ACTOR(ben);
-   ACTOR(valentine);
-   ACTOR(dan);
+   ACTORS((nathan)(ben)(valentine)(dan));
    asset_id_type bit_usd_id = create_bitasset("BITUSD", nathan_id, 100, market_issued | global_settle | charge_market_fee).get_id();
    transfer(genesis_account, ben_id, asset(10000));
    transfer(genesis_account, valentine_id, asset(10000));
@@ -426,6 +425,7 @@ BOOST_AUTO_TEST_CASE( global_settle_test )
 BOOST_AUTO_TEST_CASE( worker_create_test )
 { try {
    ACTOR(nathan);
+   upgrade_to_prime(nathan_id);
    generate_block();
 
    {
@@ -461,6 +461,88 @@ BOOST_AUTO_TEST_CASE( worker_create_test )
    BOOST_CHECK(balance.owner == nathan_id);
    BOOST_CHECK(balance.balance == asset(0));
    BOOST_CHECK(balance.policy.get<cdd_vesting_policy>().vesting_seconds == fc::days(1).to_seconds());
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( worker_pay_test )
+{ try {
+   INVOKE(worker_create_test);
+   GET_ACTOR(nathan);
+   generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
+   transfer(genesis_account, nathan_id, asset(100000));
+
+   {
+      account_update_operation op;
+      op.account = nathan_id;
+      op.vote = nathan_id(db).votes;
+      op.vote->insert(worker_id_type()(db).vote_for);
+      trx.operations.push_back(op);
+      db.push_transaction(trx, ~0);
+      trx.clear();
+   }
+   {
+      asset_burn_operation op;
+      op.payer = account_id_type();
+      op.amount_to_burn = asset(BTS_INITIAL_SUPPLY/2);
+      trx.operations.push_back(op);
+      db.push_transaction(trx, ~0);
+      trx.clear();
+   }
+
+   BOOST_CHECK_EQUAL(worker_id_type()(db).balance(db).balance.amount.value, 0);
+   generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
+   BOOST_CHECK_EQUAL(worker_id_type()(db).balance(db).balance.amount.value, 1000);
+   generate_blocks(db.head_block_time() + fc::hours(12));
+
+   {
+      vesting_balance_withdraw_operation op;
+      op.vesting_balance = worker_id_type()(db).balance;
+      op.amount = asset(500);
+      op.owner = nathan_id;
+      trx.set_expiration(db.head_block_id());
+      trx.operations.push_back(op);
+      trx.sign(nathan_key_id, nathan_private_key);
+      db.push_transaction(trx);
+      trx.signatures.clear();
+      REQUIRE_THROW_WITH_VALUE(op, amount, asset(1));
+      trx.clear();
+   }
+
+   BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 100500);
+   BOOST_CHECK_EQUAL(worker_id_type()(db).balance(db).balance.amount.value, 500);
+
+   {
+      account_update_operation op;
+      op.account = nathan_id;
+      op.vote = nathan_id(db).votes;
+      op.vote->erase(worker_id_type()(db).vote_for);
+      trx.operations.push_back(op);
+      db.push_transaction(trx, ~0);
+      trx.clear();
+   }
+
+   generate_blocks(db.head_block_time() + fc::hours(12));
+   BOOST_CHECK_EQUAL(worker_id_type()(db).balance(db).balance.amount.value, 500);
+
+   {
+      vesting_balance_withdraw_operation op;
+      op.vesting_balance = worker_id_type()(db).balance;
+      op.amount = asset(500);
+      op.owner = nathan_id;
+      trx.set_expiration(db.head_block_id());
+      trx.operations.push_back(op);
+      REQUIRE_THROW_WITH_VALUE(op, amount, asset(500));
+      generate_blocks(db.head_block_time() + fc::hours(12));
+      trx.set_expiration(db.head_block_id());
+      REQUIRE_THROW_WITH_VALUE(op, amount, asset(501));
+      trx.operations.back() = op;
+      trx.sign(nathan_key_id, nathan_private_key);
+      db.push_transaction(trx);
+      trx.signatures.clear();
+      trx.clear();
+   }
+
+   BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 101000);
+   BOOST_CHECK_EQUAL(worker_id_type()(db).balance(db).balance.amount.value, 0);
 } FC_LOG_AND_RETHROW() }
 
 // TODO:  Write linear VBO tests

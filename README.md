@@ -9,8 +9,7 @@ Starting Graphene
 
     git clone https://gitlab.bitshares.org/dlarimer/graphene
     cd graphene
-    git submodule init
-    git submodule update
+    git submodule update --init --recursive
 
 TODO:  Are recursive flags needed for submodules?
 

@@ -432,7 +432,11 @@ BOOST_FIXTURE_TEST_CASE( fired_delegates, database_fixture )
    });
 
    for( int i = 0; i < 15; ++i )
-      delegates.insert(create_delegate(create_account("delegate" + fc::to_string(i+1), delegate_key_object.id)).vote_id);
+   {
+      const auto& account = create_account("delegate" + fc::to_string(i+1), delegate_key_object.id);
+      upgrade_to_prime(account);
+      delegates.insert(create_delegate(account).vote_id);
+   }
 
    //A proposal is created to give nathan lots more money.
    proposal_create_operation pop = proposal_create_operation::genesis_proposal(db);
@@ -975,12 +979,9 @@ BOOST_FIXTURE_TEST_CASE( bogus_signature, database_fixture )
 
 BOOST_FIXTURE_TEST_CASE( voting_account, database_fixture )
 { try {
-   private_key_type nathan_key = generate_private_key("nathan");
-   private_key_type vikram_key = generate_private_key("vikram");
-   auto nathan_key_id = register_key(nathan_key.get_public_key()).get_id();
-   auto vikram_key_id = register_key(vikram_key.get_public_key()).get_id();
-   account_id_type nathan_id = create_account("nathan", nathan_key_id).get_id();
-   account_id_type vikram_id = create_account("vikram", vikram_key_id).get_id();
+   ACTORS((nathan)(vikram));
+   upgrade_to_prime(nathan_id);
+   upgrade_to_prime(vikram_id);
    delegate_id_type nathan_delegate = create_delegate(nathan_id(db)).id;
    delegate_id_type vikram_delegate = create_delegate(vikram_id(db)).id;
 
@@ -996,7 +997,7 @@ BOOST_FIXTURE_TEST_CASE( voting_account, database_fixture )
       op.vote = flat_set<vote_id_type>{nathan_delegate(db).vote_id};
       op.num_committee = 1;
       trx.operations.push_back(op);
-      trx.sign(nathan_key_id, nathan_key);
+      trx.sign(nathan_key_id, nathan_private_key);
       db.push_transaction(trx);
       trx.clear();
    }
@@ -1007,7 +1008,7 @@ BOOST_FIXTURE_TEST_CASE( voting_account, database_fixture )
       op.vote->insert(vikram_delegate(db).vote_id);
       op.num_committee = 11;
       trx.operations.push_back(op);
-      trx.sign(vikram_key_id, vikram_key);
+      trx.sign(vikram_key_id, vikram_private_key);
       db.push_transaction(trx);
       trx.clear();
    }

@@ -139,9 +139,14 @@ void database_fixture::verify_asset_supplies( )const
    for( const bond_offer_object& bond_offer : db.get_index_type<bond_offer_index>().indices() )
    {
       total_balances[ bond_offer.amount.asset_id ] += bond_offer.amount.amount;
+      if( bond_offer.amount.asset_id == asset_id_type() )
+         core_in_orders += bond_offer.amount.amount;
    }
    for( const vesting_balance_object& vbo : db.get_index_type< simple_index<vesting_balance_object> >() )
       total_balances[ vbo.balance.asset_id ] += vbo.balance.amount;
+
+   total_balances[asset_id_type()] += db.get_dynamic_global_properties().witness_budget;
+
    for( const auto& item : total_debts )
       BOOST_CHECK_EQUAL(item.first(db).dynamic_asset_data_id(db).current_supply.value, item.second.value);
 
@@ -518,7 +523,6 @@ const witness_object& database_fixture::create_witness( const account_object& ow
    secret_hash_type::encoder enc;
    fc::raw::pack(enc, signing_private_key);
    fc::raw::pack(enc, secret_hash_type());
-   wdump((signing_private_key)(secret_hash_type()));
    op.initial_secret = secret_hash_type::hash(enc.result());
    trx.operations.push_back(op);
    trx.validate();
@@ -655,6 +659,11 @@ void database_fixture::enable_fees(
    } );
 }
 
+void database_fixture::upgrade_to_prime(account_id_type account)
+{
+   upgrade_to_prime(account(db));
+}
+
 void database_fixture::upgrade_to_prime( const account_object& account )
 {
    try
@@ -665,6 +674,7 @@ void database_fixture::upgrade_to_prime( const account_object& account )
       trx.operations.emplace_back(operation(op));
       db.push_transaction( trx, ~0 );
       FC_ASSERT( account.is_prime() );
+      trx.clear();
    }
    FC_CAPTURE_AND_RETHROW((account))
 }

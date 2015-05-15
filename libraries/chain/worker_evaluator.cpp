@@ -1,6 +1,7 @@
 #include <bts/chain/database.hpp>
 #include <bts/chain/worker_evaluator.hpp>
 #include <bts/chain/vesting_balance_object.hpp>
+#include <bts/chain/account_object.hpp>
 
 namespace bts { namespace chain {
 
@@ -8,6 +9,7 @@ object_id_type worker_create_evaluator::do_evaluate(const worker_create_evaluato
 { try {
    database& d = db();
 
+   FC_ASSERT(d.get(o.owner).is_prime());
    FC_ASSERT(o.work_begin_date >= d.head_block_time());
 
    return object_id_type();
