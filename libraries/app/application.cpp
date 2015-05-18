@@ -15,6 +15,10 @@
 
 #include <iostream>
 
+#include <fc/log/file_appender.hpp>
+#include <fc/log/logger.hpp>
+#include <fc/log/logger_config.hpp>
+
 namespace bts { namespace app {
 using net::item_hash_t;
 using net::item_id;
@@ -411,6 +415,34 @@ void application::initialize(const fc::path& data_dir, const boost::program_opti
 {
    my->_data_dir = data_dir;
    my->_options = &options;
+
+   fc::logging_config cfg;
+   fc::path log_dir = data_dir / "logs";
+
+   fc::file_appender::config ac;
+   ac.filename             = log_dir / "default" / "default.log";
+   ac.flush                = true;
+   ac.rotate               = true;
+   ac.rotation_interval    = fc::hours( 1 );
+   ac.rotation_limit       = fc::days( 1 );
+   ac.rotation_compression = false;
+
+   std::cout << "Logging to file: " << (log_dir / ac.filename).preferred_string() << "\n";
+
+   fc::file_appender::config ac_p2p;
+   ac_p2p.filename             = log_dir / "p2p" / "p2p.log";
+   ac_p2p.flush                = true;
+   ac_p2p.rotate               = true;
+   ac_p2p.rotation_interval    = fc::hours( 1 );
+   ac_p2p.rotation_limit       = fc::days( 1 );
+   ac_p2p.rotation_compression = false;
+
+   std::cout << "Logging P2P to file: " << (log_dir / ac_p2p.filename).preferred_string() << "\n";
+
+   cfg.appenders.push_back(fc::appender_config( "default", "file", fc::variant(ac)));
+   cfg.appenders.push_back(fc::appender_config( "p2p", "file", fc::variant(ac_p2p)));
+
+   fc::configure_logging( cfg );
 }
 
 void application::startup()
