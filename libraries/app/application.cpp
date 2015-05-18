@@ -442,6 +442,12 @@ void application::initialize(const fc::path& data_dir, const boost::program_opti
    cfg.appenders.push_back(fc::appender_config( "default", "file", fc::variant(ac)));
    cfg.appenders.push_back(fc::appender_config( "p2p", "file", fc::variant(ac_p2p)));
 
+   cfg.loggers = { fc::logger_config( "default"), fc::logger_config("p2p") };
+   cfg.loggers.front().level = fc::log_level::debug;
+   cfg.loggers.front().appenders = {"default"};
+   cfg.loggers.back().level = fc::log_level::warn;
+   cfg.loggers.back().appenders = {"p2p"};
+
    fc::configure_logging( cfg );
 }
 

@@ -39,6 +39,7 @@ int main( int argc, char** argv )
    try {
 
       wdump( (bts::chain::public_key_type( fc::ecc::private_key::regenerate( fc::sha256::hash(std::string("nathan")) ).get_public_key() ) ) );
+      wdump( (bts::chain::address( fc::ecc::private_key::regenerate( fc::sha256::hash(std::string("nathan")) ).get_public_key() ) ) );
       wdump( (bts::utilities::key_to_wif( fc::ecc::private_key::regenerate( fc::sha256::hash(std::string("nathan")) ) ) ) );
       boost::program_options::options_description opts;
          opts.add_options()
@@ -88,6 +89,10 @@ int main( int argc, char** argv )
 
       cfg.appenders.push_back(fc::appender_config( "default", "file", fc::variant(ac)));
       cfg.appenders.push_back(fc::appender_config( "p2p", "file", fc::variant(ac_p2p)));
+
+      cfg.loggers = { fc::logger_config( "default") };
+      cfg.loggers.back().level = fc::log_level::debug;
+      cfg.loggers.back().appenders = {"default"};
 
       fc::configure_logging( cfg );
 
@@ -184,10 +189,6 @@ int main( int argc, char** argv )
          _websocket_tls_server->start_accept();
       }
 
-      fc::promise<int>::ptr exit_promise = new fc::promise<int>("UNIX Signal Handler");
-      fc::set_signal_handler([&exit_promise](int signal) {
-         exit_promise->set_value(signal);
-      }, SIGINT);
 
 
       if( !options.count( "daemon" ) )
@@ -198,6 +199,11 @@ int main( int argc, char** argv )
       }
       else
       {
+        fc::promise<int>::ptr exit_promise = new fc::promise<int>("UNIX Signal Handler");
+        fc::set_signal_handler([&exit_promise](int signal) {
+           exit_promise->set_value(signal);
+        }, SIGINT);
+
         ilog( "Entering Daemon Mode, ^C to exit" );
         exit_promise->wait();
       }

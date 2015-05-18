@@ -1706,6 +1706,8 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
       for( auto sig : trx.signatures )
       {
          FC_ASSERT( sig.first(*this).key_address() == fc::ecc::public_key( sig.second, trx.digest() ), "",
+                    ("trx",trx)
+                    ("digest",trx.digest())
                     ("sig.first",sig.first)
                     ("key_address",sig.first(*this).key_address())
                     ("addr", address(fc::ecc::public_key( sig.second, trx.digest() ))) );

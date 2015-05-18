@@ -387,6 +387,11 @@ wallet_api_impl::_get_result_formatters() const
       return result.get_string();
    };
 
+   m["gethelp"] = []( variant result, const fc::variants& a)
+   {
+      return result.get_string();
+   };
+
    m["get_account_history"] = []( variant result, const fc::variants& a)
    {
       auto r = result.as<vector<operation_history_object>>();
@@ -860,6 +865,7 @@ signed_transaction wallet_api_impl::sign_transaction(
       }
    }
 
+   edump((tx));
    if( broadcast )
       _remote_net->broadcast_transaction( tx );
 
@@ -984,7 +990,7 @@ signed_transaction wallet_api_impl::transfer(
    string memo,
    bool broadcast /* = false */
    )
-{
+{ try {
    FC_ASSERT( !self.is_locked() );
    vector< optional< asset_object > > opt_asset = _remote_db->lookup_asset_symbols( {asset_symbol} );
    FC_ASSERT( opt_asset.size() == 1 );
@@ -1023,7 +1029,7 @@ signed_transaction wallet_api_impl::transfer(
    tx.validate();
 
    return sign_transaction( tx, broadcast );
-}
+} FC_CAPTURE_AND_RETHROW( (from)(to)(amount)(asset_symbol)(memo)(broadcast) ) }
 
 
 
@@ -1205,9 +1211,9 @@ signed_transaction wallet_api::sign_transaction(
    signed_transaction tx,
    bool broadcast /* = false */
    )
-{
+{ try {
    return my->sign_transaction( tx, broadcast);
-}
+} FC_CAPTURE_AND_RETHROW( (tx) ) }
 
 global_property_object wallet_api::get_global_properties() const
 {
@@ -1224,6 +1230,59 @@ string wallet_api::help()const
    fc::api<wallet_api> tmp;
    std::stringstream ss;
    tmp->visit( detail::help_visitor(ss) );
+   return ss.str();
+}
+string wallet_api::gethelp(const string& method )const
+{
+   fc::api<wallet_api> tmp;
+   std::stringstream ss;
+   ss << "\n";
+
+   if( method == "import_key" )
+   {
+      ss << "usage: import_key ACCOUNT_NAME_OR_ID  WIF_PRIVATE_KEY\n\n";
+      ss << "example: import_key \"1.3.11\" 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\n"; 
+      ss << "example: import_key \"usera\" 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\n"; 
+   }
+   else if( method == "transfer" )
+   {
+      ss << "usage: transfer FROM TO AMOUNT SYMBOL \"memo\" BROADCAST\n\n";
+      ss << "example: transfer \"1.3.11\" \"1.3.4\" 1000 BTS \"memo\" true\n";
+      ss << "example: transfer \"usera\" \"userb\" 1000 BTS \"memo\" true\n";
+   }
+   else if( method == "create_account_with_brain_key" )
+   {
+      ss << "usage: create_account_with_brain_key BRAIN_KEY ACCOUNT_NAME REGISTRAR REFERRER BROADCAST\n\n";
+      ss << "example: create_account_with_brain_key \"my really long brain key\" \"newaccount\" \"1.3.11\" \"1.3.11\" true\n";
+      ss << "example: create_account_with_brain_key \"my really long brain key\" \"newaccount\" \"someaccount\" \"otheraccount\" true\n";
+      ss << "\n";
+      ss << "This method should be used if you would like the wallet to generate new keys derived from the brain key.\n";
+      ss << "The BRAIN_KEY will be used as the owner key, and the active key will be derived from the BRAIN_KEY.  Use\n";
+      ss << "register_account if you already know the keys you know the public keys that you would like to register.\n";
+    
+   }
+   else if( method == "register_account" )
+   {
+      ss << "usage: register_account ACCOUNT_NAME OWNER_PUBLIC_KEY ACTIVE_PUBLIC_KEY REGISTRAR REFERRER REFERRER_PERCENT BROADCAST\n\n";
+      ss << "example: register_account \"newaccount\" \"BTS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV\" \"BTS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV\" \"1.3.11\" \"1.3.11\" 50 true\n";
+      ss << "\n";
+      ss << "Use this method to register an account for which you do not know the private keys.";
+   }
+   else if( method == "create_asset" )
+   {
+      ss << "usage: ISSUER SYMBOL PRECISION_DIGITS OPTIONS BITASSET_OPTIONS BROADCAST\n\n";
+      ss << "PRECISION_DIGITS: the number of digits after the decimal point\n\n";
+      ss << "Example value of OPTIONS: \n";
+      ss << fc::json::to_pretty_string( bts::chain::asset_object::asset_options() );
+      ss << "\nExample value of BITASSET_OPTIONS: \n";
+      ss << fc::json::to_pretty_string( bts::chain::asset_object::bitasset_options() );
+      ss << "\nBITASSET_OPTIONS may be null\n";
+   }
+   else
+   {
+      ss << "No help defined for method " << method << "\n";
+   }
+
    return ss.str();
 }
 

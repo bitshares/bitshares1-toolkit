@@ -26,8 +26,9 @@ namespace bts { namespace chain {
       return result;
    }
    void bts::chain::signed_transaction::sign( key_id_type id, const private_key_type& key )
-   {
+   { try {
       signatures[id] =  key.sign_compact( digest() );
-   }
+      FC_ASSERT(  fc::ecc::public_key( signatures[id], digest() ) == key.get_public_key() );
+   } FC_CAPTURE_AND_RETHROW( (digest()) ) }
 
 } } // bts::chain

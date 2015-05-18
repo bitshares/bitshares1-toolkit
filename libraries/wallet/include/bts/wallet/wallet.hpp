@@ -84,6 +84,7 @@ class wallet_api
       void    set_password( string password );
 
       string  help()const;
+      string  gethelp( const string& method )const;
 
       bool    load_wallet_file( string wallet_filename = "" );
       void    save_wallet_file( string wallet_filename = "" );
@@ -180,6 +181,7 @@ FC_REFLECT( bts::wallet::wallet_data,
 
 FC_API( bts::wallet::wallet_api,
    (help)
+   (gethelp)
    (is_new)
    (is_locked)
    (lock)(unlock)(set_password)

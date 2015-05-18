@@ -35,8 +35,8 @@
 /** NOTE: making this a power of 2 (say 2^15) would greatly accelerate fee calcs */
 #define BTS_MAX_MARKET_FEE_PERCENT                         BTS_100_PERCENT
 #define BTS_DEFAULT_FORCE_SETTLEMENT_DELAY                 (60*60*24) ///< 1 day
-#define BTS_DEFAULT_FORCE_SETTLEMENT_OFFSET                100 ///< 1%
-#define BTS_DEFAULT_FORCE_SETTLEMENT_MAX_VOLUME            200 ///< 2%
+#define BTS_DEFAULT_FORCE_SETTLEMENT_OFFSET                0 ///< 1%
+#define BTS_DEFAULT_FORCE_SETTLEMENT_MAX_VOLUME            2000 ///< 20%
 #define BTS_DEFAULT_PRICE_FEED_LIFETIME                    (60*60*24) ///< 1 day
 #define BTS_MAX_FEED_PRODUCERS                             200
 #define BTS_DEFAULT_MAX_AUTHORITY_MEMBERSHIP               10
