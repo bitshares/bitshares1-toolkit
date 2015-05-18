@@ -63,6 +63,7 @@
 #define BTS_DEFAULT_BURN_PERCENT_OF_FEE                  (10000/5) // 20%
 #define BTS_DEFAULT_WITNESS_PAY_PERCENT_OF_ACCUMULATED   (   1728000)  /// gives a half life of 1 year assuming 1 second blocks
 #define BTS_WITNESS_PAY_PERCENT_PRECISION                (1000000000)
+#define BTS_GENESIS_TIMESTAMP                            (1431700000)  /// Should be divisible by BTS_DEFAULT_BLOCK_INTERVAL
 
 /**
  * every second, the fraction of burned core asset which cycles is

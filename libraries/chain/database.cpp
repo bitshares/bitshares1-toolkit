@@ -273,6 +273,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
    (void)properties;
 
    create<dynamic_global_property_object>( [&](dynamic_global_property_object& p) {
+      p.time = fc::time_point_sec( BTS_GENESIS_TIMESTAMP );
       });
 
    const asset_dynamic_data_object& dyn_asset =
