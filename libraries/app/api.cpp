@@ -66,7 +66,7 @@ namespace bts { namespace app {
     {
        return _db.get( global_property_id_type() );
     }
-    
+
     dynamic_global_property_object database_api::get_dynamic_global_properties()const
     {
        return _db.get( dynamic_global_property_id_type() );
@@ -105,7 +105,7 @@ namespace bts { namespace app {
        return result;
     }
 
-    uint64_t                      database_api::get_account_count()const 
+    uint64_t                      database_api::get_account_count()const
     {
        const auto& account_idx = _db.get_index_type<account_index>();
        return account_idx.indices().size();
@@ -121,14 +121,14 @@ namespace bts { namespace app {
        auto itr = accounts_by_name.lower_bound( lower_bound_name );
        while( limit && itr != accounts_by_name.end() )
        {
-          result[itr->name] = itr->id; 
+          result[itr->name] = itr->id;
           ++itr;
           --limit;
        }
        return result;
     }
 
-    vector<operation_history_object>  database_api::get_account_history( account_id_type a, 
+    vector<operation_history_object>  database_api::get_account_history( account_id_type a,
                                                                          operation_history_id_type stop )const
     {
        vector<operation_history_object> result;
@@ -169,9 +169,9 @@ namespace bts { namespace app {
     {
        const auto& limit_order_idx = _db.get_index_type<limit_order_index>();
        const auto& limit_price_idx = limit_order_idx.indices().get<by_price>();
-       
+
        vector<limit_order_object>  result;
-       
+
        uint32_t count = 0;
        auto limit_itr = limit_price_idx.lower_bound( price::max(a,b) );
        auto limit_end = limit_price_idx.upper_bound( price::min(a,b) );
@@ -293,7 +293,7 @@ namespace bts { namespace app {
        _app.chain_database()->push_transaction(trx);
        _app.p2p_node()->broadcast_transaction(trx);
     }
-   
+
     std::vector<net::peer_status>  network_api::get_connected_peers() const
     {
       return _app.p2p_node()->get_connected_peers();
@@ -344,7 +344,7 @@ namespace bts { namespace app {
     void database_api::on_objects_changed( const vector<object_id_type>& ids )
     {
        vector<object_id_type> my_objects;
-       for( auto id : ids ) 
+       for( auto id : ids )
           if( _subscriptions.find(id) != _subscriptions.end() )
              my_objects.push_back(id);
 
@@ -361,7 +361,6 @@ namespace bts { namespace app {
     }
     database_api::~database_api()
     {
-       wlog("${p}", ("p",int64_t(this)));
        try {
           if( _broadcast_changes_complete.valid() )
           {

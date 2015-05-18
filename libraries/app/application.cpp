@@ -129,9 +129,12 @@ namespace detail {
          bool clean = !fc::exists(_data_dir / "blockchain/dblock");
          fc::create_directories(_data_dir / "blockchain/dblock");
 
-         genesis_allocation initial_allocation = {{bts::chain::public_key_type(fc::ecc::private_key::regenerate(fc::sha256::hash(string("nathan"))).get_public_key()), 1}};
+         auto nathan_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("nathan")));
+         genesis_allocation initial_allocation = {{bts::chain::public_key_type(nathan_key.get_public_key()), 1}};
          if( _options->count("genesis-json") )
             initial_allocation = fc::json::from_file(_options->at("genesis-json").as<boost::filesystem::path>()).as<genesis_allocation>();
+         else
+            dlog("Allocating all stake to ${key}", ("key", utilities::key_to_wif(nathan_key)));
 
          if( _options->count("resync-blockchain") )
             _chain_db->wipe(_data_dir / "blockchain", true);

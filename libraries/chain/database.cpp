@@ -204,7 +204,7 @@ void database::initialize_indexes()
 }
 
 void database::init_genesis(const genesis_allocation& initial_allocation)
-{
+{ try {
    _undo_db.disable();
 
    fc::ecc::private_key genesis_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
@@ -373,7 +373,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
            ("n", initial_allocation.size())("t", duration.count() / 1000));
    }
    _undo_db.enable();
-}
+} FC_LOG_AND_RETHROW() }
 
 asset database::get_balance(account_id_type owner, asset_id_type asset_id) const
 {
@@ -1759,7 +1759,7 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
          FC_ASSERT( trx_expiration <= _pending_block.timestamp + chain_parameters.maximum_time_until_expiration );
       }
       FC_ASSERT( _pending_block.timestamp <= trx_expiration );
-   } else {
+   } else if( !(skip & skip_transaction_signatures) ) {
       FC_ASSERT(trx.relative_expiration == 0, "May not use transactions with a reference block in block 1!");
    }
 
