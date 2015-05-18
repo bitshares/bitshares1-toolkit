@@ -12,5 +12,4 @@ tests/app_test
 tests/chain_bench
 tests/chain_test
 
-/html
-/latex
+/doxygen
