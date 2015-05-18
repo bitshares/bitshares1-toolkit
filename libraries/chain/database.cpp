@@ -1701,6 +1701,7 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    FC_ASSERT( (skip & skip_transaction_dupe_check) ||
               trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end() );
    transaction_evaluation_state eval_state(this, skip&skip_authority_check );
+   const chain_parameters& chain_parameters = get_global_properties().parameters;
    eval_state._trx = &trx;
 
    if( !(skip & skip_transaction_signatures) )
@@ -1715,17 +1716,6 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
                     ("addr", address(fc::ecc::public_key( sig.second, trx.digest() ))) );
       }
    }
-   eval_state.operation_results.reserve( trx.operations.size() );
-
-   const chain_parameters& chain_parameters = get_global_properties().parameters;
-   processed_transaction ptrx(trx);
-   _current_op_in_trx = 0;
-   for( auto op : ptrx.operations )
-   {
-      eval_state.operation_results.emplace_back(apply_operation(eval_state, op));
-      ++_current_op_in_trx;
-   }
-   ptrx.operation_results = std::move( eval_state.operation_results );
 
    //If we're skipping tapos check, but not dupe check, assume all transactions have maximum expiration time.
    fc::time_point_sec trx_expiration = _pending_block.timestamp + chain_parameters.maximum_time_until_expiration;
@@ -1762,6 +1752,18 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
          transaction.trx = trx;
       });
    }
+
+   eval_state.operation_results.reserve( trx.operations.size() );
+
+   processed_transaction ptrx(trx);
+   _current_op_in_trx = 0;
+   for( auto op : ptrx.operations )
+   {
+      eval_state.operation_results.emplace_back(apply_operation(eval_state, op));
+      ++_current_op_in_trx;
+   }
+   ptrx.operation_results = std::move( eval_state.operation_results );
+
    return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
