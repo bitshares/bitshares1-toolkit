@@ -624,6 +624,7 @@ void database_fixture::transfer(
 {
    try
    {
+      trx.set_expiration(db.head_block_id());
       trx.operations.push_back(transfer_operation({ fee, from.id, to.id, amount, memo_data() }));
 
       if( fee == asset() )

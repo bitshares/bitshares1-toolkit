@@ -778,7 +778,7 @@ BOOST_FIXTURE_TEST_CASE( proposal_owner_authority_complete, database_fixture )
 
       std::swap(uop.key_approvals_to_add, uop.key_approvals_to_remove);
       // Survive trx dupe check
-      trx.set_expiration(db.head_block_id());
+      trx.set_expiration(db.head_block_id(), 5);
       trx.operations.push_back(uop);
       trx.sign(nathan_key_obj.id,nathan_key);
       trx.sign(dan_key_obj.id,dan_key);
@@ -853,7 +853,7 @@ BOOST_FIXTURE_TEST_CASE( max_authority_membership, database_fixture )
       // TODO:  Make sure it throws / accepts properly when
       //   max_account_authority is changed in global parameteres
 
-      for( int num_keys=0; num_keys<=keys_to_create; num_keys++ )
+      for( int num_keys=1; num_keys<=keys_to_create; num_keys++ )
       {
          // try registering account with n keys
 

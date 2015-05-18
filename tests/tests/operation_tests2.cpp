@@ -354,6 +354,7 @@ BOOST_AUTO_TEST_CASE( witness_create )
    // Give nathan some voting stake
    transfer(genesis_account, nathan_id, asset(10000000));
    generate_block();
+   trx.set_expiration(db.head_block_id());
 
    {
       account_update_operation op;
