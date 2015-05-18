@@ -1453,8 +1453,7 @@ namespace bts { namespace chain {
     * later. Worker pay is placed in a vesting balance and vests over the number of days specified at the worker's
     * creation.
     *
-    * Once created, a worker is immutable and will be kept by the blockchain until its end date, at which point it is
-    * deleted automatically; or it is deleted by its owner.
+    * Once created, a worker is immutable and will be kept by the blockchain forever.
     *
     * @{
     */
@@ -1469,6 +1468,7 @@ namespace bts { namespace chain {
       time_point_sec       work_begin_date;
       time_point_sec       work_end_date;
       share_type           daily_pay;
+      /// This should be set to the initializer appropriate for the type of worker to be created.
       worker_initializer   initializer;
 
       account_id_type   fee_payer()const { return owner; }

@@ -18,7 +18,20 @@ namespace bts { namespace chain {
      *
      * All worker types exist as a struct containing the data this worker needs to evaluate, as well as a method
      * pay_worker, which takes a pay amount and a non-const database reference, and applies the worker's specific pay
-     * semantics to the worker_type struct and/or the database.
+     * semantics to the worker_type struct and/or the database. Furthermore, all worker types have an initializer,
+     * which is a struct containing the data needed to create that kind of worker.
+     *
+     * Each initializer type has a method, init, which takes a non-const database reference, a const reference to the
+     * worker object being created, and a non-const reference to the specific *_worker_type object to initialize. The
+     * init method creates any further objects, and initializes the worker_type object as necessary according to the
+     * semantics of that particular worker type.
+     *
+     * To create a new worker type, define a my_new_worker_type struct with a pay_worker method which updates the
+     * my_new_worker_type object and/or the database. Create a my_new_worker_type::initializer struct with an init
+     * method and any data members necessary to create a new worker of this type. Reflect my_new_worker_type and
+     * my_new_worker_type::initializer into FC's type system, and add them to @ref worker_type and @ref
+     * worker_initializer respectively. Make sure the order of types in @ref worker_type and @ref worker_initializer
+     * remains the same.
      * @{
      */
    /**
@@ -90,6 +103,10 @@ namespace bts { namespace chain {
       template<typename WorkerType>
       void operator()( WorkerType& worker)const
       {
+         static_assert(worker_type::tag<WorkerType>::value ==
+                       worker_initializer::tag<typename WorkerType::initializer>::value,
+                       "Tag values for worker_type and worker_initializer do not match! "
+                       "Are the types in these static_variants in the same order?");
          initializer.get<typename WorkerType::initializer>().init(db, worker_obj, worker);
       }
    };
