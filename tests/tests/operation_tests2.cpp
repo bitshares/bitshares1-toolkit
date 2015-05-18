@@ -433,8 +433,7 @@ BOOST_AUTO_TEST_CASE( worker_create_test )
       worker_create_operation op;
       op.owner = nathan_id;
       op.daily_pay = 1000;
-      op.pay_vesting_period_days = 1;
-      op.worker_type = worker_object::project_worker_type;
+      op.initializer = vesting_balance_worker_type::initializer(1);
       op.work_begin_date = db.head_block_time() + 10;
       op.work_end_date = op.work_begin_date + fc::days(2);
       trx.clear();
@@ -442,7 +441,6 @@ BOOST_AUTO_TEST_CASE( worker_create_test )
       REQUIRE_THROW_WITH_VALUE(op, daily_pay, -1);
       REQUIRE_THROW_WITH_VALUE(op, daily_pay, 0);
       REQUIRE_THROW_WITH_VALUE(op, owner, account_id_type(1000));
-      REQUIRE_THROW_WITH_VALUE(op, worker_type, worker_object::worker_type_enum(5000));
       REQUIRE_THROW_WITH_VALUE(op, work_begin_date, db.head_block_time() - 10);
       REQUIRE_THROW_WITH_VALUE(op, work_end_date, op.work_begin_date);
       trx.operations.back() = op;
@@ -458,7 +456,7 @@ BOOST_AUTO_TEST_CASE( worker_create_test )
    BOOST_CHECK(worker.vote_for.type() == vote_id_type::worker);
    BOOST_CHECK(worker.vote_against.type() == vote_id_type::worker);
 
-   const vesting_balance_object& balance = worker.balance(db);
+   const vesting_balance_object& balance = worker.worker.get<vesting_balance_worker_type>().balance(db);
    BOOST_CHECK(balance.owner == nathan_id);
    BOOST_CHECK(balance.balance == asset(0));
    BOOST_CHECK(balance.policy.get<cdd_vesting_policy>().vesting_seconds == fc::days(1).to_seconds());
@@ -489,14 +487,14 @@ BOOST_AUTO_TEST_CASE( worker_pay_test )
       trx.clear();
    }
 
-   BOOST_CHECK_EQUAL(worker_id_type()(db).balance(db).balance.amount.value, 0);
+   BOOST_CHECK_EQUAL(worker_id_type()(db).worker.get<vesting_balance_worker_type>().balance(db).balance.amount.value, 0);
    generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
-   BOOST_CHECK_EQUAL(worker_id_type()(db).balance(db).balance.amount.value, 1000);
+   BOOST_CHECK_EQUAL(worker_id_type()(db).worker.get<vesting_balance_worker_type>().balance(db).balance.amount.value, 1000);
    generate_blocks(db.head_block_time() + fc::hours(12));
 
    {
       vesting_balance_withdraw_operation op;
-      op.vesting_balance = worker_id_type()(db).balance;
+      op.vesting_balance = worker_id_type()(db).worker.get<vesting_balance_worker_type>().balance;
       op.amount = asset(500);
       op.owner = nathan_id;
       trx.set_expiration(db.head_block_id());
@@ -509,7 +507,7 @@ BOOST_AUTO_TEST_CASE( worker_pay_test )
    }
 
    BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 100500);
-   BOOST_CHECK_EQUAL(worker_id_type()(db).balance(db).balance.amount.value, 500);
+   BOOST_CHECK_EQUAL(worker_id_type()(db).worker.get<vesting_balance_worker_type>().balance(db).balance.amount.value, 500);
 
    {
       account_update_operation op;
@@ -522,11 +520,11 @@ BOOST_AUTO_TEST_CASE( worker_pay_test )
    }
 
    generate_blocks(db.head_block_time() + fc::hours(12));
-   BOOST_CHECK_EQUAL(worker_id_type()(db).balance(db).balance.amount.value, 500);
+   BOOST_CHECK_EQUAL(worker_id_type()(db).worker.get<vesting_balance_worker_type>().balance(db).balance.amount.value, 500);
 
    {
       vesting_balance_withdraw_operation op;
-      op.vesting_balance = worker_id_type()(db).balance;
+      op.vesting_balance = worker_id_type()(db).worker.get<vesting_balance_worker_type>().balance;
       op.amount = asset(500);
       op.owner = nathan_id;
       trx.set_expiration(db.head_block_id());
@@ -543,8 +541,74 @@ BOOST_AUTO_TEST_CASE( worker_pay_test )
    }
 
    BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 101000);
-   BOOST_CHECK_EQUAL(worker_id_type()(db).balance(db).balance.amount.value, 0);
+   BOOST_CHECK_EQUAL(worker_id_type()(db).worker.get<vesting_balance_worker_type>().balance(db).balance.amount.value, 0);
 } FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( refund_worker_test )
+{try{
+   ACTOR(nathan);
+   upgrade_to_prime(nathan_id);
+   generate_block();
+   generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
+   trx.set_expiration(db.head_block_id());
+
+   {
+      worker_create_operation op;
+      op.owner = nathan_id;
+      op.daily_pay = 1000;
+      op.initializer = refund_worker_type::initializer();
+      op.work_begin_date = db.head_block_time() + 10;
+      op.work_end_date = op.work_begin_date + fc::days(2);
+      trx.clear();
+      trx.operations.push_back(op);
+      REQUIRE_THROW_WITH_VALUE(op, daily_pay, -1);
+      REQUIRE_THROW_WITH_VALUE(op, daily_pay, 0);
+      REQUIRE_THROW_WITH_VALUE(op, owner, account_id_type(1000));
+      REQUIRE_THROW_WITH_VALUE(op, work_begin_date, db.head_block_time() - 10);
+      REQUIRE_THROW_WITH_VALUE(op, work_end_date, op.work_begin_date);
+      trx.operations.back() = op;
+      trx.sign(nathan_key_id, nathan_private_key);
+      db.push_transaction(trx);
+      trx.clear();
+   }
+
+   const worker_object& worker = worker_id_type()(db);
+   BOOST_CHECK(worker.worker_account == nathan_id);
+   BOOST_CHECK(worker.daily_pay == 1000);
+   BOOST_CHECK(worker.work_begin_date == db.head_block_time() + 10);
+   BOOST_CHECK(worker.work_end_date == db.head_block_time() + 10 + fc::days(2));
+   BOOST_CHECK(worker.vote_for.type() == vote_id_type::worker);
+   BOOST_CHECK(worker.vote_against.type() == vote_id_type::worker);
+
+   transfer(genesis_account, nathan_id, asset(100000));
+
+   {
+      account_update_operation op;
+      op.account = nathan_id;
+      op.vote = nathan_id(db).votes;
+      op.vote->insert(worker_id_type()(db).vote_for);
+      trx.operations.push_back(op);
+      db.push_transaction(trx, ~0);
+      trx.clear();
+   }
+   {
+      asset_burn_operation op;
+      op.payer = account_id_type();
+      op.amount_to_burn = asset(BTS_INITIAL_SUPPLY/2);
+      trx.operations.push_back(op);
+      db.push_transaction(trx, ~0);
+      trx.clear();
+   }
+
+   auto supply = asset_id_type()(db).dynamic_data(db).current_supply;
+   generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
+   BOOST_CHECK_EQUAL(worker_id_type()(db).worker.get<refund_worker_type>().total_burned.value, 1000);
+   generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
+   BOOST_CHECK_EQUAL(worker_id_type()(db).worker.get<refund_worker_type>().total_burned.value, 2000);
+   generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
+   BOOST_CHECK(!db.get(worker_id_type()).is_active(db.head_block_time()));
+   BOOST_CHECK_EQUAL(worker_id_type()(db).worker.get<refund_worker_type>().total_burned.value, 2000);
+}FC_LOG_AND_RETHROW()}
 
 // TODO:  Write linear VBO tests
 

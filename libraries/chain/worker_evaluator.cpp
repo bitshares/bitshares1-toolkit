@@ -24,26 +24,15 @@ object_id_type worker_create_evaluator::do_apply(const worker_create_evaluator::
       against_id = p.get_next_vote_id(vote_id_type::worker);
    });
 
-   const vesting_balance_object& balance = d.create<vesting_balance_object>([&d, &o](vesting_balance_object& b) {
-         b.owner = o.owner;
-         b.balance = asset(0);
-
-         cdd_vesting_policy policy;
-         policy.vesting_seconds = fc::days(o.pay_vesting_period_days).to_seconds();
-         policy.coin_seconds_earned = 0;
-         policy.coin_seconds_earned_last_update = d.head_block_time();
-         b.policy = policy;
-   });
-
    return d.create<worker_object>([&](worker_object& w) {
       w.worker_account = o.owner;
       w.daily_pay = o.daily_pay;
       w.work_begin_date = o.work_begin_date;
       w.work_end_date = o.work_end_date;
-      w.balance = balance.id;
-      w.type = o.worker_type;
       w.vote_for = for_id;
       w.vote_against = against_id;
+      w.worker.set_which(o.initializer.which());
+      w.worker.visit(worker_initialize_visitor(w, o.initializer, d));
    }).id;
 } FC_CAPTURE_AND_RETHROW((o)) }
 

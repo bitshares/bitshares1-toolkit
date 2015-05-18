@@ -28,6 +28,7 @@ add_library( bts_chain
              asset_object.cpp
              proposal_object.cpp
              vesting_balance_object.cpp
+             worker_object.cpp
 
              transaction.cpp
              block.cpp
