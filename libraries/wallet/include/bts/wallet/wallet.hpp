@@ -77,6 +77,7 @@ class wallet_api
       variant                           get_object( object_id_type id ) const;
       void                              get_wallet_filename() const;
 
+      bool    is_new()const;
       bool    is_locked()const;
       void    lock();
       void    unlock( string password );
@@ -158,6 +159,9 @@ class wallet_api
       std::map<string,std::function<string(fc::variant,const fc::variants&)> >
       _get_result_formatters() const;
 
+
+      fc::signal<void(bool)> lock_changed;
+
       std::unique_ptr<detail::wallet_api_impl> my;
 };
 
@@ -176,6 +180,7 @@ FC_REFLECT( bts::wallet::wallet_data,
 
 FC_API( bts::wallet::wallet_api,
    (help)
+   (is_new)
    (is_locked)
    (lock)(unlock)(set_password)
    (list_accounts)

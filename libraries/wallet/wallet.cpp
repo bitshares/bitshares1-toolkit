@@ -1253,6 +1253,10 @@ bool wallet_api::is_locked()const
 {
    return my->_checksum == fc::sha512();
 }
+bool wallet_api::is_new()const
+{
+   return my->_wallet.cipher_keys.size() == 0;
+}
 
 void wallet_api::lock()
 { try {
@@ -1263,6 +1267,7 @@ void wallet_api::lock()
    auto plain_txt = fc::raw::pack(data);
    my->_wallet.cipher_keys = fc::aes_encrypt( data.checksum, plain_txt );
    my->_checksum = fc::sha512();
+   my->self.lock_changed(true);
 } FC_CAPTURE_AND_RETHROW() }
 
 void wallet_api::unlock( string password )
@@ -1274,13 +1279,15 @@ void wallet_api::unlock( string password )
     FC_ASSERT( pk.checksum == pw );
     my->_keys = std::move(pk.keys);
     my->_checksum = pk.checksum;
+   my->self.lock_changed(false);
 } FC_CAPTURE_AND_RETHROW() }
 
 void wallet_api::set_password( string password )
 {
-    if( my->_wallet.cipher_keys.size() ) 
+    if( !is_new() ) 
        FC_ASSERT( !is_locked(), "The wallet must be unlocked before the password can be set" );
     my->_checksum = fc::sha512::hash( password.c_str(), password.size() );
+    lock();
 }
 
 signed_transaction wallet_api::upgrade_account( string name, bool broadcast )

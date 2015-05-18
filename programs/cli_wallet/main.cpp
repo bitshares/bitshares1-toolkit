@@ -143,7 +143,14 @@ int main( int argc, char** argv )
       for( auto& name_formatter : wapiptr->_get_result_formatters() )
          wallet_cli->format_result( name_formatter.first, name_formatter.second );
 
-
+      if( wapiptr->is_new() )
+      {
+         std::cout << "Please use the set_password method to initialize a new wallet before continuing\n";
+         wallet_cli->set_prompt( "new >>> " );
+      }
+      else
+         wallet_cli->set_prompt( "locked >>> " );
+      wapiptr->lock_changed.connect( [&](bool locked){ wallet_cli->set_prompt(  locked ? "locked >>> " : "unlocked >>> " ); } );
 
       auto _websocket_server = std::make_shared<fc::http::websocket_server>();
       if( options.count("rpc-endpoint") )
