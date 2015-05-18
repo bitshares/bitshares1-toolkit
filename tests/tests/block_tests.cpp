@@ -188,6 +188,7 @@ BOOST_AUTO_TEST_CASE( undo_pending )
          account_create_operation cop;
          cop.registrar = account_id_type(1);
          cop.name = "nathan";
+         cop.owner = authority(1, key_id_type(), 1);
          trx.operations.push_back(cop);
          trx.sign( key_id_type(), delegate_priv_key );
          db.push_transaction(trx);
@@ -239,6 +240,7 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
       account_create_operation cop;
       cop.registrar = account_id_type(1);
       cop.name = "nathan";
+      cop.owner = authority(1, key_id_type(), 1);
       trx.operations.push_back(cop);
       trx.sign( key_id_type(), delegate_priv_key );
       db1.push_transaction(trx);
@@ -296,6 +298,7 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
       account_id_type nathan_id = account_idx.get_next_id();
       account_create_operation cop;
       cop.name = "nathan";
+      cop.owner = authority(1, key_id_type(), 1);
       trx.operations.push_back(cop);
       trx.sign( key_id_type(), delegate_priv_key );
       db1.push_transaction(trx, skip_sigs);
@@ -352,6 +355,7 @@ BOOST_AUTO_TEST_CASE( tapos )
       account_create_operation cop;
       cop.registrar = init1.id;
       cop.name = "nathan";
+      cop.owner = authority(1, key_id_type(), 1);
       trx.operations.push_back(cop);
       trx.sign( key_id_type(), delegate_priv_key );
 

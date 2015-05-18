@@ -1453,8 +1453,7 @@ namespace bts { namespace chain {
     * later. Worker pay is placed in a vesting balance and vests over the number of days specified at the worker's
     * creation.
     *
-    * Once created, a worker is immutable and will be kept by the blockchain until its end date, at which point it is
-    * deleted automatically; or it is deleted by its owner.
+    * Once created, a worker is immutable and will be kept by the blockchain forever.
     *
     * @{
     */
@@ -1464,13 +1463,13 @@ namespace bts { namespace chain {
     */
    struct worker_create_operation
    {
-      asset                            fee;
-      account_id_type                  owner;
-      time_point_sec                   work_begin_date;
-      time_point_sec                   work_end_date;
-      share_type                       daily_pay;
-      uint16_t                         pay_vesting_period_days;
-      worker_object::worker_type_enum  worker_type;
+      asset                fee;
+      account_id_type      owner;
+      time_point_sec       work_begin_date;
+      time_point_sec       work_end_date;
+      share_type           daily_pay;
+      /// This should be set to the initializer appropriate for the type of worker to be created.
+      worker_initializer   initializer;
 
       account_id_type   fee_payer()const { return owner; }
       void              get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
@@ -1779,6 +1778,6 @@ FC_REFLECT( bts::chain::vesting_balance_create_operation, (fee)(creator)(owner)(
 FC_REFLECT( bts::chain::vesting_balance_withdraw_operation, (fee)(vesting_balance)(owner)(amount) )
 
 FC_REFLECT( bts::chain::worker_create_operation,
-            (fee)(owner)(work_begin_date)(work_end_date)(daily_pay)(pay_vesting_period_days)(worker_type) )
+            (fee)(owner)(work_begin_date)(work_end_date)(daily_pay)(initializer) )
 
 FC_REFLECT( bts::chain::custom_operation, (fee)(payer)(required_auths)(id)(data) )

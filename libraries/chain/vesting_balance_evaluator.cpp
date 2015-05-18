@@ -30,9 +30,8 @@ object_id_type vesting_balance_create_evaluator::do_apply( const vesting_balance
 
    const vesting_balance_object& vbo = d.create< vesting_balance_object >( [&]( vesting_balance_object& obj )
    {
-      //WARNING: The logic to create a vesting balance object is replicated in worker_create_evaluator.
-      // If making changes to this logic, check if those changes should also be made in
-      // worker_create_evaluator::do_apply
+      //WARNING: The logic to create a vesting balance object is replicated in vesting_balance_worker_type::initializer::init.
+      // If making changes to this logic, check if those changes should also be made there as well.
       obj.owner = op.owner;
       obj.balance = op.amount;
 
@@ -60,7 +59,6 @@ object_id_type vesting_balance_withdraw_evaluator::do_evaluate( const vesting_ba
    assert( op.amount <= vbo.balance );      // is_withdraw_allowed should fail before this check is reached
 
    /* const account_object& owner_account = */ op.owner( d );
-
    // TODO: Check asset authorizations and withdrawals
    return object_id_type();
 }

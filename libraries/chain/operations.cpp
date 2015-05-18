@@ -175,6 +175,7 @@ void account_create_operation::validate()const
    FC_ASSERT( is_valid_name( name ) );
    FC_ASSERT( referrer_percent >= 0   );
    FC_ASSERT( referrer_percent <= 100 );
+   FC_ASSERT( !owner.auths.empty() );
    auto pos = name.find( '/' );
    if( pos != string::npos )
    {
@@ -857,7 +858,6 @@ void worker_create_operation::validate() const
    FC_ASSERT(work_end_date > work_begin_date);
    FC_ASSERT(daily_pay > 0);
    FC_ASSERT(daily_pay < BTS_BLOCKCHAIN_MAX_SHARES);
-   FC_ASSERT(worker_type < worker_object::WORKER_TYPE_COUNT);
 }
 
 share_type worker_create_operation::calculate_fee(const fee_schedule_type& k) const

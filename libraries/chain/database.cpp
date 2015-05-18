@@ -864,6 +864,7 @@ void database::deposit_cashback( const account_object& acct, share_type amount )
 
 void database::pay_workers( share_type& budget )
 {
+   ilog("Processing payroll! Available budget is ${b}", ("b", budget));
    vector<std::reference_wrapper<const worker_object>> active_workers;
    get_index_type<worker_index>().inspect_all_objects([this, &active_workers](const object& o) {
       const worker_object& w = static_cast<const worker_object&>(o);
@@ -889,10 +890,11 @@ void database::pay_workers( share_type& budget )
       }
 
       share_type actual_pay = std::min(budget, requested_pay);
-      ilog("Paying worker ${w} ${a}", ("w", active_worker.id)("a", actual_pay));
-      modify(get(active_worker.balance), [this,actual_pay](vesting_balance_object& b) {
-         b.deposit(head_block_time(), actual_pay);
+      ilog(" ==> Paying ${a} to worker ${w}", ("w", active_worker.id)("a", actual_pay));
+      modify(active_worker, [&](worker_object& w) {
+         w.worker.visit(worker_pay_visitor(actual_pay, *this));
       });
+
       budget -= actual_pay;
    }
 }
