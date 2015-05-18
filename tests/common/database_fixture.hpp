@@ -45,7 +45,7 @@ using namespace bts::db;
 #define RESET(v) v = decltype(v)()
 ///This allows me to build consecutive test cases. It's pretty ugly, but it works well enough for unit tests.
 /// i.e. This allows a test on update_account to begin with the database at the end state of create_account.
-#define INVOKE(test) ((struct test*)this)->test_method(); RESET(trx); trx.relative_expiration = 1000
+#define INVOKE(test) ((struct test*)this)->test_method(); trx.clear()
 
 #define PUSH_TX( tx, skip_flags ) \
    _push_transaction( tx, skip_flags, __FILE__, __LINE__ )

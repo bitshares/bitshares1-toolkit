@@ -62,7 +62,6 @@ BOOST_AUTO_TEST_CASE( any_two_of_three )
          op.active = authority(2, key1.get_id(), 1, key2.get_id(), 1, key3.get_id(), 1);
          op.owner = *op.active;
          trx.operations.push_back(op);
-         trx.relative_expiration = 28;
          sign(trx, key1.id,nathan_key1);
          db.push_transaction(trx, database::skip_transaction_dupe_check);
          trx.operations.clear();
@@ -71,7 +70,6 @@ BOOST_AUTO_TEST_CASE( any_two_of_three )
 
       transfer_operation op = {asset(), nathan.id, account_id_type(), core.amount(500)};
       trx.operations.push_back(op);
-      trx.relative_expiration = 29;
       sign(trx, key1.id,nathan_key1);
       BOOST_CHECK_THROW(db.push_transaction(trx, database::skip_transaction_dupe_check), fc::exception);
       sign(trx, key2.id,nathan_key2);
@@ -79,21 +77,18 @@ BOOST_AUTO_TEST_CASE( any_two_of_three )
       BOOST_CHECK_EQUAL(get_balance(nathan, core), old_balance - 500);
 
       trx.signatures.clear();
-      trx.relative_expiration = 30;
       sign(trx, key2.id,nathan_key2);
       sign(trx, key3.id,nathan_key3);
       db.push_transaction(trx, database::skip_transaction_dupe_check);
       BOOST_CHECK_EQUAL(get_balance(nathan, core), old_balance - 1000);
 
       trx.signatures.clear();
-      trx.relative_expiration = 31;
       sign(trx, key1.id,nathan_key1);
       sign(trx, key3.id,nathan_key3);
       db.push_transaction(trx, database::skip_transaction_dupe_check);
       BOOST_CHECK_EQUAL(get_balance(nathan, core), old_balance - 1500);
 
       trx.signatures.clear();
-      trx.relative_expiration = 32;
       //sign(trx, fc::ecc::private_key::generate());
       sign(trx, key3.id,nathan_key3);
       BOOST_CHECK_THROW(db.push_transaction(trx, database::skip_transaction_dupe_check), fc::exception);
@@ -123,7 +118,6 @@ BOOST_AUTO_TEST_CASE( recursive_accounts )
          trx.operations.push_back(make_child_op);
          db.push_transaction(trx, ~0);
          trx.operations.clear();
-         trx.relative_expiration = 11;
       }
 
       const account_object& child = get_account("child");
@@ -132,14 +126,12 @@ BOOST_AUTO_TEST_CASE( recursive_accounts )
       transfer_operation op = {asset(), child.id, account_id_type(), core.amount(500)};
       trx.operations.push_back(op);
       BOOST_CHECK_THROW(db.push_transaction(trx, database::skip_transaction_dupe_check), fc::exception);
-      trx.relative_expiration = 12;
       sign(trx, key1.id,parent1_key);
       sign(trx, key1.id,parent1_key);
       sign(trx, key1.id,parent1_key);
       sign(trx, key1.id,parent1_key);
       BOOST_CHECK_THROW(db.push_transaction(trx, database::skip_transaction_dupe_check), fc::exception);
       trx.signatures.clear();
-      trx.relative_expiration = 13;
       sign(trx, key2.id,parent2_key);
       BOOST_CHECK_THROW(db.push_transaction(trx, database::skip_transaction_dupe_check), fc::exception);
       sign(trx, key1.id,parent1_key);
@@ -147,7 +139,6 @@ BOOST_AUTO_TEST_CASE( recursive_accounts )
       BOOST_CHECK_EQUAL(get_balance(child, core), old_balance - 500);
       trx.operations.clear();
       trx.signatures.clear();
-      trx.relative_expiration = 14;
 
       fc::ecc::private_key child_key = fc::ecc::private_key::generate();
       const key_object& child_key_obj = register_key(child_key.get_public_key());
@@ -163,7 +154,6 @@ BOOST_AUTO_TEST_CASE( recursive_accounts )
          BOOST_REQUIRE_EQUAL(child.active.auths.size(), 3);
          trx.operations.clear();
          trx.signatures.clear();
-         trx.relative_expiration = 15;
       }
 
       op = {asset(),child.id, account_id_type(), core.amount(500)};
@@ -172,7 +162,6 @@ BOOST_AUTO_TEST_CASE( recursive_accounts )
       sign(trx, key1.id,parent1_key);
       BOOST_CHECK_THROW(db.push_transaction(trx, database::skip_transaction_dupe_check), fc::exception);
       trx.signatures.clear();
-      trx.relative_expiration = 16;
       sign(trx, key2.id,parent2_key);
       BOOST_CHECK_THROW(db.push_transaction(trx, database::skip_transaction_dupe_check), fc::exception);
       sign(trx, key1.id, parent1_key);
@@ -184,7 +173,6 @@ BOOST_AUTO_TEST_CASE( recursive_accounts )
       BOOST_CHECK_EQUAL(get_balance(child, core), old_balance - 1500);
       trx.operations.clear();
       trx.signatures.clear();
-      trx.relative_expiration = 17;
 
       auto grandparent = create_account("grandparent");
       fc::ecc::private_key grandparent_key = fc::ecc::private_key::generate();
@@ -202,7 +190,6 @@ BOOST_AUTO_TEST_CASE( recursive_accounts )
          db.push_transaction(trx, ~0);
          trx.operations.clear();
          trx.signatures.clear();
-         trx.relative_expiration = 18;
       }
 
       trx.operations.push_back(op);
@@ -214,7 +201,6 @@ BOOST_AUTO_TEST_CASE( recursive_accounts )
       BOOST_CHECK_EQUAL(get_balance(child, core), old_balance - 2000);
       trx.operations.clear();
       trx.signatures.clear();
-      trx.relative_expiration = 19;
 
       {
          account_update_operation op;
@@ -225,7 +211,6 @@ BOOST_AUTO_TEST_CASE( recursive_accounts )
          db.push_transaction(trx, ~0);
          trx.operations.clear();
          trx.signatures.clear();
-         trx.relative_expiration = 20;
       }
 
       trx.operations.push_back(op);
@@ -239,7 +224,6 @@ BOOST_AUTO_TEST_CASE( recursive_accounts )
       BOOST_CHECK_EQUAL(get_balance(child, core), old_balance - 2500);
       trx.operations.clear();
       trx.signatures.clear();
-      trx.relative_expiration = 21;
 
       {
          account_update_operation op;
@@ -250,7 +234,6 @@ BOOST_AUTO_TEST_CASE( recursive_accounts )
          db.push_transaction(trx, ~0);
          trx.operations.clear();
          trx.signatures.clear();
-         trx.relative_expiration = 22;
       }
 
       trx.operations.push_back(op);
@@ -932,8 +915,7 @@ BOOST_FIXTURE_TEST_CASE( bogus_signature, database_fixture )
           memo_data() });
       xfer_op.visit( operation_set_fee( db.current_fee_schedule() ) );
 
-      trx.operations.clear();
-      trx.signatures.clear();
+      trx.clear();
       trx.operations.push_back( xfer_op );
       trx.sign( alice_key_id, alice_key );
 
@@ -946,6 +928,7 @@ BOOST_FIXTURE_TEST_CASE( bogus_signature, database_fixture )
 
       trx.operations.push_back( xfer_op );
       // Alice's signature is now invalid
+      edump((trx));
       BOOST_REQUIRE_THROW( PUSH_TX( trx, skip ), fc::exception );
       // Re-sign, now OK (sig is replaced)
       trx.sign( alice_key_id, alice_key );

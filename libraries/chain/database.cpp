@@ -1704,9 +1704,10 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    const chain_parameters& chain_parameters = get_global_properties().parameters;
    eval_state._trx = &trx;
 
-   if( !(skip & skip_transaction_signatures) )
+   //This check is used only if this transaction has an absolute expiration time.
+   if( !(skip & skip_transaction_signatures) && trx.relative_expiration == 0 )
    {
-      for( auto sig : trx.signatures )
+      for( const auto& sig : trx.signatures )
       {
          FC_ASSERT( sig.first(*this).key_address() == fc::ecc::public_key( sig.second, trx.digest() ), "",
                     ("trx",trx)
@@ -1733,6 +1734,22 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
                = static_cast<const block_summary_object&>(get_index<block_summary_object>()
                                                           .get(block_summary_id_type((head_block_num() & ~0xffff)
                                                                                      + trx.ref_block_num)));
+
+         //This is the signature check for transactions with relative expiration.
+         if( !(skip & skip_transaction_signatures) )
+         {
+            for( const auto& sig : trx.signatures )
+            {
+               FC_ASSERT(sig.first(*this).key_address() == fc::ecc::public_key(sig.second,
+                                                                               trx.digest(tapos_block_summary.block_id)
+                                                                               ),
+                          "",
+                          ("sig.first",sig.first)
+                          ("key_address",sig.first(*this).key_address())
+                          ("addr", address(fc::ecc::public_key(sig.second, trx.digest()))));
+            }
+         }
+
          //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
          FC_ASSERT( trx.ref_block_prefix == tapos_block_summary.block_id._hash[1] );
          trx_expiration = tapos_block_summary.timestamp + chain_parameters.block_interval*trx.relative_expiration;
@@ -1741,6 +1758,8 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
          FC_ASSERT( trx_expiration <= _pending_block.timestamp + chain_parameters.maximum_time_until_expiration );
       }
       FC_ASSERT( _pending_block.timestamp <= trx_expiration );
+   } else {
+      FC_ASSERT(trx.relative_expiration == 0, "May not use transactions with a reference block in block 1!");
    }
 
    //Insert transaction into unique transactions database.

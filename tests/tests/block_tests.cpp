@@ -173,7 +173,7 @@ BOOST_AUTO_TEST_CASE( undo_pending )
 
          {
             signed_transaction trx;
-            trx.set_expiration(db.head_block_id());
+            trx.set_expiration(db.head_block_time() + fc::minutes(1));
             trx.operations.push_back(transfer_operation({asset(), account_id_type(), account_id_type(1), asset(10000000)}));
             db.push_transaction(trx, ~0);
 
@@ -294,7 +294,7 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
       const bts::db::index& account_idx = db1.get_index(protocol_ids, account_object_type);
 
       signed_transaction trx;
-      trx.relative_expiration = 1000;
+      trx.set_expiration(db1.head_block_time() + fc::minutes(1));
       account_id_type nathan_id = account_idx.get_next_id();
       account_create_operation cop;
       cop.name = "nathan";
@@ -304,7 +304,7 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
       db1.push_transaction(trx, skip_sigs);
 
       trx = decltype(trx)();
-      trx.relative_expiration = 1000;
+      trx.set_expiration(db1.head_block_time() + fc::minutes(1));
       trx.operations.push_back(transfer_operation({asset(), account_id_type(), nathan_id, asset(500)}));
       trx.sign( key_id_type(), delegate_priv_key );
       db1.push_transaction(trx, skip_sigs);
@@ -347,9 +347,8 @@ BOOST_AUTO_TEST_CASE( tapos )
       auto b =  db1.generate_block( delegate_priv_key, aw[db1.head_block_num()%aw.size()] );
 
       signed_transaction trx;
-      trx.ref_block_num = db1.head_block_num();
       //This transaction must be in the next block after its reference, or it is invalid.
-      trx.relative_expiration = 1;
+      trx.set_expiration(db1.head_block_id(), 1);
 
       account_id_type nathan_id = account_idx.get_next_id();
       account_create_operation cop;
@@ -359,9 +358,6 @@ BOOST_AUTO_TEST_CASE( tapos )
       trx.operations.push_back(cop);
       trx.sign( key_id_type(), delegate_priv_key );
 
-      //ref_block_prefix isn't set, so we should see an exception here.
-      BOOST_REQUIRE_THROW(db1.push_transaction(trx), fc::exception);
-      trx.ref_block_prefix = db1.head_block_id()._hash[1];
       trx.signatures.clear();
       trx.sign( key_id_type(), delegate_priv_key );
       db1.push_transaction(trx);
@@ -376,7 +372,7 @@ BOOST_AUTO_TEST_CASE( tapos )
       trx.sign( key_id_type(), delegate_priv_key );
       //relative_expiration is 1, but ref block is 2 blocks old, so this should fail.
       BOOST_REQUIRE_THROW(db1.push_transaction(trx, database::skip_transaction_signatures | database::skip_authority_check), fc::exception);
-      trx.relative_expiration = 2;
+      trx.set_expiration(db1.head_block_id(), 2);
       trx.signatures.clear();
       trx.sign( key_id_type(), delegate_priv_key );
       db1.push_transaction(trx, database::skip_transaction_signatures | database::skip_authority_check);
@@ -390,7 +386,7 @@ BOOST_FIXTURE_TEST_CASE( maintenance_interval, database_fixture )
 {
    try {
       generate_block();
-      BOOST_CHECK_EQUAL(db.head_block_num(), 1);
+      BOOST_CHECK_EQUAL(db.head_block_num(), 2);
 
       fc::time_point_sec maintenence_time = db.get_dynamic_global_properties().next_maintenance_time;
       BOOST_CHECK_GT(maintenence_time.sec_since_epoch(), db.head_block_time().sec_since_epoch());
