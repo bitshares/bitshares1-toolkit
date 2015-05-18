@@ -20,6 +20,10 @@
 #include <fc/interprocess/signals.hpp>
 #include <boost/program_options.hpp>
 
+#ifndef WIN32
+#include <csignal>
+#endif
+
 using namespace bts::app;
 using namespace bts::chain;
 using namespace bts::utilities;
