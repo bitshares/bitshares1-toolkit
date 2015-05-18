@@ -23,6 +23,9 @@
 #include <fc/log/file_appender.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/log/logger_config.hpp>
+#ifndef WIN32
+#include <csignal>
+#endif
 
 using namespace bts::app;
 using namespace bts::chain;
