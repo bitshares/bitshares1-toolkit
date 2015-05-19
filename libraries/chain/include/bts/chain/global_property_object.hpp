@@ -74,6 +74,7 @@ FC_REFLECT_DERIVED( bts::chain::dynamic_global_property_object, (bts::db::object
 
 FC_REFLECT_DERIVED( bts::chain::global_property_object, (bts::db::object),
                     (parameters)
+                    (pending_parameters)
                     (next_available_vote_id)
                     (active_delegates)
                     (active_witnesses)
