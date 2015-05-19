@@ -24,19 +24,26 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
    try {
       fc::time_point_sec now( BTS_GENESIS_TIMESTAMP );
       fc::temp_directory data_dir;
+      signed_block b;
+
+      now += BTS_DEFAULT_BLOCK_INTERVAL;
       // TODO:  Don't generate this here
       auto delegate_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
       {
          database db;
          db.open(data_dir.path(), genesis_allocation() );
+         b = db.generate_block( now, db.get_scheduled_witness( now )->second, delegate_priv_key );
 
-         for( uint32_t i = 0; i < 200; ++i )
+         for( uint32_t i = 1; i < 200; ++i )
          {
-            witness_id_type prev_witness = db.get_scheduled_witness( now )->second;
+            BOOST_CHECK( db.head_block_id() == b.id() );
+            witness_id_type prev_witness = b.witness;
             now += db.block_interval();
             witness_id_type cur_witness = db.get_scheduled_witness( now )->second;
-            BOOST_CHECK( cur_witness != prev_witness );
-            auto b = db.generate_block( now, cur_witness, delegate_priv_key );
+            // TODO:  Uncomment this when witness scheduling implemented
+            // BOOST_CHECK( cur_witness != prev_witness );
+            b = db.generate_block( now, cur_witness, delegate_priv_key );
+            BOOST_CHECK( b.witness == cur_witness );
          }
          db.close();
       }
@@ -47,11 +54,13 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
          BOOST_CHECK_EQUAL( db.head_block_num(), 200 );
          for( uint32_t i = 0; i < 200; ++i )
          {
-            witness_id_type prev_witness = db.get_scheduled_witness( now )->second;
+            BOOST_CHECK( db.head_block_id() == b.id() );
+            witness_id_type prev_witness = b.witness;
             now += db.block_interval();
             witness_id_type cur_witness = db.get_scheduled_witness( now )->second;
-            BOOST_CHECK( cur_witness != prev_witness );
-            auto b = db.generate_block( now, cur_witness, delegate_priv_key );
+            // TODO:  Uncomment this when witness scheduling implemented
+            // BOOST_CHECK( cur_witness != prev_witness );
+            b = db.generate_block( now, cur_witness, delegate_priv_key );
          }
          BOOST_CHECK_EQUAL( db.head_block_num(), 400 );
       }
