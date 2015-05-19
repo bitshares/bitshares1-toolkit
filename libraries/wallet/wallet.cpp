@@ -1,4 +1,3 @@
-
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
@@ -160,6 +159,31 @@ string normalize_brain_key( string s )
 }
 class wallet_api_impl
 {
+   void claim_registered_account(const account_object& account)
+   {
+      auto it = _wallet.pending_account_registrations.find( account.name );
+      FC_ASSERT( it != _wallet.pending_account_registrations.end() );
+      if( import_key( account.name, it->second ) )
+      {
+         ilog( "successfully imported account ${name}",
+               ("name", account.name) );
+      }
+      else
+      {
+         // somebody else beat our pending registration, there is
+         //    nothing we can do except log it and move on
+         elog( "account ${name} registered by someone else first!",
+               ("name", account.name) );
+         // might as well remove it from pending regs,
+         //    because there is now no way this registration
+         //    can become valid (even in the extremely rare
+         //    possibility of migrating to a fork where the
+         //    name is available, the user can always
+         //    manually re-register)
+      }
+      _wallet.pending_account_registrations.erase( it );
+   }
+
    void resync()
    {
       // this method is used to update wallet_data annotations
@@ -174,9 +198,10 @@ class wallet_api_impl
       {
          std::vector<string> v_names;
          v_names.reserve( _wallet.pending_account_registrations.size() );
-
-         for( auto it : _wallet.pending_account_registrations )
-            v_names.push_back( it.first );
+         std::transform(_wallet.pending_account_registrations.begin(), _wallet.pending_account_registrations.end(),
+                        std::back_inserter(v_names), [](const std::pair<string, string>& p) {
+            return p.first;
+         });
 
          std::vector< fc::optional< bts::chain::account_object >>
                v_accounts = _remote_db->lookup_account_names( v_names );
@@ -185,42 +210,10 @@ class wallet_api_impl
          {
             if( ! opt_account.valid() )
                continue;
-
-            string account_name = opt_account->name;
-            auto it = _wallet.pending_account_registrations.find( account_name );
-            FC_ASSERT( it != _wallet.pending_account_registrations.end() );
-            if( import_key( account_name, it->second ) )
-            {
-               ilog( "successfully imported account ${name}",
-                     ("name", account_name) );
-            }
-            else
-            {
-               // somebody else beat our pending registration, there is
-               //    nothing we can do except log it and move on
-               elog( "account ${name} registered by someone else first!",
-                     ("name", account_name) );
-               // might as well remove it from pending regs,
-               //    because there is now no way this registration
-               //    can become valid (even in the extremely rare
-               //    possibility of migrating to a fork where the
-               //    name is available, the user can always
-               //    manually re-register)
-            }
-            _wallet.pending_account_registrations.erase( it );
+            claim_registered_account(*opt_account);
          }
       }
 
-      return;
-   }
-   void resync_loop()
-   {
-      // TODO:  Exception handling
-      //    does cancel raise exception?
-      resync();
-      fc::microseconds resync_interval = fc::seconds(1);
-
-      _resync_loop_task = fc::schedule( [this](){ resync_loop(); }, fc::time_point::now() + resync_interval, "cli_wallet resync loop" );
       return;
    }
    void enable_umask_protection()
@@ -243,32 +236,14 @@ public:
       _remote_net = _remote_api->network();
       _remote_db->subscribe_to_objects( [=]( const fc::variant& obj )
       {
-         wdump((obj));
+         resync();
       }, {dynamic_global_property_id_type()} );
       return;
    }
    virtual ~wallet_api_impl()
    {
-      try
-      {
-         if( _resync_loop_task.valid() )
-            _resync_loop_task.cancel_and_wait();
-      }
-      catch(fc::canceled_exception&)
-      {
-         //Expected exception. Move along.
-      }
-      catch(fc::exception& e)
-      {
-         edump((e.to_detail_string()));
-      }
    }
 
-   void start_resync_loop()
-   {
-      _resync_loop_task = fc::async( [this](){ resync_loop(); }, "cli_wallet resync loop" );
-      return;
-   }
    bool copy_wallet_file( string destination_filename )
    {
       fc::path src_path = get_wallet_filename();
@@ -326,26 +301,34 @@ public:
    {
       return _remote_db->get_dynamic_global_properties();
    }
+   account_object get_account(account_id_type id) const
+   {
+      if( _wallet.my_accounts.get<by_id>().count(id) )
+         return *_wallet.my_accounts.get<by_id>().find(id);
+      auto rec = _remote_db->get_accounts({id}).front();
+      FC_ASSERT(rec);
+      return *rec;
+   }
    account_object get_account(string account_name_or_id) const
    {
       FC_ASSERT( account_name_or_id.size() > 0 );
-      vector<optional<account_object>> opt_account;
-      if( std::isdigit( account_name_or_id.front() ) )
-         opt_account = _remote_db->get_accounts( {fc::variant(account_name_or_id).as<account_id_type>()} );
-      else
-         opt_account = _remote_db->lookup_account_names( {account_name_or_id} );
-      FC_ASSERT( opt_account.size() && opt_account.front() );
-      return *opt_account.front();
+
+      if( auto id = maybe_id<account_id_type>(account_name_or_id) )
+      {
+         // It's an ID
+         return get_account(*id);
+      } else {
+         // It's a name
+         if( _wallet.my_accounts.get<by_name>().count(account_name_or_id) )
+            return *_wallet.my_accounts.get<by_name>().find(account_name_or_id);
+         auto rec = _remote_db->lookup_account_names({account_name_or_id}).front();
+         FC_ASSERT( rec && rec->name == account_name_or_id );
+         return *rec;
+      }
    }
    account_id_type get_account_id(string account_name_or_id) const
    {
-      FC_ASSERT( account_name_or_id.size() > 0 );
-      vector<optional<account_object>> opt_account;
-      if( std::isdigit( account_name_or_id.front() ) )
-         return fc::variant(account_name_or_id).as<account_id_type>();
-      opt_account = _remote_db->lookup_account_names( {account_name_or_id} );
-      FC_ASSERT( opt_account.size() && opt_account.front() );
-      return opt_account.front()->id;
+      return get_account(account_name_or_id).get_id();
    }
    optional<asset_object> get_asset(asset_id_type id)const
    {
@@ -441,6 +424,10 @@ public:
          if( opt_key->key_address() == wif_key_address )
          {
             _keys[ opt_key->id ] = wif_key;
+            if( _wallet.update_account(acnt) )
+               _remote_db->subscribe_to_objects([this](const fc::variant& v) {
+                  _wallet.update_account(v.as<account_object>());
+               }, {acnt.id});
             save_wallet_file();
             copy_wallet_file( "after-import-key-" + shorthash );
             return true;
@@ -461,7 +448,13 @@ public:
       if( ! fc::exists( wallet_filename ) )
          return false;
 
+      if( !_wallet.my_accounts.empty() )
+         _remote_db->unsubscribe_from_objects(_wallet.my_account_ids());
       _wallet = fc::json::from_file( wallet_filename ).as< wallet_data >();
+      if( !_wallet.my_accounts.empty() )
+         _remote_db->subscribe_to_objects([this](const fc::variant& v) {
+            _wallet.update_account(v.as<account_object>());
+         }, _wallet.my_account_ids());
       return true;
    }
    void save_wallet_file(string wallet_filename = "")
@@ -957,8 +950,6 @@ public:
    fc::api<database_api>   _remote_db;
    fc::api<network_api>    _remote_net;
 
-   fc::future<void>        _resync_loop_task;
-
    mode_t                  _old_umask;
    const string _wallet_filename_extension = ".wallet";
 
@@ -990,6 +981,11 @@ optional<signed_block> wallet_api::get_block( uint32_t num )
 uint64_t wallet_api::get_account_count() const
 {
    return my->_remote_db->get_account_count();
+}
+
+vector<account_object> wallet_api::list_my_accounts()
+{
+   return vector<account_object>(my->_wallet.my_accounts.begin(), my->_wallet.my_accounts.end());
 }
 
 map<string,account_id_type> wallet_api::list_accounts( const string& lowerbound, uint32_t limit)
@@ -1231,10 +1227,6 @@ wallet_api::get_result_formatters() const
    return my->get_result_formatters();
 }
 
-void wallet_api::start_resync_loop()
-{
-   my->start_resync_loop();
-}
 bool wallet_api::is_locked()const
 {
    return my->_checksum == fc::sha512();
@@ -1276,6 +1268,12 @@ void wallet_api::set_password( string password )
     lock();
 }
 
+map<key_id_type, string> wallet_api::dump_private_keys()
+{
+   FC_ASSERT(!is_locked());
+   return my->_keys;
+}
+
 signed_transaction wallet_api::upgrade_account( string name, bool broadcast )
 {
    return my->upgrade_account(name,broadcast);
@@ -1294,3 +1292,14 @@ signed_transaction wallet_api::sell_asset(string seller_account,
                          symbol_to_receive, expiration, fill_or_kill, broadcast);
 }
 } }
+
+void fc::to_variant(const account_object_multi_index_type& accts, fc::variant& vo)
+{
+   vo = vector<account_object>(accts.begin(), accts.end());
+}
+
+void fc::from_variant(const fc::variant& var, account_object_multi_index_type& vo)
+{
+   const vector<account_object>& v = var.as<vector<account_object>>();
+   vo = account_object_multi_index_type(v.begin(), v.end());
+}

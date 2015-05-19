@@ -8,6 +8,11 @@ using namespace bts::chain;
 using namespace bts::utilities;
 using namespace std;
 
+namespace fc{
+void to_variant(const account_object_multi_index_type& accts, variant& vo);
+void from_variant(const variant &var, account_object_multi_index_type &vo);
+}
+
 namespace bts { namespace wallet {
 
 /**
@@ -25,6 +30,32 @@ struct plain_keys
 
 struct wallet_data
 {
+   account_object_multi_index_type my_accounts;
+   /// @return IDs of all accounts in @ref my_accounts
+   vector<object_id_type> my_account_ids()const
+   {
+      vector<object_id_type> ids;
+      ids.reserve(my_accounts.size());
+      std::transform(my_accounts.begin(), my_accounts.end(), std::back_inserter(ids),
+                     [](const account_object& ao) { return ao.id; });
+      return ids;
+   }
+   /// Add acct to @ref my_accounts, or update it if it is already in @ref my_accounts
+   /// @return true if the account was newly inserted; false if it was only updated
+   bool update_account(const account_object& acct)
+   {
+      auto& idx = my_accounts.get<by_id>();
+      auto itr = idx.find(acct.get_id());
+      if( itr != idx.end() )
+      {
+         idx.replace(itr, acct);
+         return false;
+      } else {
+         idx.insert(acct);
+         return true;
+      }
+   }
+
    /** encrypted keys */
    vector<char>              cipher_keys;
 
@@ -59,6 +90,7 @@ class wallet_api
       variant                           info();
       optional<signed_block>            get_block( uint32_t num );
       uint64_t                          get_account_count()const;
+      vector<account_object>            list_my_accounts();
       map<string,account_id_type>       list_accounts(const string& lowerbound, uint32_t limit);
       vector<asset>                     list_account_balances(const string& id);
       vector<asset_object>              list_assets(const string& lowerbound, uint32_t limit)const;
@@ -81,6 +113,8 @@ class wallet_api
       void    lock();
       void    unlock(string password);
       void    set_password(string password);
+
+      map<key_id_type, string> dump_private_keys();
 
       string  help()const;
       string  gethelp(const string& method)const;
@@ -147,7 +181,6 @@ class wallet_api
 
       signed_transaction sign_transaction(signed_transaction tx, bool broadcast = false);
 
-      void start_resync_loop();
       std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
 
 
@@ -160,6 +193,7 @@ class wallet_api
 FC_REFLECT( bts::wallet::plain_keys, (keys)(checksum) )
 
 FC_REFLECT( bts::wallet::wallet_data,
+            (my_accounts)
             (cipher_keys)
             (pending_account_registrations)
             (ws_server)
@@ -174,6 +208,8 @@ FC_API( bts::wallet::wallet_api,
         (is_new)
         (is_locked)
         (lock)(unlock)(set_password)
+        (dump_private_keys)
+        (list_my_accounts)
         (list_accounts)
         (list_account_balances)
         (list_assets)
