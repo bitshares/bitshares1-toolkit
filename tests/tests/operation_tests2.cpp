@@ -600,7 +600,7 @@ BOOST_AUTO_TEST_CASE( refund_worker_test )
       trx.clear();
    }
 
-   auto supply = asset_id_type()(db).dynamic_data(db).current_supply;
+   // auto supply = asset_id_type()(db).dynamic_data(db).current_supply;
    generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
    BOOST_CHECK_EQUAL(worker_id_type()(db).worker.get<refund_worker_type>().total_burned.value, 1000);
    generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
