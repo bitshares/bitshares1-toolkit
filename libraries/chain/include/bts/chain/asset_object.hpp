@@ -64,9 +64,25 @@ namespace bts { namespace chain {
 
          /// Helper function to get an asset object with the given amount in this asset's type
          asset amount(share_type a)const { return asset(a, id); }
+         /// Convert a string amount (i.e. "123.45") to an asset object with this asset's type
+         /// The string may have a decimal and/or a negative sign.
+         asset amount_from_string(string amount_string)const;
+         /// Convert an asset to a textual representation, i.e. "123.45"
+         string amount_to_string(share_type amount)const;
+         /// Convert an asset to a textual representation, i.e. "123.45"
+         string amount_to_string(const asset& amount)const
+         { FC_ASSERT(amount.asset_id == id); return amount_to_string(amount.amount); }
+         /// Convert an asset to a textual representation with symbol, i.e. "123.45 USD"
+         string amount_to_pretty_string(share_type amount)const
+         { return amount_to_string(amount) + " " + symbol; }
+         /// Convert an asset to a textual representation with symbol, i.e. "123.45 USD"
+         string amount_to_pretty_string(const asset &amount)const
+         { FC_ASSERT(amount.asset_id == id); return amount_to_pretty_string(amount.amount); }
 
          /// Ticker symbol for this asset, i.e. "USD"
          string                  symbol;
+         /// Maximum number of digits after the decimal point
+         uint64_t                precision;
          /// ID of the account which issued this asset.
          account_id_type         issuer;
 
@@ -253,6 +269,7 @@ FC_REFLECT( bts::chain::asset_object::bitasset_options,
 FC_REFLECT_DERIVED( bts::chain::asset_object,
                     (bts::db::annotated_object<bts::chain::asset_object>),
                     (symbol)
+                    (precision)
                     (issuer)
                     (options)
                     (dynamic_asset_data_id)

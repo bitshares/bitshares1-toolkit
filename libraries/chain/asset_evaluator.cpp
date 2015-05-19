@@ -64,6 +64,7 @@ object_id_type asset_create_evaluator::do_apply( const asset_create_operation& o
      db().create<asset_object>( [&]( asset_object& a ) {
          a.issuer = op.issuer;
          a.symbol = op.symbol;
+         a.precision = op.precision;
          a.options = op.common_options;
          if( a.options.core_exchange_rate.base.asset_id.instance.value == 0 )
             a.options.core_exchange_rate.quote.asset_id = next_asset_id;
