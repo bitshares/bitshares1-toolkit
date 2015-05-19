@@ -1971,7 +1971,7 @@ BOOST_AUTO_TEST_CASE( witness_withdraw_pay_test )
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_delegate_groups_test, 1 )
 BOOST_AUTO_TEST_CASE( unimp_delegate_groups_test )
 {
-   assert( !"not implemented" );
+   BOOST_FAIL( "not implemented" );
 }
 
 
@@ -1988,7 +1988,7 @@ BOOST_AUTO_TEST_CASE( unimp_delegate_groups_test )
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_prediction_market_test, 1 )
 BOOST_AUTO_TEST_CASE( unimp_prediction_market_test )
 {
-   assert( !"not implemented" );
+   BOOST_FAIL( "not implemented" );
 }
 
 /**
@@ -1999,7 +1999,7 @@ BOOST_AUTO_TEST_CASE( unimp_prediction_market_test )
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_global_settle_test, 1 )
 BOOST_AUTO_TEST_CASE( unimp_global_settle_test )
 {
-   assert( !"not implemented" );
+   BOOST_FAIL( "not implemented" );
 }
 
 /**
@@ -2009,7 +2009,7 @@ BOOST_AUTO_TEST_CASE( unimp_global_settle_test )
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_disable_force_settle_test, 1 )
 BOOST_AUTO_TEST_CASE( unimp_disable_force_settle_test )
 {
-   assert( !"not implemented" );
+   BOOST_FAIL( "not implemented" );
 }
 
 /**
@@ -2019,7 +2019,7 @@ BOOST_AUTO_TEST_CASE( unimp_disable_force_settle_test )
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_burn_asset_test, 1 )
 BOOST_AUTO_TEST_CASE( unimp_burn_asset_test )
 {
-   assert( !"not implemented" );
+   BOOST_FAIL( "not implemented" );
 }
 
 /**
@@ -2030,7 +2030,7 @@ BOOST_AUTO_TEST_CASE( unimp_burn_asset_test )
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_cover_with_collateral_test, 1 )
 BOOST_AUTO_TEST_CASE( unimp_cover_with_collateral_test )
 {
-   assert( !"not implemented" );
+   BOOST_FAIL( "not implemented" );
 }
 
 BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( unimp_bulk_discount_test, 1 )
@@ -2039,7 +2039,7 @@ BOOST_AUTO_TEST_CASE( unimp_bulk_discount_test )
    // commented out to silence compiler warnings
    //const account_object& shorter1  = create_account( "alice" );
    //const account_object& shorter2  = create_account( "bob" );
-   assert( !"not implemented" );
+   BOOST_FAIL( "not implemented" );
 }
 
 /**
