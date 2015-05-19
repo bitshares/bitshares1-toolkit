@@ -140,7 +140,7 @@ int main( int argc, char** argv )
       fc::api<wallet_api> wapi(wapiptr);
 
       auto wallet_cli = std::make_shared<fc::rpc::cli>();
-      for( auto& name_formatter : wapiptr->_get_result_formatters() )
+      for( auto& name_formatter : wapiptr->get_result_formatters() )
          wallet_cli->format_result( name_formatter.first, name_formatter.second );
 
       if( wapiptr->is_new() )

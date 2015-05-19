@@ -59,6 +59,7 @@ class wallet_api
       fc::ecc::private_key derive_private_key(
          const std::string& prefix_string, int sequence_number) const;
 
+      variant                           info();
       optional<signed_block>            get_block( uint32_t num );
       uint64_t                          get_account_count()const;
       map<string,account_id_type>       list_accounts( const string& lowerbound, uint32_t limit);
@@ -96,8 +97,8 @@ class wallet_api
       bool import_key( string account_name_or_id, string wif_key );
       string normalize_brain_key( string s ) const;
 
-      signed_transaction register_account( string name, 
-                                           public_key_type owner, 
+      signed_transaction register_account( string name,
+                                           public_key_type owner,
                                            public_key_type active,
                                            string  registrar_account,
                                            string  referrer_account,
@@ -138,16 +139,15 @@ class wallet_api
                                      bool     fill_or_kill = false,
                                      bool     broadcast = false );
 
-      signed_transaction create_asset( string issuer, 
-                                       string symbol, 
-                                       uint8_t precision, 
+      signed_transaction create_asset( string issuer,
+                                       string symbol,
+                                       uint8_t precision,
                                        asset_object::asset_options common,
                                        fc::optional<asset_object::bitasset_options> bitasset_opts,
                                        bool broadcast = false );
 
-      signed_transaction issue_asset( uint64_t amount, 
-                                      string symbol, 
-                                      string to_account,
+      signed_transaction issue_asset(string to_account, uint64_t amount,
+                                      string symbol,
                                       string memo,
                                       bool broadcast = false );
 
@@ -158,12 +158,12 @@ class wallet_api
 
       void _start_resync_loop();
       std::map<string,std::function<string(fc::variant,const fc::variants&)> >
-      _get_result_formatters() const;
+      get_result_formatters() const;
 
 
       fc::signal<void(bool)> lock_changed;
 
-      std::unique_ptr<detail::wallet_api_impl> my;
+      std::shared_ptr<detail::wallet_api_impl> my;
 };
 
 } }
@@ -171,47 +171,48 @@ class wallet_api
 FC_REFLECT( bts::wallet::plain_keys, (keys)(checksum) )
 
 FC_REFLECT( bts::wallet::wallet_data,
-   (accounts)
-   (cipher_keys)
-   (pending_account_registrations)
-   (ws_server)
-   (ws_user)
-   (ws_password)
-   );
+            (accounts)
+            (cipher_keys)
+            (pending_account_registrations)
+            (ws_server)
+            (ws_user)
+            (ws_password)
+          )
 
 FC_API( bts::wallet::wallet_api,
-   (help)
-   (gethelp)
-   (is_new)
-   (is_locked)
-   (lock)(unlock)(set_password)
-   (list_accounts)
-   (list_account_balances)
-   (list_assets)
-   (import_key)
-   (suggest_brain_key)
-   (register_account)
-   (upgrade_account)
-   (create_account_with_brain_key)
-   (sell_asset)
-   (transfer)
-   (create_asset)
-   (issue_asset)
-   (get_account)
-   (get_account_id)
-   (get_block)
-   (get_account_count)
-   (get_account_history)
-   (get_global_properties)
-   (get_dynamic_global_properties)
-   (get_object)
-   (load_wallet_file)
-   (normalize_brain_key)
-   (get_limit_orders)
-   (get_short_orders)
-   (get_call_orders)
-   (get_settle_orders)
-   (save_wallet_file)
-   (serialize_transaction)
-   (sign_transaction)
-   )
+        (help)
+        (gethelp)
+        (info)
+        (is_new)
+        (is_locked)
+        (lock)(unlock)(set_password)
+        (list_accounts)
+        (list_account_balances)
+        (list_assets)
+        (import_key)
+        (suggest_brain_key)
+        (register_account)
+        (upgrade_account)
+        (create_account_with_brain_key)
+        (sell_asset)
+        (transfer)
+        (create_asset)
+        (issue_asset)
+        (get_account)
+        (get_account_id)
+        (get_block)
+        (get_account_count)
+        (get_account_history)
+        (get_global_properties)
+        (get_dynamic_global_properties)
+        (get_object)
+        (load_wallet_file)
+        (normalize_brain_key)
+        (get_limit_orders)
+        (get_short_orders)
+        (get_call_orders)
+        (get_settle_orders)
+        (save_wallet_file)
+        (serialize_transaction)
+        (sign_transaction)
+      )
