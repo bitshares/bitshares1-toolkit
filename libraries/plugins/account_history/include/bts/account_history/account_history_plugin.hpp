@@ -57,20 +57,16 @@ namespace detail
     class account_history_plugin_impl;
 }
 
-class account_history_plugin : public bts::app::plugin<account_history_plugin>
+class account_history_plugin : public bts::app::plugin
 {
    public:
       account_history_plugin();
       virtual ~account_history_plugin();
 
-      const std::string& plugin_name()const override {
-         static std::string name = "account_history";
-         return name;
-      }
-
-      void set_program_options_impl(bpo::options_description& cli, bpo::options_description& cfg);
-      void initialize(const bpo::variables_map& options);
-      void startup();
+      std::string plugin_name()const override;
+      virtual void plugin_set_program_options(bpo::options_description& cli, bpo::options_description& cfg) override;
+      virtual void plugin_initialize(const bpo::variables_map& options) override;
+      virtual void plugin_startup() override;
 
       flat_set<account_id_type> tracked_accounts()const;
 

@@ -9,8 +9,9 @@ using namespace bts::witness_plugin;
 using std::string;
 using std::vector;
 
-void witness_plugin::set_program_options_impl(boost::program_options::options_description& command_line_options,
-                                              boost::program_options::options_description& config_file_options)
+void witness_plugin::plugin_set_program_options(
+   boost::program_options::options_description& command_line_options,
+   boost::program_options::options_description& config_file_options)
 {
    command_line_options.add_options()
          ("enable-stale-production", bpo::bool_switch()->notifier([this](bool e){_production_enabled = e;}), "Enable block production, even if the chain is stale")
@@ -23,7 +24,12 @@ void witness_plugin::set_program_options_impl(boost::program_options::options_de
    config_file_options.add(command_line_options);
 }
 
-void witness_plugin::initialize(const boost::program_options::variables_map& options)
+std::string witness_plugin::plugin_name()const
+{
+   return "witness";
+}
+
+void witness_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
    _options = &options;
    LOAD_VALUE_SET(options, "witness-id", _witnesses, chain::witness_id_type)
@@ -32,7 +38,7 @@ void witness_plugin::initialize(const boost::program_options::variables_map& opt
    LOAD_VALUE_SET(options, "private-key", _private_keys, T)
 }
 
-void witness_plugin::startup()
+void witness_plugin::plugin_startup()
 { try {
       std::set<chain::witness_id_type> bad_wits;
       //Start NTP time client
@@ -57,6 +63,12 @@ void witness_plugin::startup()
    } else
       elog("No witnesses configured! Please add witness IDs and private keys to configuration.");
 } FC_CAPTURE_AND_RETHROW() }
+
+void witness_plugin::plugin_shutdown()
+{
+   bts::time::shutdown_ntp_time();
+   return;
+}
 
 void witness_plugin::schedule_next_production(const bts::chain::chain_parameters& global_parameters)
 {

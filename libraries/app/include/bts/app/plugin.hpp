@@ -11,30 +11,8 @@ class abstract_plugin
 {
    public:
       virtual ~abstract_plugin(){}
-      virtual const std::string& plugin_name()const = 0;
-};
+      virtual std::string plugin_name()const = 0;
 
-template<class P>
-class plugin : public abstract_plugin
-{
-   public:
-      plugin(){}
-      void set_app(application* a) { _app = a; }
-
-      /**
-       * @brief Get the program options for this plugin
-       * @param command_line_options All options this plugin supports taking on the command-line
-       * @param config_file_options All options this plugin supports storing in a configuration file
-       *
-       * Plugins MAY supply a method set_program_options_impl which populates these options_descriptions with any
-       * command-line and configuration file options the plugin supports. If a plugin does not need these options, it
-       * may simply omit an implementation of this method.
-       */
-      void set_program_options(bpo::options_description& command_line_options,
-                               bpo::options_description& config_file_options)
-      {
-         static_cast<P*>(this)->set_program_options_impl(command_line_options, config_file_options);
-      }
       /**
        * @brief Perform early startup routines and register plugin indexes, callbacks, etc.
        *
@@ -47,32 +25,73 @@ class plugin : public abstract_plugin
        *
        * @param options The options passed to the application, via configuration files or command line
        */
-      void initialize_plugin(const bpo::variables_map& options)
-      {
-         static_cast<P*>(this)->initialize(options);
-      }
+      virtual void plugin_initialize( const bpo::variables_map& options ) = 0;
+
       /**
        * @brief Begin normal runtime operations
        *
        * Plugins MUST supply a method startup() which will be called at the end of application startup. This method
        * should contain code which schedules any tasks, or requires chain state.
        */
-      void startup_plugin()
-      {
-         static_cast<P*>(this)->startup();
-      }
+      virtual void plugin_startup() = 0;
+
+      /**
+       * @brief Cleanly shut down the plugin.
+       *
+       * This is called to request a clean shutdown (e.g. due to SIGINT or SIGTERM).
+       */
+      virtual void plugin_shutdown() = 0;
+
+      /**
+       * @brief Register the application instance with the plugin.
+       *
+       * This is called by the framework to set the application.
+       */
+      virtual void plugin_set_app( application* a ) = 0;
+
+      /**
+       * @brief Fill in command line parameters used by the plugin.
+       *
+       * @param command_line_options All options this plugin supports taking on the command-line
+       * @param config_file_options All options this plugin supports storing in a configuration file
+       *
+       * This method populates its arguments with any
+       * command-line and configuration file options the plugin supports.
+       * If a plugin does not need these options, it
+       * may simply provide an empty implementation of this method.
+       */
+      virtual void plugin_set_program_options(
+         bpo::options_description& command_line_options,
+         bpo::options_description& config_file_options
+         ) = 0;
+};
+
+/**
+ * Provides basic default implementations of abstract_plugin functions.
+ */
+
+class plugin : public abstract_plugin
+{
+   public:
+      plugin();
+      virtual ~plugin() override;
+
+      virtual std::string plugin_name()const override;
+      virtual void plugin_initialize( const bpo::variables_map& options ) override;
+      virtual void plugin_startup() override;
+      virtual void plugin_shutdown() override;
+      virtual void plugin_set_app( application* app ) override;
+      virtual void plugin_set_program_options(
+         bpo::options_description& command_line_options,
+         bpo::options_description& config_file_options
+         ) override;
 
    protected:
       chain::database& database() { return *app().chain_database(); }
       application& app()const { assert(_app); return *_app; }
       net::node& p2p_node() { return *app().p2p_node(); }
 
-      /// Default no-op implementation of set_program_options_impl; allows plugins which have no options to elide this
-      /// method
-      void set_program_options_impl(boost::program_options::options_description&,
-                                    boost::program_options::options_description&)const {}
-
-    private:
+   private:
       application* _app = nullptr;
 };
 

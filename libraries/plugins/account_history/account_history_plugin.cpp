@@ -578,8 +578,15 @@ account_history_plugin::~account_history_plugin()
 {
 }
 
-void account_history_plugin::set_program_options_impl(boost::program_options::options_description& cli,
-                                                      boost::program_options::options_description& cfg)
+std::string account_history_plugin::plugin_name()const
+{
+   return "account_history";
+}
+
+void account_history_plugin::plugin_set_program_options(
+   boost::program_options::options_description& cli,
+   boost::program_options::options_description& cfg
+   )
 {
    cli.add_options()
          ("track-account", bpo::value<std::vector<std::string>>()->composing()->multitoken(), "Account ID to track history for (may specify multiple times)")
@@ -587,7 +594,7 @@ void account_history_plugin::set_program_options_impl(boost::program_options::op
    cfg.add(cli);
 }
 
-void account_history_plugin::initialize(const boost::program_options::variables_map& options)
+void account_history_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
    database().applied_block.connect( [&]( const signed_block& b){ my->update_account_histories(b); } );
    database().add_index< primary_index< simple_index< operation_history_object > > >();
@@ -600,7 +607,7 @@ void account_history_plugin::initialize(const boost::program_options::variables_
    LOAD_VALUE_SET(options, "tracked-accounts", my->_tracked_accounts, bts::chain::account_id_type);
 }
 
-void account_history_plugin::startup()
+void account_history_plugin::plugin_startup()
 {
    my->rebuild_key_account_index();
 }

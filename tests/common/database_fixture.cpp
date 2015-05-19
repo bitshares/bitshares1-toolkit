@@ -34,10 +34,11 @@ database_fixture::database_fixture()
    boost::program_options::variables_map options;
 
    // app.initialize();
-   ahplugin->initialize_plugin( options );
+   ahplugin->plugin_set_app( &app );
+   ahplugin->plugin_initialize( options );
 
    db.init_genesis();
-   ahplugin->startup_plugin();
+   ahplugin->plugin_startup();
 
    now = db.head_block_time();
    generate_block();

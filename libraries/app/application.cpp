@@ -484,5 +484,26 @@ void bts::app::application::add_plugin(const string& name, std::shared_ptr<bts::
    my->_plugins[name] = p;
 }
 
+void application::shutdown_plugins()
+{
+   for( auto& entry : my->_plugins )
+      entry.second->plugin_shutdown();
+   return;
+}
+
+void application::initialize_plugins( const boost::program_options::variables_map& options )
+{
+   for( auto& entry : my->_plugins )
+      entry.second->plugin_initialize( options );
+   return;
+}
+
+void application::startup_plugins()
+{
+   for( auto& entry : my->_plugins )
+      entry.second->plugin_startup();
+   return;
+}
+
 // namespace detail
 } }

@@ -88,12 +88,10 @@ int main(int argc, char** argv) {
 
       bpo::notify(options);
       node.initialize(data_dir, options);
-      witness_plug->initialize_plugin(options);
-      history_plug->initialize_plugin(options);
+      node.initialize_plugins( options );
 
       node.startup();
-      witness_plug->startup_plugin();
-      history_plug->startup_plugin();
+      node.startup_plugins();
 
       fc::promise<int>::ptr exit_promise = new fc::promise<int>("UNIX Signal Handler");
       fc::set_signal_handler([&exit_promise](int signal) {
@@ -104,7 +102,7 @@ int main(int argc, char** argv) {
 
       int signal = exit_promise->wait();
       ilog("Exiting from signal ${n}", ("n", signal));
-      chain::shutdown_ntp_time();
+      node.shutdown_plugins();
       return 0;
    } catch( const fc::exception& e ) {
       elog("Exiting with error:\n${e}", ("e", e.to_detail_string()));

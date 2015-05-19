@@ -8,7 +8,7 @@
 namespace bts { namespace witness_plugin {
 namespace bpo = boost::program_options;
 
-class witness_plugin : public bts::app::plugin<witness_plugin> {
+class witness_plugin : public bts::app::plugin {
 public:
    ~witness_plugin() {
       try {
@@ -21,18 +21,18 @@ public:
       }
    }
 
-   const std::string& plugin_name()const override {
-      static std::string name = "delegate";
-      return name;
-   }
+   std::string plugin_name()const override;
 
-   void set_program_options_impl(boost::program_options::options_description &command_line_options,
-                                 boost::program_options::options_description &config_file_options);
+   virtual void plugin_set_program_options(
+      boost::program_options::options_description &command_line_options,
+      boost::program_options::options_description &config_file_options
+      ) override;
 
    void set_block_production(bool allow) { _production_enabled = allow; }
 
-   void initialize(const bpo::variables_map& options);
-   void startup();
+   virtual void plugin_initialize( const bpo::variables_map& options ) override;
+   virtual void plugin_startup() override;
+   virtual void plugin_shutdown() override;
 
 private:
    void schedule_next_production(const bts::chain::chain_parameters& global_parameters);

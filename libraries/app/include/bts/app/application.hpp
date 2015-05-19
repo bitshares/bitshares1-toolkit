@@ -21,16 +21,20 @@ namespace bts { namespace app {
          void set_program_options( bpo::options_description& command_line_options,
                                    bpo::options_description& configuration_file_options )const;
          void initialize(const fc::path& data_dir, const bpo::variables_map&options);
+         void initialize_plugins( const bpo::variables_map& options );
          void startup();
+         void shutdown();
+         void startup_plugins();
+         void shutdown_plugins();
 
          template<typename PluginType>
          std::shared_ptr<PluginType> register_plugin()
          {
             auto plug = std::make_shared<PluginType>();
-            plug->set_app(this);
+            plug->plugin_set_app(this);
 
             bpo::options_description plugin_cli_options("Options for plugin " + plug->plugin_name()), plugin_cfg_options;
-            plug->set_program_options(plugin_cli_options, plugin_cfg_options);
+            plug->plugin_set_program_options(plugin_cli_options, plugin_cfg_options);
             if( !plugin_cli_options.options().empty() )
                _cli_options.add(plugin_cli_options);
             if( !plugin_cfg_options.options().empty() )
