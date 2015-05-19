@@ -204,7 +204,7 @@ void database::initialize_indexes()
 }
 
 void database::init_genesis(const genesis_allocation& initial_allocation)
-{
+{ try {
    _undo_db.disable();
 
    fc::ecc::private_key genesis_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
@@ -273,6 +273,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
    (void)properties;
 
    create<dynamic_global_property_object>( [&](dynamic_global_property_object& p) {
+      p.time = fc::time_point_sec( BTS_GENESIS_TIMESTAMP );
       });
 
    const asset_dynamic_data_object& dyn_asset =
@@ -372,7 +373,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
            ("n", initial_allocation.size())("t", duration.count() / 1000));
    }
    _undo_db.enable();
-}
+} FC_LOG_AND_RETHROW() }
 
 asset database::get_balance(account_id_type owner, asset_id_type asset_id) const
 {
@@ -1701,11 +1702,13 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    FC_ASSERT( (skip & skip_transaction_dupe_check) ||
               trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end() );
    transaction_evaluation_state eval_state(this, skip&skip_authority_check );
+   const chain_parameters& chain_parameters = get_global_properties().parameters;
    eval_state._trx = &trx;
 
-   if( !(skip & skip_transaction_signatures) )
+   //This check is used only if this transaction has an absolute expiration time.
+   if( !(skip & skip_transaction_signatures) && trx.relative_expiration == 0 )
    {
-      for( auto sig : trx.signatures )
+      for( const auto& sig : trx.signatures )
       {
          FC_ASSERT( sig.first(*this).key_address() == fc::ecc::public_key( sig.second, trx.digest() ), "",
                     ("trx",trx)
@@ -1715,17 +1718,6 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
                     ("addr", address(fc::ecc::public_key( sig.second, trx.digest() ))) );
       }
    }
-   eval_state.operation_results.reserve( trx.operations.size() );
-
-   const chain_parameters& chain_parameters = get_global_properties().parameters;
-   processed_transaction ptrx(trx);
-   _current_op_in_trx = 0;
-   for( auto op : ptrx.operations )
-   {
-      eval_state.operation_results.emplace_back(apply_operation(eval_state, op));
-      ++_current_op_in_trx;
-   }
-   ptrx.operation_results = std::move( eval_state.operation_results );
 
    //If we're skipping tapos check, but not dupe check, assume all transactions have maximum expiration time.
    fc::time_point_sec trx_expiration = _pending_block.timestamp + chain_parameters.maximum_time_until_expiration;
@@ -1743,6 +1735,22 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
                = static_cast<const block_summary_object&>(get_index<block_summary_object>()
                                                           .get(block_summary_id_type((head_block_num() & ~0xffff)
                                                                                      + trx.ref_block_num)));
+
+         //This is the signature check for transactions with relative expiration.
+         if( !(skip & skip_transaction_signatures) )
+         {
+            for( const auto& sig : trx.signatures )
+            {
+               FC_ASSERT(sig.first(*this).key_address() == fc::ecc::public_key(sig.second,
+                                                                               trx.digest(tapos_block_summary.block_id)
+                                                                               ),
+                          "",
+                          ("sig.first",sig.first)
+                          ("key_address",sig.first(*this).key_address())
+                          ("addr", address(fc::ecc::public_key(sig.second, trx.digest()))));
+            }
+         }
+
          //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
          FC_ASSERT( trx.ref_block_prefix == tapos_block_summary.block_id._hash[1] );
          trx_expiration = tapos_block_summary.timestamp + chain_parameters.block_interval*trx.relative_expiration;
@@ -1751,6 +1759,8 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
          FC_ASSERT( trx_expiration <= _pending_block.timestamp + chain_parameters.maximum_time_until_expiration );
       }
       FC_ASSERT( _pending_block.timestamp <= trx_expiration );
+   } else if( !(skip & skip_transaction_signatures) ) {
+      FC_ASSERT(trx.relative_expiration == 0, "May not use transactions with a reference block in block 1!");
    }
 
    //Insert transaction into unique transactions database.
@@ -1762,6 +1772,18 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
          transaction.trx = trx;
       });
    }
+
+   eval_state.operation_results.reserve( trx.operations.size() );
+
+   processed_transaction ptrx(trx);
+   _current_op_in_trx = 0;
+   for( auto op : ptrx.operations )
+   {
+      eval_state.operation_results.emplace_back(apply_operation(eval_state, op));
+      ++_current_op_in_trx;
+   }
+   ptrx.operation_results = std::move( eval_state.operation_results );
+
    return ptrx;
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 

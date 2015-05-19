@@ -3,32 +3,51 @@
 
 namespace bts { namespace chain {
 
-   digest_type transaction::digest()const
-   {
-      digest_type::encoder enc;
-      fc::raw::pack( enc, *this );
-      return enc.result();
-   }
-   void transaction::validate() const
-   {
-      if( relative_expiration == 0 )
-         FC_ASSERT( ref_block_num == 0 && ref_block_prefix > 0 );
+digest_type transaction::digest(const block_id_type& ref_block_id) const
+{
+   digest_type::encoder enc;
+   fc::raw::pack( enc, ref_block_id );
+   fc::raw::pack( enc, *this );
+   return enc.result();
+}
 
-      for( const auto& op : operations )
-         op.visit(operation_validator());
-   }
+digest_type transaction::digest()const
+{
+   //Only use this digest() for transactions with absolute expiration times.
+   if( relative_expiration != 0 ) edump((*this));
+   assert(relative_expiration == 0);
+   digest_type::encoder enc;
+   fc::raw::pack( enc, *this );
+   return enc.result();
+}
+void transaction::validate() const
+{
+   if( relative_expiration == 0 )
+      FC_ASSERT( ref_block_num == 0 && ref_block_prefix > 0 );
 
-   bts::chain::transaction_id_type bts::chain::transaction::id() const
+   for( const auto& op : operations )
+      op.visit(operation_validator());
+}
+
+bts::chain::transaction_id_type bts::chain::transaction::id() const
+{
+   digest_type::encoder enc;
+   fc::raw::pack(enc, *this);
+   auto hash = enc.result();
+   transaction_id_type result;
+   memcpy(result._hash, hash._hash, std::min(sizeof(result), sizeof(hash)));
+   return result;
+}
+void bts::chain::signed_transaction::sign( key_id_type id, const private_key_type& key )
+{
+   if( relative_expiration != 0 )
    {
-      auto hash = digest();
-      transaction_id_type result;
-      memcpy(result._hash, hash._hash, std::min(sizeof(result), sizeof(hash)));
-      return result;
-   }
-   void bts::chain::signed_transaction::sign( key_id_type id, const private_key_type& key )
-   { try {
+      if( !block_id_cache.valid() ) edump((*this));
+      assert(block_id_cache.valid());
+      signatures[id] =  key.sign_compact( digest(*block_id_cache) );
+   } else {
       signatures[id] =  key.sign_compact( digest() );
-      FC_ASSERT(  fc::ecc::public_key( signatures[id], digest() ) == key.get_public_key() );
-   } FC_CAPTURE_AND_RETHROW( (digest()) ) }
+   }
+}
 
 } } // bts::chain

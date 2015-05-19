@@ -48,6 +48,9 @@ namespace bts { namespace chain {
     * probably have a longer re-org window to ensure their transaction can still go through in the event of a momentary
     * disruption in service.
     *
+    * @note It is not recommended to set the @ref ref_block_num, @ref ref_block_prefix, and @ref relative_expiration
+    * fields manually. Call the appropriate overload of @ref set_expiration instead.
+    *
     * @{
     */
 
@@ -75,6 +78,10 @@ namespace bts { namespace chain {
       uint16_t           relative_expiration = 1;
       vector<operation>  operations;
 
+      /// Calculate the digest for a transaction with a reference block
+      /// @param ref_block_id Full block ID of the reference block
+      digest_type digest(const block_id_type& ref_block_id)const;
+      /// Calculate the digest for a transaction with an absolute expiration time
       digest_type digest()const;
       transaction_id_type id()const;
       void validate() const;
@@ -84,12 +91,14 @@ namespace bts { namespace chain {
          ref_block_num = 0;
          relative_expiration = 0;
          ref_block_prefix = expiration_time.sec_since_epoch();
+         block_id_cache.reset();
       }
       void set_expiration( const block_id_type& reference_block, unsigned_int lifetime_intervals = 3 )
       {
          ref_block_num = ntohl(reference_block._hash[0]);
          ref_block_prefix = reference_block._hash[1];
          relative_expiration = lifetime_intervals;
+         block_id_cache = reference_block;
       }
 
       /// visit all operations
@@ -99,6 +108,10 @@ namespace bts { namespace chain {
          for( auto& op : operations )
             op.visit( std::forward<Visitor>( visitor ) );
       }
+
+   protected:
+      // Intentionally unreflected: does not go on wire
+      optional<block_id_type> block_id_cache;
    };
 
    /**

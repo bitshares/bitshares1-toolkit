@@ -113,11 +113,8 @@ int main( int argc, char** argv )
       //    designed.
       //
       wallet_data wdata;
-      wdump((options.count("wallet-file")));
 
-      ilog(".");
       fc::path wallet_file( options.count("wallet-file") ? options.at("wallet-file").as<string>() : "wallet.json");
-      ilog(".");
       if( fc::exists( wallet_file ) )
           wdata = fc::json::from_file( wallet_file ).as<wallet_data>();
 
@@ -128,11 +125,9 @@ int main( int argc, char** argv )
       if( options.count("server-rpc-password") )
          wdata.ws_password = options.at("server-rpc-password").as<std::string>();
 
-      ilog(".");
       fc::http::websocket_client client;
       auto con  = client.connect( wdata.ws_server );
       auto apic = std::make_shared<fc::rpc::websocket_api_connection>(*con);
-      //con->closed.connect( [=](){ elog( "connection closed" ); } );
 
       auto remote_api = apic->get_remote_api< login_api >(1);
       FC_ASSERT( remote_api->login( wdata.ws_user, wdata.ws_password ) );
@@ -162,7 +157,6 @@ int main( int argc, char** argv )
       {
          _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
             auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
-//            auto login = std::make_shared<bts::app::login_api>( std::ref(*_self) );
             wsc->register_api(wapi);
             c->set_session_data( wsc );
          });
@@ -180,7 +174,6 @@ int main( int argc, char** argv )
       {
          _websocket_tls_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
             auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
-//            auto login = std::make_shared<bts::app::login_api>( std::ref(*_self) );
             wsc->register_api(wapi);
             c->set_session_data( wsc );
          });

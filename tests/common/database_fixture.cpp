@@ -41,10 +41,12 @@ database_fixture::database_fixture()
    db.init_genesis();
    ahplugin->startup_plugin();
 
+   chain::start_simulated_time(bts::chain::now());
+   generate_block();
+
    genesis_key(db); // attempt to deref
    trx.set_expiration(chain::now() + fc::minutes(1));
 
-   chain::start_simulated_time(bts::chain::now());
    return;
 }
 
@@ -79,9 +81,7 @@ string database_fixture::generate_anon_acct_name()
 
 void database_fixture::_push_transaction( const signed_transaction& tx, uint32_t skip_flags, const char* file, int line )
 {
-   // wdump( (file)(line)(tx) );
    db.push_transaction( tx, skip_flags );
-   return;
 }
 
 void database_fixture::verify_asset_supplies( )const
@@ -624,7 +624,7 @@ void database_fixture::transfer(
 {
    try
    {
-      trx.set_expiration(db.head_block_id());
+      trx.set_expiration(db.head_block_time() + fc::minutes(1));
       trx.operations.push_back(transfer_operation({ fee, from.id, to.id, amount, memo_data() }));
 
       if( fee == asset() )
