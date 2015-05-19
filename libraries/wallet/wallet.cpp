@@ -680,6 +680,7 @@ public:
       // we do not insert owner_privkey here because
       //    it is intended to only be used for key recovery
       _wallet.pending_account_registrations[ account_name ] = key_to_wif( active_privkey );
+      save_wallet_file();
       if( broadcast )
          _remote_net->broadcast_transaction( tx );
       return tx;
