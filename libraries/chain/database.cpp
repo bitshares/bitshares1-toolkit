@@ -1,5 +1,4 @@
 #include <bts/chain/types.hpp>
-#include <bts/chain/time.hpp>
 #include <bts/chain/database.hpp>
 
 #include <bts/chain/key_object.hpp>

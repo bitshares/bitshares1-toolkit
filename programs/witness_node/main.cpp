@@ -3,8 +3,6 @@
 #include <bts/witness/witness.hpp>
 #include <bts/account_history/account_history_plugin.hpp>
 
-#include <bts/chain/time.hpp>
-
 #include <fc/thread/thread.hpp>
 #include <fc/interprocess/signals.hpp>
 
@@ -96,9 +94,6 @@ int main(int argc, char** argv) {
       node.startup();
       witness_plug->startup_plugin();
       history_plug->startup_plugin();
-
-      //Start NTP time client
-      chain::now();
 
       fc::promise<int>::ptr exit_promise = new fc::promise<int>("UNIX Signal Handler");
       fc::set_signal_handler([&exit_promise](int signal) {

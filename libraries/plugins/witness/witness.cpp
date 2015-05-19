@@ -1,7 +1,7 @@
 #include <bts/witness/witness.hpp>
 
-#include <bts/chain/time.hpp>
 #include <bts/chain/witness_object.hpp>
+#include <bts/time/time.hpp>
 
 #include <fc/thread/thread.hpp>
 
@@ -35,6 +35,8 @@ void witness_plugin::initialize(const boost::program_options::variables_map& opt
 void witness_plugin::startup()
 { try {
       std::set<chain::witness_id_type> bad_wits;
+      //Start NTP time client
+      bts::time::now();
       for( auto wit : _witnesses )
    {
       auto key = wit(database()).signing_key;
@@ -61,10 +63,10 @@ void witness_plugin::schedule_next_production(const bts::chain::chain_parameters
    //Get next production time for *any* delegate
    auto block_interval = global_parameters.block_interval;
    fc::time_point next_block_time = fc::time_point_sec() +
-         (chain::now().sec_since_epoch() / block_interval + 1) * block_interval;
+         (bts::time::now().sec_since_epoch() / block_interval + 1) * block_interval;
 
-   if( chain::ntp_time().valid() )
-      next_block_time -= chain::ntp_error();
+   if( bts::time::ntp_time().valid() )
+      next_block_time -= bts::time::ntp_error();
 
    //Sleep until the next production time for *any* delegate
    _block_production_task = fc::schedule([this]{block_production_loop();},
@@ -78,25 +80,69 @@ void witness_plugin::block_production_loop()
 
    // Is there a head block within a block interval of now? If so, we're synced and can begin production.
    if( !_production_enabled &&
-       llabs((db.head_block_time() - chain::now()).to_seconds()) <= global_parameters.block_interval )
+       llabs((db.head_block_time() - bts::time::now()).to_seconds()) <= global_parameters.block_interval )
       _production_enabled = true;
 
-   auto next_production = db.get_next_generation_time(_witnesses);
-   wdump((next_production)(chain::now()));
-   if( _production_enabled &&
-       (llabs((next_production.first - chain::now()).count()) <= fc::milliseconds(500).count()) &&
-       (chain::now() - db.head_block_time()).to_seconds() >= 1 )
+   // is anyone scheduled to produce now or one second in the future?
+   fc::optional< std::pair< fc::time_point_sec, bts::chain::witness_id_type > > sch = db.get_scheduled_witness( bts::time::now() + fc::seconds(1) );
+   fc::time_point_sec now = bts::time::now();
+
+   auto is_scheduled = [&]()
    {
-      ilog("Witness ${id} production slot has arrived; generating a block now...", ("id", next_production.second));
-      try {
-         auto block = db.generate_block(_private_keys[next_production.second(database()).signing_key], next_production.second);
+      // conditions needed to produce a block:
+
+      // block production must be enabled (i.e. witness must be synced)
+      if( !_production_enabled )
+         return false;
+
+      if( !sch.valid() )
+         return false;
+
+      // the next block must be scheduled after the head block.
+      // if this check fails, the local clock has not advanced far
+      // enough from the head block for the DB to report a witness.
+      if( sch->first <= db.head_block_time() )
+         return false;
+
+      // we must control the witness scheduled to produce the next block.
+      if( _witnesses.find( sch->second ) == _witnesses.end() )
+         return false;
+
+      // the current clock must be at least 1 second ahead of
+      // head_block_time.
+      if( (now - db.head_block_time()).to_seconds() < 1 )
+         return false;
+
+      // the current clock must be within 500 milliseconds of
+      // the scheduled production time.
+      if( llabs((sch->first - now).count()) > fc::milliseconds(500).count() )
+         return false;
+
+      return true;
+   };
+
+   wdump((sch)(now));
+   if( is_scheduled() )
+   {
+      ilog("Witness ${id} production slot has arrived; generating a block now...", ("id", sch->second));
+      try
+      {
+         auto block = db.generate_block(
+            sch->first,
+            sch->second,
+            _private_keys[ sch->second( db ).signing_key ]
+            );
          ilog("Generated block #${n} with timestamp ${t} at time ${c}",
-              ("n", block.block_num())("t", block.timestamp)("c", chain::now()));
+              ("n", block.block_num())("t", block.timestamp)("c", now));
          p2p_node().broadcast(net::block_message(block));
-      } catch( const fc::canceled_exception& ) {
+      }
+      catch( const fc::canceled_exception& )
+      {
          //We're trying to exit. Go ahead and let this one out.
          throw;
-      } catch( const fc::exception& e ) {
+      }
+      catch( const fc::exception& e )
+      {
          elog("Got exception while generating block:\n${e}", ("e", e.to_detail_string()));
       }
    }

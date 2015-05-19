@@ -2,7 +2,7 @@
 #include <bts/app/plugin.hpp>
 
 #include <bts/chain/key_object.hpp>
-#include <bts/chain/time.hpp>
+#include <bts/time/time.hpp>
 
 #include <bts/account_history/account_history_plugin.hpp>
 
@@ -25,7 +25,7 @@ BOOST_AUTO_TEST_CASE( two_node_network )
       fc::temp_file genesis_json;
       fc::json::save_to_file(genesis_allocation(), genesis_json.path());
 
-      start_simulated_time(fc::time_point::now());
+      bts::time::start_simulated_time(fc::time_point::now());
 
       bts::app::application app1;
       app1.register_plugin<bts::account_history::account_history_plugin>();

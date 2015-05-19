@@ -1,4 +1,5 @@
-#include <bts/chain/time.hpp>
+
+#include <bts/time/time.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/network/ntp.hpp>
@@ -7,7 +8,7 @@
 
 #include <atomic>
 
-namespace bts { namespace chain {
+namespace bts { namespace time {
 
 static int32_t simulated_time    = 0;
 static int32_t adjusted_time_sec = 0;
@@ -99,4 +100,4 @@ void advance_time( int32_t delta_seconds )
    time_discontinuity_signal();
 }
 
-} } // bts::chain
+} } // bts::time

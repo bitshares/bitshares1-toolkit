@@ -6,11 +6,11 @@ target_link_libraries( chain_test bts_chain bts_app bts_account_history fc )
 
 file(GLOB BENCH_MARKS "benchmarks/*.cpp")
 add_executable( chain_bench ${BENCH_MARKS} ${COMMON_SOURCES} )
-target_link_libraries( chain_bench bts_chain bts_account_history fc )
+target_link_libraries( chain_bench bts_chain bts_account_history bts_time fc )
 
 file(GLOB APP_SOURCES "app/*.cpp")
 add_executable( app_test ${APP_SOURCES} )
-target_link_libraries( app_test bts_account_history bts_app bts_net bts_chain fc )
+target_link_libraries( app_test bts_account_history bts_app bts_net bts_chain bts_time fc )
 
 file(GLOB INTENSE_SOURCES "intense/*.cpp")
 add_executable( intense_test ${INTENSE_SOURCES} ${COMMON_SOURCES} )

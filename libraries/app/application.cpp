@@ -4,7 +4,7 @@
 
 #include <bts/net/core_messages.hpp>
 
-#include <bts/chain/time.hpp>
+#include <bts/time/time.hpp>
 
 #include <bts/utilities/key_conversion.hpp>
 
@@ -338,10 +338,10 @@ namespace detail {
          return fc::time_point_sec::min();
       } FC_CAPTURE_AND_RETHROW( (block_id) ) }
 
-      /** returns bts::blockchain::now() */
+      /** returns bts::time::now() */
       virtual fc::time_point_sec get_blockchain_now() override
       {
-         return bts::chain::now();
+         return bts::time::now();
       }
 
       virtual item_hash_t get_head_block_id() const override

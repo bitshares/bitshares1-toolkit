@@ -2,7 +2,8 @@
 #include <bts/chain/operations.hpp>
 #include <bts/chain/key_object.hpp>
 #include <bts/chain/account_object.hpp>
-#include <bts/chain/time.hpp>
+
+#include <bts/time/time.hpp>
 
 #include <fc/crypto/digest.hpp>
 

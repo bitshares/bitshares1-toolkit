@@ -33,7 +33,6 @@ add_library( bts_chain
              transaction.cpp
              block.cpp
 
-             time.cpp
              transaction_evaluation_state.cpp
              database.cpp
              fork_database.cpp

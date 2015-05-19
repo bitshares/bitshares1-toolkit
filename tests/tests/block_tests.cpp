@@ -3,7 +3,6 @@
 
 #include <bts/chain/database.hpp>
 #include <bts/chain/operations.hpp>
-#include <bts/chain/time.hpp>
 
 #include <bts/chain/account_object.hpp>
 #include <bts/chain/delegate_object.hpp>

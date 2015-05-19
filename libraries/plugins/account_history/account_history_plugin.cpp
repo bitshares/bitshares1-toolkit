@@ -8,7 +8,6 @@
 #include <bts/chain/evaluator.hpp>
 #include <bts/chain/key_object.hpp>
 #include <bts/chain/operation_history_object.hpp>
-#include <bts/chain/time.hpp>
 #include <bts/chain/transaction_evaluation_state.hpp>
 
 #include <fc/thread/thread.hpp>

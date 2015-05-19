@@ -14,8 +14,6 @@
 #include <bts/chain/vesting_balance_object.hpp>
 #include <bts/chain/witness_object.hpp>
 
-#include <bts/chain/time.hpp>
-
 #include <fc/crypto/digest.hpp>
 
 #include <iostream>
