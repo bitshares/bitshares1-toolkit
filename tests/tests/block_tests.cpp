@@ -313,7 +313,7 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
       BOOST_CHECK_THROW(db1.push_transaction(trx, skip_sigs), fc::exception);
 
       now += db1.block_interval();
-      auto b =  db1.generate_block( now, db1.get_scheduled_witness( now )->second, delegate_priv_key );
+      auto b = db1.generate_block( now, db1.get_scheduled_witness( now )->second, delegate_priv_key, skip_sigs );
       db2.push_block(b, skip_sigs);
 
       BOOST_CHECK_THROW(db1.push_transaction(trx, skip_sigs), fc::exception);
