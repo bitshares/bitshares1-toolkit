@@ -126,7 +126,8 @@ BOOST_AUTO_TEST_CASE( transfer_whitelist_uia )
          asset_update_operation op;
          op.asset_to_update = advanced.id;
          op.new_options = advanced.options;
-         op.new_options.blacklist_authorities = {dan.id};
+         op.new_options.blacklist_authorities.clear();
+         op.new_options.blacklist_authorities.insert(dan.id);
          trx.operations.back() = op;
          db.push_transaction(trx, ~0);
          BOOST_CHECK(advanced.options.blacklist_authorities.find(dan.id) != advanced.options.blacklist_authorities.end());

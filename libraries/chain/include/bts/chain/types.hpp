@@ -445,7 +445,7 @@ namespace bts { namespace chain {
                     "Maximum transaction expiration time must be greater than a block interval" );
          FC_ASSERT( maximum_proposal_lifetime - genesis_proposal_review_period > block_interval,
                     "Genesis proposal review period must be less than the maximum proposal lifetime" );
-         for( auto fe : current_fees.fees ) FC_ASSERT( fe >= 0 );
+         for( auto fe : current_fees.fees ) { FC_ASSERT( fe >= 0 ); }
       }
    };
 

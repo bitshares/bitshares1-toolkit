@@ -42,3 +42,7 @@ add_library( bts_chain
 target_link_libraries( bts_chain fc bts_db leveldb )
 target_include_directories( bts_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
+
+if(MSVC)
+  set_source_files_properties( database.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
+endif(MSVC)

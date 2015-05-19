@@ -1,7 +1,11 @@
 #include <algorithm>
+#include <cctype>
 #include <iomanip>
 #include <iostream>
 #include <iterator>
+#include <sstream>
+#include <string>
+#include <list>
 
 #include <fc/io/fstream.hpp>
 #include <fc/io/json.hpp>
@@ -17,6 +21,8 @@
 #include <bts/utilities/key_conversion.hpp>
 #include <bts/wallet/wallet.hpp>
 
+#include <boost/algorithm/string/join.hpp>
+
 #ifndef WIN32
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -25,16 +31,48 @@
 namespace bts { namespace wallet {
 
 namespace detail {
+
+namespace
+{
+  template <typename... Args>
+  struct types_to_string_list_helper;
+
+  template <typename First, typename... Args>
+  struct types_to_string_list_helper<First, Args...>
+  {
+    std::list<std::string> operator()() const
+    {
+      std::list<std::string> argsList = types_to_string_list_helper<Args...>()();
+      argsList.push_front(fc::get_typename<typename std::decay<First>::type>::name());
+      return argsList;
+    }
+  };
+
+  template <>
+  struct types_to_string_list_helper<>
+  {
+    std::list<std::string> operator()() const
+    {
+      return std::list<std::string>();
+    }
+  };
+
+  template <typename... Args>
+  std::list<std::string> types_to_string_list()
+  {
+    return types_to_string_list_helper<Args...>()();
+  }
+}
+
 struct help_visitor
 {
    help_visitor( std::stringstream& s ):ss(s){}
    std::stringstream& ss;
+
    template<typename R, typename... Args>
    void operator()( const char* name, std::function<R(Args...)>& memb )const {
       ss << std::setw(40) << std::left << fc::get_typename<R>::name() << " " << name << "( ";
-      vector<string> args{ fc::get_typename<typename std::decay<Args>::type>::name()... };
-      for( uint32_t i = 0; i < args.size(); ++i )
-         ss << args[i] << (i==args.size()-1?" ":", ");
+      ss << boost::algorithm::join(types_to_string_list<Args...>(), ", ");
       ss << ")\n";
    }
 };

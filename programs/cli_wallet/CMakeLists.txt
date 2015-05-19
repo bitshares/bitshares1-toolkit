@@ -10,3 +10,7 @@ endif()
 
 target_link_libraries( cli_wallet
                        PRIVATE bts_app bts_net bts_chain bts_utilities bts_wallet fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+
+if(MSVC)
+  set_source_files_properties( main.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
+endif(MSVC)

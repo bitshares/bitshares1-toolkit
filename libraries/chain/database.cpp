@@ -42,6 +42,9 @@
 #include <fc/container/flat.hpp>
 #include <fc/uint128.hpp>
 
+#include <boost/type_traits/make_unsigned.hpp>
+#include <boost/multiprecision/detail/bitscan.hpp>
+
 namespace bts { namespace chain {
 
 database::database()
@@ -1317,7 +1320,11 @@ void database::update_active_delegates()
 
          // total_votes is 64 bits. Subtract the number of leading low bits from 64 to get the number of useful bits,
          // then I want to keep the most significant 16 bits of what's left.
+#ifdef __GNUC__
          int8_t bits_to_drop = std::max(int(64 - __builtin_clzll(total_votes)) - 16, 0);
+#else
+         int8_t bits_to_drop = std::max(int(boost::multiprecision::detail::find_msb(total_votes.value)) - 15, 0);
+#endif
          for( const auto& weight : weights )
          {
             // Ensure that everyone has at least one vote. Zero weights aren't allowed.
@@ -1597,9 +1604,13 @@ bool database::push_block( const signed_block& new_block, uint32_t skip )
          {
             auto branches = _fork_db.fetch_branch_from( new_head->data.id(), _pending_block.previous );
             for( auto item : branches.first )
+            {
                wdump( ("new")(item->id)(item->data.previous) );
+            }
             for( auto item : branches.second )
+            {
                wdump( ("old")(item->id)(item->data.previous) );
+            }
 
             // pop blocks until we hit the forked block
             while( head_block_id() != branches.second.back()->data.previous )

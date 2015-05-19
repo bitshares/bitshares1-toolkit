@@ -99,6 +99,11 @@ namespace bts { namespace db {
                      ++_itr;
                   return *this;
                }
+               typedef std::forward_iterator_tag iterator_category;
+               typedef vector<unique_ptr<object> >::value_type value_type;
+               typedef vector<unique_ptr<object> >::difference_type difference_type;
+               typedef vector<unique_ptr<object> >::pointer pointer;
+               typedef vector<unique_ptr<object> >::reference reference;
             private:
                vector<unique_ptr<object>>::const_iterator _itr;
                const vector<unique_ptr<object>>& _objects;

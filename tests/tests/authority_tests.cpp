@@ -847,9 +847,9 @@ BOOST_FIXTURE_TEST_CASE( max_authority_membership, database_fixture )
             test_authority.auths[ key_ids[i] ] = 1;
 
          auto check_tx = [&]( const authority& owner_auth,
-                              const authority& active_auth,
-                              uint16_t max_authority_membership = BTS_DEFAULT_MAX_AUTHORITY_MEMBERSHIP )
+                              const authority& active_auth )
          {
+             const uint16_t max_authority_membership = BTS_DEFAULT_MAX_AUTHORITY_MEMBERSHIP;
              account_create_operation anon_create_op;
              transaction tx;
 

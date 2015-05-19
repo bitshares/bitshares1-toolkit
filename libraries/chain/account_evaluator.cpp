@@ -30,9 +30,13 @@ object_id_type account_create_evaluator::do_evaluate( const account_create_opera
    FC_ASSERT( op.owner.auths.size() <= chain_params.maximum_authority_membership );
    FC_ASSERT( op.active.auths.size() <= chain_params.maximum_authority_membership );
    for( auto id : op.owner.auths )
+   {
       FC_ASSERT( is_relative(id.first) || db().find<object>(id.first) );
+   }
    for( auto id : op.active.auths )
+   {
       FC_ASSERT( is_relative(id.first) || db().find<object>(id.first) );
+   }
    safe<uint32_t> counts[vote_id_type::VOTE_TYPE_COUNT];
    for( auto id : op.vote )
    {
@@ -128,13 +132,17 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
    {
       FC_ASSERT( o.owner->auths.size() <= chain_params.maximum_authority_membership );
       for( auto id : o.owner->auths )
+      {
          FC_ASSERT( is_relative(id.first) || db().find<object>(id.first) );
+      }
    }
    if( o.active )
    {
       FC_ASSERT( o.active->auths.size() <= chain_params.maximum_authority_membership );
       for( auto id : o.active->auths )
+      {
          FC_ASSERT( is_relative(id.first) || db().find<object>(id.first) );
+      }
    }
 
    acnt = &o.account(d);
@@ -144,7 +152,9 @@ object_id_type account_update_evaluator::do_evaluate( const account_update_opera
    {
       uint32_t max_vote_id = d.get_global_properties().next_available_vote_id;
       for( auto id : *o.vote )
+      {
          FC_ASSERT( id < max_vote_id );
+      }
    }
 
    return object_id_type();

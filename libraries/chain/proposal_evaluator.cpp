@@ -67,15 +67,23 @@ object_id_type proposal_update_evaluator::do_evaluate(const proposal_update_oper
                  "This proposal is in its review period. No new approvals may be added." );
 
    for( account_id_type id : o.active_approvals_to_remove )
+   {
       FC_ASSERT( _proposal->available_active_approvals.find(id) != _proposal->available_active_approvals.end(),
                  "", ("id", id)("available", _proposal->available_active_approvals) );
+   }
    for( account_id_type id : o.owner_approvals_to_remove )
+   {
       FC_ASSERT( _proposal->available_owner_approvals.find(id) != _proposal->available_owner_approvals.end(),
                  "", ("id", id)("available", _proposal->available_owner_approvals) );
+   }
    for( key_id_type id : o.key_approvals_to_add )
+   {
       FC_ASSERT( trx_state->signed_by(id) || trx_state->_skip_authority_check );
+   }
    for( key_id_type id : o.key_approvals_to_remove )
+   {
       FC_ASSERT( trx_state->signed_by(id) || trx_state->_skip_authority_check );
+   }
 
    return object_id_type();
 }

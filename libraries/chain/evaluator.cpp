@@ -106,10 +106,14 @@ namespace bts { namespace chain {
       op.visit(operation_get_required_auths(active_auths, owner_auths));
 
       for( auto id : active_auths )
+      {
          FC_ASSERT(verify_authority(id(db()), authority::active) ||
                    verify_authority(id(db()), authority::owner), "", ("id", id));
+      }
       for( auto id : owner_auths )
+      {
          FC_ASSERT(verify_authority(id(db()), authority::owner), "", ("id", id));
+      }
    }
 
    /*
