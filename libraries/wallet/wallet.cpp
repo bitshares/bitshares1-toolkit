@@ -161,6 +161,7 @@ class wallet_api_impl
 {
    void claim_registered_account(const account_object& account)
    {
+      elog("Attempting to claim ${acct}", ("acct", account));
       auto it = _wallet.pending_account_registrations.find( account.name );
       FC_ASSERT( it != _wallet.pending_account_registrations.end() );
       if( import_key( account.name, it->second ) )
@@ -213,8 +214,6 @@ class wallet_api_impl
             claim_registered_account(*opt_account);
          }
       }
-
-      return;
    }
    void enable_umask_protection()
    {
@@ -236,7 +235,7 @@ public:
       _remote_net = _remote_api->network();
       _remote_db->subscribe_to_objects( [=]( const fc::variant& obj )
       {
-         resync();
+         fc::async([this]{resync();}, "Resync after block");
       }, {dynamic_global_property_id_type()} );
       return;
    }
