@@ -135,7 +135,7 @@ int main( int argc, char** argv )
       auto wapiptr = std::make_shared<wallet_api>(remote_api);
       wapiptr->set_wallet_filename( wallet_file.generic_string() );
       wapiptr->load_wallet_file();
-      wapiptr->_start_resync_loop();
+      wapiptr->start_resync_loop();
 
       fc::api<wallet_api> wapi(wapiptr);
 

@@ -347,14 +347,33 @@ public:
       FC_ASSERT( opt_account.size() && opt_account.front() );
       return opt_account.front()->id;
    }
+   optional<asset_object> get_asset(asset_id_type id)const
+   {
+      auto rec = _remote_db->get_assets({id}).front();
+      if( rec )
+         _asset_cache[id] = *rec;
+      return rec;
+   }
    optional<asset_object> get_asset(string asset_symbol_or_id)const
    {
       FC_ASSERT( asset_symbol_or_id.size() > 0 );
-      vector<optional<asset_object>> opt_asset;
-      if( std::isdigit( asset_symbol_or_id.front() ) )
-         return _remote_db->get_assets( {fc::variant(asset_symbol_or_id).as<asset_id_type>()}).front();
-      opt_asset = _remote_db->lookup_asset_symbols( {asset_symbol_or_id} );
-      return opt_asset.front();
+
+      if( auto id = maybe_id<asset_id_type>(asset_symbol_or_id) )
+      {
+         // It's an ID
+         return get_asset(*id);
+      } else {
+         // It's a symbol
+         auto rec = _remote_db->lookup_asset_symbols({asset_symbol_or_id}).front();
+         if( rec )
+         {
+            if( rec->symbol != asset_symbol_or_id )
+               return optional<asset_object>();
+
+            _asset_cache[rec->get_id()] = *rec;
+         }
+         return rec;
+      }
    }
    asset_id_type get_asset_id(string asset_symbol_or_id) const
    {
@@ -589,92 +608,89 @@ public:
                                                     string account_name,
                                                     string registrar_account,
                                                     string referrer_account,
-                                                    bool broadcast = false
-         )
+                                                    bool broadcast = false)
    { try {
-         FC_ASSERT( !self.is_locked() );
-         string normalized_brain_key = normalize_brain_key( brain_key );
-         // TODO:  scan blockchain for accounts that exist with same brain key
-         fc::ecc::private_key owner_privkey = derive_private_key( normalized_brain_key, 0 );
-         fc::ecc::private_key active_privkey = derive_private_key( key_to_wif(owner_privkey), 0);
+      FC_ASSERT( !self.is_locked() );
+      string normalized_brain_key = normalize_brain_key( brain_key );
+      // TODO:  scan blockchain for accounts that exist with same brain key
+      fc::ecc::private_key owner_privkey = derive_private_key( normalized_brain_key, 0 );
+      fc::ecc::private_key active_privkey = derive_private_key( key_to_wif(owner_privkey), 0);
 
-         bts::chain::public_key_type owner_pubkey = owner_privkey.get_public_key();
-         bts::chain::public_key_type active_pubkey = active_privkey.get_public_key();
+      bts::chain::public_key_type owner_pubkey = owner_privkey.get_public_key();
+      bts::chain::public_key_type active_pubkey = active_privkey.get_public_key();
 
-         account_create_operation account_create_op;
+      account_create_operation account_create_op;
 
-         // TODO:  process when pay_from_account is ID
+      // TODO:  process when pay_from_account is ID
 
-         account_object registrar_account_object =
-               this->get_account( registrar_account );
+      account_object registrar_account_object =
+            this->get_account( registrar_account );
 
-         account_id_type registrar_account_id = registrar_account_object.id;
+      account_id_type registrar_account_id = registrar_account_object.id;
 
-         account_object referrer_account_object =
-               this->get_account( referrer_account );
-         account_create_op.referrer = referrer_account_object.id;
-         account_create_op.referrer_percent = referrer_account_object.referrer_percent;
+      account_object referrer_account_object =
+            this->get_account( referrer_account );
+      account_create_op.referrer = referrer_account_object.id;
+      account_create_op.referrer_percent = referrer_account_object.referrer_percent;
 
-         // get pay_from_account_id
-         key_create_operation owner_key_create_op;
-         owner_key_create_op.fee_paying_account = registrar_account_id;
-         owner_key_create_op.key_data = owner_pubkey;
+      // get pay_from_account_id
+      key_create_operation owner_key_create_op;
+      owner_key_create_op.fee_paying_account = registrar_account_id;
+      owner_key_create_op.key_data = owner_pubkey;
 
-         key_create_operation active_key_create_op;
-         active_key_create_op.fee_paying_account = registrar_account_id;
-         active_key_create_op.key_data = active_pubkey;
+      key_create_operation active_key_create_op;
+      active_key_create_op.fee_paying_account = registrar_account_id;
+      active_key_create_op.key_data = active_pubkey;
 
-         // key_create_op.calculate_fee(db.current_fee_schedule());
+      // key_create_op.calculate_fee(db.current_fee_schedule());
 
-         // TODO:  Check if keys already exist!!!
+      // TODO:  Check if keys already exist!!!
 
-         relative_key_id_type owner_rkid(0);
-         relative_key_id_type active_rkid(1);
+      relative_key_id_type owner_rkid(0);
+      relative_key_id_type active_rkid(1);
 
-         account_create_op.registrar = registrar_account_id;
-         account_create_op.name = account_name;
-         account_create_op.owner = authority(1, owner_rkid, 1);
-         account_create_op.active = authority(1, active_rkid, 1);
-         account_create_op.memo_key = active_rkid;
+      account_create_op.registrar = registrar_account_id;
+      account_create_op.name = account_name;
+      account_create_op.owner = authority(1, owner_rkid, 1);
+      account_create_op.active = authority(1, active_rkid, 1);
+      account_create_op.memo_key = active_rkid;
 
-         // current_fee_schedule()
-         // find_account(pay_from_account)
+      // current_fee_schedule()
+      // find_account(pay_from_account)
 
-         // account_create_op.fee = account_create_op.calculate_fee(db.current_fee_schedule());
+      // account_create_op.fee = account_create_op.calculate_fee(db.current_fee_schedule());
 
-         signed_transaction tx;
+      signed_transaction tx;
 
-         tx.operations.push_back( owner_key_create_op );
-         tx.operations.push_back( active_key_create_op );
-         tx.operations.push_back( account_create_op );
+      tx.operations.push_back( owner_key_create_op );
+      tx.operations.push_back( active_key_create_op );
+      tx.operations.push_back( account_create_op );
 
-         tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
+      tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
 
-         vector<key_id_type> paying_keys = registrar_account_object.active.get_keys();
+      vector<key_id_type> paying_keys = registrar_account_object.active.get_keys();
 
-         tx.validate();
+      tx.set_expiration(get_dynamic_global_properties().head_block_id);
+      tx.validate();
 
-         for( key_id_type& key : paying_keys )
+      for( key_id_type& key : paying_keys )
+      {
+         auto it = _keys.find(key);
+         if( it != _keys.end() )
          {
-            auto it = _keys.find(key);
-            if( it != _keys.end() )
-            {
-               fc::optional< fc::ecc::private_key > privkey = wif_to_key( it->second );
-               if( !privkey.valid() )
-               {
-                  FC_ASSERT( false, "Malformed private key in _keys" );
-               }
-               tx.sign( key, *privkey );
-            }
+            fc::optional< fc::ecc::private_key > privkey = wif_to_key( it->second );
+            FC_ASSERT( privkey.valid(), "Malformed private key in _keys" );
+            tx.sign( key, *privkey );
          }
+      }
 
-         // we do not insert owner_privkey here because
-         //    it is intended to only be used for key recovery
-         _wallet.pending_account_registrations[ account_name ] = key_to_wif( active_privkey );
-         if( broadcast )
-            _remote_net->broadcast_transaction( tx );
-         return tx;
-      } FC_CAPTURE_AND_RETHROW( (account_name)(registrar_account)(referrer_account) ) }
+      // we do not insert owner_privkey here because
+      //    it is intended to only be used for key recovery
+      _wallet.pending_account_registrations[ account_name ] = key_to_wif( active_privkey );
+      if( broadcast )
+         _remote_net->broadcast_transaction( tx );
+      return tx;
+   } FC_CAPTURE_AND_RETHROW( (account_name)(registrar_account)(referrer_account) ) }
 
 
    signed_transaction create_asset(string issuer,
@@ -695,10 +711,7 @@ public:
          create_op.common_options = common;
          create_op.bitasset_options = bitasset_opts;
 
-         static int count = 3;
-
          signed_transaction tx;
-         tx.set_expiration(_remote_db->get_dynamic_global_properties().head_block_id, ++count);
          tx.operations.push_back( create_op );
          tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
          tx.validate();
@@ -711,7 +724,6 @@ public:
       flat_set<account_id_type> req_active_approvals;
       flat_set<account_id_type> req_owner_approvals;
 
-      // awesome hack, dump them both into the same flat_set hehe
       tx.visit( operation_get_required_auths( req_active_approvals, req_owner_approvals ) );
 
       // TODO:  Only sign if the wallet considers ACCOUNTS to be owned.
@@ -768,6 +780,9 @@ public:
             approving_key_set.insert( approving_key );
       }
 
+
+      tx.set_expiration(get_dynamic_global_properties().head_block_id);
+
       for( key_id_type& key : approving_key_set )
       {
          auto it = _keys.find(key);
@@ -782,7 +797,6 @@ public:
          }
       }
 
-      edump((tx));
       if( broadcast )
          _remote_net->broadcast_transaction( tx );
 
@@ -848,12 +862,7 @@ public:
                                        get_public_key( to_account.memo_key ), memo );
          }
 
-
-         /** note: this is a hack to generate unique transfers for a performance test */
-         static int count = 3;
-
          signed_transaction tx;
-         tx.set_expiration(_remote_db->get_dynamic_global_properties().head_block_id, ++count);
          tx.operations.push_back( xfer_op );
          tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
          tx.validate();
@@ -885,11 +894,8 @@ public:
          issue_op.memo->set_message( get_private_key( issuer.memo_key ),
                                      get_public_key( to.memo_key ), memo );
       }
-      /** note: this is a hack to generate unique transfers for a performance test */
-      static int count = 3;
 
       signed_transaction tx;
-      tx.set_expiration(_remote_db->get_dynamic_global_properties().head_block_id, ++count);
       tx.operations.push_back( issue_op );
       tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
       tx.validate();
@@ -923,6 +929,21 @@ public:
          return string();
       };
 
+      m["list_account_balances"] = [this]( variant result, const fc::variants& a)
+      {
+         auto r = result.as<vector<asset>>();
+         vector<asset_object> asset_recs;
+         std::transform(r.begin(), r.end(), std::back_inserter(asset_recs), [this](const asset& a) {
+            return *get_asset(a.asset_id);
+         });
+
+         std::stringstream ss;
+         for( int i = 0; i < asset_recs.size(); ++i )
+            ss << asset_recs[i].amount_to_pretty_string(r[i]) << "\n";
+
+         return ss.str();
+      };
+
       return m;
    }
 
@@ -940,6 +961,8 @@ public:
 
    mode_t                  _old_umask;
    const string _wallet_filename_extension = ".wallet";
+
+   mutable map<asset_id_type, asset_object> _asset_cache;
 };
 } // end namespace detail
 
@@ -974,9 +997,11 @@ map<string,account_id_type> wallet_api::list_accounts( const string& lowerbound,
    return my->_remote_db->lookup_accounts( lowerbound, limit );
 }
 
-vector<asset> wallet_api::list_account_balances( const account_id_type& id )
+vector<asset> wallet_api::list_account_balances( const string& id )
 {
-   return my->_remote_db->get_account_balances( id, flat_set<asset_id_type>() );
+   if( auto real_id = detail::maybe_id<account_id_type>(id) )
+      return my->_remote_db->get_account_balances( *real_id, flat_set<asset_id_type>() );
+   return my->_remote_db->get_account_balances( get_account(id).id, flat_set<asset_id_type>() );
 }
 
 vector<asset_object> wallet_api::list_assets( const string& lowerbound, uint32_t limit )const
@@ -1027,6 +1052,13 @@ variant wallet_api::get_object( object_id_type id ) const
 account_object wallet_api::get_account(string account_name_or_id) const
 {
    return my->get_account(account_name_or_id);
+}
+
+asset_object wallet_api::get_asset(string asset_name_or_id) const
+{
+   auto a = my->get_asset(asset_name_or_id);
+   FC_ASSERT(a);
+   return *a;
 }
 
 account_id_type wallet_api::get_account_id(string account_name_or_id) const
@@ -1199,7 +1231,7 @@ wallet_api::get_result_formatters() const
    return my->get_result_formatters();
 }
 
-void wallet_api::_start_resync_loop()
+void wallet_api::start_resync_loop()
 {
    my->start_resync_loop();
 }

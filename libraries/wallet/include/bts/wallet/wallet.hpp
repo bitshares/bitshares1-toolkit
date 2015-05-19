@@ -25,8 +25,6 @@ struct plain_keys
 
 struct wallet_data
 {
-   flat_set<account_id_type> accounts;
-
    /** encrypted keys */
    vector<char>              cipher_keys;
 
@@ -51,114 +49,106 @@ class wallet_api_impl;
 class wallet_api
 {
    public:
-      wallet_api( fc::api<login_api> rapi );
+      wallet_api(fc::api<login_api> rapi);
       virtual ~wallet_api();
 
       bool copy_wallet_file( string destination_filename );
 
-      fc::ecc::private_key derive_private_key(
-         const std::string& prefix_string, int sequence_number) const;
+      fc::ecc::private_key derive_private_key(const std::string& prefix_string, int sequence_number) const;
 
       variant                           info();
       optional<signed_block>            get_block( uint32_t num );
       uint64_t                          get_account_count()const;
-      map<string,account_id_type>       list_accounts( const string& lowerbound, uint32_t limit);
-      vector<asset>                     list_account_balances( const account_id_type& id );
-      vector<asset_object>              list_assets( const string& lowerbound, uint32_t limit )const;
-      vector<operation_history_object>  get_account_history( account_id_type id )const;
-      vector<limit_order_object>        get_limit_orders( asset_id_type a, asset_id_type b, uint32_t limit )const;
-      vector<short_order_object>        get_short_orders( asset_id_type a, uint32_t limit )const;
-      vector<call_order_object>         get_call_orders( asset_id_type a, uint32_t limit )const;
-      vector<force_settlement_object>   get_settle_orders( asset_id_type a, uint32_t limit )const;
+      map<string,account_id_type>       list_accounts(const string& lowerbound, uint32_t limit);
+      vector<asset>                     list_account_balances(const string& id);
+      vector<asset_object>              list_assets(const string& lowerbound, uint32_t limit)const;
+      vector<operation_history_object>  get_account_history(account_id_type id)const;
+      vector<limit_order_object>        get_limit_orders(asset_id_type a, asset_id_type b, uint32_t limit)const;
+      vector<short_order_object>        get_short_orders(asset_id_type a, uint32_t limit)const;
+      vector<call_order_object>         get_call_orders(asset_id_type a, uint32_t limit)const;
+      vector<force_settlement_object>   get_settle_orders(asset_id_type a, uint32_t limit)const;
       global_property_object            get_global_properties() const;
       dynamic_global_property_object    get_dynamic_global_properties() const;
-      account_object                    get_account( string account_name_or_id ) const;
-      account_id_type                   get_account_id( string account_name_or_id ) const;
-      asset_id_type                     get_asset_id( string asset_name_or_id ) const;
-      variant                           get_object( object_id_type id ) const;
+      account_object                    get_account(string account_name_or_id) const;
+      asset_object                      get_asset(string asset_name_or_id) const;
+      account_id_type                   get_account_id(string account_name_or_id) const;
+      asset_id_type                     get_asset_id(string asset_name_or_id) const;
+      variant                           get_object(object_id_type id) const;
       void                              get_wallet_filename() const;
 
       bool    is_new()const;
       bool    is_locked()const;
       void    lock();
-      void    unlock( string password );
-      void    set_password( string password );
+      void    unlock(string password);
+      void    set_password(string password);
 
       string  help()const;
-      string  gethelp( const string& method )const;
+      string  gethelp(const string& method)const;
 
-      bool    load_wallet_file( string wallet_filename = "" );
-      void    save_wallet_file( string wallet_filename = "" );
-      void    set_wallet_filename( string wallet_filename );
+      bool    load_wallet_file(string wallet_filename = "");
+      void    save_wallet_file(string wallet_filename = "");
+      void    set_wallet_filename(string wallet_filename);
       string  suggest_brain_key()const;
 
-      string serialize_transaction( signed_transaction tx ) const;
+      string serialize_transaction(signed_transaction tx) const;
 
-      bool import_key( string account_name_or_id, string wif_key );
-      string normalize_brain_key( string s ) const;
+      bool import_key(string account_name_or_id, string wif_key);
+      string normalize_brain_key(string s) const;
 
-      signed_transaction register_account( string name,
-                                           public_key_type owner,
-                                           public_key_type active,
-                                           string  registrar_account,
-                                           string  referrer_account,
-                                           uint8_t referrer_percent,
-                                           bool broadcast = false );
+      signed_transaction register_account(string name,
+                                          public_key_type owner,
+                                          public_key_type active,
+                                          string  registrar_account,
+                                          string  referrer_account,
+                                          uint8_t referrer_percent,
+                                          bool broadcast = false);
 
-      signed_transaction update_account_active_authority( string name,
-                                                          map<string,uint16_t> active_authority,
-                                                          bool broadcast = false );
+      signed_transaction update_account_active_authority(string name,
+                                                         map<string,uint16_t> active_authority,
+                                                         bool broadcast = false);
       /**
        *  Upgrades an account to prime status.
        */
-      signed_transaction upgrade_account( string name, bool broadcast );
+      signed_transaction upgrade_account(string name, bool broadcast);
 
-      signed_transaction create_account_with_brain_key(
-         string brain_key,
-         string account_name,
-         string registrar_account,
-         string referrer_account,
-         bool broadcast = false
-         );
+      signed_transaction create_account_with_brain_key(string brain_key,
+                                                       string account_name,
+                                                       string registrar_account,
+                                                       string referrer_account,
+                                                       bool broadcast = false);
 
-      signed_transaction transfer(
-         string from,
-         string to,
-         uint64_t amount,
-         string asset_symbol,
-         string memo,
-         bool broadcast = false
-         );
+      signed_transaction transfer(string from,
+                                  string to,
+                                  uint64_t amount,
+                                  string asset_symbol,
+                                  string memo,
+                                  bool broadcast = false);
 
-      signed_transaction sell_asset( string seller_account,
-                                     uint64_t amount_to_sell,
-                                     string   symbol_to_sell,
-                                     uint64_t min_to_receive,
-                                     string   symbol_to_receive,
-                                     uint32_t timeout_sec = 0,
-                                     bool     fill_or_kill = false,
-                                     bool     broadcast = false );
+      signed_transaction sell_asset(string seller_account,
+                                    uint64_t amount_to_sell,
+                                    string   symbol_to_sell,
+                                    uint64_t min_to_receive,
+                                    string   symbol_to_receive,
+                                    uint32_t timeout_sec = 0,
+                                    bool     fill_or_kill = false,
+                                    bool     broadcast = false);
 
-      signed_transaction create_asset( string issuer,
-                                       string symbol,
-                                       uint8_t precision,
-                                       asset_object::asset_options common,
-                                       fc::optional<asset_object::bitasset_options> bitasset_opts,
-                                       bool broadcast = false );
+      signed_transaction create_asset(string issuer,
+                                      string symbol,
+                                      uint8_t precision,
+                                      asset_object::asset_options common,
+                                      fc::optional<asset_object::bitasset_options> bitasset_opts,
+                                      bool broadcast = false);
 
       signed_transaction issue_asset(string to_account, uint64_t amount,
                                       string symbol,
                                       string memo,
-                                      bool broadcast = false );
+                                      bool broadcast = false);
 
-      signed_transaction sign_transaction(
-         signed_transaction tx,
-         bool broadcast = false
-         );
+      signed_transaction sign_transaction(signed_transaction tx, bool broadcast = false);
 
-      void _start_resync_loop();
-      std::map<string,std::function<string(fc::variant,const fc::variants&)> >
-      get_result_formatters() const;
+      void start_resync_loop();
+      std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
 
 
       fc::signal<void(bool)> lock_changed;
@@ -170,7 +160,6 @@ class wallet_api
 FC_REFLECT( bts::wallet::plain_keys, (keys)(checksum) )
 
 FC_REFLECT( bts::wallet::wallet_data,
-            (accounts)
             (cipher_keys)
             (pending_account_registrations)
             (ws_server)
