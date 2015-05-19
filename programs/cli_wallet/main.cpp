@@ -150,7 +150,9 @@ int main( int argc, char** argv )
       }
       else
          wallet_cli->set_prompt( "locked >>> " );
-      wapiptr->lock_changed.connect( [&](bool locked){ wallet_cli->set_prompt(  locked ? "locked >>> " : "unlocked >>> " ); } );
+      boost::signals2::scoped_connection locked_connection = wapiptr->lock_changed.connect([&](bool locked) {
+         wallet_cli->set_prompt(  locked ? "locked >>> " : "unlocked >>> " );
+      });
 
       auto _websocket_server = std::make_shared<fc::http::websocket_server>();
       if( options.count("rpc-endpoint") )
@@ -182,8 +184,6 @@ int main( int argc, char** argv )
          _websocket_tls_server->start_accept();
       }
 
-
-
       if( !options.count( "daemon" ) )
       {
          wallet_cli->register_api( wapi );
@@ -202,6 +202,7 @@ int main( int argc, char** argv )
       }
 
       wapi->save_wallet_file(wallet_file.generic_string());
+      locked_connection.disconnect();
    }
    catch ( const fc::exception& e )
    {

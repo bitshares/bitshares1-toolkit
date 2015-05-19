@@ -310,10 +310,8 @@ public:
       result["head_block_id"] = dynamic_props.head_block_id;
       result["head_block_age"] = fc::get_approximate_relative_time_string(dynamic_props.time,
                                                                           time_point_sec(time_point::now()),
-                                                                          "old");
-      result["next_maintenance_time"] = fc::get_approximate_relative_time_string(dynamic_props.next_maintenance_time,
-                                                                                 time_point_sec(time_point::now()),
-                                                                                 "in the future");
+                                                                          " old");
+      result["next_maintenance_time"] = fc::get_approximate_relative_time_string(dynamic_props.next_maintenance_time);
       result["chain_id"] = global_props.chain_id;
       result["active_witnesses"] = global_props.active_witnesses;
       result["active_delegates"] = global_props.active_delegates;
