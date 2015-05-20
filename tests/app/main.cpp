@@ -25,7 +25,7 @@ BOOST_AUTO_TEST_CASE( two_node_network )
       fc::temp_file genesis_json;
       fc::json::save_to_file(genesis_allocation(), genesis_json.path());
 
-      bts::time::start_simulated_time(fc::time_point::now());
+      fc::time_point_sec now( BTS_GENESIS_TIMESTAMP );
 
       bts::app::application app1;
       app1.register_plugin<bts::account_history::account_history_plugin>();
@@ -65,8 +65,10 @@ BOOST_AUTO_TEST_CASE( two_node_network )
       BOOST_CHECK(nathan_key_id(*app2.chain_database()).key_data.get<public_key_type>() == nathan_key.get_public_key());
       ilog("Pushed transaction");
 
-      advance_simulated_time_to(app2.chain_database()->get_next_generation_time(witness_id_type()));
-      app2.p2p_node()->broadcast(bts::net::block_message(app2.chain_database()->generate_block(genesis_key, witness_id_type())));
+      std::shared_ptr<chain::database> db2 = app2.chain_database();
+      now += BTS_DEFAULT_BLOCK_INTERVAL;
+      app2.p2p_node()->broadcast(bts::net::block_message(db2->generate_block(
+         now, db2->get_scheduled_witness( now )->second, genesis_key )));
 
       fc::usleep(fc::milliseconds(500));
       BOOST_CHECK_EQUAL(app1.p2p_node()->get_connection_count(), 1);
