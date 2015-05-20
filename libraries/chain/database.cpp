@@ -717,8 +717,41 @@ void database::globally_settle_asset( const asset_object& mia, const price& sett
       }
    }
 
+   // convert collateral held in bonds
+    const auto& bond_idx = get_index_type<bond_index>().indices().get<by_collateral>();
+    auto bond_itr = bond_idx.find( bitasset.id );
+    while( bond_itr != bond_idx.end() )
+    {
+       if( bond_itr->collateral.asset_id == bitasset.id )
+       {
+          auto settled_amount = bond_itr->collateral * settlement_price;
+          total_mia_settled += bond_itr->collateral;
+          collateral_gathered -= settled_amount;
+          modify( *bond_itr, [&]( bond_object& obj ) {
+                  obj.collateral = settled_amount;
+                  });
+       }
+       else break;
+    }
+
+    // cancel all bond offers holding the bitasset and refund the offer
+    const auto& bond_offer_idx = get_index_type<bond_offer_index>().indices().get<by_asset>();
+    auto bond_offer_itr = bond_offer_idx.find( bitasset.id );
+    while( bond_offer_itr != bond_offer_idx.end() )
+    {
+       if( bond_offer_itr->amount.asset_id == bitasset.id )
+       {
+          adjust_balance( bond_offer_itr->offered_by_account, bond_offer_itr->amount );
+          auto old_itr = bond_offer_itr;
+          bond_offer_itr++;
+          remove( *old_itr );
+       }
+       else break;
+    }
+
+    // settle all balances  
     asset total_mia_settled = mia.amount(0);
-    auto& index = get_index_type<account_balance_index>().indices().get<by_asset>();
+    const auto& index = get_index_type<account_balance_index>().indices().get<by_asset>();
     auto range = index.equal_range(mia.get_id());
     for( auto itr = range.first; itr != range.second; ++itr )
     {
@@ -734,10 +767,7 @@ void database::globally_settle_asset( const asset_object& mia, const price& sett
        }
     }
 
-    // TODO: convert collateral held in bonds
     // TODO: convert payments held in escrow
-    // TODO: convert usd held as prediction market collateral
-    // TODO: convert usd in vesting_balance_object's
 
     modify( mia_dyn, [&]( asset_dynamic_data_object& obj ){
        total_mia_settled.amount += obj.accumulated_fees;

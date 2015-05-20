@@ -65,7 +65,7 @@ namespace bts { namespace chain {
         hashed_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
         ordered_non_unique< tag<by_borrower>, member<bond_object, account_id_type, &bond_object::borrower> >,
         ordered_non_unique< tag<by_lender>, member<bond_object, account_id_type, &bond_object::lender> >,
-        ordered_non_unique< tag<by_collateral>, const_mem_fun<bond_object, asset_id_type, &bond_object::collateral_type> >
+        hashed_non_unique< tag<by_collateral>, const_mem_fun<bond_object, asset_id_type, &bond_object::collateral_type> >
      >
   > bond_object_multi_index_type;
 
@@ -80,7 +80,7 @@ namespace bts { namespace chain {
      indexed_by<
         hashed_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
         ordered_non_unique< tag<by_offerer>, member<bond_offer_object, account_id_type, &bond_offer_object::offered_by_account> >,
-        ordered_non_unique< tag<by_asset>, const_mem_fun<bond_offer_object, asset_id_type, &bond_offer_object::asset_type> >
+        hashed_non_unique< tag<by_asset>, const_mem_fun<bond_offer_object, asset_id_type, &bond_offer_object::asset_type> >
      >
   > bond_offer_object_multi_index_type;
 

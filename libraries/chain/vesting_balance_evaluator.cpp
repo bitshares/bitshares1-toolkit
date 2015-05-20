@@ -18,6 +18,9 @@ object_id_type vesting_balance_create_evaluator::do_evaluate( const vesting_bala
    FC_ASSERT( op.amount.amount > 0 );
    FC_ASSERT( d.get_balance( creator_account.id, op.amount.asset_id ) >= op.amount );
 
+   /** we cannot create vesting balances that are market issued due to black swans */
+   FC_ASSERT( !op.amount.asset_id(d).is_market_issued() );
+
    return object_id_type();
 }
 

@@ -86,13 +86,13 @@ template<typename T> struct js_name< std::vector<T> >     { static std::string n
 template<typename T> struct js_name< fc::safe<T> > { static std::string name(){ return js_name<T>::name(); } };
 
 
-template<> struct js_name< std::vector<char> > { static std::string name(){ return "bytes ";     } };
+template<> struct js_name< std::vector<char> > { static std::string name(){ return "bytes()";     } };
 template<> struct js_name< op_wrapper >        { static std::string name(){ return "operation "; } };
 template<> struct js_name<fc::uint160>         { static std::string name(){ return "bytes 20";   } };
 template<> struct js_name<fc::sha224>          { static std::string name(){ return "bytes 28";   } };
 template<> struct js_name<fc::unsigned_int>    { static std::string name(){ return "varuint32";  } };
 template<> struct js_name<fc::signed_int>      { static std::string name(){ return "varint32";   } };
-template<> struct js_name< vote_id_type >      { static std::string name(){ return "uint32";     } };
+template<> struct js_name< vote_id_type >      { static std::string name(){ return "vote_id";    } };
 template<> struct js_name< time_point_sec >    { static std::string name(){ return "uint32";     } };
 
 template<uint8_t S, uint8_t T, typename O>
@@ -216,24 +216,10 @@ struct serializer<uint64_t,false>
    static void init() {}
    static void generate() {}
 };
-template<>
-struct serializer<size_t,false>
-{
-   static void init() {}
-   static void generate() {}
-};
-template<>
-struct serializer<int64_t,false>
-{
-   static void init() {}
-   static void generate() {}
-};
-template<>
-struct serializer<int64_t,true>
-{
-   static void init() {}
-   static void generate() {}
-};
+template<> struct serializer<vote_id_type,false> { static void init() {} static void generate() {} };
+template<> struct serializer<size_t,false> { static void init() {} static void generate() {} };
+template<> struct serializer<int64_t,false> { static void init() {} static void generate() {} };
+template<> struct serializer<int64_t,true> { static void init() {} static void generate() {} };
 
 template<typename T>
 struct serializer<fc::optional<T>,false>
@@ -331,6 +317,8 @@ int main( int argc, char** argv )
     js_name<static_variant<refund_worker_type::initializer, vesting_balance_worker_type::initializer>>::name("initializer_type");
     serializer<signed_block>::init();
     serializer<operation>::init();
+    serializer<transaction>::init();
+    serializer<signed_transaction>::init();
     for( const auto& gen : serializers )
        gen();
 

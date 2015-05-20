@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
          for( int i = 11; i < account_count + 11; ++i)
             BOOST_CHECK(db.get_balance(account_id_type(i), asset_id_type()).amount == BTS_INITIAL_SUPPLY / account_count);
 
-         start_simulated_time( bts::chain::now() );
+         bts::time::start_simulated_time( fc::time_point::now() );
 
          int blocks_out = 0;
          auto delegate_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
