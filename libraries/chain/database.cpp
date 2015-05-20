@@ -110,6 +110,8 @@ void database::reindex(fc::path data_dir, genesis_allocation initial_allocation)
 
    auto start = fc::time_point::now();
    auto itr = _block_id_to_block.begin();
+   // TODO: disable undo tracking durring reindex, this currently causes crashes in the benchmark test
+   //_undo_db.disable();
    while( itr.valid() )
    {
       apply_block( itr.value(), skip_delegate_signature |
@@ -121,6 +123,7 @@ void database::reindex(fc::path data_dir, genesis_allocation initial_allocation)
                                 skip_authority_check );
       ++itr;
    }
+   //_undo_db.enable();
    auto end = fc::time_point::now();
    wdump( ((end-start).count()/1000000.0) );
 } FC_CAPTURE_AND_RETHROW( (data_dir) ) }
@@ -717,6 +720,9 @@ void database::globally_settle_asset( const asset_object& mia, const price& sett
       }
    }
 
+    // settle all balances  
+    asset total_mia_settled = mia.amount(0);
+
    // convert collateral held in bonds
     const auto& bond_idx = get_index_type<bond_index>().indices().get<by_collateral>();
     auto bond_itr = bond_idx.find( bitasset.id );
@@ -749,8 +755,6 @@ void database::globally_settle_asset( const asset_object& mia, const price& sett
        else break;
     }
 
-    // settle all balances  
-    asset total_mia_settled = mia.amount(0);
     const auto& index = get_index_type<account_balance_index>().indices().get<by_asset>();
     auto range = index.equal_range(mia.get_id());
     for( auto itr = range.first; itr != range.second; ++itr )
@@ -1262,7 +1266,7 @@ signed_block database::generate_block(
 
 void database::update_active_witnesses()
 { try {
-   share_type stake_target = _total_voting_stake.value / 2;
+   share_type stake_target = _total_voting_stake / 2;
    share_type stake_tally = _witness_count_histogram_buffer[0];
    int witness_count = 0;
    while( stake_tally <= stake_target )
@@ -1289,8 +1293,8 @@ void database::update_active_witnesses()
 
 void database::update_active_delegates()
 { try {
-   share_type stake_target = _total_voting_stake.value / 2;
-   share_type stake_tally = _committee_count_histogram_buffer[0];
+   uint64_t stake_target = _total_voting_stake / 2;
+   uint64_t stake_tally = _committee_count_histogram_buffer[0];
    int delegate_count = 0;
    while( stake_tally <= stake_target )
       stake_tally += _committee_count_histogram_buffer[++delegate_count];
@@ -1300,8 +1304,8 @@ void database::update_active_delegates()
    // Update genesis authorities
    if( !delegates.empty() )
       modify( get(account_id_type()), [&]( account_object& a ) {
-         share_type total_votes = 0;
-         map<account_id_type, share_type> weights;
+         uint64_t total_votes = 0;
+         map<account_id_type, uint64_t> weights;
          a.owner.weight_threshold = 0;
          a.owner.auths.clear();
 
@@ -1313,11 +1317,11 @@ void database::update_active_delegates()
 
          // total_votes is 64 bits. Subtract the number of leading low bits from 64 to get the number of useful bits,
          // then I want to keep the most significant 16 bits of what's left.
-         int8_t bits_to_drop = std::max(int(64 - __builtin_clzll(total_votes.value)) - 16, 0);
+         int8_t bits_to_drop = std::max(int(64 - __builtin_clzll(total_votes)) - 16, 0);
          for( const auto& weight : weights )
          {
             // Ensure that everyone has at least one vote. Zero weights aren't allowed.
-            uint16_t votes = std::max((weight.second.value >> bits_to_drop), int64_t(1) );
+            uint16_t votes = std::max((weight.second >> bits_to_drop), uint64_t(1) );
             a.owner.auths[weight.first] += votes;
             a.owner.weight_threshold += votes;
          }
@@ -1415,9 +1419,10 @@ void database::update_vote_totals(const global_property_object& props)
                                                                    : get(stake_account.voting_account);
 
           const auto& stats = stake_account.statistics(*this);
-          share_type voting_stake = stats.total_core_in_orders
-                   + (stake_account.cashback_vb.valid() ? (*stake_account.cashback_vb)(*this).balance.amount : share_type(0))
-                   + get_balance(stake_account.get_id(), asset_id_type()).amount;
+          uint64_t voting_stake = stats.total_core_in_orders.value
+                   + (stake_account.cashback_vb.valid() ? (*stake_account.cashback_vb)(*this).balance.amount.value: 0)
+                   + get_balance(stake_account.get_id(), asset_id_type()).amount.value;
+
           for( vote_id_type id : opinion_account.votes )
           {
              uint32_t offset = id.instance();
@@ -1982,10 +1987,10 @@ void database::perform_chain_maintenance(const signed_block& next_block, const g
    update_vote_totals(global_props);
 
    struct clear_canary {
-      clear_canary(vector<share_type>& target): target(target){}
+      clear_canary(vector<uint64_t>& target): target(target){}
       ~clear_canary() { target.clear(); }
    private:
-      vector<share_type>& target;
+      vector<uint64_t>& target;
    };
    clear_canary a(_witness_count_histogram_buffer),
                 b(_committee_count_histogram_buffer),

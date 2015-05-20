@@ -158,7 +158,7 @@ namespace bts { namespace chain {
          bool is_active(fc::time_point_sec now)const {
             return now >= work_begin_date && now <= work_end_date;
          }
-         share_type approving_stake(const vector<share_type>& stake_vote_tallies)const {
+         share_type approving_stake(const vector<uint64_t>& stake_vote_tallies)const {
             return stake_vote_tallies[vote_for] - stake_vote_tallies[vote_against];
          }
    };

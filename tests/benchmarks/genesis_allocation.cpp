@@ -28,6 +28,7 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
 {
    try {
       genesis_allocation allocation;
+      fc::time_point_sec now( BTS_GENESIS_TIMESTAMP );
 
 #ifdef NDEBUG
       ilog("Running in release mode.");
@@ -66,13 +67,11 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
          for( int i = 11; i < account_count + 11; ++i)
             BOOST_CHECK(db.get_balance(account_id_type(i), asset_id_type()).amount == BTS_INITIAL_SUPPLY / account_count);
 
-         bts::time::start_simulated_time( fc::time_point::now() );
-
          int blocks_out = 0;
          auto delegate_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")) );
          auto aw = db.get_global_properties().active_witnesses;
-         advance_simulated_time_to( db.get_next_generation_time( aw[blocks_out % aw.size()] ) );
-         auto b =  db.generate_block( delegate_priv_key, aw[blocks_out++ % aw.size()], ~0 );
+         now += db.block_interval();
+         auto b =  db.generate_block( now, db.get_scheduled_witness( now )->second, delegate_priv_key, ~0 );
 
          start_time = fc::time_point::now();
          for( int i = 0; i < blocks_to_produce; ++i )
@@ -82,8 +81,8 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
             db.push_transaction(trx, ~0);
 
             aw = db.get_global_properties().active_witnesses;
-            advance_simulated_time_to( db.get_next_generation_time( aw[blocks_out % aw.size()] ) );
-            b =  db.generate_block( delegate_priv_key, aw[blocks_out++ % aw.size()], ~0 );
+            now += db.block_interval();
+            b =  db.generate_block( now, db.get_scheduled_witness( now )->second, delegate_priv_key, ~0 );
          }
          ilog("Pushed ${c} blocks (1 op each, no validation) in ${t} milliseconds.",
               ("c", blocks_out)("t", (fc::time_point::now() - start_time).count() / 1000));
@@ -96,7 +95,7 @@ BOOST_AUTO_TEST_CASE( genesis_and_persistence_bench )
          database db;
 
          auto start_time = fc::time_point::now();
-         advance_simulated_time_to( now() + fc::seconds(BTS_MAX_BLOCK_INTERVAL) );
+         now += BTS_MAX_BLOCK_INTERVAL;
          wlog( "about to start reindex..." );
          db.reindex(data_dir.path(), allocation);
          ilog("Replayed database in ${t} milliseconds.", ("t", (fc::time_point::now() - start_time).count() / 1000));

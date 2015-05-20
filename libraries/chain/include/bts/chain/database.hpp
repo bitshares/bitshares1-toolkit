@@ -324,10 +324,10 @@ namespace bts { namespace chain {
          uint16_t                          _current_op_in_trx    = 0;
          uint16_t                          _current_virtual_op   = 0;
 
-         vector<share_type>                _vote_tally_buffer;
-         vector<share_type>                _witness_count_histogram_buffer;
-         vector<share_type>                _committee_count_histogram_buffer;
-         share_type                        _total_voting_stake;
+         vector<uint64_t>                  _vote_tally_buffer;
+         vector<uint64_t>                  _witness_count_histogram_buffer;
+         vector<uint64_t>                  _committee_count_histogram_buffer;
+         uint64_t                          _total_voting_stake;
    };
 
    template<class Content>
