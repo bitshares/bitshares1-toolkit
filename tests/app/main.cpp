@@ -25,7 +25,7 @@ BOOST_AUTO_TEST_CASE( two_node_network )
       fc::temp_file genesis_json;
       fc::json::save_to_file(genesis_allocation(), genesis_json.path());
 
-      bts::time::start_simulated_time(fc::time_point::now());
+      fc::time_point_sec now( BTS_GENESIS_TIMESTAMP );
 
       bts::app::application app1;
       app1.register_plugin<bts::account_history::account_history_plugin>();
@@ -53,10 +53,12 @@ BOOST_AUTO_TEST_CASE( two_node_network )
       fc::ecc::private_key nathan_key = fc::ecc::private_key::generate();
       fc::ecc::private_key genesis_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
       bts::chain::signed_transaction trx;
+      std::shared_ptr<chain::database> db2 = app2.chain_database();
+
       trx.operations.push_back(key_create_operation({asset(), account_id_type(1), public_key_type(nathan_key.get_public_key())}));
-      trx.set_expiration(app2.chain_database()->head_block_id());
+      trx.set_expiration(db2->head_block_id());   // relative expiration
       trx.validate();
-      trx.signatures[key_id_type(0)] =  genesis_key.sign_compact(trx.digest());
+      trx.signatures[key_id_type(0)] =  genesis_key.sign_compact(trx.digest( db2->head_block_id() ));
       processed_transaction ptrx = app1.chain_database()->push_transaction(trx);
       app1.p2p_node()->broadcast(bts::net::trx_message(trx));
       key_id_type nathan_key_id = ptrx.operation_results.front().get<object_id_type>();
@@ -65,8 +67,9 @@ BOOST_AUTO_TEST_CASE( two_node_network )
       BOOST_CHECK(nathan_key_id(*app2.chain_database()).key_data.get<public_key_type>() == nathan_key.get_public_key());
       ilog("Pushed transaction");
 
-      advance_simulated_time_to(app2.chain_database()->get_next_generation_time(witness_id_type()));
-      app2.p2p_node()->broadcast(bts::net::block_message(app2.chain_database()->generate_block(genesis_key, witness_id_type())));
+      now += BTS_DEFAULT_BLOCK_INTERVAL;
+      app2.p2p_node()->broadcast(bts::net::block_message(db2->generate_block(
+         now, db2->get_scheduled_witness( now )->second, genesis_key )));
 
       fc::usleep(fc::milliseconds(500));
       BOOST_CHECK_EQUAL(app1.p2p_node()->get_connection_count(), 1);
