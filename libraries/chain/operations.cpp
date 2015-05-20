@@ -733,8 +733,10 @@ void memo_data::set_message( const fc::ecc::private_key& priv,
 {
    if( from )
    {
-      uint64_t entropy = fc::sha224::hash(fc::ecc::private_key::generate())._hash[0] & 0xff00000000000000;
-      nonce = (fc::time_point::now().time_since_epoch().count()                      & 0x00ffffffffffffff) | entropy;
+      uint64_t entropy = fc::sha224::hash(fc::ecc::private_key::generate())._hash[0];
+      entropy <<= 32;
+      entropy                                                     &= 0xff00000000000000;
+      nonce = (fc::time_point::now().time_since_epoch().count()   &  0x00ffffffffffffff) | entropy;
       auto secret = priv.get_shared_secret(pub);
       memo_message memo(digest_type::hash(msg)._hash[0], msg);
       message = fc::aes_encrypt( fc::sha512::hash(fc::to_string(nonce) + secret.str()), fc::raw::pack( memo ) );
