@@ -70,81 +70,30 @@ bool register_serializer( const string& name, std::function<void()> sr )
    return false;
 }
 
-
-/*
-class register_member_visitor
-{
-   public:
-      template<typename Member, class Class, Member (Class::*member)>
-      void operator()( const char* name )const
-      {
-         register_serializer<Member>();
-      }
-};
-
-template<typename T>
-struct js_name;
-
-
-
-template<typename T> 
-void register_serializer()
-{
-   if( register_serializer( js_name<T>::name(), [](){ generate_serializer<T>(); } ) )
-   {
-      fc::reflector<T>::visit( register_member_visitor() );
-   }
-}
-*/
-
-
-
-template<typename T>
-struct js_name
-{
-   static std::string name(){ return  remove_namespace(fc::get_typename<T>::name()); };
-};
+template<typename T> struct js_name { static std::string name(){ return  remove_namespace(fc::get_typename<T>::name()); }; };
 
 template<typename T, size_t N>
 struct js_name<fc::array<T,N>>
 {
    static std::string name(){ return  "fixed_array "+ fc::to_string(N) + ", "  + remove_namespace(fc::get_typename<T>::name()); };
 };
-template<size_t N>
-struct js_name<fc::array<char,N>>
-{
-   static std::string name(){ return  "bytes "+ fc::to_string(N); };
-};
-template<size_t N>
-struct js_name<fc::array<uint8_t,N>>
-{
-   static std::string name(){ return  "bytes "+ fc::to_string(N); };
-};
+template<size_t N>   struct js_name<fc::array<char,N>>    { static std::string name(){ return  "bytes "+ fc::to_string(N); }; };
+template<size_t N>   struct js_name<fc::array<uint8_t,N>> { static std::string name(){ return  "bytes "+ fc::to_string(N); }; };
+template<typename T> struct js_name< fc::optional<T> >    { static std::string name(){ return "optional " + js_name<T>::name(); } }; 
+template<>           struct js_name< object_id_type >     { static std::string name(){ return "object_id_type"; } };
+template<typename T> struct js_name< fc::flat_set<T> >    { static std::string name(){ return "set " + js_name<T>::name(); } };
+template<typename T> struct js_name< std::vector<T> >     { static std::string name(){ return "array " + js_name<T>::name(); } };
+template<typename T> struct js_name< fc::safe<T> > { static std::string name(){ return js_name<T>::name(); } };
 
 
-template<>
-struct js_name<fc::uint160>
-{
-   static std::string name(){ return  "bytes 20"; };
-};
-
-template<>
-struct js_name<fc::sha224>
-{
-   static std::string name(){ return  "bytes 28"; };
-};
-
-template<>
-struct js_name<fc::unsigned_int>
-{
-   static std::string name(){ return  "varuint32"; }
-};
-
-template<>
-struct js_name<fc::signed_int>
-{
-   static std::string name(){ return  "varint32"; }
-};
+template<> struct js_name< std::vector<char> > { static std::string name(){ return "bytes ";     } };
+template<> struct js_name< op_wrapper >        { static std::string name(){ return "operation "; } };
+template<> struct js_name<fc::uint160>         { static std::string name(){ return "bytes 20";   } };
+template<> struct js_name<fc::sha224>          { static std::string name(){ return "bytes 28";   } };
+template<> struct js_name<fc::unsigned_int>    { static std::string name(){ return "varuint32";  } };
+template<> struct js_name<fc::signed_int>      { static std::string name(){ return "varint32";   } };
+template<> struct js_name< vote_id_type >      { static std::string name(){ return "uint32";     } };
+template<> struct js_name< time_point_sec >    { static std::string name(){ return "uint32";     } };
 
 template<uint8_t S, uint8_t T, typename O>
 struct js_name<bts::db::object_id<S,T,O> >
@@ -154,93 +103,23 @@ struct js_name<bts::db::object_id<S,T,O> >
    };
 };
 
-template<typename T>
-struct js_name< fc::optional<T> >
-{
-   static std::string name(){ return "optional " + js_name<T>::name(); }
-};
 
-template<>
-struct js_name< object_id_type >
-{
-   static std::string name(){ return "object_id_type"; }
-};
-template<>
-struct js_name< vote_id_type >
-{
-   static std::string name(){ return "uint32"; }
-};
-
-template<>
-struct js_name< time_point_sec >
-{
-   static std::string name(){ return "uint32"; }
-};
-
-template<typename T>
-struct js_name< std::set<T> >
-{
-   static std::string name(){ return "set " + js_name<T>::name(); }
-};
+template<typename T> struct js_name< std::set<T> > { static std::string name(){ return "set " + js_name<T>::name(); } };
 
 template<typename K, typename V>
-struct js_name< std::map<K,V> >
-{
-   static std::string name(){ return "map (" + js_name<K>::name() + "), (" + js_name<V>::name() +")"; }
-};
-template<typename T>
-struct js_name< fc::flat_set<T> >
-{
-   static std::string name(){ return "set " + js_name<T>::name(); }
-};
+struct js_name< std::map<K,V> > { static std::string name(){ return "map (" + js_name<K>::name() + "), (" + js_name<V>::name() +")"; } };
 
 template<typename K, typename V>
-struct js_name< fc::flat_map<K,V> >
-{
-   static std::string name(){ return "map (" + js_name<K>::name() + "), (" + js_name<V>::name() +")"; }
-};
-
-template<>
-struct js_name< std::vector<char> >
-{
-   static std::string name(){ return "bytes "; }
-};
-template<>
-struct js_name< op_wrapper >
-{
-   static std::string name(){ return "operation "; }
-};
-
-template<typename T>
-struct js_name< std::vector<T> >
-{
-   static std::string name(){ return "array " + js_name<T>::name(); }
-};
+struct js_name< fc::flat_map<K,V> > { static std::string name(){ return "map (" + js_name<K>::name() + "), (" + js_name<V>::name() +")"; } };
 
 
-template<typename T>
-struct js_name< fc::safe<T> >
-{
-   static std::string name(){ return js_name<T>::name(); }
-};
+template<typename... T> struct js_sv_name;
 
-template<typename... T>
-struct js_sv_name;
-
-template<typename A>
-struct js_sv_name<A>
-{
-   static std::string name(){ 
-      return  "\n    " + js_name<A>::name();
-   }
-};
+template<typename A> struct js_sv_name<A> 
+{ static std::string name(){ return  "\n    " + js_name<A>::name(); } };
 
 template<typename A, typename... T>
-struct js_sv_name<A,T...>
-{
-   static std::string name(){ 
-      return  "\n    " + js_name<A>::name() +"    " + js_sv_name<T...>::name(); }
-};
+struct js_sv_name<A,T...> { static std::string name(){ return  "\n    " + js_name<A>::name() +"    " + js_sv_name<T...>::name(); } };
 
 
 template<typename... T>
@@ -264,10 +143,7 @@ struct register_type_visitor
    typedef void result_type;
 
    template<typename Type>
-   result_type operator()( const Type& op )const
-   {
-      serializer<Type>::init();
-   }
+   result_type operator()( const Type& op )const { serializer<Type>::init(); }
 };
 
 class register_member_visitor;
@@ -296,8 +172,6 @@ class serialize_member_visitor
          std::cerr << "    " << name <<": " << js_name<Member>::name() <<"\n";
       }
 };
-
-
 
 template<typename T>
 struct serializer<T,false>
@@ -343,6 +217,12 @@ struct serializer<uint64_t,false>
    static void generate() {}
 };
 template<>
+struct serializer<size_t,false>
+{
+   static void init() {}
+   static void generate() {}
+};
+template<>
 struct serializer<int64_t,false>
 {
    static void init() {}
@@ -358,26 +238,16 @@ struct serializer<int64_t,true>
 template<typename T>
 struct serializer<fc::optional<T>,false>
 {
-   static void init()
-   {
-      serializer<T>::init();
-   }
-
-   static void generate()
-   {}
+   static void init() { serializer<T>::init(); }
+   static void generate(){}
 };
 
 template<uint8_t SpaceID, uint8_t TypeID, typename T>
 struct serializer< bts::db::object_id<SpaceID,TypeID,T> ,true>
 {
-   static void init()
-   {}
-
-   static void generate()
-   {}
+   static void init() {}
+   static void generate() {}
 };
-
-
 
 template<typename... T>
 struct serializer< fc::static_variant<T...>, false >
@@ -431,6 +301,7 @@ struct serializer
    static void generate()
    {
       auto name = remove_namespace( js_name<T>::name() );
+      if( name == "int64" ) return;
       std::cerr << "" << name
                 << " = new Serializer( \n"
                 << "    \"" + name + "\"\n";
@@ -460,15 +331,6 @@ int main( int argc, char** argv )
     js_name<static_variant<refund_worker_type::initializer, vesting_balance_worker_type::initializer>>::name("initializer_type");
     serializer<signed_block>::init();
     serializer<operation>::init();
-    /*
-    serializer<operation>::init();
-    serializer<operation_result>::init();
-    serializer<transaction>::init();
-    serializer<signed_block>::init();
-    serializer<signed_transaction>::init();
-    serializer<static_variant<address,public_key_type>>::init();
-    serializer<static_variant<refund_worker_type::initializer, vesting_balance_worker_type::initializer>>::init();
-    */
     for( const auto& gen : serializers )
        gen();
 
