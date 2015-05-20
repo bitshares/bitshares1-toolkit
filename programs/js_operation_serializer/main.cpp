@@ -217,7 +217,10 @@ struct serializer<uint64_t,false>
    static void generate() {}
 };
 template<> struct serializer<vote_id_type,false> { static void init() {} static void generate() {} };
+#ifdef __APPLE__
+// on mac, size_t is a distinct type from uint64_t or uint32_t and needs a separate specialization
 template<> struct serializer<size_t,false> { static void init() {} static void generate() {} };
+#endif
 template<> struct serializer<int64_t,false> { static void init() {} static void generate() {} };
 template<> struct serializer<int64_t,true> { static void init() {} static void generate() {} };
 
