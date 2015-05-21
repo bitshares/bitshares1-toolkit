@@ -354,19 +354,51 @@ namespace bts { namespace chain {
    {
        fee_schedule_type()
        {
-          memset( (char*)fees.data, 0, sizeof(fees) );
+          memset( (char*)this, 0, sizeof(*this) );
        }
-       void             set( uint32_t f, share_type v ){ FC_ASSERT( f < FEE_TYPE_COUNT && v.value <= uint32_t(-1) ); fees.at(f) = v.value; }
-       const share_type at( uint32_t f )const { FC_ASSERT( f < FEE_TYPE_COUNT ); return fees.at(f); }
-       size_t           size()const{ return fees.size(); }
+       void             set( uint32_t f, share_type v ){ FC_ASSERT( f < FEE_TYPE_COUNT && v.value <= uint32_t(-1) ); *(&key_create_fee + f) = v.value; }
+       const share_type at( uint32_t f )const { FC_ASSERT( f < FEE_TYPE_COUNT ); return *(&key_create_fee + f); }
+       size_t           size()const{ return FEE_TYPE_COUNT; }
 
 
-       friend bool operator != ( const fee_schedule_type& a, const fee_schedule_type& b )
-       {
-          return a.fees != b.fees;
-       }
-
-       fc::array<uint32_t,FEE_TYPE_COUNT>    fees;
+       uint32_t key_create_fee; ///< the cost to register a public key with the blockchain
+       uint32_t account_create_fee; ///< the cost to register the cheapest non-free account
+       uint32_t account_len8_fee;
+       uint32_t account_len7_fee;
+       uint32_t account_len6_fee;
+       uint32_t account_len5_fee;
+       uint32_t account_len4_fee;
+       uint32_t account_len3_fee;
+       uint32_t account_premium_fee;  ///< accounts on the reserved list of top 100K domains
+       uint32_t account_whitelist_fee; ///< the fee to whitelist an account
+       uint32_t delegate_create_fee; ///< fixed fee for registering as a delegate; used to discourage frivioulous delegates
+       uint32_t witness_withdraw_pay_fee; ///< fee for withdrawing witness pay
+       uint32_t transfer_fee; ///< fee for transferring some asset
+       uint32_t limit_order_fee; ///< fee for placing a limit order in the markets
+       uint32_t short_order_fee; ///< fee for placing a short order in the markets
+       uint32_t publish_feed_fee; ///< fee for publishing a price feed
+       uint32_t asset_create_fee; ///< the cost to register the cheapest asset
+       uint32_t asset_update_fee; ///< the cost to modify a registered asset
+       uint32_t asset_issue_fee; ///< the cost to modify a registered asset
+       uint32_t asset_fund_fee_pool_fee; ///< the cost to add funds to an asset's fee pool
+       uint32_t asset_settle_fee; ///< the cost to trigger a forced settlement of a market-issued asset
+       uint32_t market_fee; ///< a percentage charged on market orders
+       uint32_t transaction_fee; ///< a base price for every transaction
+       uint32_t data_fee; ///< a price per 1024 bytes of user data
+       uint32_t signature_fee; ///< a surcharge on transactions with more than 2 signatures.
+       uint32_t global_parameters_update_fee; ///< the cost to update the global parameters
+       uint32_t prime_upgrade_fee; ///< the cost to upgrade an account to prime
+       uint32_t withdraw_permission_update_fee; ///< the cost to create/update a withdraw permission
+       uint32_t create_bond_offer_fee;
+       uint32_t cancel_bond_offer_fee;
+       uint32_t accept_bond_offer_fee;
+       uint32_t claim_bond_collateral_fee;
+       uint32_t file_storage_fee_per_day; ///< the cost of leasing a file with 2^16 bytes for 1 day
+       uint32_t vesting_balance_create_fee;
+       uint32_t vesting_balance_withdraw_fee;
+       uint32_t global_settle_fee;
+       uint32_t worker_create_fee; ///< the cost to create a new worker
+       uint32_t worker_delete_fee; ///< the cost to delete a worker
    };
 
 
@@ -445,7 +477,7 @@ namespace bts { namespace chain {
                     "Maximum transaction expiration time must be greater than a block interval" );
          FC_ASSERT( maximum_proposal_lifetime - genesis_proposal_review_period > block_interval,
                     "Genesis proposal review period must be less than the maximum proposal lifetime" );
-         for( auto fe : current_fees.fees ) { FC_ASSERT( fe >= 0 ); }
+         for( uint32_t i = 0; i < FEE_TYPE_COUNT; ++i ) { FC_ASSERT( current_fees.at(i) >= 0 ); }
       }
    };
 
@@ -455,8 +487,6 @@ namespace fc
 {
     void to_variant( const bts::chain::public_key_type& var,  fc::variant& vo );
     void from_variant( const fc::variant& var,  bts::chain::public_key_type& vo );
-    void to_variant( const bts::chain::fee_schedule_type& var,  fc::variant& vo );
-    void from_variant( const fc::variant& var,  bts::chain::fee_schedule_type& vo );
     void to_variant( const bts::chain::vote_id_type& var, fc::variant& vo );
     void from_variant( const fc::variant& var, bts::chain::vote_id_type& vo );
 }
@@ -467,7 +497,6 @@ FC_REFLECT( bts::chain::vote_id_type, (content) )
 
 FC_REFLECT( bts::chain::public_key_type, (key_data) )
 FC_REFLECT( bts::chain::public_key_type::binary_key, (data)(check) )
-FC_REFLECT( bts::chain::fee_schedule_type, (fees) )
 
 FC_REFLECT_ENUM( bts::chain::object_type,
                  (null_object_type)
@@ -508,6 +537,49 @@ FC_REFLECT_ENUM( bts::chain::impl_object_type,
                )
 
 FC_REFLECT_ENUM( bts::chain::meta_info_object_type, (meta_account_object_type)(meta_asset_object_type) )
+
+
+FC_REFLECT( bts::chain::fee_schedule_type,
+                 (key_create_fee)
+                 (account_create_fee)
+                 (account_len8_fee)
+                 (account_len7_fee)
+                 (account_len6_fee)
+                 (account_len5_fee)
+                 (account_len4_fee)
+                 (account_len3_fee)
+                 (account_premium_fee)
+                 (account_whitelist_fee)
+                 (delegate_create_fee)
+                 (witness_withdraw_pay_fee)
+                 (transfer_fee)
+                 (limit_order_fee)
+                 (short_order_fee)
+                 (publish_feed_fee)
+                 (asset_create_fee)
+                 (asset_update_fee)
+                 (asset_issue_fee)
+                 (asset_fund_fee_pool_fee)
+                 (asset_settle_fee)
+                 (market_fee)
+                 (transaction_fee)
+                 (data_fee)
+                 (signature_fee)
+                 (global_parameters_update_fee)
+                 (prime_upgrade_fee)
+                 (withdraw_permission_update_fee)
+                 (create_bond_offer_fee)
+                 (cancel_bond_offer_fee)
+                 (accept_bond_offer_fee)
+                 (claim_bond_collateral_fee)
+                 (file_storage_fee_per_day)
+                 (vesting_balance_create_fee)
+                 (vesting_balance_withdraw_fee)
+                 (global_settle_fee)
+                 (worker_create_fee)
+                 (worker_delete_fee)
+               )
+
 
 FC_REFLECT_ENUM( bts::chain::fee_type,
                  (key_create_fee_type)
