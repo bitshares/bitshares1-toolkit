@@ -8,21 +8,21 @@ namespace bts { namespace chain {
     * @ingroup object
     * @ingroup implementation
     *
-    *  All operations and virtual operations result in the creation of an 
+    *  All operations and virtual operations result in the creation of an
     *  operation_history_object that is maintained on disk as a stack.  Each
     *  real or virtual operation is assigned a unique ID / sequence number that
-    *  it can be referenced by.   
+    *  it can be referenced by.
     *
     *  @note  by default these objects are not tracked, the account_history_plugin must
-    *  be loaded fore these objects to be maintained. 
+    *  be loaded fore these objects to be maintained.
     *
-    *  @note  this object is READ ONLY it can never be modified 
+    *  @note  this object is READ ONLY it can never be modified
     */
    class operation_history_object : public abstract_object<operation_history_object>
    {
       public:
          static const uint8_t space_id = protocol_ids;
-         static const uint8_t type_id  = operation_history_object_type;;
+         static const uint8_t type_id  = operation_history_object_type;
 
          operation_history_object( const operation& o ):op(o){}
          operation_history_object(){}
@@ -49,7 +49,7 @@ namespace bts { namespace chain {
     *  a linked list stored on disk in a stack.  Each account will point to the
     *  most recent account history object by ID.  When a new operation relativent
     *  to that account is processed a new account history object is allcoated at
-    *  the end of the stack and intialized to point to the prior object.  
+    *  the end of the stack and intialized to point to the prior object.
     *
     *  This data is never accessed as part of chain validation and therefore
     *  can be kept on disk as a memory mapped file.  Using a memory mapped file
@@ -73,5 +73,5 @@ namespace bts { namespace chain {
 FC_REFLECT_DERIVED( bts::chain::operation_history_object, (bts::chain::object),
                     (op)(result)(block_num)(trx_in_block)(op_in_trx)(virtual_op) )
 
-FC_REFLECT_DERIVED( bts::chain::account_transaction_history_object, (bts::chain::object), 
+FC_REFLECT_DERIVED( bts::chain::account_transaction_history_object, (bts::chain::object),
                     (operation_id)(next) )

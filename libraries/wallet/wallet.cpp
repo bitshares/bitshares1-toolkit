@@ -80,26 +80,36 @@ struct help_visitor
 // BLOCK  TRX  OP  VOP
 struct operation_printer
 {
-   operation_result _result;
-   operation_printer( const operation_result& r = operation_result() ):_result(r){}
+private:
+   ostream& out;
+   const wallet_api_impl& wallet;
+   operation_result result;
+
+   void fee(const asset& a) const;
+
+public:
+   operation_printer( ostream& out, const wallet_api_impl& wallet, const operation_result& r = operation_result() )
+      : out(out),
+        wallet(wallet),
+        result(r)
+   {}
    typedef void result_type;
    template<typename T>
-   void operator()( const T& op )const
+   void operator()(const T& op)const
    {
       balance_accumulator acc;
-      op.get_balance_delta( acc, _result );
-      std::cerr << fc::get_typename<T>::name() <<" ";
-      std::cerr << "balance delta: " << fc::json::to_string(acc.balance) <<"   ";
-      std::cerr << fc::json::to_string(op.fee_payer()) << "  fee: " << fc::json::to_string(op.fee);
+      op.get_balance_delta( acc, result );
+      string op_name = fc::get_typename<T>::name();
+      if( op_name.find_last_of(':') != string::npos )
+         op_name.erase(0, op_name.find_last_of(':')+1);
+      out << op_name <<" ";
+      out << "balance delta: " << fc::json::to_string(acc.balance) <<"   ";
+      out << fc::json::to_string(op.fee_payer()) << "  fee: " << fc::json::to_string(op.fee);
    }
-   void operator()( const account_create_operation& op )const
-   {
-      balance_accumulator acc;
-      op.get_balance_delta( acc, _result );
-      std::cerr << "Create Account '" << op.name << "' ";
-      std::cerr << "balance delta: " << fc::json::to_string(acc.balance) <<"   ";
-      std::cerr << fc::json::to_string(op.fee_payer()) << "  fee: " << fc::json::to_string(op.fee);
-   }
+   void operator()(const transfer_operation& op)const;
+   void operator()(const account_create_operation& op)const;
+   void operator()(const account_update_operation& op)const;
+   void operator()(const key_create_operation& op)const;
 };
 
 template< class T >
@@ -367,21 +377,21 @@ public:
    {
       return get_account(account_name_or_id).get_id();
    }
-   optional<asset_object> get_asset(asset_id_type id)const
+   optional<asset_object> find_asset(asset_id_type id)const
    {
       auto rec = _remote_db->get_assets({id}).front();
       if( rec )
          _asset_cache[id] = *rec;
       return rec;
    }
-   optional<asset_object> get_asset(string asset_symbol_or_id)const
+   optional<asset_object> find_asset(string asset_symbol_or_id)const
    {
       FC_ASSERT( asset_symbol_or_id.size() > 0 );
 
       if( auto id = maybe_id<asset_id_type>(asset_symbol_or_id) )
       {
          // It's an ID
-         return get_asset(*id);
+         return find_asset(*id);
       } else {
          // It's a symbol
          auto rec = _remote_db->lookup_asset_symbols({asset_symbol_or_id}).front();
@@ -394,6 +404,18 @@ public:
          }
          return rec;
       }
+   }
+   asset_object get_asset(asset_id_type id)const
+   {
+      auto opt = find_asset(id);
+      FC_ASSERT(opt);
+      return *opt;
+   }
+   asset_object get_asset(string asset_symbol_or_id)const
+   {
+      auto opt = find_asset(asset_symbol_or_id);
+      FC_ASSERT(opt);
+      return *opt;
    }
    asset_id_type get_asset_id(string asset_symbol_or_id) const
    {
@@ -732,8 +754,7 @@ public:
                                    bool broadcast = false)
    { try {
          account_object issuer_account = get_account( issuer );
-         auto current_asset = get_asset(symbol);
-         if( current_asset.valid() ) FC_ASSERT( !current_asset, "Symbol already in use.", ("current", *current_asset) );
+         FC_ASSERT(!find_asset(symbol).valid(), "Asset with that symbol already exists!");
 
          asset_create_operation create_op;
          create_op.issuer = issuer_account.id;
@@ -835,22 +856,20 @@ public:
    }
 
    signed_transaction sell_asset(string seller_account,
-                                 uint64_t amount_to_sell,
-                                 string   symbol_to_sell,
-                                 uint64_t min_to_receive,
-                                 string   symbol_to_receive,
+                                 string amount_to_sell,
+                                 string symbol_to_sell,
+                                 string min_to_receive,
+                                 string symbol_to_receive,
                                  uint32_t timeout_sec = 0,
-                                 bool     fill_or_kill = false,
-                                 bool     broadcast = false)
+                                 bool   fill_or_kill = false,
+                                 bool   broadcast = false)
    {
       account_object seller   = get_account( seller_account );
 
       limit_order_create_operation op;
       op.seller = seller.id;
-      op.amount_to_sell.amount = amount_to_sell;
-      op.amount_to_sell.asset_id = get_asset_id( symbol_to_sell );
-      op.min_to_receive.amount = min_to_receive;
-      op.min_to_receive.asset_id = get_asset_id( symbol_to_receive );
+      op.amount_to_sell = get_asset(symbol_to_sell).amount_from_string(amount_to_sell);
+      op.min_to_receive = get_asset(symbol_to_receive).amount_from_string(min_to_receive);
       if( timeout_sec )
          op.expiration = fc::time_point::now() + fc::seconds(timeout_sec);
       op.fill_or_kill = fill_or_kill;
@@ -863,58 +882,52 @@ public:
       return sign_transaction( tx, broadcast );
    }
 
-   signed_transaction transfer(string from, string to, uint64_t amount,
+   signed_transaction transfer(string from, string to, string amount,
                                string asset_symbol, string memo, bool broadcast = false)
    { try {
          FC_ASSERT( !self.is_locked() );
-         vector< optional< asset_object > > opt_asset = _remote_db->lookup_asset_symbols( {asset_symbol} );
-         FC_ASSERT( opt_asset.size() == 1 );
-         FC_ASSERT( opt_asset[0].valid() );
+         fc::optional<asset_object> asset_obj = get_asset(asset_symbol);
+         FC_ASSERT(asset_obj, "Could not find asset matching ${asset}", ("asset", asset_symbol));
 
-         account_object from_account = get_account( from );
-         account_object to_account = get_account( to );
+         account_object from_account = get_account(from);
+         account_object to_account = get_account(to);
          account_id_type from_id = from_account.id;
-         account_id_type to_id = get_account_id( to );
-
-         asset_id_type asset_id = get_asset_id( asset_symbol );
+         account_id_type to_id = get_account_id(to);
 
          transfer_operation xfer_op;
 
          xfer_op.from = from_id;
          xfer_op.to = to_id;
-         xfer_op.amount = asset( amount, asset_id );
+         xfer_op.amount = asset_obj->amount_from_string(amount);
 
          if( memo.size() )
          {
             xfer_op.memo = memo_data();
             xfer_op.memo->from = from_account.memo_key;
             xfer_op.memo->to = to_account.memo_key;
-            xfer_op.memo->set_message( get_private_key( from_account.memo_key ),
-                                       get_public_key( to_account.memo_key ), memo );
+            xfer_op.memo->set_message(get_private_key(from_account.memo_key),
+                                      get_public_key(to_account.memo_key), memo);
          }
 
          signed_transaction tx;
-         tx.operations.push_back( xfer_op );
-         tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
+         tx.operations.push_back(xfer_op);
+         tx.visit(operation_set_fee(_remote_db->get_global_properties().parameters.current_fees));
          tx.validate();
 
-         return sign_transaction( tx, broadcast );
+         return sign_transaction(tx, broadcast);
       } FC_CAPTURE_AND_RETHROW( (from)(to)(amount)(asset_symbol)(memo)(broadcast) ) }
 
-   signed_transaction issue_asset(string to_account, uint64_t amount, string symbol,
+   signed_transaction issue_asset(string to_account, string amount, string symbol,
                                   string memo, bool broadcast = false)
    {
-      vector< optional< asset_object > > opt_asset = _remote_db->lookup_asset_symbols( {symbol} );
-      FC_ASSERT( opt_asset.size() == 1 );
-      FC_ASSERT( opt_asset[0].valid() );
+      auto asset_obj = get_asset(symbol);
 
-      const asset_object& asset_obj = *opt_asset.front();
       account_object to = get_account(to_account);
-      account_object issuer = *_remote_db->get_accounts( {asset_obj.id} ).front();
+      account_object issuer = get_account(asset_obj.issuer);
 
       asset_issue_operation issue_op;
       issue_op.issuer           = asset_obj.issuer;
-      issue_op.asset_to_issue   = asset( amount, asset_obj.id );
+      issue_op.asset_to_issue   = asset_obj.amount_from_string(amount);
       issue_op.issue_to_account = to.id;
 
       if( memo.size() )
@@ -922,50 +935,54 @@ public:
          issue_op.memo = memo_data();
          issue_op.memo->from = issuer.memo_key;
          issue_op.memo->to = to.memo_key;
-         issue_op.memo->set_message( get_private_key( issuer.memo_key ),
-                                     get_public_key( to.memo_key ), memo );
+         issue_op.memo->set_message(get_private_key(issuer.memo_key),
+                                    get_public_key(to.memo_key), memo);
       }
 
       signed_transaction tx;
-      tx.operations.push_back( issue_op );
-      tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
+      tx.operations.push_back(issue_op);
+      tx.visit(operation_set_fee(_remote_db->get_global_properties().parameters.current_fees));
       tx.validate();
 
-      return sign_transaction( tx, broadcast );
+      return sign_transaction(tx, broadcast);
    }
 
-   std::map<string,std::function<string(fc::variant,const fc::variants&)> >
-   get_result_formatters() const
+   std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const
    {
       std::map<string,std::function<string(fc::variant,const fc::variants&)> > m;
-      m["help"] = []( variant result, const fc::variants& a)
+      m["help"] = [](variant result, const fc::variants& a)
       {
          return result.get_string();
       };
 
-      m["gethelp"] = []( variant result, const fc::variants& a)
+      m["gethelp"] = [](variant result, const fc::variants& a)
       {
          return result.get_string();
       };
 
-      m["get_account_history"] = []( variant result, const fc::variants& a)
+      m["get_account_history"] = [this](variant result, const fc::variants& a)
       {
          auto r = result.as<vector<operation_history_object>>();
-         for( auto& i : r )
+         std::stringstream ss;
+
+         for( const operation_history_object& i : r )
          {
-            cerr << i.block_num << " "<<i.trx_in_block << " " << i.op_in_trx << " " << i.virtual_op<< " ";
-            i.op.visit( operation_printer() );
-            cerr << " \n";
+            optional<block> b = _remote_db->get_block(i.block_num);
+            FC_ASSERT(b);
+            ss << b->timestamp.to_iso_string() << " ";
+            i.op.visit(operation_printer(ss, *this, i.result));
+            ss << " \n";
          }
-         return string();
+
+         return ss.str();
       };
 
-      m["list_account_balances"] = [this]( variant result, const fc::variants& a)
+      m["list_account_balances"] = [this](variant result, const fc::variants& a)
       {
          auto r = result.as<vector<asset>>();
          vector<asset_object> asset_recs;
          std::transform(r.begin(), r.end(), std::back_inserter(asset_recs), [this](const asset& a) {
-            return *get_asset(a.asset_id);
+            return get_asset(a.asset_id);
          });
 
          std::stringstream ss;
@@ -993,17 +1010,58 @@ public:
 
    mutable map<asset_id_type, asset_object> _asset_cache;
 };
+
+void operation_printer::fee(const asset& a)const {
+   out << "   (Fee: " << wallet.get_asset(a.asset_id).amount_to_pretty_string(a) << ")";
+}
+
+void operation_printer::operator()(const transfer_operation& op) const
+{
+   out << "Transfer " << wallet.get_asset(op.amount.asset_id).amount_to_pretty_string(op.amount)
+       << " from " << wallet.get_account(op.from).name << " to " << wallet.get_account(op.to).name;
+   fee(op.fee);
+}
+
+void operation_printer::operator()(const account_create_operation& op) const
+{
+   out << "Create Account '" << op.name << "'";
+   fee(op.fee);
+}
+
+void operation_printer::operator()(const account_update_operation& op) const
+{
+   out << "Update Account '" << wallet.get_account(op.account).name << "'";
+   fee(op.fee);
+}
+
+void operation_printer::operator()(const key_create_operation& op) const
+{
+   out << "Register";
+
+   struct {
+      typedef void result_type;
+      ostream& out;
+      void operator()(const public_key_type& key) {
+         out << " key " << string(key);
+      }
+      void operator()(const address& addr) {
+         out << " address " << string(addr);
+      }
+   } printer{out};
+   op.key_data.visit(printer);
+   out << " as " << fc::json::to_string(result.get<object_id_type>());
+   fee(op.fee);
+}
+
 } // end namespace detail
 
 wallet_api::wallet_api( fc::api<login_api> rapi )
    : my( new detail::wallet_api_impl( *this, rapi ) )
 {
-   return;
 }
 
 wallet_api::~wallet_api()
 {
-   return;
 }
 
 bool wallet_api::copy_wallet_file( string destination_filename )
@@ -1043,9 +1101,9 @@ vector<asset_object> wallet_api::list_assets( const string& lowerbound, uint32_t
    return my->_remote_db->list_assets( lowerbound, limit );
 }
 
-vector<operation_history_object> wallet_api::get_account_history( account_id_type id )const
+vector<operation_history_object> wallet_api::get_account_history( string name )const
 {
-   return my->_remote_db->get_account_history( id, operation_history_id_type() );
+   return my->_remote_db->get_account_history(get_account(name).get_id(), operation_history_id_type());
 }
 
 vector<limit_order_object> wallet_api::get_limit_orders( asset_id_type a, asset_id_type b, uint32_t limit )const
@@ -1090,7 +1148,7 @@ account_object wallet_api::get_account(string account_name_or_id) const
 
 asset_object wallet_api::get_asset(string asset_name_or_id) const
 {
-   auto a = my->get_asset(asset_name_or_id);
+   auto a = my->find_asset(asset_name_or_id);
    FC_ASSERT(a);
    return *a;
 }
@@ -1144,13 +1202,13 @@ signed_transaction wallet_api::create_account_with_brain_key(string brain_key, s
       referrer_account, broadcast
       );
 }
-signed_transaction wallet_api::issue_asset(string to_account, uint64_t amount, string symbol,
+signed_transaction wallet_api::issue_asset(string to_account, string amount, string symbol,
                                            string memo, bool broadcast)
 {
    return my->issue_asset(to_account, amount, symbol, memo, broadcast);
 }
 
-signed_transaction wallet_api::transfer(string from, string to, uint64_t amount,
+signed_transaction wallet_api::transfer(string from, string to, string amount,
                                         string asset_symbol, string memo, bool broadcast /* = false */)
 {
    return my->transfer(from, to, amount, asset_symbol, memo, broadcast);
@@ -1209,8 +1267,8 @@ string wallet_api::gethelp(const string& method )const
    else if( method == "transfer" )
    {
       ss << "usage: transfer FROM TO AMOUNT SYMBOL \"memo\" BROADCAST\n\n";
-      ss << "example: transfer \"1.3.11\" \"1.3.4\" 1000 BTS \"memo\" true\n";
-      ss << "example: transfer \"usera\" \"userb\" 1000 BTS \"memo\" true\n";
+      ss << "example: transfer \"1.3.11\" \"1.3.4\" 1000.03 BTS \"memo\" true\n";
+      ss << "example: transfer \"usera\" \"userb\" 1000.123 BTS \"memo\" true\n";
    }
    else if( method == "create_account_with_brain_key" )
    {
@@ -1318,13 +1376,13 @@ signed_transaction wallet_api::upgrade_account( string name, bool broadcast )
 }
 
 signed_transaction wallet_api::sell_asset(string seller_account,
-                                          uint64_t amount_to_sell,
-                                          string   symbol_to_sell,
-                                          uint64_t min_to_receive,
-                                          string   symbol_to_receive,
+                                          string amount_to_sell,
+                                          string symbol_to_sell,
+                                          string min_to_receive,
+                                          string symbol_to_receive,
                                           uint32_t expiration,
-                                          bool     fill_or_kill,
-                                          bool     broadcast)
+                                          bool   fill_or_kill,
+                                          bool   broadcast)
 {
    return my->sell_asset(seller_account, amount_to_sell, symbol_to_sell, min_to_receive,
                          symbol_to_receive, expiration, fill_or_kill, broadcast);

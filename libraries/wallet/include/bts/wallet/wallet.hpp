@@ -94,7 +94,7 @@ class wallet_api
       map<string,account_id_type>       list_accounts(const string& lowerbound, uint32_t limit);
       vector<asset>                     list_account_balances(const string& id);
       vector<asset_object>              list_assets(const string& lowerbound, uint32_t limit)const;
-      vector<operation_history_object>  get_account_history(account_id_type id)const;
+      vector<operation_history_object>  get_account_history(string name)const;
       vector<limit_order_object>        get_limit_orders(asset_id_type a, asset_id_type b, uint32_t limit)const;
       vector<short_order_object>        get_short_orders(asset_id_type a, uint32_t limit)const;
       vector<call_order_object>         get_call_orders(asset_id_type a, uint32_t limit)const;
@@ -153,15 +153,15 @@ class wallet_api
 
       signed_transaction transfer(string from,
                                   string to,
-                                  uint64_t amount,
+                                  string amount,
                                   string asset_symbol,
                                   string memo,
                                   bool broadcast = false);
 
       signed_transaction sell_asset(string seller_account,
-                                    uint64_t amount_to_sell,
+                                    string amount_to_sell,
                                     string   symbol_to_sell,
-                                    uint64_t min_to_receive,
+                                    string min_to_receive,
                                     string   symbol_to_receive,
                                     uint32_t timeout_sec = 0,
                                     bool     fill_or_kill = false,
@@ -174,7 +174,7 @@ class wallet_api
                                       fc::optional<asset_object::bitasset_options> bitasset_opts,
                                       bool broadcast = false);
 
-      signed_transaction issue_asset(string to_account, uint64_t amount,
+      signed_transaction issue_asset(string to_account, string amount,
                                       string symbol,
                                       string memo,
                                       bool broadcast = false);
