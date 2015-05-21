@@ -148,6 +148,8 @@ namespace bts { namespace chain {
          : signed_transaction(trx){}
 
       vector<operation_result> operation_results;
+
+      digest_type merkle_digest()const;
    };
 
    /// @} transactions group

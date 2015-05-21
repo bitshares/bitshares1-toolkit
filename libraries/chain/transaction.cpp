@@ -11,6 +11,11 @@ digest_type transaction::digest(const block_id_type& ref_block_id) const
    return enc.result();
 }
 
+digest_type processed_transaction::merkle_digest()const
+{
+   return digest_type::hash(*this);
+}
+
 digest_type transaction::digest()const
 {
    //Only use this digest() for transactions with absolute expiration times.

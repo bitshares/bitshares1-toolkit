@@ -33,4 +33,22 @@ namespace bts { namespace chain {
       return signee() == expected_signee;
    }
 
+   checksum_type  signed_block::calculate_merkle_root()const
+   {
+      if( transactions.size() == 0 ) return checksum_type();
+
+      vector<digest_type>  ids;
+      ids.resize( ((transactions.size() + 1)/2)*2 );
+      for( uint32_t i = 0; i < transactions.size(); ++i )
+         ids[i] = transactions[i].merkle_digest();
+
+      while( ids.size() > 1 )
+      {
+         for( uint32_t i = 0; i < transactions.size(); i += 2 )
+            ids[i/2] = digest_type::hash( std::make_pair( ids[i], ids[i+1] ) );
+         ids.resize( ids.size() / 2 );
+      }
+      return checksum_type::hash( ids[0] );
+   }
+
 } }

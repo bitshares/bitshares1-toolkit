@@ -1151,6 +1151,8 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
    _applied_ops.clear();
 
+   FC_ASSERT( (skip & skip_merkle_check) || next_block.transaction_merkle_root == next_block.calculate_merkle_root() );
+
    const witness_object& signing_witness = validate_block_header(skip, next_block);
    const auto& global_props = get_global_properties();
    const auto& dynamic_global_props = get<dynamic_global_property_object>(dynamic_global_property_id_type());
@@ -1262,6 +1264,7 @@ signed_block database::generate_block(
    //This line used to std::move(_pending_block) but this is unsafe as _pending_block is later referenced without being
    //reinitialized. Future optimization could be to move it, then reinitialize it with the values we need to preserve.
    signed_block tmp = _pending_block;
+   tmp.transaction_merkle_root = tmp.calculate_merkle_root();
    _pending_block.transactions.clear();
    push_block( tmp, skip );
    return tmp;
