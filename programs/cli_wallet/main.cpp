@@ -129,6 +129,11 @@ int main( int argc, char** argv )
       for( auto& name_formatter : wapiptr->get_result_formatters() )
          wallet_cli->format_result( name_formatter.first, name_formatter.second );
 
+      boost::signals2::scoped_connection closed_connection = con->closed.connect([]{
+         cerr << "Server has disconnected us.\n";
+      });
+      (void)(closed_connection);
+
       if( wapiptr->is_new() )
       {
          std::cout << "Please use the set_password method to initialize a new wallet before continuing\n";
@@ -191,6 +196,7 @@ int main( int argc, char** argv )
 
       wapi->save_wallet_file(wallet_file.generic_string());
       locked_connection.disconnect();
+      closed_connection.disconnect();
    }
    catch ( const fc::exception& e )
    {

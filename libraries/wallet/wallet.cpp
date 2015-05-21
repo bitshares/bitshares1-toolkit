@@ -1055,8 +1055,8 @@ void operation_printer::operator()(const key_create_operation& op) const
 
 } // end namespace detail
 
-wallet_api::wallet_api( fc::api<login_api> rapi )
-   : my( new detail::wallet_api_impl( *this, rapi ) )
+wallet_api::wallet_api(fc::api<login_api> rapi)
+   : my(new detail::wallet_api_impl(*this, rapi))
 {
 }
 
@@ -1064,12 +1064,12 @@ wallet_api::~wallet_api()
 {
 }
 
-bool wallet_api::copy_wallet_file( string destination_filename )
+bool wallet_api::copy_wallet_file(string destination_filename)
 {
-   return my->copy_wallet_file( destination_filename );
+   return my->copy_wallet_file(destination_filename);
 }
 
-optional<signed_block> wallet_api::get_block( uint32_t num )
+optional<signed_block> wallet_api::get_block(uint32_t num)
 {
    return my->_remote_db->get_block(num);
 }
@@ -1084,46 +1084,46 @@ vector<account_object> wallet_api::list_my_accounts()
    return vector<account_object>(my->_wallet.my_accounts.begin(), my->_wallet.my_accounts.end());
 }
 
-map<string,account_id_type> wallet_api::list_accounts( const string& lowerbound, uint32_t limit)
+map<string,account_id_type> wallet_api::list_accounts(const string& lowerbound, uint32_t limit)
 {
-   return my->_remote_db->lookup_accounts( lowerbound, limit );
+   return my->_remote_db->lookup_accounts(lowerbound, limit);
 }
 
-vector<asset> wallet_api::list_account_balances( const string& id )
+vector<asset> wallet_api::list_account_balances(const string& id)
 {
    if( auto real_id = detail::maybe_id<account_id_type>(id) )
-      return my->_remote_db->get_account_balances( *real_id, flat_set<asset_id_type>() );
-   return my->_remote_db->get_account_balances( get_account(id).id, flat_set<asset_id_type>() );
+      return my->_remote_db->get_account_balances(*real_id, flat_set<asset_id_type>());
+   return my->_remote_db->get_account_balances(get_account(id).id, flat_set<asset_id_type>());
 }
 
-vector<asset_object> wallet_api::list_assets( const string& lowerbound, uint32_t limit )const
+vector<asset_object> wallet_api::list_assets(const string& lowerbound, uint32_t limit)const
 {
    return my->_remote_db->list_assets( lowerbound, limit );
 }
 
-vector<operation_history_object> wallet_api::get_account_history( string name )const
+vector<operation_history_object> wallet_api::get_account_history(string name)const
 {
    return my->_remote_db->get_account_history(get_account(name).get_id(), operation_history_id_type());
 }
 
-vector<limit_order_object> wallet_api::get_limit_orders( asset_id_type a, asset_id_type b, uint32_t limit )const
+vector<limit_order_object> wallet_api::get_limit_orders(string a, string b, uint32_t limit)const
 {
-   return my->_remote_db->get_limit_orders( a, b, limit );
+   return my->_remote_db->get_limit_orders(get_asset(a).id, get_asset(b).id, limit);
 }
 
-vector<short_order_object> wallet_api::get_short_orders( asset_id_type a, uint32_t limit )const
+vector<short_order_object> wallet_api::get_short_orders(string a, uint32_t limit)const
 {
-   return my->_remote_db->get_short_orders( a, limit );
+   return my->_remote_db->get_short_orders(get_asset(a).id, limit);
 }
 
-vector<call_order_object> wallet_api::get_call_orders( asset_id_type a, uint32_t limit )const
+vector<call_order_object> wallet_api::get_call_orders(string a, uint32_t limit)const
 {
-   return my->_remote_db->get_call_orders( a, limit );
+   return my->_remote_db->get_call_orders(get_asset(a).id, limit);
 }
 
-vector<force_settlement_object> wallet_api::get_settle_orders( asset_id_type a, uint32_t limit )const
+vector<force_settlement_object> wallet_api::get_settle_orders(string a, uint32_t limit)const
 {
-   return my->_remote_db->get_settle_orders( a, limit );
+   return my->_remote_db->get_settle_orders(get_asset(a).id, limit);
 }
 
 string wallet_api::suggest_brain_key()const

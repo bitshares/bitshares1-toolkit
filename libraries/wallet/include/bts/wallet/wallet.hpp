@@ -95,10 +95,10 @@ class wallet_api
       vector<asset>                     list_account_balances(const string& id);
       vector<asset_object>              list_assets(const string& lowerbound, uint32_t limit)const;
       vector<operation_history_object>  get_account_history(string name)const;
-      vector<limit_order_object>        get_limit_orders(asset_id_type a, asset_id_type b, uint32_t limit)const;
-      vector<short_order_object>        get_short_orders(asset_id_type a, uint32_t limit)const;
-      vector<call_order_object>         get_call_orders(asset_id_type a, uint32_t limit)const;
-      vector<force_settlement_object>   get_settle_orders(asset_id_type a, uint32_t limit)const;
+      vector<limit_order_object>        get_limit_orders(string a, string b, uint32_t limit)const;
+      vector<short_order_object>        get_short_orders(string a, uint32_t limit)const;
+      vector<call_order_object>         get_call_orders(string a, uint32_t limit)const;
+      vector<force_settlement_object>   get_settle_orders(string a, uint32_t limit)const;
       global_property_object            get_global_properties() const;
       dynamic_global_property_object    get_dynamic_global_properties() const;
       account_object                    get_account(string account_name_or_id) const;

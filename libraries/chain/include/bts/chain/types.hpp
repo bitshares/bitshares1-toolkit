@@ -648,6 +648,7 @@ FC_REFLECT( bts::chain::chain_parameters,
             (worker_budget_per_day)
           )
 
+FC_REFLECT_TYPENAME( bts::chain::key_id_type )
 FC_REFLECT_TYPENAME( bts::chain::account_id_type )
 FC_REFLECT_TYPENAME( bts::chain::asset_id_type )
 FC_REFLECT_TYPENAME( bts::chain::operation_history_id_type )
