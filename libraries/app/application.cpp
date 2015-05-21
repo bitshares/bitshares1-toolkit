@@ -26,7 +26,9 @@ using net::message;
 using net::block_message;
 using net::trx_message;
 
-using chain::block;
+using chain::block_header;
+using chain::signed_block_header;
+using chain::signed_block;
 using chain::block_id_type;
 
 using std::vector;
@@ -231,14 +233,14 @@ namespace detail {
             ++itr;
          }
 
-         for( auto num = block::num_from_id(last_known_block_id);
+         for( auto num = block_header::num_from_id(last_known_block_id);
               num <= _chain_db->head_block_num() && result.size() < limit;
               ++num )
             if( num > 0 )
                result.push_back(_chain_db->get_block_id_for_num(num));
 
-         if( block::num_from_id(result.back()) < _chain_db->head_block_num() )
-            remaining_item_count = _chain_db->head_block_num() - block::num_from_id(result.back());
+         if( block_header::num_from_id(result.back()) < _chain_db->head_block_num() )
+            remaining_item_count = _chain_db->head_block_num() - block_header::num_from_id(result.back());
 
          idump((blockchain_synopsis)(limit)(result)(remaining_item_count));
          return result;
@@ -255,7 +257,7 @@ namespace detail {
             auto opt_block = _chain_db->fetch_block_by_id( id.item_hash );
             if( !opt_block )
                elog("Couldn't find block ${id} -- corresponding ID in our chain is ${id2}",
-                    ("id", id.item_hash)("id2", _chain_db->get_block_id_for_num(block::num_from_id(id.item_hash))));
+                    ("id", id.item_hash)("id2", _chain_db->get_block_id_for_num(block_header::num_from_id(id.item_hash))));
             FC_ASSERT( opt_block.valid() );
             ilog("Serving up block #${num}", ("num", opt_block->block_num()));
             return block_message( std::move(*opt_block) );
@@ -324,7 +326,7 @@ namespace detail {
 
       virtual uint32_t get_block_number(const item_hash_t& block_id) override
       { try {
-         return block::num_from_id(block_id);
+         return block_header::num_from_id(block_id);
       } FC_CAPTURE_AND_RETHROW( (block_id) ) }
 
       /**

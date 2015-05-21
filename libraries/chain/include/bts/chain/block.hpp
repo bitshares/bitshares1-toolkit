@@ -4,7 +4,7 @@
 
 namespace bts { namespace chain {
 
-   struct block
+   struct block_header
    {
       digest_type                   digest()const;
       block_id_type                 previous;
@@ -13,12 +13,12 @@ namespace bts { namespace chain {
       witness_id_type               witness;
       secret_hash_type              next_secret_hash;
       secret_hash_type              previous_secret;
-      vector<processed_transaction> transactions;
+      checksum_type                 transaction_merkle_root;
 
       static uint32_t num_from_id(const block_id_type& id) { return htonl(id._hash[0]); }
    };
 
-   struct signed_block : public block
+   struct signed_block_header : public block_header
    {
       block_id_type              id()const;
       fc::ecc::public_key        signee()const;
@@ -28,8 +28,14 @@ namespace bts { namespace chain {
       signature_type             delegate_signature;
    };
 
+   struct signed_block : public signed_block_header
+   {
+      vector<processed_transaction> transactions;
+   };
+
 } } // bts::chain
 
-FC_REFLECT( bts::chain::block, (previous)(timestamp)(witness)
-            (next_secret_hash)(previous_secret)(transactions) )
-FC_REFLECT_DERIVED( bts::chain::signed_block, (bts::chain::block), (delegate_signature) )
+FC_REFLECT( bts::chain::block_header, (previous)(timestamp)(witness)
+            (next_secret_hash)(previous_secret)(transaction_merkle_root) )
+FC_REFLECT_DERIVED( bts::chain::signed_block_header, (bts::chain::block_header), (delegate_signature) )
+FC_REFLECT_DERIVED( bts::chain::signed_block, (bts::chain::signed_block_header), (transactions) )
