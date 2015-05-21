@@ -77,7 +77,7 @@ namespace bts { namespace chain {
 
       price operator / ( const asset& base, const asset& quote )
       {
-         assert( base.asset_id != quote.asset_id );
+         FC_ASSERT( base.asset_id != quote.asset_id );
          return price{base,quote};
       }
       price price::max( asset_id_type base, asset_id_type quote ) { return asset( share_type(BTS_MAX_SHARE_SUPPLY), base ) / asset( share_type(1), quote); }
