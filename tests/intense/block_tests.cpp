@@ -17,7 +17,6 @@ using namespace bts::chain;
 
 BOOST_AUTO_TEST_SUITE(block_tests)
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( update_account_keys, 1 )
 BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
 {
    try
@@ -27,6 +26,7 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
           database::skip_transaction_dupe_check
         | database::skip_delegate_signature
         | database::skip_transaction_signatures
+        | database::skip_authority_check
         ;
 
       // Sam is the creator of accounts
@@ -125,6 +125,7 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
                {
                   auto it = key_sched_before.begin();
                   vector< const private_key_type* > owner_privkey;
+                  vector< const key_id_type* > owner_keyid;
                   owner_privkey.reserve( num_owner_keys );
 
                   trx.clear();
@@ -136,6 +137,7 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
                      int i = *(it++);
                      create_op.owner.auths[ key_ids[ i ] ] = 1;
                      owner_privkey.push_back( &numbered_private_keys[i] );
+                     owner_keyid.push_back( &key_ids[ i ] );
                   }
                   // size() < num_owner_keys is possible when some keys are duplicates
                   create_op.owner.weight_threshold = create_op.owner.auths.size();
@@ -153,12 +155,14 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
 
                   processed_transaction ptx_create = db.push_transaction( trx,
                      database::skip_transaction_dupe_check |
-                     database::skip_transaction_signatures
+                     database::skip_transaction_signatures |
+                     database::skip_authority_check
                       );
                   account_id_type alice_account_id =
                      ptx_create.operation_results[0]
                      .get< object_id_type >();
 
+                  const time_point_sec t_before_create = now;
                   generate_block( skip_flags );
                   for( const vector< int >& key_sched_after : possible_key_sched )
                   {
@@ -183,7 +187,7 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
                      trx.operations.push_back( update_op );
                      for( int i=0; i<int(create_op.owner.weight_threshold); i++)
                      {
-                        // trx.sign( *owner_privkey[i] );
+                        trx.sign( *owner_keyid[i], *owner_privkey[i] );
                         if( i < int(create_op.owner.weight_threshold-1) )
                         {
                            BOOST_REQUIRE_THROW(db.push_transaction(trx), fc::exception);
@@ -196,13 +200,16 @@ BOOST_FIXTURE_TEST_CASE( update_account_keys, database_fixture )
                         }
                      }
                      verify_account_history_plugin_index();
+                     const time_point_sec t_before_update = now;
                      generate_block( skip_flags );
 
                      verify_account_history_plugin_index();
                      db.pop_block();
+                     now = t_before_update;
                      verify_account_history_plugin_index();
                   }
                   db.pop_block();
+                  now = t_before_create;
                   verify_account_history_plugin_index();
                }
             }
