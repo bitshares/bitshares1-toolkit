@@ -20,6 +20,7 @@
 #include <fc/interprocess/signals.hpp>
 #include <boost/program_options.hpp>
 
+#include <fc/log/console_appender.hpp>
 #include <fc/log/file_appender.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/log/logger_config.hpp>
@@ -77,9 +78,12 @@ int main( int argc, char** argv )
 
       std::cout << "Logging RPC to file: " << (data_dir / ac.filename).preferred_string() << "\n";
 
+      cfg.appenders.push_back(fc::appender_config( "default", "console", fc::variant(fc::console_appender::config())));
       cfg.appenders.push_back(fc::appender_config( "rpc", "file", fc::variant(ac)));
 
-      cfg.loggers = { fc::logger_config( "rpc") };
+      cfg.loggers = { fc::logger_config("default"), fc::logger_config( "rpc") };
+      cfg.loggers.front().level = fc::log_level::info;
+      cfg.loggers.front().appenders = {"default"};
       cfg.loggers.back().level = fc::log_level::debug;
       cfg.loggers.back().appenders = {"rpc"};
 

@@ -323,6 +323,11 @@ public:
       return true;
    }
 
+   bool is_locked()const
+   {
+      return _checksum == fc::sha512();
+   }
+
    variant info() const
    {
       auto global_props = get_global_properties();
@@ -1019,6 +1024,26 @@ void operation_printer::operator()(const transfer_operation& op) const
 {
    out << "Transfer " << wallet.get_asset(op.amount.asset_id).amount_to_pretty_string(op.amount)
        << " from " << wallet.get_account(op.from).name << " to " << wallet.get_account(op.to).name;
+   if( op.memo )
+   {
+      if( wallet.is_locked() )
+      {
+         out << " -- Unlock wallet to see memo.";
+      } else {
+         try {
+            optional<key_object> sender_key = wallet._remote_db->get_objects({op.memo->from}).front().as<optional<key_object>>();
+            FC_ASSERT(sender_key, "Sender key ${k} does not exist.", ("k", op.memo->from));
+            FC_ASSERT(wallet._keys.count(op.memo->to), "Memo is encrypted to a key ${k} not in this wallet.",
+                      ("k", op.memo->to));
+            auto my_key = wif_to_key(wallet._keys.at(op.memo->to));
+            FC_ASSERT(my_key, "Unable to recover private key to decrypt memo. Wallet may be corrupted.");
+            out << " -- Memo: " << op.memo->get_message(*my_key, sender_key->key());
+         } catch (const fc::exception& e) {
+            out << " -- could not decrypt memo";
+            elog("Error when decrypting memo: ${e}", ("e", e.to_detail_string()));
+         }
+      }
+   }
    fee(op.fee);
 }
 
@@ -1325,7 +1350,7 @@ wallet_api::get_result_formatters() const
 
 bool wallet_api::is_locked()const
 {
-   return my->_checksum == fc::sha512();
+   return my->is_locked();
 }
 bool wallet_api::is_new()const
 {
