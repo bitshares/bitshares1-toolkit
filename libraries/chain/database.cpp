@@ -1258,6 +1258,8 @@ signed_block database::generate_block(
    fc::raw::pack( next_enc, _pending_block.previous_secret );
    _pending_block.next_secret_hash = secret_hash_type::hash(next_enc.result());
 
+   _pending_block.transaction_merkle_root = _pending_block.calculate_merkle_root();
+
    _pending_block.witness = witness_id;
    if( !(skip & skip_delegate_signature) ) _pending_block.sign( block_signing_private_key );
 
