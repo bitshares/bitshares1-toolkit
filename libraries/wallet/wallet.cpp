@@ -1033,7 +1033,7 @@ public:
 
          for( const operation_history_object& i : r )
          {
-            optional<block> b = _remote_db->get_block(i.block_num);
+            optional<signed_block> b = _remote_db->get_block(i.block_num);
             FC_ASSERT(b);
             ss << b->timestamp.to_iso_string() << " ";
             i.op.visit(operation_printer(ss, *this, i.result));
