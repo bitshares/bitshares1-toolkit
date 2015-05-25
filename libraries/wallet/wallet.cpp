@@ -110,6 +110,7 @@ public:
    void operator()(const account_create_operation& op)const;
    void operator()(const account_update_operation& op)const;
    void operator()(const key_create_operation& op)const;
+   void operator()(const asset_create_operation& op)const;
 };
 
 template< class T >
@@ -326,6 +327,13 @@ public:
    bool is_locked()const
    {
       return _checksum == fc::sha512();
+   }
+
+   template<typename T>
+   T get_object(object_id<T::space_id, T::type_id, T> id)const
+   {
+      auto ob = _remote_db->get_objects({id}).front();
+      return ob.template as<T>();
    }
 
    variant info() const
@@ -887,6 +895,59 @@ public:
       return sign_transaction( tx, broadcast );
    }
 
+   signed_transaction short_sell_asset(string seller_name, string amount_to_sell, string asset_symbol,
+                                       string amount_of_collateral, bool broadcast = false)
+   {
+      account_object seller = get_account(seller_name);
+      asset_object mia = get_asset(asset_symbol);
+      FC_ASSERT(mia.is_market_issued());
+      asset_object collateral = get_asset(get_object(*mia.bitasset_data_id).short_backing_asset);
+
+      short_order_create_operation op;
+      op.seller = seller.id;
+      op.amount_to_sell = mia.amount_from_string(amount_to_sell);
+      op.collateral = collateral.amount_from_string(amount_of_collateral);
+
+      signed_transaction trx;
+      trx.operations = {op};
+      trx.visit(operation_set_fee(_remote_db->get_global_properties().parameters.current_fees));
+      trx.validate();
+
+      return sign_transaction(trx, broadcast);
+   }
+
+   signed_transaction cancel_order(object_id_type order_id, bool broadcast = false)
+   { try {
+      FC_ASSERT(!is_locked());
+      FC_ASSERT(order_id.space() == protocol_ids, "Invalid order ID ${id}", ("id", order_id));
+      signed_transaction trx;
+
+      switch( order_id.type() )
+      {
+      case short_order_object_type: {
+         short_order_cancel_operation op;
+         op.fee_paying_account = get_object<short_order_object>(order_id).seller;
+         op.order = order_id;
+         op.fee = op.calculate_fee(_remote_db->get_global_properties().parameters.current_fees);
+         trx.operations = {op};
+         break;
+      }
+      case limit_order_object_type: {
+         limit_order_cancel_operation op;
+         op.fee_paying_account = get_object<limit_order_object>(order_id).seller;
+         op.order = order_id;
+         op.fee = op.calculate_fee(_remote_db->get_global_properties().parameters.current_fees);
+         trx.operations = {op};
+         break;
+      }
+      default:
+         FC_THROW("Invalid order ID ${id}", ("id", order_id));
+      }
+
+      trx.validate();
+      return sign_transaction(trx, broadcast);
+   } FC_CAPTURE_AND_RETHROW((order_id)) }
+
    signed_transaction transfer(string from, string to, string amount,
                                string asset_symbol, string memo, bool broadcast = false)
    { try {
@@ -1075,6 +1136,17 @@ void operation_printer::operator()(const key_create_operation& op) const
    } printer{out};
    op.key_data.visit(printer);
    out << " as " << fc::json::to_string(result.get<object_id_type>());
+   fee(op.fee);
+}
+
+void operation_printer::operator()(const asset_create_operation& op) const
+{
+   out << "Create ";
+   if( op.bitasset_options.valid() )
+      out << "BitAsset ";
+   else
+      out << "User-Issue Asset ";
+   out << "'" << op.symbol << "' with issuer " << wallet.get_account(op.issuer).name;
    fee(op.fee);
 }
 
@@ -1411,6 +1483,13 @@ signed_transaction wallet_api::sell_asset(string seller_account,
 {
    return my->sell_asset(seller_account, amount_to_sell, symbol_to_sell, min_to_receive,
                          symbol_to_receive, expiration, fill_or_kill, broadcast);
+}
+
+signed_transaction wallet_api::short_sell_asset(string seller_name, string amount_to_sell,
+                                                string asset_symbol, string amount_of_collateral, bool broadcast)
+{
+   FC_ASSERT(!is_locked());
+   return my->short_sell_asset(seller_name, amount_to_sell, asset_symbol, amount_of_collateral, broadcast);
 }
 } }
 

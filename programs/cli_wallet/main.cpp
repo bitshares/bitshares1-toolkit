@@ -39,9 +39,6 @@ int main( int argc, char** argv )
 {
    try {
 
-      wdump( (bts::chain::public_key_type( fc::ecc::private_key::regenerate( fc::sha256::hash(std::string("nathan")) ).get_public_key() ) ) );
-      wdump( (bts::chain::address( fc::ecc::private_key::regenerate( fc::sha256::hash(std::string("nathan")) ).get_public_key() ) ) );
-      wdump( (bts::utilities::key_to_wif( fc::ecc::private_key::regenerate( fc::sha256::hash(std::string("nathan")) ) ) ) );
       boost::program_options::options_description opts;
          opts.add_options()
          ("help,h", "Print this help message and exit.")
@@ -92,7 +89,6 @@ int main( int argc, char** argv )
       fc::ecc::private_key genesis_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
 
       idump( (key_to_wif( genesis_private_key ) ) );
-      idump( (account_id_type()) );
 
       fc::ecc::private_key nathan_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("nathan")));
       idump( (key_to_wif( nathan_private_key ) ) );
@@ -142,9 +138,9 @@ int main( int argc, char** argv )
       {
          std::cout << "Please use the set_password method to initialize a new wallet before continuing\n";
          wallet_cli->set_prompt( "new >>> " );
-      }
-      else
+      } else
          wallet_cli->set_prompt( "locked >>> " );
+
       boost::signals2::scoped_connection locked_connection = wapiptr->lock_changed.connect([&](bool locked) {
          wallet_cli->set_prompt(  locked ? "locked >>> " : "unlocked >>> " );
       });

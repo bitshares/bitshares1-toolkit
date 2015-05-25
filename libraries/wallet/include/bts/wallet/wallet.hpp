@@ -167,6 +167,9 @@ class wallet_api
                                     bool     fill_or_kill = false,
                                     bool     broadcast = false);
 
+      signed_transaction short_sell_asset(string seller_name, string amount_to_sell, string asset_symbol,
+                                          string amount_of_collateral, bool broadcast = false);
+
       signed_transaction create_asset(string issuer,
                                       string symbol,
                                       uint8_t precision,
@@ -219,6 +222,7 @@ FC_API( bts::wallet::wallet_api,
         (upgrade_account)
         (create_account_with_brain_key)
         (sell_asset)
+        (short_sell_asset)
         (transfer)
         (create_asset)
         (issue_asset)
