@@ -73,9 +73,9 @@ vector<item_ptr> fork_database::fetch_block_by_number( uint32_t num )const
    return result;
 }
 
-pair<fork_database::branch_type,fork_database::branch_type>  
+pair<fork_database::branch_type,fork_database::branch_type>
   fork_database::fetch_branch_from( block_id_type first, block_id_type second )const
-{
+{ try {
    pair<branch_type,branch_type> result;
    auto first_branch_itr = _index.get<block_id>().find(first);
    FC_ASSERT( first_branch_itr != _index.get<block_id>().end() );
@@ -109,7 +109,7 @@ pair<fork_database::branch_type,fork_database::branch_type>
       result.second.push_back( second_branch );
    }
    return result;
-}
+} FC_CAPTURE_AND_RETHROW( (first)(second) ) }
 void fork_database::set_head( shared_ptr<fork_item> h )
 {
    _head = h;

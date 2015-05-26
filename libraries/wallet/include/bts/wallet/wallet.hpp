@@ -184,6 +184,8 @@ class wallet_api
 
       signed_transaction sign_transaction(signed_transaction tx, bool broadcast = false);
 
+      void flood_network(string prefix, uint32_t number_of_transactions);
+
       std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
 
 
@@ -243,4 +245,5 @@ FC_API( bts::wallet::wallet_api,
         (save_wallet_file)
         (serialize_transaction)
         (sign_transaction)
+        (flood_network)
       )
