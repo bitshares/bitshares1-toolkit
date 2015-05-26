@@ -61,6 +61,8 @@ namespace bts { namespace chain {
          bool can_global_settle()const { return options.flags & global_settle;   }
          /// @return true if this asset charges a fee for the issuer on market operations; false otherwise
          bool charges_market_fees()const { return options.flags & charge_market_fee; }
+         /// @return true if this asset may only be transferred to/from the issuer or market orders
+         bool is_transfer_restricted()const { return options.flags & transfer_restricted; }
 
          /// Helper function to get an asset object with the given amount in this asset's type
          asset amount(share_type a)const { return asset(a, id); }
@@ -120,6 +122,11 @@ namespace bts { namespace chain {
             /// its account_object::blacklisting_accounts field. If the account is blacklisted, it may not transact in
             /// this asset even if it is also whitelisted.
             flat_set<account_id_type> blacklist_authorities;
+
+            /** defines the assets that this asset may be traded against in the market */
+            flat_set<asset_id_type>   whitelist_markets;
+            /** defines the assets that this asset may not be traded against in the market, must not overlap whitelist */
+            flat_set<asset_id_type>   blacklist_markets;
 
             /// Perform internal consistency checks.
             /// @throws fc::exception if any check fails
@@ -257,6 +264,8 @@ FC_REFLECT( bts::chain::asset_object::asset_options,
             (core_exchange_rate)
             (whitelist_authorities)
             (blacklist_authorities)
+            (whitelist_markets)
+            (blacklist_markets)
           )
 FC_REFLECT( bts::chain::asset_object::bitasset_options,
             (feed_lifetime_sec)

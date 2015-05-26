@@ -15,9 +15,13 @@ object_id_type limit_order_create_evaluator::do_evaluate( const limit_order_crea
    _sell_asset    = &op.amount_to_sell.asset_id(d);
    _receive_asset = &op.min_to_receive.asset_id(d);
 
+   if( _sell_asset->options.whitelist_markets.size() ) 
+      FC_ASSERT( _sell_asset->options.whitelist_markets.find( _receive_asset->id ) != _sell_asset->options.whitelist_markets.end() );
+   if( _sell_asset->options.blacklist_markets.size() ) 
+      FC_ASSERT( _sell_asset->options.blacklist_markets.find( _receive_asset->id ) == _sell_asset->options.blacklist_markets.end() );
 
-   if( _sell_asset->options.flags & white_list ) FC_ASSERT( _seller->is_authorized_asset( *_sell_asset ) );
-   if( _receive_asset->options.flags & white_list ) FC_ASSERT( _seller->is_authorized_asset( *_receive_asset ) );
+   if( _sell_asset->enforce_white_list() ) FC_ASSERT( _seller->is_authorized_asset( *_sell_asset ) );
+   if( _receive_asset->enforce_white_list() ) FC_ASSERT( _seller->is_authorized_asset( *_receive_asset ) );
 
    FC_ASSERT( d.get_balance( _seller, _sell_asset ) >= op.amount_to_sell, "insufficient balance",
               ("balance",d.get_balance(_seller,_sell_asset))("amount_to_sell",op.amount_to_sell) );

@@ -20,6 +20,9 @@ object_id_type transfer_evaluator::do_evaluate( const transfer_operation& op )
    if( fee_asset_type.options.flags & white_list )
       FC_ASSERT( from_account.is_authorized_asset( asset_type ) );
 
+   if( asset_type.is_transfer_restricted() )
+      FC_ASSERT( from_account.id == asset_type.issuer || to_account.id == asset_type.issuer );
+
    FC_ASSERT( d.get_balance( &from_account, &asset_type ).amount >= op.amount.amount,
               "", ("total_transfer",op.amount)("balance",d.get_balance(&from_account, &asset_type).amount) );
 

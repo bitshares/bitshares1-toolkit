@@ -539,7 +539,7 @@ BOOST_AUTO_TEST_CASE( update_uia )
       db.push_transaction(trx, ~0);
       op.issuer = nathan.id;
       op.new_issuer.reset();
-      op.new_options.flags = halt_transfer | white_list;
+      op.new_options.flags = transfer_restricted | white_list;
       trx.operations.back() = op;
       db.push_transaction(trx, ~0);
       REQUIRE_THROW_WITH_VALUE(op, new_options.issuer_permissions, test.options.issuer_permissions & ~white_list);

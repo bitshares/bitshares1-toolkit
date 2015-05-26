@@ -17,6 +17,13 @@ object_id_type bond_create_offer_evaluator::do_evaluate( const bond_create_offer
 
     const auto& amount_asset = (op.amount.asset_id == op.collateral_rate.base.asset_id) ? base_asset : quote_asset;
 
+    FC_ASSERT( !base_asset.is_transfer_restricted() && !quote_asset.is_transfer_restricted() );
+
+    if( base_asset.options.whitelist_markets.size() ) 
+       FC_ASSERT( base_asset.options.whitelist_markets.find( quote_asset.id ) != base_asset.options.whitelist_markets.end() );
+    if( base_asset.options.blacklist_markets.size() ) 
+       FC_ASSERT( base_asset.options.blacklist_markets.find( quote_asset.id ) == base_asset.options.blacklist_markets.end() );
+
     FC_ASSERT( d.get_balance( creator_account, amount_asset ) >= op.amount );
 
     return object_id_type();

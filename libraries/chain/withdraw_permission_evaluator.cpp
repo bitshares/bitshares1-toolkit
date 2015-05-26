@@ -1,5 +1,6 @@
 #include <bts/chain/withdraw_permission_evaluator.hpp>
 #include <bts/chain/withdraw_permission_object.hpp>
+#include <bts/chain/account_object.hpp>
 #include <bts/chain/database.hpp>
 
 namespace bts { namespace chain {
@@ -41,6 +42,17 @@ object_id_type withdraw_permission_claim_evaluator::do_evaluate(const withdraw_p
    FC_ASSERT(permit.withdraw_from_account == op.withdraw_from_account);
    FC_ASSERT(op.amount_to_withdraw <= permit.withdrawal_limit);
    FC_ASSERT(d.get_balance(op.withdraw_from_account, op.amount_to_withdraw.asset_id) >= op.amount_to_withdraw);
+
+   const asset_object& _asset = op.amount_to_withdraw.asset_id(d);
+   if( _asset.is_transfer_restricted() ) FC_ASSERT( _asset.issuer == permit.authorized_account || _asset.issuer == permit.withdraw_from_account );
+
+   if( _asset.enforce_white_list() )
+   {
+      const account_object& from  = op.withdraw_to_account(d);
+      const account_object& to    = permit.authorized_account(d);
+      FC_ASSERT( to.is_authorized_asset( _asset ) );
+      FC_ASSERT( from.is_authorized_asset( _asset ) );
+   }
 
    return object_id_type();
 } FC_CAPTURE_AND_RETHROW( (op) ) }
