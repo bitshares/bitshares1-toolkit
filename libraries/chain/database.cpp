@@ -418,7 +418,7 @@ void database::adjust_balance(account_id_type account, asset delta )
       create<account_balance_object>([account,&delta](account_balance_object& b) {
          b.owner = account;
          b.asset_type = delta.asset_id;
-         b.balance = delta.amount;
+         b.balance = delta.amount.value;
       });
    } else {
       FC_ASSERT(delta.amount > 0 || itr->get_balance() >= -delta);
@@ -1823,7 +1823,7 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
 
    processed_transaction ptrx(trx);
    _current_op_in_trx = 0;
-   for( auto op : ptrx.operations )
+   for( const auto& op : ptrx.operations )
    {
       eval_state.operation_results.emplace_back(apply_operation(eval_state, op));
       ++_current_op_in_trx;
