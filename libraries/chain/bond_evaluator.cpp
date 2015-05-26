@@ -32,6 +32,7 @@ object_id_type bond_create_offer_evaluator::do_apply( const bond_create_offer_op
         obj.offered_by_account = op.creator;
         obj.offer_to_borrow = op.offer_to_borrow;
         obj.amount = op.amount;
+        obj.min_match = op.min_match;
         obj.collateral_rate = op.collateral_rate;
         obj.min_loan_period_sec = op.min_loan_period_sec;
         obj.loan_period_sec = op.loan_period_sec;
@@ -62,6 +63,11 @@ object_id_type bond_cancel_offer_evaluator::do_apply( const bond_cancel_offer_op
 object_id_type bond_accept_offer_evaluator::do_evaluate( const bond_accept_offer_operation& op )
 { try {
     _offer = &op.offer_id(db());
+
+    if( _offer->offer_to_borrow )
+       FC_ASSERT( op.amount_borrowed.amount >= _offer->min_match );
+    else
+       FC_ASSERT( op.amount_collateral.amount >= _offer->min_match );
 
     FC_ASSERT( (op.amount_borrowed / op.amount_collateral  == _offer->collateral_rate) ||
                (op.amount_collateral / op.amount_borrowed  == _offer->collateral_rate)  );

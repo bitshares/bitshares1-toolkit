@@ -47,6 +47,7 @@ namespace bts { namespace chain {
         account_id_type offered_by_account;
         bool            offer_to_borrow = false; // Offer to borrow if true, and offer to lend otherwise
         asset           amount;
+        share_type      min_match; ///< asset type same as ammount.asset_id
         price           collateral_rate;
         uint32_t        min_loan_period_sec = 0;
         uint32_t        loan_period_sec = 0;
@@ -90,4 +91,4 @@ namespace bts { namespace chain {
 
 FC_REFLECT_DERIVED( bts::chain::bond_object,       (bts::db::object), 
                     (borrower)(lender)(borrowed)(collateral)(interest_apr)(start_date)(due_date)(earliest_payoff_date) )
-FC_REFLECT_DERIVED( bts::chain::bond_offer_object, (bts::db::object), (offered_by_account)(offer_to_borrow)(amount)(collateral_rate)(min_loan_period_sec)(loan_period_sec)(interest_apr) )
+FC_REFLECT_DERIVED( bts::chain::bond_offer_object, (bts::db::object), (offered_by_account)(offer_to_borrow)(amount)(min_match)(collateral_rate)(min_loan_period_sec)(loan_period_sec)(interest_apr) )

@@ -72,6 +72,7 @@ namespace bts { namespace chain {
          void  adjust_balance(const asset& delta);
    };
 
+
    /**
     * @brief This class represents an account on the object graph
     * @ingroup object
@@ -90,7 +91,7 @@ namespace bts { namespace chain {
           * known as the primary referrer and is entitled to a percent of transaction
           * fees.
           */
-         account_id_type       registrar;
+         account_id_type           registrar;
 
          /**
           * The registrar may be a faucet with its own revenue sharing model that allows

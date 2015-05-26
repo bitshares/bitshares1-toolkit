@@ -1271,6 +1271,7 @@ namespace bts { namespace chain {
       account_id_type         creator;
       bool                    offer_to_borrow = false; ///< Offer to borrow if true, and offer to lend otherwise
       asset                   amount; ///< Amount to lend or secure depending on above
+      share_type              min_match; ///< asset id same as amount.asset_id and sets the minimum match that will be accepted
       price                   collateral_rate; ///< To derive amount of collateral or principle based on above
       /** after this time the lender can let the loan float or collect the collateral at will */
       uint32_t                min_loan_period_sec = 0; ///< the earliest the loan may be paid off
@@ -1769,7 +1770,7 @@ FC_REFLECT( bts::chain::withdraw_permission_delete_operation, (fee)(withdraw_fro
 
 FC_REFLECT( bts::chain::file_write_operation, (fee)(payer)(file_id)(owner)(group)(flags)(offset)(data)(lease_seconds)(file_size)(precondition_checksum) )
 
-FC_REFLECT( bts::chain::bond_create_offer_operation, (fee)(creator)(offer_to_borrow)(amount)(collateral_rate)(min_loan_period_sec)(loan_period_sec)(interest_apr) )
+FC_REFLECT( bts::chain::bond_create_offer_operation, (fee)(creator)(offer_to_borrow)(amount)(min_match)(collateral_rate)(min_loan_period_sec)(loan_period_sec)(interest_apr) )
 FC_REFLECT( bts::chain::bond_cancel_offer_operation, (fee)(creator)(offer_id)(refund) )
 FC_REFLECT( bts::chain::bond_accept_offer_operation, (fee)(claimer)(lender)(borrower)(offer_id)(amount_borrowed)(amount_collateral) )
 FC_REFLECT( bts::chain::bond_claim_collateral_operation, (fee)(claimer)(lender)(bond_id)(payoff_amount)(collateral_claimed) )
