@@ -680,7 +680,7 @@ namespace bts { namespace chain {
     * @brief used to take an asset out of circulation
     * @ingroup operations
     *
-    * @note You cannot burn market issued assets.
+    * @note You cannot burn market-issued assets.
     */
    struct asset_burn_operation
    {
@@ -711,11 +711,11 @@ namespace bts { namespace chain {
     *  a percentage of the amount exchanged.
     *
     *  If either the selling asset or the receiving asset is white list
-    *  restricted the order will only be created if the seller is on
-    *  the white list of any asset type involved.
+    *  restricted, the order will only be created if the seller is on
+    *  the white list of the restricted asset type.
     *
     *  Market orders are matched in the order they are included
-    *  in the block chaing.
+    *  in the block chain.
     */
    struct limit_order_create_operation
    {
@@ -748,10 +748,10 @@ namespace bts { namespace chain {
 
    /**
     *  @ingroup operations
-    *  Used to cancel an existing limit order, fee_pay_account and the
-    *  account to receive the proceeds must be the same as order->seller
+    *  Used to cancel an existing limit order. Both fee_pay_account and the
+    *  account to receive the proceeds must be the same as order->seller.
     *
-    *  @return the amount actualy refunded
+    *  @return the amount actually refunded
     */
    struct limit_order_cancel_operation
    {
@@ -908,7 +908,7 @@ namespace bts { namespace chain {
      * maximum recursion depth. In practice, however, it is easier to use proposals to acquire all approvals, as this
      * leverages on-chain notification of all relevant parties that their approval is required. Off-chain
      * multi-signature approval requires some off-chain mechanism for acquiring several signatures on a single
-     * transaction. This off-chain syncrhonization can be avoided using proposals.
+     * transaction. This off-chain synchronization can be avoided using proposals.
      * @{
      */
    /**
@@ -986,7 +986,7 @@ namespace bts { namespace chain {
     * @ingroup operations
     *
     * This operation allows the early veto of a proposed transaction. It may be used by any account which is a required
-    * authority on the proposed transaction if that account's holder feels the proposal is ill-advised and he decides
+    * authority on the proposed transaction, when that account's holder feels the proposal is ill-advised and he decides
     * he will never approve of it and wishes to put an end to all discussion of the issue. Because he is a required
     * authority, he could simply refuse to add his approval, but this would leave the topic open for debate until the
     * proposal expires. Using this operation, he can prevent any further breath from being wasted on such an absurd
@@ -1011,8 +1011,8 @@ namespace bts { namespace chain {
     * @ingroup operations
     *
     * @note This is a virtual operation that is created while matching orders and
-    * emited for the purpose of accurately tracking account history, acclerating
-    * reindex.
+    * emitted for the purpose of accurately tracking account history, accelerating
+    * a reindex.
     */
    struct fill_order_operation
    {
