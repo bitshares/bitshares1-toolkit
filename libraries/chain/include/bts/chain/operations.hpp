@@ -327,7 +327,7 @@ namespace bts { namespace chain {
     * @brief defines a message and checksum to enable validation of successful decryption
     *
     * When encrypting/decrypting a checksum is required to determine whether or not
-    * decrytpion was successful.
+    * decryption was successful.
     */
    struct memo_message
    {
