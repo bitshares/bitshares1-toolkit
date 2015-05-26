@@ -14,6 +14,7 @@
 #include <fc/rpc/cli.hpp>
 #include <fc/rpc/websocket_api.hpp>
 #include <fc/crypto/aes.hpp>
+#include <fc/thread/mutex.hpp>
 
 #include <bts/app/api.hpp>
 #include <bts/chain/address.hpp>
@@ -210,15 +211,9 @@ class wallet_api_impl
 {
    void claim_registered_account(const account_object& account)
    {
-      elog("Attempting to claim ${acct}", ("acct", account));
       auto it = _wallet.pending_account_registrations.find( account.name );
       FC_ASSERT( it != _wallet.pending_account_registrations.end() );
-      if( import_key( account.name, it->second ) )
-      {
-         ilog( "successfully imported account ${name}",
-               ("name", account.name) );
-      }
-      else
+      if( !import_key( account.name, it->second ) )
       {
          // somebody else beat our pending registration, there is
          //    nothing we can do except log it and move on
@@ -234,8 +229,10 @@ class wallet_api_impl
       _wallet.pending_account_registrations.erase( it );
    }
 
+   fc::mutex _resync_mutex;
    void resync()
    {
+      _resync_mutex.lock();
       // this method is used to update wallet_data annotations
       //   e.g. wallet has been restarted and was not notified
       //   of events while it was down
@@ -263,6 +260,8 @@ class wallet_api_impl
             claim_registered_account(*opt_account);
          }
       }
+
+      _resync_mutex.unlock();
    }
    void enable_umask_protection()
    {
@@ -468,10 +467,6 @@ public:
       bts::chain::address wif_key_address = bts::chain::address(
                opt_priv_key->get_public_key() );
 
-      string shorthash = address_to_shorthash(wif_key_address);
-
-      // backup wallet
-      copy_wallet_file( "before-import-key-" + shorthash );
       auto acnt = get_account( account_name_or_id );
 
       flat_set<key_id_type> keys;
@@ -500,8 +495,6 @@ public:
                _remote_db->subscribe_to_objects([this](const fc::variant& v) {
                   _wallet.update_account(v.as<account_object>());
                }, {acnt.id});
-            save_wallet_file();
-            copy_wallet_file( "after-import-key-" + shorthash );
             return true;
          }
       }
@@ -669,16 +662,13 @@ public:
          return sign_transaction( tx, broadcast );
       } FC_CAPTURE_AND_RETHROW( (name) ) }
 
-   signed_transaction create_account_with_brain_key(string brain_key,
-                                                    string account_name,
-                                                    string registrar_account,
-                                                    string referrer_account,
-                                                    bool broadcast = false)
+   signed_transaction create_account_with_private_key(fc::ecc::private_key owner_privkey,
+                                                      string account_name,
+                                                      string registrar_account,
+                                                      string referrer_account,
+                                                      bool broadcast = false,
+                                                      bool save_wallet = true)
    { try {
-      FC_ASSERT( !self.is_locked() );
-      string normalized_brain_key = normalize_brain_key( brain_key );
-      // TODO:  scan blockchain for accounts that exist with same brain key
-      fc::ecc::private_key owner_privkey = derive_private_key( normalized_brain_key, 0 );
       fc::ecc::private_key active_privkey = derive_private_key( key_to_wif(owner_privkey), 0);
 
       bts::chain::public_key_type owner_pubkey = owner_privkey.get_public_key();
@@ -752,10 +742,24 @@ public:
       // we do not insert owner_privkey here because
       //    it is intended to only be used for key recovery
       _wallet.pending_account_registrations[ account_name ] = key_to_wif( active_privkey );
-      save_wallet_file();
+      if( save_wallet )
+         save_wallet_file();
       if( broadcast )
          _remote_net->broadcast_transaction( tx );
       return tx;
+   } FC_CAPTURE_AND_RETHROW( (account_name)(registrar_account)(referrer_account)(broadcast) ) }
+
+   signed_transaction create_account_with_brain_key(string brain_key,
+                                                    string account_name,
+                                                    string registrar_account,
+                                                    string referrer_account,
+                                                    bool broadcast = false)
+   { try {
+      FC_ASSERT( !self.is_locked() );
+      string normalized_brain_key = normalize_brain_key( brain_key );
+      // TODO:  scan blockchain for accounts that exist with same brain key
+      fc::ecc::private_key owner_privkey = derive_private_key( normalized_brain_key, 0 );
+      return create_account_with_private_key(owner_privkey, account_name, registrar_account, referrer_account, broadcast);
    } FC_CAPTURE_AND_RETHROW( (account_name)(registrar_account)(referrer_account) ) }
 
 
@@ -1061,6 +1065,45 @@ public:
       return m;
    }
 
+   void flood_network(string prefix, uint32_t number_of_transactions)
+   {
+      const account_object& master = *_wallet.my_accounts.get<by_name>().lower_bound("bts");
+      int number_of_accounts = number_of_transactions / 3;
+      number_of_transactions -= number_of_accounts;
+      auto key = derive_private_key("floodshill", 0);
+      asset_object::asset_options opts;
+      opts.flags &= ~(market_issued | white_list | disable_force_settle | global_settle);
+      opts.issuer_permissions = opts.flags;
+      opts.core_exchange_rate = price(asset(1), asset(1,1));
+      try {
+         create_asset(master.name, "SHILL", 2, opts, {}, true);
+      } catch(...) {/* Ignore; the asset probably already exists.*/}
+
+      fc::time_point start = fc::time_point::now(); for( int i = 0; i < number_of_accounts; ++i )
+         create_account_with_private_key(key, prefix + fc::to_string(i), master.name, master.name, true, false);
+      fc::time_point end = fc::time_point::now();
+      ilog("Created ${n} accounts in ${time} milliseconds",
+           ("n", number_of_accounts)("time", (end - start).count() / 1000));
+
+      start = fc::time_point::now();
+      for( int i = 0; i < number_of_accounts; ++i )
+      {
+         transfer(master.name, prefix + fc::to_string(i), "10", "BTS", "", true);
+         transfer(master.name, prefix + fc::to_string(i), "1", "BTS", "", true);
+      }
+      end = fc::time_point::now();
+      ilog("Transferred to ${n} accounts in ${time} milliseconds",
+           ("n", number_of_accounts*2)("time", (end - start).count() / 1000));
+
+      start = fc::time_point::now();
+      for( int i = 0; i < number_of_accounts; ++i )
+         issue_asset(prefix + fc::to_string(i), "1000", "SHILL", "", true);
+      end = fc::time_point::now();
+      ilog("Issued to ${n} accounts in ${time} milliseconds",
+           ("n", number_of_accounts)("time", (end - start).count() / 1000));
+
+   }
+
    string                  _wallet_filename;
    wallet_data             _wallet;
 
@@ -1262,7 +1305,17 @@ asset_id_type wallet_api::get_asset_id(string asset_symbol_or_id) const
 
 bool wallet_api::import_key(string account_name_or_id, string wif_key)
 {
-   return my->import_key(account_name_or_id, wif_key);
+   // backup wallet
+   string shorthash = detail::address_to_shorthash(wif_to_key(wif_key)->get_public_key());
+   copy_wallet_file( "before-import-key-" + shorthash );
+
+   if( my->import_key(account_name_or_id, wif_key) )
+   {
+      save_wallet_file();
+      copy_wallet_file( "after-import-key-" + shorthash );
+      return true;
+   }
+   return false;
 }
 
 string wallet_api::normalize_brain_key(string s) const
@@ -1331,6 +1384,11 @@ signed_transaction wallet_api::sign_transaction(signed_transaction tx, bool broa
 { try {
    return my->sign_transaction( tx, broadcast);
 } FC_CAPTURE_AND_RETHROW( (tx) ) }
+
+void wallet_api::flood_network(string prefix, uint32_t number_of_transactions)
+{
+   my->flood_network(prefix, number_of_transactions);
+}
 
 global_property_object wallet_api::get_global_properties() const
 {
