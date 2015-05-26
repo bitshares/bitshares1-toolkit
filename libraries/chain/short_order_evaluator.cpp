@@ -21,6 +21,9 @@ object_id_type short_order_create_evaluator::do_evaluate( const short_order_crea
    _receive_asset = &quote_asset;
    _sell_asset    = &base_asset;
 
+   FC_ASSERT( !(base_asset.options.flags & white_list) || _seller->is_authorized_asset(base_asset) );
+   FC_ASSERT( !(quote_asset.options.flags & white_list) || _seller->is_authorized_asset(quote_asset) );
+
    // TODO: FC_ASSERT( op.initial_collateral_ratio >= CURRENT_INIT_COLLATERAL_RATIO_REQUIREMENTS )
    // TODO: FC_ASSERT( op.maintenance_collateral_ratio >= CURRENT_INIT_COLLATERAL_RATIO_REQUIREMENTS )
    // TODO: FC_ASSERT( op.sell_price() >= CURRENT_PRICE_LIMIT  )

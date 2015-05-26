@@ -34,7 +34,7 @@ namespace bts { namespace app {
          vector<asset>                     get_account_balances( account_id_type id, const flat_set<asset_id_type>& assets )const;
          uint64_t                          get_account_count()const;
          map<string,account_id_type>       lookup_accounts( const string& lower_bound_name, uint32_t limit )const;
-         vector<operation_history_object>  get_account_history( account_id_type, operation_history_id_type stop = operation_history_id_type() )const;
+         vector<operation_history_object>  get_account_history(account_id_type a, operation_history_id_type stop = operation_history_id_type() )const;
 
          /**
           *  @return the limit orders for both sides of the book for the two assets specified up to limit number on each side.

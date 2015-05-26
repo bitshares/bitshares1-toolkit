@@ -290,6 +290,7 @@ void database::init_genesis(const genesis_allocation& initial_allocation)
      create<asset_object>( [&]( asset_object& a ) {
          a.symbol = BTS_SYMBOL;
          a.options.max_supply = BTS_INITIAL_SUPPLY;
+         a.precision = BTS_BLOCKCHAIN_PRECISION_DIGITS;
          a.options.flags = 0;
          a.options.issuer_permissions = 0;
          a.issuer = genesis_account.id;
@@ -723,7 +724,7 @@ void database::globally_settle_asset( const asset_object& mia, const price& sett
       }
    }
 
-    // settle all balances  
+    // settle all balances
     asset total_mia_settled = mia.amount(0);
 
    // convert collateral held in bonds

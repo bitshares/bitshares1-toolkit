@@ -20,6 +20,7 @@
 #include <fc/interprocess/signals.hpp>
 #include <boost/program_options.hpp>
 
+#include <fc/log/console_appender.hpp>
 #include <fc/log/file_appender.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/log/logger_config.hpp>
@@ -38,9 +39,6 @@ int main( int argc, char** argv )
 {
    try {
 
-      wdump( (bts::chain::public_key_type( fc::ecc::private_key::regenerate( fc::sha256::hash(std::string("nathan")) ).get_public_key() ) ) );
-      wdump( (bts::chain::address( fc::ecc::private_key::regenerate( fc::sha256::hash(std::string("nathan")) ).get_public_key() ) ) );
-      wdump( (bts::utilities::key_to_wif( fc::ecc::private_key::regenerate( fc::sha256::hash(std::string("nathan")) ) ) ) );
       boost::program_options::options_description opts;
          opts.add_options()
          ("help,h", "Print this help message and exit.")
@@ -77,9 +75,12 @@ int main( int argc, char** argv )
 
       std::cout << "Logging RPC to file: " << (data_dir / ac.filename).preferred_string() << "\n";
 
+      cfg.appenders.push_back(fc::appender_config( "default", "console", fc::variant(fc::console_appender::config())));
       cfg.appenders.push_back(fc::appender_config( "rpc", "file", fc::variant(ac)));
 
-      cfg.loggers = { fc::logger_config( "rpc") };
+      cfg.loggers = { fc::logger_config("default"), fc::logger_config( "rpc") };
+      cfg.loggers.front().level = fc::log_level::info;
+      cfg.loggers.front().appenders = {"default"};
       cfg.loggers.back().level = fc::log_level::debug;
       cfg.loggers.back().appenders = {"rpc"};
 
@@ -88,7 +89,6 @@ int main( int argc, char** argv )
       fc::ecc::private_key genesis_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
 
       idump( (key_to_wif( genesis_private_key ) ) );
-      idump( (account_id_type()) );
 
       fc::ecc::private_key nathan_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("nathan")));
       idump( (key_to_wif( nathan_private_key ) ) );
@@ -129,13 +129,18 @@ int main( int argc, char** argv )
       for( auto& name_formatter : wapiptr->get_result_formatters() )
          wallet_cli->format_result( name_formatter.first, name_formatter.second );
 
+      boost::signals2::scoped_connection closed_connection = con->closed.connect([]{
+         cerr << "Server has disconnected us.\n";
+      });
+      (void)(closed_connection);
+
       if( wapiptr->is_new() )
       {
          std::cout << "Please use the set_password method to initialize a new wallet before continuing\n";
          wallet_cli->set_prompt( "new >>> " );
-      }
-      else
+      } else
          wallet_cli->set_prompt( "locked >>> " );
+
       boost::signals2::scoped_connection locked_connection = wapiptr->lock_changed.connect([&](bool locked) {
          wallet_cli->set_prompt(  locked ? "locked >>> " : "unlocked >>> " );
       });
@@ -191,6 +196,7 @@ int main( int argc, char** argv )
 
       wapi->save_wallet_file(wallet_file.generic_string());
       locked_connection.disconnect();
+      closed_connection.disconnect();
    }
    catch ( const fc::exception& e )
    {

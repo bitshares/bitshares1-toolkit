@@ -194,22 +194,21 @@ namespace bts { namespace app {
        return result;
     }
 
-    vector<short_order_object>        database_api::get_short_orders( asset_id_type a, uint32_t limit )const
+    vector<short_order_object> database_api::get_short_orders( asset_id_type a, uint32_t limit )const
     {
       const auto& short_order_idx = _db.get_index_type<short_order_index>();
       const auto& sell_price_idx = short_order_idx.indices().get<by_price>();
-      price max_price; // TODO: define this properly.
+      const asset_object& mia = _db.get(a);
 
-      FC_ASSERT( max_price.max() >= max_price );
-      // these are commented to silence a compiler warning,
-      // feel free to uncomment them when you implement this method :)
-      //auto short_itr = sell_price_idx.lower_bound( max_price.max() );
-      //auto short_end = sell_price_idx.upper_bound( max_price );
+      price index_price = price::min(mia.get_id(), mia.bitasset_data(_db).short_backing_asset);
 
-      return vector<short_order_object>();
+      auto short_itr = sell_price_idx.lower_bound( index_price.max() );
+      auto short_end = sell_price_idx.upper_bound( index_price.min() );
+
+      return vector<short_order_object>(short_itr, short_end);
     }
 
-    vector<call_order_object>         database_api::get_call_orders( asset_id_type a, uint32_t limit )const
+    vector<call_order_object> database_api::get_call_orders( asset_id_type a, uint32_t limit )const
     {
        return vector<call_order_object>();
     }
