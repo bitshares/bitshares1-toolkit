@@ -1592,6 +1592,7 @@ bool database::push_block( const signed_block& new_block, uint32_t skip )
 { try {
    if( !(skip&skip_fork_db) )
    {
+      wdump((new_block.id())(new_block.previous));
       auto new_head = _fork_db.push_block( new_block );
       //If the head block from the longest chain does not build off of the current head, we need to switch forks.
       if( new_head->data.previous != head_block_id() )

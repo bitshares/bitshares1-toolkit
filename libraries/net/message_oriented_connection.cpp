@@ -233,6 +233,8 @@ namespace bts { namespace net {
       try
       {
         size_t size_of_message_and_header = sizeof(message_header) + message_to_send.size;
+        if( message_to_send.size > MAX_MESSAGE_SIZE )
+           elog("Trying to send a message larger than MAX_MESSAGE_SIZE. This probably won't work...");
         //pad the message we send to a multiple of 16 bytes
         size_t size_with_padding = 16 * ((size_of_message_and_header + 15) / 16);
         std::unique_ptr<char[]> padded_message(new char[size_with_padding]);

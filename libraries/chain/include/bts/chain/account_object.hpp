@@ -65,7 +65,7 @@ namespace bts { namespace chain {
 
          account_id_type   owner;
          asset_id_type     asset_type;
-         int64_t           balance;
+         share_type        balance;
 
          asset get_balance()const { return asset(balance, asset_type); }
          void  adjust_balance(const asset& delta);

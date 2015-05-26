@@ -16,9 +16,7 @@ bool account_object::is_authorized_asset(const asset_object& asset_obj) const {
 void account_balance_object::adjust_balance(const asset& delta)
 {
    assert(delta.asset_id == asset_type);
-   share_type new_balance(balance);
-   new_balance += delta.amount;
-   balance = new_balance.value;
+   balance += delta.amount;
 }
 
 } } // bts::chain

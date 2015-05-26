@@ -11,9 +11,9 @@
 #define ENABLE_P2P_DEBUGGING_API                        1
 
 /**
- * 512 kb
+ * 2MiB
  */
-#define MAX_MESSAGE_SIZE                                (512 * 1024)
+#define MAX_MESSAGE_SIZE                                1024*1024*2
 #define BTS_NET_DEFAULT_PEER_CONNECTION_RETRY_TIME      30 // seconds
 
 /**
