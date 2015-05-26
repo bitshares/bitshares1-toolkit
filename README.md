@@ -1,4 +1,3 @@
-
 Intro for new developers
 ------------------------
 
@@ -14,7 +13,8 @@ Starting Graphene
 TODO:  Are recursive flags needed for submodules?
 
     cmake -DCMAKE_BUILD_TYPE=Debug .
-    make witness_node && make cli_wallet
+    make
+    cd programs
     ./witness_node
 
 In a separate window, start `cli_wallet`:
