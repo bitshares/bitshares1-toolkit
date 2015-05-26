@@ -63,7 +63,6 @@ namespace bts { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_account_balance_object_type;
 
-         //Hashed-non-unique index on owner, on asset_type, and hashed-unique on <owner,asset_type>
          account_id_type   owner;
          asset_id_type     asset_type;
          share_type        balance;
@@ -202,15 +201,13 @@ namespace bts { namespace chain {
    typedef multi_index_container<
       account_balance_object,
       indexed_by<
-         hashed_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
-         //TODO: make these ordered_... indices hashed instead
-         //ordered_unique< tag<by_balance>, composite_key<
+         ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
          hashed_unique< tag<by_balance>, composite_key<
             account_balance_object,
             member<account_balance_object, account_id_type, &account_balance_object::owner>,
             member<account_balance_object, asset_id_type, &account_balance_object::asset_type> >
          >,
-         hashed_non_unique< tag<by_account>, member<account_balance_object, account_id_type, &account_balance_object::owner> >,
+         ordered_non_unique< tag<by_account>, member<account_balance_object, account_id_type, &account_balance_object::owner> >,
          ordered_non_unique< tag<by_asset>, member<account_balance_object, asset_id_type, &account_balance_object::asset_type> >
       >
    > account_balance_object_multi_index_type;

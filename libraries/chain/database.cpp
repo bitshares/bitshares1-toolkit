@@ -106,7 +106,7 @@ void database::open( const fc::path& data_dir, const genesis_allocation& initial
 
 } FC_CAPTURE_AND_RETHROW( (data_dir) ) }
 
-void database::reindex(fc::path data_dir, genesis_allocation initial_allocation)
+void database::reindex(fc::path data_dir, const genesis_allocation& initial_allocation)
 { try {
    wipe(data_dir, false);
    open(data_dir, initial_allocation);
@@ -1372,8 +1372,8 @@ void database::update_global_dynamic_data( const signed_block& b )
 }
 
 /**
- *  Removes the most recent block from the database and
- *  undoes any changes it made.
+ * Removes the most recent block from the database and
+ * undoes any changes it made.
  */
 void database::pop_block()
 { try {
@@ -1396,89 +1396,82 @@ bool database::is_known_block( const block_id_type& id )const
    return _fork_db.is_known_block(id) || _block_id_to_block.find(id).valid();
 }
 /**
- *  Only return true *if* the transaction has not expired or been invalidated. If this
- *  method is called with a VERY old transaction we will return false, they should
- *  query things by blocks if they are that old.
+ * Only return true *if* the transaction has not expired or been invalidated. If this
+ * method is called with a VERY old transaction we will return false, they should
+ * query things by blocks if they are that old.
  */
 bool database::is_known_transaction( const transaction_id_type& id )const
 {
-  const auto& trx_idx = get_index_type<transaction_index>().indices().get<by_trx_id>();
-  return trx_idx.find( id ) != trx_idx.end();
+   const auto& trx_idx = get_index_type<transaction_index>().indices().get<by_trx_id>();
+   return trx_idx.find( id ) != trx_idx.end();
 }
 
-/**
- *  For each prime account, adjust the vote total object
- */
 void database::update_vote_totals(const global_property_object& props)
 { try {
-    _vote_tally_buffer.resize(props.next_available_vote_id);
-    _witness_count_histogram_buffer.resize(props.parameters.maximum_witness_count / 2 + 1);
-    _committee_count_histogram_buffer.resize(props.parameters.maximum_committee_count / 2 + 1);
+   _vote_tally_buffer.resize(props.next_available_vote_id);
+   _witness_count_histogram_buffer.resize(props.parameters.maximum_witness_count / 2 + 1);
+   _committee_count_histogram_buffer.resize(props.parameters.maximum_committee_count / 2 + 1);
 
-    const account_index& account_idx = get_index_type<account_index>();
-    _total_voting_stake = 0;
+   const account_index& account_idx = get_index_type<account_index>();
+   _total_voting_stake = 0;
 
-    bool count_non_prime_votes = props.parameters.count_non_prime_votes;
-    auto timestamp = fc::time_point::now();
-    for( const account_object& stake_account : account_idx.indices() )
-    {
-       if( count_non_prime_votes || stake_account.is_prime() )
-       {
-          // There may be a difference between the account whose stake is voting and the one specifying opinions.
-          // Usually they're the same, but if the stake account has specified a voting_account, that account is the one
-          // specifying the opinions.
-          const account_object& opinion_account =
-                (stake_account.voting_account == account_id_type())? stake_account
-                                                                   : get(stake_account.voting_account);
+   bool count_non_prime_votes = props.parameters.count_non_prime_votes;
+   auto timestamp = fc::time_point::now();
+   for( const account_object& stake_account : account_idx.indices() )
+   {
+      if( count_non_prime_votes || stake_account.is_prime() )
+      {
+         // There may be a difference between the account whose stake is voting and the one specifying opinions.
+         // Usually they're the same, but if the stake account has specified a voting_account, that account is the one
+         // specifying the opinions.
+         const account_object& opinion_account =
+               (stake_account.voting_account == account_id_type())? stake_account
+                                                                  : get(stake_account.voting_account);
 
-          const auto& stats = stake_account.statistics(*this);
-          uint64_t voting_stake = stats.total_core_in_orders.value
-                   + (stake_account.cashback_vb.valid() ? (*stake_account.cashback_vb)(*this).balance.amount.value: 0)
-                   + get_balance(stake_account.get_id(), asset_id_type()).amount.value;
+         const auto& stats = stake_account.statistics(*this);
+         uint64_t voting_stake = stats.total_core_in_orders.value
+               + (stake_account.cashback_vb.valid() ? (*stake_account.cashback_vb)(*this).balance.amount.value: 0)
+               + get_balance(stake_account.get_id(), asset_id_type()).amount.value;
 
-          for( vote_id_type id : opinion_account.votes )
-          {
-             uint32_t offset = id.instance();
-             // if they somehow managed to specify an illegal offset, ignore it.
-             if( offset < _vote_tally_buffer.size() )
-                _vote_tally_buffer[ offset ] += voting_stake;
-          }
+         for( vote_id_type id : opinion_account.votes )
+         {
+            uint32_t offset = id.instance();
+            // if they somehow managed to specify an illegal offset, ignore it.
+            if( offset < _vote_tally_buffer.size() )
+               _vote_tally_buffer[ offset ] += voting_stake;
+         }
 
-          if( opinion_account.num_witness <= props.parameters.maximum_witness_count )
-          {
-             uint16_t offset = std::min(
-                size_t(opinion_account.num_witness/2),
-                _witness_count_histogram_buffer.size() - 1
-                );
-             //
-             // votes for a number greater than maximum_witness_count
-             // are turned into votes for maximum_witness_count.
-             //
-             // in particular, this takes care of the case where a
-             // member was voting for a high number, then the
-             // parameter was lowered.
-             //
-             _witness_count_histogram_buffer[ offset ] += voting_stake;
-          }
-          if( opinion_account.num_committee <= props.parameters.maximum_committee_count )
-          {
-             uint16_t offset = std::min(
-                size_t(opinion_account.num_committee/2),
-                _committee_count_histogram_buffer.size() - 1
-                );
-             //
-             // votes for a number greater than maximum_committee_count
-             // are turned into votes for maximum_committee_count.
-             //
-             // same rationale as for witnesses
-             //
-             _committee_count_histogram_buffer[ offset ] += voting_stake;
-          }
+         if( opinion_account.num_witness <= props.parameters.maximum_witness_count )
+         {
+            uint16_t offset = std::min(size_t(opinion_account.num_witness/2),
+                                       _witness_count_histogram_buffer.size() - 1);
+            //
+            // votes for a number greater than maximum_witness_count
+            // are turned into votes for maximum_witness_count.
+            //
+            // in particular, this takes care of the case where a
+            // member was voting for a high number, then the
+            // parameter was lowered.
+            //
+            _witness_count_histogram_buffer[ offset ] += voting_stake;
+         }
+         if( opinion_account.num_committee <= props.parameters.maximum_committee_count )
+         {
+            uint16_t offset = std::min(size_t(opinion_account.num_committee/2),
+                                       _committee_count_histogram_buffer.size() - 1);
+            //
+            // votes for a number greater than maximum_committee_count
+            // are turned into votes for maximum_committee_count.
+            //
+            // same rationale as for witnesses
+            //
+            _committee_count_histogram_buffer[ offset ] += voting_stake;
+         }
 
-          _total_voting_stake += voting_stake;
-       }
-    }
-    ilog("Tallied votes in ${time} milliseconds.", ("time", (fc::time_point::now() - timestamp).count() / 1000.0));
+         _total_voting_stake += voting_stake;
+      }
+   }
+   ilog("Tallied votes in ${time} milliseconds.", ("time", (fc::time_point::now() - timestamp).count() / 1000.0));
 } FC_CAPTURE_AND_RETHROW() }
 
 share_type database::get_max_budget( fc::time_point_sec now )const
@@ -1590,10 +1583,10 @@ void database::process_budget()
 }
 
 /**
- *  Push block "may fail" in which case every partial change is unwound.  After
- *  push block is successful the block is appended to the chain database on disk.
+ * Push block "may fail" in which case every partial change is unwound.  After
+ * push block is successful the block is appended to the chain database on disk.
  *
- *  @return true if we switched forks as a result of this push.
+ * @return true if we switched forks as a result of this push.
  */
 bool database::push_block( const signed_block& new_block, uint32_t skip )
 { try {
@@ -1686,7 +1679,7 @@ bool database::push_block( const signed_block& new_block, uint32_t skip )
 } FC_CAPTURE_AND_RETHROW( (new_block) ) }
 
 /**
- *  Attempts to push the transaction into the pending queue
+ * Attempts to push the transaction into the pending queue
  *
  * When called to push a locally generated transaction, set the skip_block_size_check bit on the skip argument. This
  * will allow the transaction to be pushed even if it causes the pending block size to exceed the maximum block size.
@@ -1795,13 +1788,12 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
          {
             for( const auto& sig : trx.signatures )
             {
-               FC_ASSERT(sig.first(*this).key_address() == fc::ecc::public_key(sig.second,
-                                                                               trx.digest(tapos_block_summary.block_id)
-                                                                               ),
+               address trx_addr = fc::ecc::public_key(sig.second, trx.digest(tapos_block_summary.block_id));
+               FC_ASSERT(sig.first(*this).key_address() == trx_addr,
                           "",
                           ("sig.first",sig.first)
                           ("key_address",sig.first(*this).key_address())
-                          ("addr", address(fc::ecc::public_key(sig.second, trx.digest()))));
+                          ("addr", trx_addr));
             }
          }
 
@@ -1822,7 +1814,7 @@ processed_transaction database::apply_transaction( const signed_transaction& trx
    {
       create<transaction_object>([&](transaction_object& transaction) {
          transaction.expiration = trx_expiration;
-         transaction.trx_id = trx.id();
+         transaction.trx_id = trx_id;
          transaction.trx = trx;
       });
    }
