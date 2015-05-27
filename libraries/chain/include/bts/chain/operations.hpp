@@ -673,7 +673,8 @@ namespace bts { namespace chain {
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
       share_type      calculate_fee( const fee_schedule_type& k )const;
-      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const { acc.adjust( fee_payer(), -fee ); }
+      void get_balance_delta( balance_accumulator& acc, const operation_result& result = asset())const
+      { acc.adjust( fee_payer(), -fee ); acc.adjust(issue_to_account, asset_to_issue); }
    };
 
    /**

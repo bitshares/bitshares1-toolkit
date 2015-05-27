@@ -158,7 +158,7 @@ namespace detail {
       } FC_CAPTURE_AND_RETHROW() }
 
       /**
-       *  If delegate has the item, the network has no need to fetch it.
+       * If delegate has the item, the network has no need to fetch it.
        */
       virtual bool has_item( const net::item_id& id ) override
       { try {
@@ -173,14 +173,12 @@ namespace detail {
       } FC_CAPTURE_AND_RETHROW( (id) ) }
 
       /**
-       *  @brief allows the application to validate an item prior to
-       *         broadcasting to peers.
+       * @brief allows the application to validate an item prior to broadcasting to peers.
        *
-       *  @param sync_mode true if the message was fetched through the sync process, false during normal operation
-       *  @returns true if this message caused the blockchain to switch forks, false if it did not
+       * @param sync_mode true if the message was fetched through the sync process, false during normal operation
+       * @returns true if this message caused the blockchain to switch forks, false if it did not
        *
-       *  @throws exception if error validating the item, otherwise the item is
-       *          safe to broadcast on.
+       * @throws exception if error validating the item, otherwise the item is safe to broadcast on.
        */
       virtual bool handle_block( const bts::net::block_message& blk_msg, bool sync_mode ) override
       { try {
@@ -201,13 +199,13 @@ namespace detail {
       } FC_CAPTURE_AND_RETHROW( (trx_msg)(sync_mode) ) }
 
       /**
-       *  Assuming all data elements are ordered in some way, this method should
-       *  return up to limit ids that occur *after* the last ID in synopsis that
-       *  we recognize.
+       * Assuming all data elements are ordered in some way, this method should
+       * return up to limit ids that occur *after* the last ID in synopsis that
+       * we recognize.
        *
-       *  On return, remaining_item_count will be set to the number of items
-       *  in our blockchain after the last item returned in the result,
-       *  or 0 if the result contains the last item in the blockchain
+       * On return, remaining_item_count will be set to the number of items
+       * in our blockchain after the last item returned in the result,
+       * or 0 if the result contains the last item in the blockchain
        */
       virtual std::vector<item_hash_t> get_item_ids(uint32_t item_type,
                                                     const std::vector<item_hash_t>& blockchain_synopsis,
@@ -247,7 +245,7 @@ namespace detail {
       } FC_CAPTURE_AND_RETHROW( (blockchain_synopsis)(remaining_item_count)(limit) ) }
 
       /**
-       *  Given the hash of the requested data, fetch the body.
+       * Given the hash of the requested data, fetch the body.
        */
       virtual message get_item( const item_id& id ) override
       { try {
@@ -305,11 +303,11 @@ namespace detail {
       } FC_CAPTURE_AND_RETHROW( (reference_point)(number_of_blocks_after_reference_point) ) }
 
       /**
-       *  Call this after the call to handle_message succeeds.
+       * Call this after the call to handle_message succeeds.
        *
-       *  @param item_type the type of the item we're synchronizing, will be the same as item passed to the sync_from() call
-       *  @param item_count the number of items known to the node that haven't been sent to handle_item() yet.
-       *                    After `item_count` more calls to handle_item(), the node will be in sync
+       * @param item_type the type of the item we're synchronizing, will be the same as item passed to the sync_from() call
+       * @param item_count the number of items known to the node that haven't been sent to handle_item() yet.
+       *                   After `item_count` more calls to handle_item(), the node will be in sync
        */
       virtual void     sync_status( uint32_t item_type, uint32_t item_count ) override
       {
@@ -317,7 +315,7 @@ namespace detail {
       }
 
       /**
-       *  Call any time the number of connected peers changes.
+       * Call any time the number of connected peers changes.
        */
       virtual void     connection_count_changed( uint32_t c ) override
       {

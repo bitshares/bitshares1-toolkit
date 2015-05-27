@@ -30,6 +30,14 @@ namespace bts { namespace app {
        return result;
     }
 
+    optional<block_header> database_api::get_block_header(uint32_t block_num) const
+    {
+       auto result = _db.fetch_block_by_number(block_num);
+       if( result )
+          return *result;
+       return {};
+    }
+
     optional<signed_block> database_api::get_block( uint32_t block_num )const
     {
        return _db.fetch_block_by_number( block_num );
@@ -128,16 +136,22 @@ namespace bts { namespace app {
        return result;
     }
 
-    vector<operation_history_object>  database_api::get_account_history( account_id_type a,
-                                                                         operation_history_id_type stop )const
+    vector<operation_history_object>  database_api::get_account_history(account_id_type a,
+                                                                         operation_history_id_type stop,
+                                                                         int limit,
+                                                                         operation_history_id_type start)const
     {
+       FC_ASSERT( limit <= 100 );
        vector<operation_history_object> result;
        const auto& stats = a(_db).statistics(_db);
        if( stats.most_recent_op == account_transaction_history_id_type() ) return result;
        const account_transaction_history_object* node = &stats.most_recent_op(_db);
-       while( node && node->operation_id != stop )
+       if( start == operation_history_id_type() )
+          start = node->id;
+       while( node && node->operation_id.instance.value > stop.instance.value && result.size() < limit )
        {
-          result.push_back( node->operation_id(_db) );
+          if( node->id.instance() <= start.instance.value )
+             result.push_back( node->operation_id(_db) );
           if( node->next == account_transaction_history_id_type() )
              node = nullptr;
           else node = _db.find(node->next);
@@ -385,6 +399,7 @@ namespace bts { namespace app {
 
        return true;
     }
+
     std::string  database_api::get_transaction_hex( const signed_transaction& trx )const
     {
        return fc::to_hex( fc::raw::pack(trx) );
