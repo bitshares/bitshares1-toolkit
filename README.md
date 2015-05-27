@@ -14,19 +14,17 @@ TODO:  Are recursive flags needed for submodules?
 
     cmake -DCMAKE_BUILD_TYPE=Debug .
     make
-    cd programs
-    ./witness_node
+    ./programs/witness_node/witness_node
 
-In a separate window, start `cli_wallet`:
-
-    ./cli_wallet
-
-You will get a transport error because the default initialization of witness node configuration does not specify a port.
-You can edit `witneess_node_data_dir/config.json` like this:
+This will launch the witness node. If you would like to launch the command-line wallet, you must first specify a port for communication with the witness node. To do this, add text to `witness_node_data_dir/config.json` as follows, then restart the node:
 
     "websocket_endpoint": "127.0.0.1:8090"
 
-If you send private keys over this connection, clearly `websocket_endpoint` should be bound to localhost for security.
+Then, in a separate terminal window, start the command-line wallet `cli_wallet`:
+
+    ./programs/cli_wallet/cli_wallet
+
+If you send private keys over this connection, `websocket_endpoint` should be bound to localhost for security.
 
 Code coverage testing
 ---------------------
