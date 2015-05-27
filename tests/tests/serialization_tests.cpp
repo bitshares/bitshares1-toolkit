@@ -42,6 +42,20 @@ BOOST_AUTO_TEST_CASE( serialization_json_test )
    }
 }
 
+BOOST_AUTO_TEST_CASE( json_tests )
+{
+   try {
+   auto var = fc::json::variants_from_string( "10.6 " );
+   wdump((var));
+   var = fc::json::variants_from_string( "10.5" );
+   wdump((var));
+   } catch ( const fc::exception& e )
+   {
+      edump((e.to_detail_string()));
+      throw;
+   }
+}
+
 
 
 BOOST_AUTO_TEST_SUITE_END()
