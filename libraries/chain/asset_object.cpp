@@ -82,9 +82,13 @@ void asset_object::asset_options::validate()const
    if(!whitelist_authorities.empty() || !blacklist_authorities.empty())
       FC_ASSERT( flags & white_list );
    for( auto item : whitelist_markets )
+   {
       FC_ASSERT( blacklist_markets.find(item) == blacklist_markets.end() );
+   }
    for( auto item : blacklist_markets )
+   {
       FC_ASSERT( whitelist_markets.find(item) == whitelist_markets.end() );
+   }
 }
 
 void asset_object::bitasset_options::validate() const
