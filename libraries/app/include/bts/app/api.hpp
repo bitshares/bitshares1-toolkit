@@ -21,6 +21,7 @@ namespace bts { namespace app {
          database_api( bts::chain::database& db );
          ~database_api();
          fc::variants                      get_objects( const vector<object_id_type>& ids )const;
+         optional<block_header>            get_block_header(uint32_t block_num)const;
          optional<signed_block>            get_block( uint32_t block_num )const;
          global_property_object            get_global_properties()const;
          dynamic_global_property_object    get_dynamic_global_properties()const;
@@ -34,7 +35,10 @@ namespace bts { namespace app {
          vector<asset>                     get_account_balances( account_id_type id, const flat_set<asset_id_type>& assets )const;
          uint64_t                          get_account_count()const;
          map<string,account_id_type>       lookup_accounts( const string& lower_bound_name, uint32_t limit )const;
-         vector<operation_history_object>  get_account_history(account_id_type a, operation_history_id_type stop = operation_history_id_type() )const;
+         vector<operation_history_object>  get_account_history(account_id_type a,
+                                                               operation_history_id_type stop = operation_history_id_type(),
+                                                               int limit = 100,
+                                                               operation_history_id_type start = operation_history_id_type())const;
 
          /**
           *  @return the limit orders for both sides of the book for the two assets specified up to limit number on each side.
@@ -48,12 +52,13 @@ namespace bts { namespace app {
 
          bool                              subscribe_to_objects(  const std::function<void(const fc::variant&)>&  callback,
                                                                   const vector<object_id_type>& ids);
-
          bool                              unsubscribe_from_objects( const vector<object_id_type>& ids );
 
          bool                              subscribe_to_market( std::function<void(const variant&)> callback, 
                                                                 asset_id_type, asset_id_type );
          bool                              unsubscribe_from_market( asset_id_type, asset_id_type );
+         void                              cancel_all_subscriptions()
+         { _subscriptions.clear(); _market_subscriptions.clear(); }
 
          std::string                       get_transaction_hex( const signed_transaction& trx )const;
       private:
@@ -116,6 +121,7 @@ namespace bts { namespace app {
 
 FC_API( bts::app::database_api,
         (get_objects)
+        (get_block_header)
         (get_block)
         (get_global_properties)
         (get_dynamic_global_properties)
@@ -137,13 +143,14 @@ FC_API( bts::app::database_api,
         (unsubscribe_from_objects)
         (subscribe_to_market)
         (unsubscribe_from_market)
+        (cancel_all_subscriptions)
         (get_transaction_hex)
-     )
+      )
 FC_API( bts::app::network_api, (broadcast_transaction)(add_node)(get_connected_peers) )
 FC_API( bts::app::login_api,
-   (login)
-   (network)
-   (database)
-   (serialize_transaction)
-   (sign_transaction)
-   )
+        (login)
+        (network)
+        (database)
+        (serialize_transaction)
+        (sign_transaction)
+      )

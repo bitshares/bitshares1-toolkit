@@ -94,7 +94,7 @@ class wallet_api
       map<string,account_id_type>       list_accounts(const string& lowerbound, uint32_t limit);
       vector<asset>                     list_account_balances(const string& id);
       vector<asset_object>              list_assets(const string& lowerbound, uint32_t limit)const;
-      vector<operation_history_object>  get_account_history(string name)const;
+      vector<operation_history_object>  get_account_history(string name, int limit)const;
       vector<limit_order_object>        get_limit_orders(string a, string b, uint32_t limit)const;
       vector<short_order_object>        get_short_orders(string a, uint32_t limit)const;
       vector<call_order_object>         get_call_orders(string a, uint32_t limit)const;
@@ -184,6 +184,8 @@ class wallet_api
 
       signed_transaction sign_transaction(signed_transaction tx, bool broadcast = false);
 
+      void dbg_make_uia(string creator, string symbol);
+      void dbg_make_mia(string creator, string symbol);
       void flood_network(string prefix, uint32_t number_of_transactions);
 
       std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
@@ -245,5 +247,7 @@ FC_API( bts::wallet::wallet_api,
         (save_wallet_file)
         (serialize_transaction)
         (sign_transaction)
+        (dbg_make_uia)
+        (dbg_make_mia)
         (flood_network)
       )

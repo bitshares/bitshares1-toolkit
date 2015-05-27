@@ -289,6 +289,7 @@ public:
    }
    virtual ~wallet_api_impl()
    {
+      _remote_db->cancel_all_subscriptions();
    }
 
    bool copy_wallet_file( string destination_filename )
@@ -909,6 +910,7 @@ public:
 
       short_order_create_operation op;
       op.seller = seller.id;
+      op.expiration = fc::time_point::now() + fc::days(365*10);
       op.amount_to_sell = mia.amount_from_string(amount_to_sell);
       op.collateral = collateral.amount_from_string(amount_of_collateral);
 
@@ -1037,7 +1039,7 @@ public:
 
          for( const operation_history_object& i : r )
          {
-            optional<signed_block> b = _remote_db->get_block(i.block_num);
+            auto b = _remote_db->get_block_header(i.block_num);
             FC_ASSERT(b);
             ss << b->timestamp.to_iso_string() << " ";
             i.op.visit(operation_printer(ss, *this, i.result));
@@ -1065,18 +1067,33 @@ public:
       return m;
    }
 
+   void dbg_make_uia(string creator, string symbol)
+   {
+      asset_object::asset_options opts;
+      opts.flags &= ~(market_issued | white_list | disable_force_settle | global_settle);
+      opts.issuer_permissions = opts.flags;
+      opts.core_exchange_rate = price(asset(1), asset(1,1));
+      create_asset(get_account(creator).name, symbol, 2, opts, {}, true);
+   }
+
+   void dbg_make_mia(string creator, string symbol)
+   {
+      asset_object::asset_options opts;
+      opts.flags &= ~white_list;
+      opts.issuer_permissions = opts.flags;
+      opts.core_exchange_rate = price(asset(1), asset(1,1));
+      asset_object::bitasset_options bopts;
+      create_asset(get_account(creator).name, symbol, 2, opts, bopts, true);
+   }
+
    void flood_network(string prefix, uint32_t number_of_transactions)
    {
       const account_object& master = *_wallet.my_accounts.get<by_name>().lower_bound("bts");
       int number_of_accounts = number_of_transactions / 3;
       number_of_transactions -= number_of_accounts;
       auto key = derive_private_key("floodshill", 0);
-      asset_object::asset_options opts;
-      opts.flags &= ~(market_issued | white_list | disable_force_settle | global_settle);
-      opts.issuer_permissions = opts.flags;
-      opts.core_exchange_rate = price(asset(1), asset(1,1));
       try {
-         create_asset(master.name, "SHILL", 2, opts, {}, true);
+         dbg_make_uia(master.name, "SHILL");
       } catch(...) {/* Ignore; the asset probably already exists.*/}
 
       fc::time_point start = fc::time_point::now(); for( int i = 0; i < number_of_accounts; ++i )
@@ -1241,9 +1258,9 @@ vector<asset_object> wallet_api::list_assets(const string& lowerbound, uint32_t 
    return my->_remote_db->list_assets( lowerbound, limit );
 }
 
-vector<operation_history_object> wallet_api::get_account_history(string name)const
+vector<operation_history_object> wallet_api::get_account_history(string name, int limit)const
 {
-   return my->_remote_db->get_account_history(get_account(name).get_id(), operation_history_id_type());
+   return my->_remote_db->get_account_history(get_account(name).get_id(), operation_history_id_type(), limit, operation_history_id_type());
 }
 
 vector<limit_order_object> wallet_api::get_limit_orders(string a, string b, uint32_t limit)const
@@ -1385,8 +1402,21 @@ signed_transaction wallet_api::sign_transaction(signed_transaction tx, bool broa
    return my->sign_transaction( tx, broadcast);
 } FC_CAPTURE_AND_RETHROW( (tx) ) }
 
+void wallet_api::dbg_make_uia(string creator, string symbol)
+{
+   FC_ASSERT(!is_locked());
+   my->dbg_make_uia(creator, symbol);
+}
+
+void wallet_api::dbg_make_mia(string creator, string symbol)
+{
+   FC_ASSERT(!is_locked());
+   my->dbg_make_mia(creator, symbol);
+}
+
 void wallet_api::flood_network(string prefix, uint32_t number_of_transactions)
 {
+   FC_ASSERT(!is_locked());
    my->flood_network(prefix, number_of_transactions);
 }
 
