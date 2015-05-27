@@ -292,6 +292,15 @@ public:
       _remote_db->cancel_all_subscriptions();
    }
 
+   void encrypt_keys()
+   {
+      plain_keys data;
+      data.keys = _keys;
+      data.checksum = _checksum;
+      auto plain_txt = fc::raw::pack(data);
+      _wallet.cipher_keys = fc::aes_encrypt( data.checksum, plain_txt );
+   }
+
    bool copy_wallet_file( string destination_filename )
    {
       fc::path src_path = get_wallet_filename();
@@ -532,8 +541,7 @@ public:
       // if exceptions are thrown in serialization
       //
 
-      /** encrypt keys */
-
+      encrypt_keys();
 
       if( wallet_filename == "" )
          wallet_filename = _wallet_filename;
@@ -918,6 +926,7 @@ public:
       trx.operations = {op};
       trx.visit(operation_set_fee(_remote_db->get_global_properties().parameters.current_fees));
       trx.validate();
+      idump((broadcast));
 
       return sign_transaction(trx, broadcast);
    }
@@ -1080,6 +1089,7 @@ public:
    {
       asset_object::asset_options opts;
       opts.flags &= ~white_list;
+      opts.flags |= market_issued;
       opts.issuer_permissions = opts.flags;
       opts.core_exchange_rate = price(asset(1), asset(1,1));
       asset_object::bitasset_options bopts;
@@ -1498,7 +1508,6 @@ bool wallet_api::load_wallet_file( string wallet_filename )
 
 void wallet_api::save_wallet_file( string wallet_filename )
 {
-   if( !is_locked() ) lock(); // encrypt it
    my->save_wallet_file( wallet_filename );
 }
 
@@ -1517,14 +1526,18 @@ bool wallet_api::is_new()const
    return my->_wallet.cipher_keys.size() == 0;
 }
 
+void wallet_api::encrypt_keys()
+{
+   my->encrypt_keys();
+}
+
 void wallet_api::lock()
 { try {
    FC_ASSERT( !is_locked() );
-   plain_keys data;
-   data.keys     = std::move( my->_keys );
-   data.checksum = my->_checksum;
-   auto plain_txt = fc::raw::pack(data);
-   my->_wallet.cipher_keys = fc::aes_encrypt( data.checksum, plain_txt );
+   encrypt_keys();
+   for( auto key : my->_keys )
+      key.second = key_to_wif({});
+   my->_keys.clear();
    my->_checksum = fc::sha512();
    my->self.lock_changed(true);
 } FC_CAPTURE_AND_RETHROW() }
