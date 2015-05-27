@@ -38,10 +38,11 @@ class sha256_ctr_rng
       uint64_t get_bits( uint8_t count )
       {
          uint64_t result = 0;
+         uint64_t mask = 1;
          // grab the requested number of bits
          while( count > 0 )
          {
-            result += result +
+            result |=
                (
                   (
                      (
@@ -49,8 +50,9 @@ class sha256_ctr_rng
                         & ( uint64_t( 1 ) << (_current_offset & 0x3F) )
                      )
                      != 0
-                  ) ? 1 : 0
+                  ) ? mask : 0
                );
+            mask += mask;
             --count;
             ++_current_offset;
             if( _current_offset == 0)

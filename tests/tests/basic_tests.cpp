@@ -143,11 +143,12 @@ BOOST_AUTO_TEST_CASE( witness_rng_test_bits )
       {
          uint64_t result = 0;
          uint64_t i = ref_get_bits_offset;
+         uint64_t mask = 1;
          while( count > 0 )
          {
-            result += result;
             if( ref_bits[ i >> 3 ] & (1 << (i & 7)) )
-                result++;
+                result |= mask;
+            mask += mask;
             i++;
             count--;
          }
