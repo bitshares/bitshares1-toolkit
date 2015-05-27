@@ -352,7 +352,7 @@ const asset_object& database_fixture::create_bitasset(
    uint16_t market_fee_percent /* = 100 */ /* 1% */,
    uint16_t flags /* = market_issued | charge_market_fee */
    )
-{
+{ try {
    asset_create_operation creator;
    creator.issuer = issuer;
    creator.fee = asset();
@@ -360,8 +360,8 @@ const asset_object& database_fixture::create_bitasset(
    creator.common_options.max_supply = BTS_MAX_SHARE_SUPPLY;
    creator.precision = 2;
    creator.common_options.market_fee_percent = market_fee_percent;
-   creator.common_options.issuer_permissions = flags;
-   creator.common_options.flags = flags;
+   creator.common_options.issuer_permissions = flags | market_issued;
+   creator.common_options.flags = flags | market_issued;
    creator.common_options.core_exchange_rate = price({asset(1,1),asset(1)});
    creator.bitasset_options = asset_object::bitasset_options();
    trx.operations.push_back(std::move(creator));
@@ -369,7 +369,7 @@ const asset_object& database_fixture::create_bitasset(
    processed_transaction ptx = db.push_transaction(trx, ~0);
    trx.operations.clear();
    return db.get<asset_object>(ptx.operation_results[0].get<object_id_type>());
-}
+} FC_CAPTURE_AND_RETHROW( (name)(flags) ) }
 
 const asset_object& database_fixture::create_user_issued_asset( const string& name )
 {

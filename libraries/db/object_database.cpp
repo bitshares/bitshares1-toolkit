@@ -107,7 +107,7 @@ void object_database::open( const fc::path& data_dir )
    }
    catch ( const fc::exception& e )
    {
-      wlog( "unable to fetch next ids, must be new object_database\n ${e}", ("e",e.to_detail_string()) );
+      // dlog( "unable to fetch next ids, must be new object_database\n ${e}", ("e",e.to_detail_string()) );
    }
 
    _data_dir = data_dir;

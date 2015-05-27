@@ -29,7 +29,7 @@ BOOST_AUTO_TEST_CASE( create_advanced_uia )
       creator.precision = 2;
       creator.common_options.market_fee_percent = BTS_MAX_MARKET_FEE_PERCENT/100; /*1%*/
       creator.common_options.issuer_permissions = ASSET_ISSUER_PERMISSION_MASK & ~(market_issued|disable_force_settle|global_settle);
-      creator.common_options.flags = ASSET_ISSUER_PERMISSION_MASK & ~(market_issued|disable_force_settle|global_settle);
+      creator.common_options.flags = ASSET_ISSUER_PERMISSION_MASK & ~(market_issued|disable_force_settle|global_settle|transfer_restricted);
       creator.common_options.core_exchange_rate = price({asset(2),asset(1,1)});
       creator.common_options.whitelist_authorities = creator.common_options.blacklist_authorities = {account_id_type()};
       trx.operations.push_back(std::move(creator));

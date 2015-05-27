@@ -67,7 +67,7 @@ void asset_object::asset_options::validate()const
    // There must be no high bits in permissions whose meaning is not known.
    FC_ASSERT( !(issuer_permissions & ~ASSET_ISSUER_PERMISSION_MASK) );
    FC_ASSERT( (issuer_permissions & (disable_force_settle|global_settle)) ? issuer_permissions & market_issued : true, "", ("issuer_pemissions", issuer_permissions) );
-   FC_ASSERT( (issuer_permissions & transfer_restricted) ? issuer_permissions & market_issued : false, "market issued assets cannot be issuer restricted", ("issuer_pemissions", issuer_permissions) );
+   FC_ASSERT( (issuer_permissions & transfer_restricted) ? !(issuer_permissions & market_issued) : true, "market issued assets cannot be issuer restricted", ("issuer_pemissions", issuer_permissions) );
    // There must be no high bits in flags which are not also high in permissions.
    FC_ASSERT( !(flags & ~issuer_permissions ) );
    core_exchange_rate.validate();

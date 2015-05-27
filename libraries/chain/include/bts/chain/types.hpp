@@ -59,7 +59,7 @@ namespace bts { namespace chain {
       disable_force_settle = 0x40, /** diable force settleing */
       global_settle        = 0x80 /** allow the bitasset issuer to force a global settling   */
    };
-   const static uint32_t ASSET_ISSUER_PERMISSION_MASK = charge_market_fee|white_list|override_authority|market_issued|disable_force_settle|global_settle|transfer_restricted;
+   const static uint32_t ASSET_ISSUER_PERMISSION_MASK = charge_market_fee|white_list|override_authority|transfer_restricted|market_issued|disable_force_settle|global_settle|transfer_restricted;
    const static uint32_t UIA_ASSET_ISSUER_PERMISSION_MASK = charge_market_fee|white_list|override_authority|transfer_restricted;
 
    enum reserved_spaces

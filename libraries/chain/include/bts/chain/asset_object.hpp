@@ -103,9 +103,9 @@ namespace bts { namespace chain {
             share_type              min_market_fee;
 
             /// The flags which the issuer has permission to update. See @ref asset_issuer_permission_flags
-            uint16_t                issuer_permissions = ASSET_ISSUER_PERMISSION_MASK;
+            uint16_t                issuer_permissions = UIA_ASSET_ISSUER_PERMISSION_MASK;
             /// The currently active flags on this permission. See @ref asset_issuer_permission_flags
-            uint16_t                flags = ASSET_ISSUER_PERMISSION_MASK;
+            uint16_t                flags = 0;
 
             /// When a non-core asset is used to pay a fee, the blockchain must convert that asset to core asset in
             /// order to accept the fee. If this asset's fee pool is funded, the chain will automatically deposite fees
