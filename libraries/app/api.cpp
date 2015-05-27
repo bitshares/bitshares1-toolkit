@@ -225,12 +225,20 @@ namespace bts { namespace app {
 
     vector<call_order_object> database_api::get_call_orders( asset_id_type a, uint32_t limit )const
     {
-       return vector<call_order_object>();
+       const auto& call_index = _db.get_index_type<call_order_index>().indices().get<by_price>();
+       const asset_object& mia = _db.get(a);
+       price index_price = price::min(mia.bitasset_data(_db).short_backing_asset, mia.get_id());
+
+       return vector<call_order_object>(call_index.lower_bound(index_price.min()),
+                                        call_index.lower_bound(index_price.max()));
     }
 
-    vector<force_settlement_object>   database_api::get_settle_orders( asset_id_type a, uint32_t limit )const
+    vector<force_settlement_object> database_api::get_settle_orders( asset_id_type a, uint32_t limit )const
     {
-       return vector<force_settlement_object>();
+       const auto& settle_index = _db.get_index_type<force_settlement_index>().indices().get<by_expiration>();
+       const asset_object& mia = _db.get(a);
+       return vector<force_settlement_object>(settle_index.lower_bound(mia.get_id()),
+                                              settle_index.upper_bound(mia.get_id()));
     }
 
     vector<asset_object> database_api::list_assets( const string& lower_bound_symbol, uint32_t limit )const
