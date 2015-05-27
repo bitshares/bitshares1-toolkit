@@ -22,7 +22,7 @@ distributed in the range `[0, B)` using a sample-and-reject algorithm:
 
 The worst-case running time is unbounded, but each iteration has a
 termination probability greater than one half.  Thus the average-case
-running time is `2` iterations, and and a running time of more than `N`
+running time is `2` iterations, and a running time of more than `N`
 iterations will occur (on average) at most once every `2^N`
 RNG queries (assuming a worst-case choice of e.g. `B = 2^63+1` for all
 queries).  Since each RNG query schedules a witness, the query rate
@@ -33,17 +33,5 @@ require more than 1000 iterations, in practice this will occur on average
 only once every `2^1000` blocks (again assuming all queries have
 worst-case `B`).
 
-Witness scheduler RNG comparison
---------------------------------
-
-The BitShares 0.x witness scheduler RNG interprets the 256-bit `sha256`
-value as a large integer and uses a modulus operation.  This requires
-an `sha256` operation and a large-integer modulus operation for every
-random number produced; both of which are relatively expensive
-operations.
-
-Furthermore, the output of the BitShares 0.x RNG is slightly biased.
-If the bound is not a power of two, then some output values will be
-produced with distinct probabilities.  Admittedly, the difference is
-tiny (approximately `B / 2^256`).  The sample-and-reject algorithm
-is clearly superior since it has no bias; it is truly uniform.
+The sample-and-reject algorithm is totally unbiased; every `x` value
+has equal probability.
