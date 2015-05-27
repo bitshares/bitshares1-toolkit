@@ -733,6 +733,12 @@ namespace bts { namespace chain {
        */
       bool            fill_or_kill = false;
 
+      pair<asset_id_type,asset_id_type> get_market()const 
+      { 
+         return amount_to_sell.asset_id < min_to_receive.asset_id ? 
+                std::make_pair( amount_to_sell.asset_id, min_to_receive.asset_id ) : 
+                std::make_pair( min_to_receive.asset_id, amount_to_sell.asset_id );
+      }
       account_id_type fee_payer()const { return seller; }
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void            validate()const;
@@ -809,6 +815,13 @@ namespace bts { namespace chain {
       void       get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const;
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
+
+      pair<asset_id_type,asset_id_type> get_market()const 
+      { 
+         return amount_to_sell.asset_id < collateral.asset_id ? 
+                std::make_pair( amount_to_sell.asset_id, collateral.asset_id ) : 
+                std::make_pair( collateral.asset_id, amount_to_sell.asset_id );
+      }
 
       /** convention: amount_to_sell / amount_to_receive */
       price      sell_price()const { return ~price::call_price(amount_to_sell, collateral, initial_collateral_ratio); }
@@ -1022,6 +1035,13 @@ namespace bts { namespace chain {
       asset               receives;
       asset               fee; // paid by receiving account
 
+
+      pair<asset_id_type,asset_id_type> get_market()const 
+      { 
+         return pays.asset_id < receives.asset_id ? 
+                std::make_pair( pays.asset_id, receives.asset_id ) : 
+                std::make_pair( receives.asset_id, pays.asset_id );
+      }
       account_id_type fee_payer()const { return account_id; }
       void            get_required_auth(flat_set<account_id_type>& active_auth_set, flat_set<account_id_type>&)const
       { active_auth_set.insert(fee_payer()); }

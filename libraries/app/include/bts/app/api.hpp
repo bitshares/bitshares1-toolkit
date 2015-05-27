@@ -51,16 +51,22 @@ namespace bts { namespace app {
 
          bool                              unsubscribe_from_objects( const vector<object_id_type>& ids );
 
+         bool                              subscribe_to_market( std::function<void(const variant&)> callback, 
+                                                                asset_id_type, asset_id_type );
+         bool                              unsubscribe_from_market( asset_id_type, asset_id_type );
 
          std::string                       get_transaction_hex( const signed_transaction& trx )const;
       private:
          /** called every time a block is applied to report the objects that were changed */
          void on_objects_changed( const vector<object_id_type>& ids );
+         void on_applied_block();
 
-         fc::future<void>                                              _broadcast_changes_complete;
-         boost::signals2::scoped_connection                            _change_connection;
-         map<object_id_type, std::function<void(const fc::variant&)> > _subscriptions;
-         bts::chain::database&                                         _db;
+         fc::future<void>                                                                                          _broadcast_changes_complete;
+         boost::signals2::scoped_connection                                                                        _change_connection;
+         boost::signals2::scoped_connection                                                                        _applied_block_connection;
+         map<object_id_type, std::function<void(const fc::variant&)> >                                             _subscriptions;
+         map< pair<asset_id_type,asset_id_type>, std::function<void(const variant& )> >                            _market_subscriptions;
+         bts::chain::database&                                                                                     _db;
    };
 
    class history_api
@@ -129,6 +135,8 @@ FC_API( bts::app::database_api,
         (list_assets)
         (subscribe_to_objects)
         (unsubscribe_from_objects)
+        (subscribe_to_market)
+        (unsubscribe_from_market)
         (get_transaction_hex)
      )
 FC_API( bts::app::network_api, (broadcast_transaction)(add_node)(get_connected_peers) )

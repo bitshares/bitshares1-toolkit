@@ -14,6 +14,7 @@ namespace bts { namespace app {
        _change_connection = _db.changed_objects.connect( [this]( const vector<object_id_type>& ids ) {
                                     on_objects_changed( ids );
                                     });
+       _applied_block_connection = _db.applied_block.connect( [this](const signed_block&){ on_applied_block(); } );
     }
 
     fc::variants database_api::get_objects( const vector<object_id_type>& ids )const
@@ -358,6 +359,55 @@ namespace bts { namespace app {
           }
        });
     }
+
+    /** note: this method cannot yield because it is called in the middle of
+     * apply a block.
+     */
+    void database_api::on_applied_block()
+    {
+       if( _market_subscriptions.size() == 0 ) 
+          return;
+
+       const auto& ops = _db.get_applied_operations();
+       map< std::pair<asset_id_type,asset_id_type>, vector<pair<operation, operation_result>> > subscribed_markets_ops;
+       for( const auto& op : ops )
+       {
+          std::pair<asset_id_type,asset_id_type> market;
+          switch( op.op.which() )
+          {
+             case operation::tag<limit_order_create_operation>::value:
+                market = op.op.get<limit_order_create_operation>().get_market();
+                break;
+             case operation::tag<short_order_create_operation>::value:
+                market = op.op.get<limit_order_create_operation>().get_market();
+                break;
+             case operation::tag<fill_order_operation>::value:
+                market = op.op.get<fill_order_operation>().get_market();
+                break;
+                /*
+             case operation::tag<limit_order_cancel_operation>::value:
+             case operation::tag<short_order_cancel_operation>::value:
+             */
+             default: break;
+          }
+          auto itr = _market_subscriptions.find( market );
+          if( itr != _market_subscriptions.end() )
+          {
+             subscribed_markets_ops[market].push_back( std::make_pair( op.op, op.result ) );
+          }
+       }
+       fc::async( [=](){
+          for( auto item : subscribed_markets_ops )
+          {
+              auto itr = _market_subscriptions.find( item.first );
+              if( itr != _market_subscriptions.end() )
+              {
+                itr->second( fc::variant(item.second) );
+              }
+          }
+       });
+    }
+
     database_api::~database_api()
     {
        try {
@@ -385,6 +435,23 @@ namespace bts { namespace app {
 
        return true;
     }
+
+    bool  database_api::subscribe_to_market( std::function<void(const variant&)> callback, asset_id_type a, asset_id_type b)
+    {
+       if( a > b ) std::swap(a,b);
+       FC_ASSERT( a != b );
+       _market_subscriptions[ std::make_pair(a,b) ] = callback;
+       return true;
+    }
+
+    bool  database_api::unsubscribe_from_market( asset_id_type a, asset_id_type b )
+    {
+       if( a > b ) std::swap(a,b);
+       FC_ASSERT( a != b );
+       _market_subscriptions.erase( std::make_pair(a,b) );
+       return true;
+    }
+
     std::string  database_api::get_transaction_hex( const signed_transaction& trx )const
     {
        return fc::to_hex( fc::raw::pack(trx) );
