@@ -1275,10 +1275,12 @@ signed_block database::generate_block(
 
 void database::update_active_witnesses()
 { try {
+   assert( _witness_count_histogram_buffer.size() > 0 );
    share_type stake_target = _total_voting_stake / 2;
    share_type stake_tally = _witness_count_histogram_buffer[0];
    int witness_count = 0;
-   while( stake_tally <= stake_target )
+   while( (size_t(witness_count) < _witness_count_histogram_buffer.size())
+          && (stake_tally <= stake_target) )
       stake_tally += _witness_count_histogram_buffer[++witness_count];
 
    auto wits = sort_votable_objects<witness_object>(std::max(witness_count*2+1, BTS_MIN_WITNESS_COUNT));
@@ -1302,10 +1304,12 @@ void database::update_active_witnesses()
 
 void database::update_active_delegates()
 { try {
+   assert( _committee_count_histogram_buffer.size() > 0 );
    uint64_t stake_target = _total_voting_stake / 2;
    uint64_t stake_tally = _committee_count_histogram_buffer[0];
    int delegate_count = 0;
-   while( stake_tally <= stake_target )
+   while( (size_t(delegate_count) < _committee_count_histogram_buffer.size())
+          && (stake_tally <= stake_target) )
       stake_tally += _committee_count_histogram_buffer[++delegate_count];
 
    auto delegates = sort_votable_objects<delegate_object>(std::max(delegate_count*2+1, BTS_MIN_DELEGATE_COUNT));
