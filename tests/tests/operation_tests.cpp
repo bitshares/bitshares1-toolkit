@@ -293,6 +293,7 @@ BOOST_AUTO_TEST_CASE( update_mia )
 
       {
          asset_publish_feed_operation pop;
+         pop.asset_id = bit_usd.get_id();
          pop.publisher = account_id_type(1);
          price_feed feed;
          feed.call_limit = price(bit_usd.amount(5), bit_usd.amount(5));
@@ -898,6 +899,7 @@ BOOST_AUTO_TEST_CASE( delegate_feeds )
       BOOST_REQUIRE_EQUAL(active_witnesses.size(), 10);
 
       asset_publish_feed_operation op({asset(), active_witnesses[0]});
+      op.asset_id = bit_usd.get_id();
       op.feed.call_limit = price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(30));
       op.feed.short_limit = ~price(asset(BTS_BLOCKCHAIN_PRECISION),bit_usd.amount(10));
       // We'll expire margins after a month

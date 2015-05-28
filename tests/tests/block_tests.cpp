@@ -622,6 +622,7 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
       trx.operations.push_back(uop);
    } {
       asset_publish_feed_operation pop;
+      pop.asset_id = bit_usd;
       pop.publisher = nathan_id;
       price_feed feed;
       feed.settlement_price = price(asset(1),asset(1, bit_usd));
@@ -683,14 +684,14 @@ BOOST_FIXTURE_TEST_CASE( force_settlement, database_fixture )
    generate_blocks(settle_id(db).settlement_date);
    //We've hit the max force settlement. Can't settle more now.
    BOOST_CHECK(db.find(settle_id));
-   BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 3517);
+   BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 5344);
    BOOST_CHECK(!db.get_index_type<call_order_index>().indices().empty());
 
    generate_blocks(db.get_dynamic_global_properties().next_maintenance_time);
    //Now it's been another maintenance interval, so we should have some more settlement.
    //I can't force settle all existing asset, but with a 90% limit, I get pretty close.
    BOOST_CHECK(db.find(settle_id));
-   BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 5694);
+   BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 5878);
    BOOST_CHECK(!db.get_index_type<call_order_index>().indices().empty());
 } FC_LOG_AND_RETHROW() }
 

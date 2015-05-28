@@ -2153,6 +2153,10 @@ void database::clear_expired_orders()
             max_settlement_volume = mia_object.amount(mia.max_force_settlement_volume(mia_object.dynamic_data(*this).current_supply));
          if( mia.current_feed.settlement_price.is_null() || mia.force_settled_volume >= max_settlement_volume.amount )
          {
+            ilog("Skipping force settlement in ${asset}; price is null: ${settlement_price_null}; settled "
+                 "${settled_volume} / ${max_volume}",
+                 ("asset", mia_object.symbol)("settlement_price_null",mia.current_feed.settlement_price.is_null())
+                 ("settled_volume", mia.force_settled_volume)("max_volume", max_settlement_volume));
             auto bound = settlement_index.upper_bound(boost::make_tuple(current_asset));
             if( bound == settlement_index.end() )
                break;

@@ -647,6 +647,7 @@ namespace bts { namespace chain {
    {
       asset                  fee; ///< paid for by publisher
       account_id_type        publisher;
+      asset_id_type          asset_id; ///< asset for which the feed is published
       price_feed             feed;
 
       account_id_type fee_payer()const { return publisher; }
@@ -735,10 +736,10 @@ namespace bts { namespace chain {
        */
       bool            fill_or_kill = false;
 
-      pair<asset_id_type,asset_id_type> get_market()const 
-      { 
-         return amount_to_sell.asset_id < min_to_receive.asset_id ? 
-                std::make_pair( amount_to_sell.asset_id, min_to_receive.asset_id ) : 
+      pair<asset_id_type,asset_id_type> get_market()const
+      {
+         return amount_to_sell.asset_id < min_to_receive.asset_id ?
+                std::make_pair( amount_to_sell.asset_id, min_to_receive.asset_id ) :
                 std::make_pair( min_to_receive.asset_id, amount_to_sell.asset_id );
       }
       account_id_type fee_payer()const { return seller; }
@@ -818,10 +819,10 @@ namespace bts { namespace chain {
       void       validate()const;
       share_type calculate_fee( const fee_schedule_type& k )const;
 
-      pair<asset_id_type,asset_id_type> get_market()const 
-      { 
-         return amount_to_sell.asset_id < collateral.asset_id ? 
-                std::make_pair( amount_to_sell.asset_id, collateral.asset_id ) : 
+      pair<asset_id_type,asset_id_type> get_market()const
+      {
+         return amount_to_sell.asset_id < collateral.asset_id ?
+                std::make_pair( amount_to_sell.asset_id, collateral.asset_id ) :
                 std::make_pair( collateral.asset_id, amount_to_sell.asset_id );
       }
 
@@ -1038,10 +1039,10 @@ namespace bts { namespace chain {
       asset               fee; // paid by receiving account
 
 
-      pair<asset_id_type,asset_id_type> get_market()const 
-      { 
-         return pays.asset_id < receives.asset_id ? 
-                std::make_pair( pays.asset_id, receives.asset_id ) : 
+      pair<asset_id_type,asset_id_type> get_market()const
+      {
+         return pays.asset_id < receives.asset_id ?
+                std::make_pair( pays.asset_id, receives.asset_id ) :
                 std::make_pair( receives.asset_id, pays.asset_id );
       }
       account_id_type fee_payer()const { return account_id; }
@@ -1658,18 +1659,32 @@ namespace bts { namespace chain {
     * conversion you wish to use. The operation's fee will be set by multiplying the CORE fee by the provided exchange
     * rate. It is up to the caller to ensure that the core_exchange_rate converts to an asset accepted by the delegates
     * at a rate which they will accept.
+    *
+    * If total_fee is not nullptr, the total fee for all operations visited will be stored in the provided share_type.
+    * The share_type will be set to zero when the visitor is constructed.
     */
    struct operation_set_fee
    {
       const fee_schedule_type& fees;
       const price& core_exchange_rate;
-      operation_set_fee( const fee_schedule_type& f, const price& core_exchange_rate = price::unit_price() )
+      share_type* total_fee;
+      operation_set_fee( const fee_schedule_type& f,
+                         const price& core_exchange_rate = price::unit_price(),
+                         share_type* total_fee = nullptr )
          : fees(f),
-           core_exchange_rate(core_exchange_rate)
-      {}
+           core_exchange_rate(core_exchange_rate),
+           total_fee(total_fee)
+      {
+         if( total_fee )
+            *total_fee = 0;
+      }
       typedef asset result_type;
       template<typename T>
-      asset operator()( T& v )const { return v.fee = asset(v.calculate_fee(fees)) * core_exchange_rate; }
+      asset operator()( T& v )const {
+         asset fee = (v.calculate_fee(fees)) * core_exchange_rate;
+         if( total_fee ) *total_fee += fee.amount;
+         return v.fee = fee;
+      }
    };
 
    /**
@@ -1763,7 +1778,7 @@ FC_REFLECT( bts::chain::asset_update_feed_producers_operation,
             (fee)(issuer)(asset_to_update)(new_feed_producers)
           )
 FC_REFLECT( bts::chain::asset_publish_feed_operation,
-            (fee)(publisher)(feed) )
+            (fee)(publisher)(asset_id)(feed) )
 FC_REFLECT( bts::chain::asset_settle_operation, (fee)(account)(amount) )
 FC_REFLECT( bts::chain::asset_global_settle_operation, (fee)(issuer)(asset_to_settle)(settle_price) )
 FC_REFLECT( bts::chain::asset_issue_operation,
@@ -1805,3 +1820,5 @@ FC_REFLECT( bts::chain::worker_create_operation,
 
 FC_REFLECT( bts::chain::custom_operation, (fee)(payer)(required_auths)(id)(data) )
 FC_REFLECT( bts::chain::void_result, )
+
+FC_REFLECT_TYPENAME( bts::chain::operation )

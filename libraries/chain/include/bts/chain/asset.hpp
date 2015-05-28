@@ -174,6 +174,6 @@ namespace bts { namespace chain {
 
 FC_REFLECT( bts::chain::asset, (amount)(asset_id) )
 FC_REFLECT( bts::chain::price, (base)(quote) )
-#define BTS_PRICE_FEED_FIELDS (call_limit)(short_limit)(max_margin_period_sec)\
+#define BTS_PRICE_FEED_FIELDS (call_limit)(short_limit)(settlement_price)(max_margin_period_sec)\
    (required_initial_collateral)(required_maintenance_collateral)
 FC_REFLECT( bts::chain::price_feed, BTS_PRICE_FEED_FIELDS )

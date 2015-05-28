@@ -331,7 +331,7 @@ object_id_type asset_publish_feeds_evaluator::do_evaluate(const asset_publish_fe
 { try {
    database& d = db();
 
-   const asset_object& quote = o.feed.call_limit.quote.asset_id(d);
+   const asset_object& quote = o.asset_id(d);
    //Verify that this feed is for a market-issued asset and that asset is backed by the base
    FC_ASSERT(quote.is_market_issued());
 
@@ -354,7 +354,7 @@ object_id_type asset_publish_feeds_evaluator::do_apply(const asset_publish_feed_
 { try {
    database& d = db();
 
-   const asset_object& quote = d.get(o.feed.call_limit.quote.asset_id);
+   const asset_object& quote = o.asset_id(d);
    // Store medians for this asset
    d.modify(quote.bitasset_data(d), [&o,&d](asset_bitasset_data_object& a) {
       a.feeds[o.publisher] = make_pair(d.head_block_time(), o.feed);

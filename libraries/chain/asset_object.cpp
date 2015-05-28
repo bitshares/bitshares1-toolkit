@@ -8,7 +8,12 @@ using namespace bts::chain;
 
 share_type asset_bitasset_data_object::max_force_settlement_volume(share_type current_supply) const
 {
-   fc::uint128 volume = current_supply.value;
+   if( options.maximum_force_settlement_volume == 0 )
+      return 0;
+   if( options.maximum_force_settlement_volume == BTS_100_PERCENT )
+      return current_supply + force_settled_volume;
+
+   fc::uint128 volume = current_supply.value + force_settled_volume.value;
    volume *= options.maximum_force_settlement_volume;
    volume /= BTS_100_PERCENT;
    return volume.to_uint64();
