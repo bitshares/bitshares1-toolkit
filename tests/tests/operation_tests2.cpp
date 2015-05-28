@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_test )
       first_start_time = permit_object.next_period_start_time;
       BOOST_CHECK(permit_object.withdrawal_limit == asset(5));
       BOOST_CHECK(permit_object.withdrawal_period_sec == fc::hours(1).to_seconds());
-      BOOST_CHECK(permit_object.remaining_periods == 5);
+      BOOST_CHECK(permit_object.expiration == first_start_time + permit_object.withdrawal_period_sec*5 );
    }
 
    generate_blocks(2);
@@ -121,7 +121,8 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_test )
       BOOST_CHECK(permit_object.next_period_start_time == first_start_time + permit_object.withdrawal_period_sec);
       BOOST_CHECK(permit_object.withdrawal_limit == asset(5));
       BOOST_CHECK(permit_object.withdrawal_period_sec == fc::hours(1).to_seconds());
-      BOOST_CHECK(permit_object.remaining_periods == 4);
+      BOOST_CHECK_EQUAL(permit_object.claimed_this_period.value, 2 );
+      BOOST_CHECK(permit_object.expiration == first_start_time + permit_object.withdrawal_period_sec*5 );
       generate_blocks(permit_object.next_period_start_time + permit_object.withdrawal_period_sec);
    }
 
@@ -154,8 +155,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_test )
       BOOST_CHECK(permit_object.next_period_start_time == first_start_time + 3*permit_object.withdrawal_period_sec);
       BOOST_CHECK(permit_object.withdrawal_limit == asset(5));
       BOOST_CHECK(permit_object.withdrawal_period_sec == fc::hours(1).to_seconds());
-      BOOST_CHECK(permit_object.remaining_periods == 2);
-      generate_blocks(permit_object.next_period_start_time + 3*permit_object.withdrawal_period_sec);
+      generate_blocks(permit_object.expiration);
    }
 
    {
@@ -186,7 +186,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_nominal_case )
    while(db.find_object(permit))
    {
       generate_blocks(db.get(permit).next_period_start_time + 50);
-      BOOST_CHECK(db.get(permit).claimable);
+      //BOOST_CHECK(db.get(permit).claimable);
       withdraw_permission_claim_operation op;
       op.withdraw_permission = permit;
       op.withdraw_from_account = nathan_id;
@@ -196,7 +196,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_nominal_case )
       trx.sign(dan_key_id, dan_private_key);
       db.push_transaction(trx);
       trx.clear();
-      BOOST_CHECK(!db.find_object(permit) || !db.get(permit).claimable);
+      BOOST_CHECK(!db.find_object(permit));// || !db.get(permit).claimable);
    }
 
    BOOST_CHECK_EQUAL(get_balance(nathan_id, asset_id_type()), 975);
@@ -244,7 +244,7 @@ BOOST_AUTO_TEST_CASE( withdraw_permission_update )
       BOOST_CHECK(permit_object.next_period_start_time == db.head_block_time() + 10);
       BOOST_CHECK(permit_object.withdrawal_limit == asset(12));
       BOOST_CHECK(permit_object.withdrawal_period_sec == 10);
-      BOOST_CHECK(permit_object.remaining_periods == 2);
+      // BOOST_CHECK(permit_object.remaining_periods == 2);
    }
 } FC_LOG_AND_RETHROW() }
 
