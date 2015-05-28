@@ -265,12 +265,16 @@ class wallet_api_impl
    }
    void enable_umask_protection()
    {
+#ifdef __unix__
       _old_umask = umask( S_IRWXG | S_IRWXO );
+#endif
       return;
    }
    void disable_umask_protection()
    {
+#ifdef __unix__
       umask( _old_umask );
+#endif
       return;
    }
 
@@ -1224,7 +1228,9 @@ fc::api<login_api>      _remote_api;
 fc::api<database_api>   _remote_db;
 fc::api<network_api>    _remote_net;
 
+#ifdef __unix__
 mode_t                  _old_umask;
+#endif
 const string _wallet_filename_extension = ".wallet";
 
 mutable map<asset_id_type, asset_object> _asset_cache;
