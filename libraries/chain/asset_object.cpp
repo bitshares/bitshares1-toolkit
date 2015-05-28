@@ -156,10 +156,6 @@ string asset_object::amount_to_string(share_type amount) const
    string result = fc::to_string(amount.value / scaled_precision.value);
    auto decimals = amount.value % scaled_precision.value;
    if( decimals )
-   {
-      while( decimals % 10 )
-         decimals /= 10;
-      result += "." + fc::to_string(decimals);
-   }
+      result += "." + fc::to_string(scaled_precision.value + decimals).erase(0,1);
    return result;
 }
