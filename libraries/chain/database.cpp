@@ -2199,17 +2199,9 @@ void database::update_expired_feeds()
 
 void database::update_withdraw_permissions()
 {
-   auto& permit_index = get_index_type<withdraw_permission_index>().indices().get<by_next_period>();
-   while( !permit_index.empty() && permit_index.begin()->next_period_start_time <= head_block_time() )
-   {
-      const withdraw_permission_object& permit = *permit_index.begin();
-      bool expired = false;
-      modify(permit, [this, &expired](withdraw_permission_object& p) {
-         expired = p.update_period(head_block_time());
-      });
-      if( expired )
-         remove(permit);
-   }
+   auto& permit_index = get_index_type<withdraw_permission_index>().indices().get<by_expiration>();
+   while( !permit_index.empty() && permit_index.begin()->expiration < head_block_time() )
+      remove(*permit_index.begin());
 }
 
 /**

@@ -18,8 +18,8 @@ class withdraw_permission_claim_evaluator : public evaluator<withdraw_permission
 public:
    typedef withdraw_permission_claim_operation operation_type;
 
-   object_id_type do_evaluate( const operation_type& op );
-   object_id_type do_apply( const operation_type& op );
+   void_result do_evaluate( const operation_type& op );
+   void_result do_apply( const operation_type& op );
 };
 
 class withdraw_permission_update_evaluator : public evaluator<withdraw_permission_update_evaluator>
@@ -27,8 +27,8 @@ class withdraw_permission_update_evaluator : public evaluator<withdraw_permissio
 public:
    typedef withdraw_permission_update_operation operation_type;
 
-   object_id_type do_evaluate( const operation_type& op );
-   object_id_type do_apply( const operation_type& op );
+   void_result do_evaluate( const operation_type& op );
+   void_result do_apply( const operation_type& op );
 };
 
 class withdraw_permission_delete_evaluator : public evaluator<withdraw_permission_delete_evaluator>
@@ -36,8 +36,8 @@ class withdraw_permission_delete_evaluator : public evaluator<withdraw_permissio
 public:
    typedef withdraw_permission_delete_operation operation_type;
 
-   object_id_type do_evaluate( const operation_type& op );
-   object_id_type do_apply( const operation_type& op );
+   void_result do_evaluate( const operation_type& op );
+   void_result do_apply( const operation_type& op );
 };
 
 } } // bts::chain

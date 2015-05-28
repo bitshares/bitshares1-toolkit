@@ -25,33 +25,44 @@ namespace bts { namespace chain {
         account_id_type    withdraw_from_account;
         /// The account authorized to make withdrawals from @ref withdraw_from_account
         account_id_type    authorized_account;
-        /// The maximum amount which may be withdrawn. All withdrawals must be of this asset type
+        /// The maximum amount which may be withdrawn per period. All withdrawals must be of this asset type
         asset              withdrawal_limit;
         /// The duration of a withdrawal period in seconds
-        uint32_t           withdrawal_period_sec;
-        /// The remaining number of withdrawals authorized
-        uint32_t           remaining_periods;
+        uint32_t           withdrawal_period_sec = 0;
         /// The beginning of the next withdrawal period
         time_point_sec     next_period_start_time;
+        /// The time at which this withdraw permission expires
+        time_point_sec     expiration;
+
+        /// tracks the total amount
+        share_type         claimed_this_period;
         /// True if the permission may still be claimed for this period; false if it has already been used
-        bool               claimable;
+        bool               claimable()const { return claimed_this_period < withdrawal_limit.amount; }
+        asset              available_this_period( fc::time_point_sec current_time )const 
+        { 
+           if( current_time > next_period_start_time + withdrawal_period_sec )
+              return withdrawal_limit;
+           return asset( claimable() ? withdrawal_limit.amount - claimed_this_period : 0, withdrawal_limit.asset_id); 
+        }
 
         /// Updates @ref remaining_periods and @ref next_period_start_time
         /// @return true if permission is expired; false otherwise
+        /*
         bool update_period(fc::time_point_sec current_time) {
            while( remaining_periods > 0 && next_period_start_time <= current_time )
            {
               next_period_start_time += withdrawal_period_sec;
               --remaining_periods;
-              claimable = true;
+              claimed_this_period = 0;
            }
            return remaining_periods == 0 && next_period_start_time <= current_time;
         }
+        */
    };
 
    struct by_from;
    struct by_authorized;
-   struct by_next_period;
+   struct by_expiration;
 
    typedef multi_index_container<
       withdraw_permission_object,
@@ -59,7 +70,7 @@ namespace bts { namespace chain {
          hashed_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
          hashed_non_unique< tag<by_from>, member<withdraw_permission_object, account_id_type, &withdraw_permission_object::withdraw_from_account> >,
          hashed_non_unique< tag<by_authorized>, member<withdraw_permission_object, account_id_type, &withdraw_permission_object::authorized_account> >,
-         ordered_non_unique< tag<by_next_period>, member<withdraw_permission_object, time_point_sec, &withdraw_permission_object::next_period_start_time> >
+         ordered_non_unique< tag<by_expiration>, member<withdraw_permission_object, time_point_sec, &withdraw_permission_object::expiration> >
       >
    > withdraw_permission_object_multi_index_type;
 
@@ -73,7 +84,6 @@ FC_REFLECT_DERIVED( bts::chain::withdraw_permission_object, (bts::db::object),
                     (authorized_account)
                     (withdrawal_limit)
                     (withdrawal_period_sec)
-                    (remaining_periods)
                     (next_period_start_time)
-                    (claimable)
+                    (expiration)
                  )

@@ -317,8 +317,11 @@ int main( int argc, char** argv )
     js_name<operation>::name("operation");
     js_name<static_variant<address,public_key_type>>::name("key_data");
     js_name<operation_result>::name("operation_result");
+    js_name<header_extension>::name("header_extension");
     js_name<static_variant<refund_worker_type::initializer, vesting_balance_worker_type::initializer>>::name("initializer_type");
     serializer<signed_block>::init();
+    serializer<block_header>::init();
+    serializer<signed_block_header>::init();
     serializer<operation>::init();
     serializer<transaction>::init();
     serializer<signed_transaction>::init();

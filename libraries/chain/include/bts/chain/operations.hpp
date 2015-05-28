@@ -16,7 +16,8 @@ namespace bts { namespace chain {
    bool is_premium_name( const string& n );
    bool is_cheap_name( const string& n );
 
-   typedef fc::static_variant<object_id_type,asset> operation_result;
+   struct void_result{};
+   typedef fc::static_variant<void_result,object_id_type,asset> operation_result;
 
    struct balance_accumulator
    {
@@ -1803,3 +1804,4 @@ FC_REFLECT( bts::chain::worker_create_operation,
             (fee)(owner)(work_begin_date)(work_end_date)(daily_pay)(initializer) )
 
 FC_REFLECT( bts::chain::custom_operation, (fee)(payer)(required_auths)(id)(data) )
+FC_REFLECT( bts::chain::void_result, )
