@@ -4,6 +4,9 @@
 
 namespace bts { namespace chain {
 
+   struct void_header{};
+   typedef fc::static_variant<void_header> header_extension;
+
    struct block_header
    {
       digest_type                   digest()const;
@@ -14,6 +17,7 @@ namespace bts { namespace chain {
       secret_hash_type              next_secret_hash;
       secret_hash_type              previous_secret;
       checksum_type                 transaction_merkle_root;
+      vector<header_extension>      extensions;
 
       static uint32_t num_from_id(const block_id_type& id) { return htonl(id._hash[0]); }
    };
@@ -36,7 +40,8 @@ namespace bts { namespace chain {
 
 } } // bts::chain
 
+FC_REFLECT( bts::chain::void_header, )
 FC_REFLECT( bts::chain::block_header, (previous)(timestamp)(witness)
-            (next_secret_hash)(previous_secret)(transaction_merkle_root) )
+            (next_secret_hash)(previous_secret)(transaction_merkle_root)(extensions) )
 FC_REFLECT_DERIVED( bts::chain::signed_block_header, (bts::chain::block_header), (delegate_signature) )
 FC_REFLECT_DERIVED( bts::chain::signed_block, (bts::chain::signed_block_header), (transactions) )
