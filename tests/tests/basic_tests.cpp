@@ -103,7 +103,7 @@ BOOST_AUTO_TEST_CASE( witness_rng_test_bits )
       // seed = sha256("") = e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
       BOOST_CHECK( memcmp( seed.data(), seed_data, HASH_SIZE ) == 0 );
 
-      sha256_ctr_rng test_rng(seed, 0);
+      hash_ctr_rng< fc::sha256, 32 > test_rng(seed.data(), 0);
       // python2 -c 'import hashlib; import struct; h = lambda x : hashlib.sha256(x).digest(); i = lambda x : struct.pack("<Q", x); print( h( h("") + i(0) ) )' | hd
       string ref_bits_hex =
           "5c5d42dcf39f71c0226ca720d8d518db615b5773f038e5e491963f6f47621bbd"   // h( h("") + i(0) )

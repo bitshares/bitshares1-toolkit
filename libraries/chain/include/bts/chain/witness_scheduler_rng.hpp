@@ -1,5 +1,7 @@
 #pragma once
 
+#include <boost/multiprecision/integer.hpp>
+
 namespace bts { namespace chain {
 
 /**
@@ -19,21 +21,19 @@ class nullary_rng
  * The sha256_ctr_rng generates bits using SHA256 in counter (CTR)
  * mode.
  */
-class sha256_ctr_rng
+template< class HashClass, int SeedLength=32 >
+class hash_ctr_rng
 {
    public:
-
-      sha256_ctr_rng( fc::sha256 seed, uint64_t counter = 0 )
+      hash_ctr_rng( const char* seed, uint64_t counter = 0 )
          : _counter( counter ), _current_offset( 0 )
       {
-         // we don't even pretend to be portable to big endian archs
-         for( int i=0; i<4; i++ )
-            ((uint64_t *) _seed)[i] = seed._hash[i];
+         memcpy( _seed, seed, SeedLength );
          _reset_current_value();
          return;
       }
 
-      virtual ~sha256_ctr_rng() {}
+      virtual ~hash_ctr_rng() {}
 
       uint64_t get_bits( uint8_t count )
       {
@@ -46,8 +46,8 @@ class sha256_ctr_rng
                (
                   (
                      (
-                        _current_value._hash[ (_current_offset >> 6) & 3 ]
-                        & ( uint64_t( 1 ) << (_current_offset & 0x3F) )
+                        _current_value.data()[ (_current_offset >> 3) & 0x1F ]
+                        & ( 1 << (_current_offset & 0x07) )
                      )
                      != 0
                   ) ? mask : 0
@@ -55,9 +55,10 @@ class sha256_ctr_rng
             mask += mask;
             --count;
             ++_current_offset;
-            if( _current_offset == 0)
+            if( _current_offset == (_current_value.data_size() << 3) )
             {
                _counter++;
+               _current_offset = 0;
                _reset_current_value();
             }
          }
@@ -92,17 +93,17 @@ class sha256_ctr_rng
       {
          // internal implementation detail, called to update
          //   _current_value when _counter changes
-         fc::sha256::encoder enc;
-         enc.write(           _seed   , 32 );
-         enc.write( (char *) &_counter,  8 );
+         typename HashClass::encoder enc;
+         enc.write(           _seed   , SeedLength );
+         enc.write( (char *) &_counter,          8 );
          _current_value = enc.result();
          return;
       }
 
       uint64_t _counter;
-      char _seed[ 32 ];
-      fc::sha256 _current_value;
-      uint8_t _current_offset;
+      char _seed[ SeedLength ];
+      HashClass _current_value;
+      uint16_t _current_offset;
 } ;
 
 } }
