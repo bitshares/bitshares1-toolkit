@@ -159,7 +159,7 @@ BOOST_AUTO_TEST_CASE( witness_rng_test_bits )
       // use PRNG to decide between 0-64 bits
       std::minstd_rand rng;
       rng.seed( 9999 );
-      std::uniform_int_distribution< uint8_t > bit_dist( 0, 64 );
+      std::uniform_int_distribution< uint16_t > bit_dist( 0, 64 );
       for( int i=0; i<10000; i++ )
       {
          uint8_t bit_count = bit_dist( rng );
