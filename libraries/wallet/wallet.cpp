@@ -35,34 +35,34 @@ namespace detail {
 
 namespace
 {
-  template <typename... Args>
-  struct types_to_string_list_helper;
+template <typename... Args>
+struct types_to_string_list_helper;
 
-  template <typename First, typename... Args>
-  struct types_to_string_list_helper<First, Args...>
-  {
-    std::list<std::string> operator()() const
-    {
+template <typename First, typename... Args>
+struct types_to_string_list_helper<First, Args...>
+{
+   std::list<std::string> operator()() const
+   {
       std::list<std::string> argsList = types_to_string_list_helper<Args...>()();
       argsList.push_front(fc::get_typename<typename std::decay<First>::type>::name());
       return argsList;
-    }
-  };
+   }
+};
 
-  template <>
-  struct types_to_string_list_helper<>
-  {
-    std::list<std::string> operator()() const
-    {
+template <>
+struct types_to_string_list_helper<>
+{
+   std::list<std::string> operator()() const
+   {
       return std::list<std::string>();
-    }
-  };
+   }
+};
 
-  template <typename... Args>
-  std::list<std::string> types_to_string_list()
-  {
-    return types_to_string_list_helper<Args...>()();
-  }
+template <typename... Args>
+std::list<std::string> types_to_string_list()
+{
+   return types_to_string_list_helper<Args...>()();
+}
 }
 
 struct help_visitor
@@ -141,9 +141,9 @@ string address_to_shorthash( const address& addr )
 }
 
 fc::ecc::private_key derive_private_key(
-   const std::string& prefix_string,
-   int sequence_number
-   )
+      const std::string& prefix_string,
+      int sequence_number
+      )
 {
    std::string sequence_string = std::to_string(sequence_number);
    fc::sha512 h = fc::sha512::hash(prefix_string + " " + sequence_string);
@@ -165,39 +165,39 @@ string normalize_brain_key( string s )
       c = s[i++];
       switch( c )
       {
-         case ' ':  case '\t': case '\r': case '\n': case '\v': case '\f':
-            preceded_by_whitespace = true;
-            continue;
+      case ' ':  case '\t': case '\r': case '\n': case '\v': case '\f':
+         preceded_by_whitespace = true;
+         continue;
 
-         case 'a': c = 'A'; break;
-         case 'b': c = 'B'; break;
-         case 'c': c = 'C'; break;
-         case 'd': c = 'D'; break;
-         case 'e': c = 'E'; break;
-         case 'f': c = 'F'; break;
-         case 'g': c = 'G'; break;
-         case 'h': c = 'H'; break;
-         case 'i': c = 'I'; break;
-         case 'j': c = 'J'; break;
-         case 'k': c = 'K'; break;
-         case 'l': c = 'L'; break;
-         case 'm': c = 'M'; break;
-         case 'n': c = 'N'; break;
-         case 'o': c = 'O'; break;
-         case 'p': c = 'P'; break;
-         case 'q': c = 'Q'; break;
-         case 'r': c = 'R'; break;
-         case 's': c = 'S'; break;
-         case 't': c = 'T'; break;
-         case 'u': c = 'U'; break;
-         case 'v': c = 'V'; break;
-         case 'w': c = 'W'; break;
-         case 'x': c = 'X'; break;
-         case 'y': c = 'Y'; break;
-         case 'z': c = 'Z'; break;
+      case 'a': c = 'A'; break;
+      case 'b': c = 'B'; break;
+      case 'c': c = 'C'; break;
+      case 'd': c = 'D'; break;
+      case 'e': c = 'E'; break;
+      case 'f': c = 'F'; break;
+      case 'g': c = 'G'; break;
+      case 'h': c = 'H'; break;
+      case 'i': c = 'I'; break;
+      case 'j': c = 'J'; break;
+      case 'k': c = 'K'; break;
+      case 'l': c = 'L'; break;
+      case 'm': c = 'M'; break;
+      case 'n': c = 'N'; break;
+      case 'o': c = 'O'; break;
+      case 'p': c = 'P'; break;
+      case 'q': c = 'Q'; break;
+      case 'r': c = 'R'; break;
+      case 's': c = 'S'; break;
+      case 't': c = 'T'; break;
+      case 'u': c = 'U'; break;
+      case 'v': c = 'V'; break;
+      case 'w': c = 'W'; break;
+      case 'x': c = 'X'; break;
+      case 'y': c = 'Y'; break;
+      case 'z': c = 'Z'; break;
 
-         default:
-            break;
+      default:
+         break;
       }
       if( preceded_by_whitespace && non_empty )
          result.push_back(' ');
@@ -273,6 +273,8 @@ class wallet_api_impl
       umask( _old_umask );
       return;
    }
+
+   map<transaction_handle_type, signed_transaction> _builder_transactions;
 
 public:
    wallet_api& self;
@@ -571,6 +573,87 @@ public:
       return;
    }
 
+   transaction_handle_type begin_builder_transaction()
+   {
+      int trx_handle = _builder_transactions.empty()? 0
+                                                    : (--_builder_transactions.end())->first + 1;
+      _builder_transactions[trx_handle];
+      return trx_handle;
+   }
+   void add_operation_to_builder_transaction(transaction_handle_type transaction_handle, const operation& op)
+   {
+      FC_ASSERT(_builder_transactions.count(transaction_handle));
+      _builder_transactions[transaction_handle].operations.emplace_back(op);
+   }
+   void replace_operation_in_builder_transaction(transaction_handle_type handle,
+                                                 int operation_index,
+                                                 const operation& new_op)
+   {
+      FC_ASSERT(_builder_transactions.count(handle));
+      signed_transaction& trx = _builder_transactions[handle];
+      FC_ASSERT(operation_index >= 0 && operation_index < trx.operations.size());
+      trx.operations[operation_index] = new_op;
+   }
+   asset set_fees_on_builder_transaction(transaction_handle_type handle, string fee_asset = BTS_SYMBOL)
+   {
+      FC_ASSERT(_builder_transactions.count(handle));
+
+      auto fee_asset_obj = get_asset(fee_asset);
+      asset total_fee = fee_asset_obj.amount(0);
+      if( fee_asset_obj.get_id() != asset_id_type() )
+      {
+         _builder_transactions[handle].visit(
+                  operation_set_fee(_remote_db->get_global_properties().parameters.current_fees,
+                                    fee_asset_obj.options.core_exchange_rate,
+                                    &total_fee.amount)
+                  );
+
+         FC_ASSERT((total_fee * fee_asset_obj.options.core_exchange_rate).amount <=
+                   get_object<asset_dynamic_data_object>(fee_asset_obj.dynamic_asset_data_id).fee_pool,
+                   "Cannot pay fees in ${asset}, as this asset's fee pool is insufficiently funded.",
+                   ("asset", fee_asset_obj.symbol));
+      } else {
+         _builder_transactions[handle].visit(
+                  operation_set_fee(_remote_db->get_global_properties().parameters.current_fees,
+                                    price::unit_price(),
+                                    &total_fee.amount)
+                  );
+      }
+
+      return total_fee;
+   }
+   transaction preview_builder_transaction(transaction_handle_type handle)
+   {
+      FC_ASSERT(_builder_transactions.count(handle));
+      return _builder_transactions[handle];
+   }
+   signed_transaction sign_builder_transaction(transaction_handle_type transaction_handle, bool broadcast = true)
+   {
+      FC_ASSERT(_builder_transactions.count(transaction_handle));
+
+      return _builder_transactions[transaction_handle] = sign_transaction(_builder_transactions[transaction_handle], broadcast);
+   }
+   signed_transaction propose_builder_transaction(transaction_handle_type handle,
+                                                  time_point_sec expiration = time_point::now() + fc::minutes(1),
+                                                  uint32_t review_period_seconds = 0, bool broadcast = true)
+   {
+      FC_ASSERT(_builder_transactions.count(handle));
+      proposal_create_operation op;
+      op.expiration_time = expiration;
+      signed_transaction& trx = _builder_transactions[handle];
+      std::transform(trx.operations.begin(), trx.operations.end(), std::back_inserter(op.proposed_ops),
+                     [](const operation& op) -> op_wrapper { return op; });
+      if( review_period_seconds )
+         op.review_period_seconds = review_period_seconds;
+      op.fee = op.calculate_fee(_remote_db->get_global_properties().parameters.current_fees);
+      trx.operations = {op};
+
+      return trx = sign_transaction(trx, broadcast);
+   }
+   void remove_builder_transaction(transaction_handle_type handle)
+   {
+      _builder_transactions.erase(handle);
+   }
 
    signed_transaction register_account(string name,
                                        public_key_type owner,
@@ -580,131 +663,31 @@ public:
                                        uint8_t referrer_percent,
                                        bool broadcast = false)
    { try {
-         FC_ASSERT( !self.is_locked() );
-         FC_ASSERT( is_valid_name(name) );
-         account_create_operation account_create_op;
-
-         // TODO:  process when pay_from_account is ID
-
-         account_object registrar_account_object =
-               this->get_account( registrar_account );
-         FC_ASSERT( registrar_account_object.is_prime() );
-
-         account_id_type registrar_account_id = registrar_account_object.id;
-
-         account_object referrer_account_object =
-               this->get_account( referrer_account );
-         account_create_op.referrer = referrer_account_object.id;
-         account_create_op.referrer_percent = referrer_percent;
-
-         // get pay_from_account_id
-         key_create_operation owner_key_create_op;
-         owner_key_create_op.fee_paying_account = registrar_account_id;
-         owner_key_create_op.key_data = owner;
-
-         key_create_operation active_key_create_op;
-         active_key_create_op.fee_paying_account = registrar_account_id;
-         active_key_create_op.key_data = active;
-
-         // key_create_op.calculate_fee(db.current_fee_schedule());
-
-         // TODO:  Check if keys already exist!!!
-
-         relative_key_id_type owner_rkid(0);
-         relative_key_id_type active_rkid(1);
-
-         account_create_op.registrar = registrar_account_id;
-         account_create_op.name = name;
-         account_create_op.owner = authority(1, owner_rkid, 1);
-         account_create_op.active = authority(1, active_rkid, 1);
-         account_create_op.memo_key = active_rkid;
-
-         signed_transaction tx;
-
-         tx.operations.push_back( owner_key_create_op );
-         tx.operations.push_back( active_key_create_op );
-         tx.operations.push_back( account_create_op );
-
-         tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
-
-         vector<key_id_type> paying_keys = registrar_account_object.active.get_keys();
-
-         tx.validate();
-
-         for( key_id_type& key : paying_keys )
-         {
-            auto it = _keys.find(key);
-            if( it != _keys.end() )
-            {
-               fc::optional< fc::ecc::private_key > privkey = wif_to_key( it->second );
-               if( !privkey.valid() )
-               {
-                  FC_ASSERT( false, "Malformed private key in _keys" );
-               }
-               tx.sign( key, *privkey );
-            }
-         }
-
-         if( broadcast )
-            _remote_net->broadcast_transaction( tx );
-         return tx;
-      } FC_CAPTURE_AND_RETHROW( (name)(owner)(active)(registrar_account)(referrer_account)(referrer_percent)(broadcast) ) }
-
-   signed_transaction upgrade_account(string name, bool broadcast)
-   { try {
-         FC_ASSERT( !self.is_locked() );
-         account_object account_obj = get_account(name);
-         FC_ASSERT( !account_obj.is_prime() );
-
-         account_update_operation   update_op;
-         update_op.account          = account_obj.id;
-         update_op.num_witness      = account_obj.num_witness;
-         update_op.num_committee    = account_obj.num_committee;
-         update_op.upgrade_to_prime = true;
-
-
-         signed_transaction tx;
-         tx.operations.push_back( update_op );
-         tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
-         tx.validate();
-
-         return sign_transaction( tx, broadcast );
-      } FC_CAPTURE_AND_RETHROW( (name) ) }
-
-   signed_transaction create_account_with_private_key(fc::ecc::private_key owner_privkey,
-                                                      string account_name,
-                                                      string registrar_account,
-                                                      string referrer_account,
-                                                      bool broadcast = false,
-                                                      bool save_wallet = true)
-   { try {
-      fc::ecc::private_key active_privkey = derive_private_key( key_to_wif(owner_privkey), 0);
-
-      bts::chain::public_key_type owner_pubkey = owner_privkey.get_public_key();
-      bts::chain::public_key_type active_pubkey = active_privkey.get_public_key();
-
+      FC_ASSERT( !self.is_locked() );
+      FC_ASSERT( is_valid_name(name) );
       account_create_operation account_create_op;
 
       // TODO:  process when pay_from_account is ID
 
       account_object registrar_account_object =
             this->get_account( registrar_account );
+      FC_ASSERT( registrar_account_object.is_prime() );
 
       account_id_type registrar_account_id = registrar_account_object.id;
 
       account_object referrer_account_object =
             this->get_account( referrer_account );
       account_create_op.referrer = referrer_account_object.id;
-      account_create_op.referrer_percent = referrer_account_object.referrer_percent;
+      account_create_op.referrer_percent = referrer_percent;
 
       // get pay_from_account_id
       key_create_operation owner_key_create_op;
       owner_key_create_op.fee_paying_account = registrar_account_id;
-      owner_key_create_op.key_data = owner_pubkey;
+      owner_key_create_op.key_data = owner;
 
       key_create_operation active_key_create_op;
       active_key_create_op.fee_paying_account = registrar_account_id;
-      active_key_create_op.key_data = active_pubkey;
+      active_key_create_op.key_data = active;
 
       // key_create_op.calculate_fee(db.current_fee_schedule());
 
@@ -714,15 +697,10 @@ public:
       relative_key_id_type active_rkid(1);
 
       account_create_op.registrar = registrar_account_id;
-      account_create_op.name = account_name;
+      account_create_op.name = name;
       account_create_op.owner = authority(1, owner_rkid, 1);
       account_create_op.active = authority(1, active_rkid, 1);
       account_create_op.memo_key = active_rkid;
-
-      // current_fee_schedule()
-      // find_account(pay_from_account)
-
-      // account_create_op.fee = account_create_op.calculate_fee(db.current_fee_schedule());
 
       signed_transaction tx;
 
@@ -734,7 +712,6 @@ public:
 
       vector<key_id_type> paying_keys = registrar_account_object.active.get_keys();
 
-      tx.set_expiration(get_dynamic_global_properties().head_block_id);
       tx.validate();
 
       for( key_id_type& key : paying_keys )
@@ -743,19 +720,125 @@ public:
          if( it != _keys.end() )
          {
             fc::optional< fc::ecc::private_key > privkey = wif_to_key( it->second );
-            FC_ASSERT( privkey.valid(), "Malformed private key in _keys" );
+            if( !privkey.valid() )
+            {
+               FC_ASSERT( false, "Malformed private key in _keys" );
+            }
             tx.sign( key, *privkey );
          }
       }
 
-      // we do not insert owner_privkey here because
-      //    it is intended to only be used for key recovery
-      _wallet.pending_account_registrations[ account_name ] = key_to_wif( active_privkey );
-      if( save_wallet )
-         save_wallet_file();
       if( broadcast )
          _remote_net->broadcast_transaction( tx );
       return tx;
+   } FC_CAPTURE_AND_RETHROW( (name)(owner)(active)(registrar_account)(referrer_account)(referrer_percent)(broadcast) ) }
+
+   signed_transaction upgrade_account(string name, bool broadcast)
+   { try {
+      FC_ASSERT( !self.is_locked() );
+      account_object account_obj = get_account(name);
+      FC_ASSERT( !account_obj.is_prime() );
+
+      account_update_operation   update_op;
+      update_op.account          = account_obj.id;
+      update_op.num_witness      = account_obj.num_witness;
+      update_op.num_committee    = account_obj.num_committee;
+      update_op.upgrade_to_prime = true;
+
+
+      signed_transaction tx;
+      tx.operations.push_back( update_op );
+      tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
+      tx.validate();
+
+      return sign_transaction( tx, broadcast );
+   } FC_CAPTURE_AND_RETHROW( (name) ) }
+
+   signed_transaction create_account_with_private_key(fc::ecc::private_key owner_privkey,
+                                                      string account_name,
+                                                      string registrar_account,
+                                                      string referrer_account,
+                                                      bool broadcast = false,
+                                                      bool save_wallet = true)
+   { try {
+         fc::ecc::private_key active_privkey = derive_private_key( key_to_wif(owner_privkey), 0);
+
+         bts::chain::public_key_type owner_pubkey = owner_privkey.get_public_key();
+         bts::chain::public_key_type active_pubkey = active_privkey.get_public_key();
+
+         account_create_operation account_create_op;
+
+         // TODO:  process when pay_from_account is ID
+
+         account_object registrar_account_object =
+               this->get_account( registrar_account );
+
+         account_id_type registrar_account_id = registrar_account_object.id;
+
+         account_object referrer_account_object =
+               this->get_account( referrer_account );
+         account_create_op.referrer = referrer_account_object.id;
+         account_create_op.referrer_percent = referrer_account_object.referrer_percent;
+
+         // get pay_from_account_id
+         key_create_operation owner_key_create_op;
+         owner_key_create_op.fee_paying_account = registrar_account_id;
+         owner_key_create_op.key_data = owner_pubkey;
+
+         key_create_operation active_key_create_op;
+         active_key_create_op.fee_paying_account = registrar_account_id;
+         active_key_create_op.key_data = active_pubkey;
+
+         // key_create_op.calculate_fee(db.current_fee_schedule());
+
+         // TODO:  Check if keys already exist!!!
+
+         relative_key_id_type owner_rkid(0);
+         relative_key_id_type active_rkid(1);
+
+         account_create_op.registrar = registrar_account_id;
+         account_create_op.name = account_name;
+         account_create_op.owner = authority(1, owner_rkid, 1);
+         account_create_op.active = authority(1, active_rkid, 1);
+         account_create_op.memo_key = active_rkid;
+
+         // current_fee_schedule()
+         // find_account(pay_from_account)
+
+         // account_create_op.fee = account_create_op.calculate_fee(db.current_fee_schedule());
+
+         signed_transaction tx;
+
+         tx.operations.push_back( owner_key_create_op );
+         tx.operations.push_back( active_key_create_op );
+         tx.operations.push_back( account_create_op );
+
+         tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
+
+         vector<key_id_type> paying_keys = registrar_account_object.active.get_keys();
+
+         tx.set_expiration(get_dynamic_global_properties().head_block_id);
+         tx.validate();
+
+         for( key_id_type& key : paying_keys )
+         {
+            auto it = _keys.find(key);
+            if( it != _keys.end() )
+            {
+               fc::optional< fc::ecc::private_key > privkey = wif_to_key( it->second );
+               FC_ASSERT( privkey.valid(), "Malformed private key in _keys" );
+               tx.sign( key, *privkey );
+            }
+         }
+
+         // we do not insert owner_privkey here because
+         //    it is intended to only be used for key recovery
+         _wallet.pending_account_registrations[ account_name ] = key_to_wif( active_privkey );
+         if( save_wallet )
+            save_wallet_file();
+         if( broadcast )
+            _remote_net->broadcast_transaction( tx );
+         return tx;
    } FC_CAPTURE_AND_RETHROW( (account_name)(registrar_account)(referrer_account)(broadcast) ) }
 
    signed_transaction create_account_with_brain_key(string brain_key,
@@ -779,23 +862,23 @@ public:
                                    fc::optional<asset_object::bitasset_options> bitasset_opts,
                                    bool broadcast = false)
    { try {
-         account_object issuer_account = get_account( issuer );
-         FC_ASSERT(!find_asset(symbol).valid(), "Asset with that symbol already exists!");
+      account_object issuer_account = get_account( issuer );
+      FC_ASSERT(!find_asset(symbol).valid(), "Asset with that symbol already exists!");
 
-         asset_create_operation create_op;
-         create_op.issuer = issuer_account.id;
-         create_op.symbol = symbol;
-         create_op.precision = precision;
-         create_op.common_options = common;
-         create_op.bitasset_options = bitasset_opts;
+      asset_create_operation create_op;
+      create_op.issuer = issuer_account.id;
+      create_op.symbol = symbol;
+      create_op.precision = precision;
+      create_op.common_options = common;
+      create_op.bitasset_options = bitasset_opts;
 
-         signed_transaction tx;
-         tx.operations.push_back( create_op );
-         tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
-         tx.validate();
+      signed_transaction tx;
+      tx.operations.push_back( create_op );
+      tx.visit( operation_set_fee( _remote_db->get_global_properties().parameters.current_fees ) );
+      tx.validate();
 
-         return sign_transaction( tx, broadcast );
-      } FC_CAPTURE_AND_RETHROW( (issuer)(symbol)(precision)(common)(bitasset_opts)(broadcast) ) }
+      return sign_transaction( tx, broadcast );
+   } FC_CAPTURE_AND_RETHROW( (issuer)(symbol)(precision)(common)(bitasset_opts)(broadcast) ) }
 
    signed_transaction sign_transaction(signed_transaction tx, bool broadcast = false)
    {
@@ -933,55 +1016,55 @@ public:
 
    signed_transaction cancel_order(object_id_type order_id, bool broadcast = false)
    { try {
-      FC_ASSERT(!is_locked());
-      FC_ASSERT(order_id.space() == protocol_ids, "Invalid order ID ${id}", ("id", order_id));
-      signed_transaction trx;
+         FC_ASSERT(!is_locked());
+         FC_ASSERT(order_id.space() == protocol_ids, "Invalid order ID ${id}", ("id", order_id));
+         signed_transaction trx;
 
-      switch( order_id.type() )
-      {
-      case short_order_object_type: {
-         short_order_cancel_operation op;
-         op.fee_paying_account = get_object<short_order_object>(order_id).seller;
-         op.order = order_id;
-         op.fee = op.calculate_fee(_remote_db->get_global_properties().parameters.current_fees);
-         trx.operations = {op};
-         break;
-      }
-      case limit_order_object_type: {
-         limit_order_cancel_operation op;
-         op.fee_paying_account = get_object<limit_order_object>(order_id).seller;
-         op.order = order_id;
-         op.fee = op.calculate_fee(_remote_db->get_global_properties().parameters.current_fees);
-         trx.operations = {op};
-         break;
-      }
-      default:
-         FC_THROW("Invalid order ID ${id}", ("id", order_id));
-      }
+         switch( order_id.type() )
+         {
+         case short_order_object_type: {
+            short_order_cancel_operation op;
+            op.fee_paying_account = get_object<short_order_object>(order_id).seller;
+            op.order = order_id;
+            op.fee = op.calculate_fee(_remote_db->get_global_properties().parameters.current_fees);
+            trx.operations = {op};
+            break;
+         }
+         case limit_order_object_type: {
+            limit_order_cancel_operation op;
+            op.fee_paying_account = get_object<limit_order_object>(order_id).seller;
+            op.order = order_id;
+            op.fee = op.calculate_fee(_remote_db->get_global_properties().parameters.current_fees);
+            trx.operations = {op};
+            break;
+         }
+         default:
+            FC_THROW("Invalid order ID ${id}", ("id", order_id));
+         }
 
-      trx.validate();
-      return sign_transaction(trx, broadcast);
+         trx.validate();
+         return sign_transaction(trx, broadcast);
    } FC_CAPTURE_AND_RETHROW((order_id)) }
 
    signed_transaction transfer(string from, string to, string amount,
                                string asset_symbol, string memo, bool broadcast = false)
    { try {
-         FC_ASSERT( !self.is_locked() );
-         fc::optional<asset_object> asset_obj = get_asset(asset_symbol);
-         FC_ASSERT(asset_obj, "Could not find asset matching ${asset}", ("asset", asset_symbol));
+      FC_ASSERT( !self.is_locked() );
+      fc::optional<asset_object> asset_obj = get_asset(asset_symbol);
+      FC_ASSERT(asset_obj, "Could not find asset matching ${asset}", ("asset", asset_symbol));
 
-         account_object from_account = get_account(from);
-         account_object to_account = get_account(to);
-         account_id_type from_id = from_account.id;
-         account_id_type to_id = get_account_id(to);
+      account_object from_account = get_account(from);
+      account_object to_account = get_account(to);
+      account_id_type from_id = from_account.id;
+      account_id_type to_id = get_account_id(to);
 
-         transfer_operation xfer_op;
+      transfer_operation xfer_op;
 
-         xfer_op.from = from_id;
-         xfer_op.to = to_id;
-         xfer_op.amount = asset_obj->amount_from_string(amount);
+      xfer_op.from = from_id;
+      xfer_op.to = to_id;
+      xfer_op.amount = asset_obj->amount_from_string(amount);
 
-         if( memo.size() )
+      if( memo.size() )
          {
             xfer_op.memo = memo_data();
             xfer_op.memo->from = from_account.memo_key;
@@ -990,13 +1073,13 @@ public:
                                       get_public_key(to_account.memo_key), memo);
          }
 
-         signed_transaction tx;
-         tx.operations.push_back(xfer_op);
-         tx.visit(operation_set_fee(_remote_db->get_global_properties().parameters.current_fees));
-         tx.validate();
+      signed_transaction tx;
+      tx.operations.push_back(xfer_op);
+      tx.visit(operation_set_fee(_remote_db->get_global_properties().parameters.current_fees));
+      tx.validate();
 
-         return sign_transaction(tx, broadcast);
-      } FC_CAPTURE_AND_RETHROW( (from)(to)(amount)(asset_symbol)(memo)(broadcast) ) }
+      return sign_transaction(tx, broadcast);
+   } FC_CAPTURE_AND_RETHROW( (from)(to)(amount)(asset_symbol)(memo)(broadcast) ) }
 
    signed_transaction issue_asset(string to_account, string amount, string symbol,
                                   string memo, bool broadcast = false)
@@ -1030,121 +1113,121 @@ public:
 
    std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const
    {
-      std::map<string,std::function<string(fc::variant,const fc::variants&)> > m;
-      m["help"] = [](variant result, const fc::variants& a)
-      {
-         return result.get_string();
-      };
-
-      m["gethelp"] = [](variant result, const fc::variants& a)
-      {
-         return result.get_string();
-      };
-
-      m["get_account_history"] = [this](variant result, const fc::variants& a)
-      {
-         auto r = result.as<vector<operation_history_object>>();
-         std::stringstream ss;
-
-         for( const operation_history_object& i : r )
-         {
-            auto b = _remote_db->get_block_header(i.block_num);
-            FC_ASSERT(b);
-            ss << b->timestamp.to_iso_string() << " ";
-            i.op.visit(operation_printer(ss, *this, i.result));
-            ss << " \n";
-         }
-
-         return ss.str();
-      };
-
-      m["list_account_balances"] = [this](variant result, const fc::variants& a)
-      {
-         auto r = result.as<vector<asset>>();
-         vector<asset_object> asset_recs;
-         std::transform(r.begin(), r.end(), std::back_inserter(asset_recs), [this](const asset& a) {
-            return get_asset(a.asset_id);
-         });
-
-         std::stringstream ss;
-         for( int i = 0; i < asset_recs.size(); ++i )
-            ss << asset_recs[i].amount_to_pretty_string(r[i]) << "\n";
-
-         return ss.str();
-      };
-
-      return m;
-   }
-
-   void dbg_make_uia(string creator, string symbol)
+                                                                           std::map<string,std::function<string(fc::variant,const fc::variants&)> > m;
+                                                                           m["help"] = [](variant result, const fc::variants& a)
    {
-      asset_object::asset_options opts;
-      opts.flags &= ~(market_issued | white_list | disable_force_settle | global_settle);
-      opts.issuer_permissions = opts.flags;
-      opts.core_exchange_rate = price(asset(1), asset(1,1));
-      create_asset(get_account(creator).name, symbol, 2, opts, {}, true);
-   }
+      return result.get_string();
+   };
 
-   void dbg_make_mia(string creator, string symbol)
+   m["gethelp"] = [](variant result, const fc::variants& a)
    {
-      asset_object::asset_options opts;
-      opts.flags &= ~white_list;
-      opts.flags |= market_issued;
-      opts.issuer_permissions = opts.flags;
-      opts.core_exchange_rate = price(asset(1), asset(1,1));
-      asset_object::bitasset_options bopts;
-      create_asset(get_account(creator).name, symbol, 2, opts, bopts, true);
-   }
+      return result.get_string();
+   };
 
-   void flood_network(string prefix, uint32_t number_of_transactions)
+   m["get_account_history"] = [this](variant result, const fc::variants& a)
    {
-      const account_object& master = *_wallet.my_accounts.get<by_name>().lower_bound("bts");
-      int number_of_accounts = number_of_transactions / 3;
-      number_of_transactions -= number_of_accounts;
-      auto key = derive_private_key("floodshill", 0);
-      try {
-         dbg_make_uia(master.name, "SHILL");
-      } catch(...) {/* Ignore; the asset probably already exists.*/}
+      auto r = result.as<vector<operation_history_object>>();
+      std::stringstream ss;
 
-      fc::time_point start = fc::time_point::now(); for( int i = 0; i < number_of_accounts; ++i )
-         create_account_with_private_key(key, prefix + fc::to_string(i), master.name, master.name, true, false);
-      fc::time_point end = fc::time_point::now();
-      ilog("Created ${n} accounts in ${time} milliseconds",
-           ("n", number_of_accounts)("time", (end - start).count() / 1000));
-
-      start = fc::time_point::now();
-      for( int i = 0; i < number_of_accounts; ++i )
+      for( const operation_history_object& i : r )
       {
-         transfer(master.name, prefix + fc::to_string(i), "10", "BTS", "", true);
-         transfer(master.name, prefix + fc::to_string(i), "1", "BTS", "", true);
+         auto b = _remote_db->get_block_header(i.block_num);
+         FC_ASSERT(b);
+         ss << b->timestamp.to_iso_string() << " ";
+         i.op.visit(operation_printer(ss, *this, i.result));
+         ss << " \n";
       }
-      end = fc::time_point::now();
-      ilog("Transferred to ${n} accounts in ${time} milliseconds",
-           ("n", number_of_accounts*2)("time", (end - start).count() / 1000));
 
-      start = fc::time_point::now();
-      for( int i = 0; i < number_of_accounts; ++i )
-         issue_asset(prefix + fc::to_string(i), "1000", "SHILL", "", true);
-      end = fc::time_point::now();
-      ilog("Issued to ${n} accounts in ${time} milliseconds",
-           ("n", number_of_accounts)("time", (end - start).count() / 1000));
+      return ss.str();
+   };
 
+   m["list_account_balances"] = [this](variant result, const fc::variants& a)
+   {
+      auto r = result.as<vector<asset>>();
+      vector<asset_object> asset_recs;
+      std::transform(r.begin(), r.end(), std::back_inserter(asset_recs), [this](const asset& a) {
+         return get_asset(a.asset_id);
+      });
+
+      std::stringstream ss;
+      for( int i = 0; i < asset_recs.size(); ++i )
+         ss << asset_recs[i].amount_to_pretty_string(r[i]) << "\n";
+
+      return ss.str();
+   };
+
+   return m;
+}
+
+void dbg_make_uia(string creator, string symbol)
+{
+   asset_object::asset_options opts;
+   opts.flags &= ~(market_issued | white_list | disable_force_settle | global_settle);
+   opts.issuer_permissions = opts.flags;
+   opts.core_exchange_rate = price(asset(1), asset(1,1));
+   create_asset(get_account(creator).name, symbol, 2, opts, {}, true);
+}
+
+void dbg_make_mia(string creator, string symbol)
+{
+   asset_object::asset_options opts;
+   opts.flags &= ~white_list;
+   opts.flags |= market_issued;
+   opts.issuer_permissions = opts.flags;
+   opts.core_exchange_rate = price(asset(1), asset(1,1));
+   asset_object::bitasset_options bopts;
+   create_asset(get_account(creator).name, symbol, 2, opts, bopts, true);
+}
+
+void flood_network(string prefix, uint32_t number_of_transactions)
+{
+   const account_object& master = *_wallet.my_accounts.get<by_name>().lower_bound("bts");
+   int number_of_accounts = number_of_transactions / 3;
+   number_of_transactions -= number_of_accounts;
+   auto key = derive_private_key("floodshill", 0);
+   try {
+      dbg_make_uia(master.name, "SHILL");
+   } catch(...) {/* Ignore; the asset probably already exists.*/}
+
+   fc::time_point start = fc::time_point::now(); for( int i = 0; i < number_of_accounts; ++i )
+      create_account_with_private_key(key, prefix + fc::to_string(i), master.name, master.name, true, false);
+   fc::time_point end = fc::time_point::now();
+   ilog("Created ${n} accounts in ${time} milliseconds",
+        ("n", number_of_accounts)("time", (end - start).count() / 1000));
+
+   start = fc::time_point::now();
+   for( int i = 0; i < number_of_accounts; ++i )
+   {
+      transfer(master.name, prefix + fc::to_string(i), "10", "BTS", "", true);
+      transfer(master.name, prefix + fc::to_string(i), "1", "BTS", "", true);
    }
+   end = fc::time_point::now();
+   ilog("Transferred to ${n} accounts in ${time} milliseconds",
+        ("n", number_of_accounts*2)("time", (end - start).count() / 1000));
 
-   string                  _wallet_filename;
-   wallet_data             _wallet;
+   start = fc::time_point::now();
+   for( int i = 0; i < number_of_accounts; ++i )
+      issue_asset(prefix + fc::to_string(i), "1000", "SHILL", "", true);
+   end = fc::time_point::now();
+   ilog("Issued to ${n} accounts in ${time} milliseconds",
+        ("n", number_of_accounts)("time", (end - start).count() / 1000));
 
-   map<key_id_type,string> _keys;
-   fc::sha512              _checksum;
+}
 
-   fc::api<login_api>      _remote_api;
-   fc::api<database_api>   _remote_db;
-   fc::api<network_api>    _remote_net;
+string                  _wallet_filename;
+wallet_data             _wallet;
 
-   mode_t                  _old_umask;
-   const string _wallet_filename_extension = ".wallet";
+map<key_id_type,string> _keys;
+fc::sha512              _checksum;
 
-   mutable map<asset_id_type, asset_object> _asset_cache;
+fc::api<login_api>      _remote_api;
+fc::api<database_api>   _remote_db;
+fc::api<network_api>    _remote_net;
+
+mode_t                  _old_umask;
+const string _wallet_filename_extension = ".wallet";
+
+mutable map<asset_id_type, asset_object> _asset_cache;
 };
 
 void operation_printer::fee(const asset& a)const {
@@ -1220,7 +1303,8 @@ void operation_printer::operator()(const asset_create_operation& op) const
    fee(op.fee);
 }
 
-} // end namespace detail
+}}}
+namespace bts { namespace wallet {
 
 wallet_api::wallet_api(fc::api<login_api> rapi)
    : my(new detail::wallet_api_impl(*this, rapi))
@@ -1308,6 +1392,46 @@ variant wallet_api::get_object( object_id_type id ) const
    return my->_remote_db->get_objects({id});
 }
 
+transaction_handle_type wallet_api::begin_builder_transaction()
+{
+   return my->begin_builder_transaction();
+}
+
+void wallet_api::add_operation_to_builder_transaction(transaction_handle_type transaction_handle, const operation& op)
+{
+   my->add_operation_to_builder_transaction(transaction_handle, op);
+}
+
+void wallet_api::replace_operation_in_builder_transaction(transaction_handle_type handle, int operation_index, const operation& new_op)
+{
+   my->replace_operation_in_builder_transaction(handle, operation_index, new_op);
+}
+
+asset wallet_api::set_fees_on_builder_transaction(transaction_handle_type handle, string fee_asset)
+{
+   return my->set_fees_on_builder_transaction(handle, fee_asset);
+}
+
+transaction wallet_api::preview_builder_transaction(transaction_handle_type handle)
+{
+   return my->preview_builder_transaction(handle);
+}
+
+signed_transaction wallet_api::sign_builder_transaction(transaction_handle_type transaction_handle, bool broadcast)
+{
+   return my->sign_builder_transaction(transaction_handle, broadcast);
+}
+
+signed_transaction wallet_api::propose_builder_transaction(transaction_handle_type handle, time_point_sec expiration, uint32_t review_period_seconds, bool broadcast)
+{
+   return my->propose_builder_transaction(handle, expiration, review_period_seconds, broadcast);
+}
+
+void wallet_api::remove_builder_transaction(transaction_handle_type handle)
+{
+   return my->remove_builder_transaction(handle);
+}
+
 account_object wallet_api::get_account(string account_name_or_id) const
 {
    return my->get_account(account_name_or_id);
@@ -1318,6 +1442,13 @@ asset_object wallet_api::get_asset(string asset_name_or_id) const
    auto a = my->find_asset(asset_name_or_id);
    FC_ASSERT(a);
    return *a;
+}
+
+asset_bitasset_data_object wallet_api::get_bitasset_data(string asset_name_or_id) const
+{
+   auto asset = get_asset(asset_name_or_id);
+   FC_ASSERT(asset.is_market_issued() && asset.bitasset_data_id);
+   return my->get_object<asset_bitasset_data_object>(*asset.bitasset_data_id);
 }
 
 account_id_type wallet_api::get_account_id(string account_name_or_id) const
@@ -1332,6 +1463,7 @@ asset_id_type wallet_api::get_asset_id(string asset_symbol_or_id) const
 
 bool wallet_api::import_key(string account_name_or_id, string wif_key)
 {
+   FC_ASSERT(!is_locked());
    // backup wallet
    string shorthash = detail::address_to_shorthash(wif_to_key(wif_key)->get_public_key());
    copy_wallet_file( "before-import-key-" + shorthash );
@@ -1375,9 +1507,9 @@ signed_transaction wallet_api::create_account_with_brain_key(string brain_key, s
                                                              bool broadcast /* = false */)
 {
    return my->create_account_with_brain_key(
-      brain_key, account_name, registrar_account,
-      referrer_account, broadcast
-      );
+            brain_key, account_name, registrar_account,
+            referrer_account, broadcast
+            );
 }
 signed_transaction wallet_api::issue_asset(string to_account, string amount, string symbol,
                                            string memo, bool broadcast)
@@ -1544,22 +1676,22 @@ void wallet_api::lock()
 
 void wallet_api::unlock(string password)
 { try {
-      FC_ASSERT(password.size() > 0);
-      auto pw = fc::sha512::hash(password.c_str(), password.size());
-      vector<char> decrypted = fc::aes_decrypt(pw, my->_wallet.cipher_keys);
-      auto pk = fc::raw::unpack<plain_keys>(decrypted);
-      FC_ASSERT(pk.checksum == pw);
-      my->_keys = std::move(pk.keys);
-      my->_checksum = pk.checksum;
-      my->self.lock_changed(false);
+   FC_ASSERT(password.size() > 0);
+   auto pw = fc::sha512::hash(password.c_str(), password.size());
+   vector<char> decrypted = fc::aes_decrypt(pw, my->_wallet.cipher_keys);
+   auto pk = fc::raw::unpack<plain_keys>(decrypted);
+   FC_ASSERT(pk.checksum == pw);
+   my->_keys = std::move(pk.keys);
+   my->_checksum = pk.checksum;
+   my->self.lock_changed(false);
 } FC_CAPTURE_AND_RETHROW() }
 
 void wallet_api::set_password( string password )
 {
-    if( !is_new() )
-       FC_ASSERT( !is_locked(), "The wallet must be unlocked before the password can be set" );
-    my->_checksum = fc::sha512::hash( password.c_str(), password.size() );
-    lock();
+   if( !is_new() )
+      FC_ASSERT( !is_locked(), "The wallet must be unlocked before the password can be set" );
+   my->_checksum = fc::sha512::hash( password.c_str(), password.size() );
+   lock();
 }
 
 map<key_id_type, string> wallet_api::dump_private_keys()

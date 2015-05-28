@@ -15,6 +15,8 @@ void from_variant(const variant &var, account_object_multi_index_type &vo);
 
 namespace bts { namespace wallet {
 
+typedef uint16_t transaction_handle_type;
+
 /**
  * This class takes a variant and turns it into an object
  * of the given type, with the new operator.
@@ -103,10 +105,29 @@ class wallet_api
       dynamic_global_property_object    get_dynamic_global_properties() const;
       account_object                    get_account(string account_name_or_id) const;
       asset_object                      get_asset(string asset_name_or_id) const;
+      asset_bitasset_data_object        get_bitasset_data(string asset_name_or_id)const;
       account_id_type                   get_account_id(string account_name_or_id) const;
       asset_id_type                     get_asset_id(string asset_name_or_id) const;
       variant                           get_object(object_id_type id) const;
       void                              get_wallet_filename() const;
+
+      /**
+       * @group Transaction Builder API
+       * @{
+       */
+      transaction_handle_type begin_builder_transaction();
+      void add_operation_to_builder_transaction(transaction_handle_type transaction_handle, const operation& op);
+      void replace_operation_in_builder_transaction(transaction_handle_type handle,
+                                                    int operation_index,
+                                                    const operation& new_op);
+      asset set_fees_on_builder_transaction(transaction_handle_type handle, string fee_asset = BTS_SYMBOL);
+      transaction preview_builder_transaction(transaction_handle_type handle);
+      signed_transaction sign_builder_transaction(transaction_handle_type transaction_handle, bool broadcast = true);
+      signed_transaction propose_builder_transaction(transaction_handle_type handle,
+                                                     time_point_sec expiration = time_point::now() + fc::minutes(1),
+                                                     uint32_t review_period_seconds = 0, bool broadcast = true);
+      void remove_builder_transaction(transaction_handle_type handle);
+      ///@}
 
       bool    is_new()const;
       bool    is_locked()const;
@@ -213,6 +234,14 @@ FC_API( bts::wallet::wallet_api,
         (help)
         (gethelp)
         (info)
+        (begin_builder_transaction)
+        (add_operation_to_builder_transaction)
+        (replace_operation_in_builder_transaction)
+        (set_fees_on_builder_transaction)
+        (preview_builder_transaction)
+        (sign_builder_transaction)
+        (propose_builder_transaction)
+        (remove_builder_transaction)
         (is_new)
         (is_locked)
         (lock)(unlock)(set_password)
@@ -231,6 +260,8 @@ FC_API( bts::wallet::wallet_api,
         (transfer)
         (create_asset)
         (issue_asset)
+        (get_asset)
+        (get_bitasset_data)
         (get_account)
         (get_account_id)
         (get_block)
