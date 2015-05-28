@@ -11,9 +11,9 @@ namespace bts { namespace chain {
    *
    * The primary purpose of this object is to enable recurring payments on the blockchain. An account which wishes to
    * process a recurring payment may use a @ref withdraw_permission_claim_operation to reference an object of this type
-   * and withdraw up to @ref withdrawal_limit from @ref withdraw_from_account. Only @ref authorized_account may do this,
-   * and it may only be done once per withdrawal period (as defined by @ref withdrawal_period_sec), even if the first
-   * withdrawal in the period was less than the limit.
+   * and withdraw up to @ref withdrawal_limit from @ref withdraw_from_account. Only @ref authorized_account may do this.
+   * Any number of withdraws may be made so long as the total amount withdrawn is less than the limit for any given
+   * period.
    */
   class withdraw_permission_object : public bts::db::abstract_object<withdraw_permission_object>
   {
@@ -44,20 +44,6 @@ namespace bts { namespace chain {
               return withdrawal_limit;
            return asset( claimable() ? withdrawal_limit.amount - claimed_this_period : 0, withdrawal_limit.asset_id); 
         }
-
-        /// Updates @ref remaining_periods and @ref next_period_start_time
-        /// @return true if permission is expired; false otherwise
-        /*
-        bool update_period(fc::time_point_sec current_time) {
-           while( remaining_periods > 0 && next_period_start_time <= current_time )
-           {
-              next_period_start_time += withdrawal_period_sec;
-              --remaining_periods;
-              claimed_this_period = 0;
-           }
-           return remaining_periods == 0 && next_period_start_time <= current_time;
-        }
-        */
    };
 
    struct by_from;
