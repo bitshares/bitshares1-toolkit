@@ -152,6 +152,15 @@ namespace bts { namespace chain {
             /// This field may only be updated if the current supply of the asset is zero.
             asset_id_type short_backing_asset;
 
+            /**
+             * Prediction markets have different collateral requirements.  Regardless of the
+             * current price, a new short must always provide 1:1 backing asset to issued asset
+             * to cover the case where they are wrong.  In a prediction market there are no
+             * margin calls or forced settlement requests.  The only way to exit a position in
+             * a prediction market is for the issuer to use the asset_global_settle operation.
+             */
+            bool prediction_market = false;
+
             /// Perform internal consistency checks.
             /// @throws fc::exception if any check fails
             void validate()const;
@@ -273,6 +282,7 @@ FC_REFLECT( bts::chain::asset_object::bitasset_options,
             (force_settlement_offset_percent)
             (maximum_force_settlement_volume)
             (short_backing_asset)
+            (prediction_market)
           )
 
 FC_REFLECT_DERIVED( bts::chain::asset_object,

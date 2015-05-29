@@ -518,6 +518,7 @@ bool database::check_call_orders( const asset_object& mia )
     if( !mia.is_market_issued() ) return false;
     const asset_bitasset_data_object& bitasset = mia.bitasset_data(*this);
     if( bitasset.current_feed.call_limit.is_null() ) return false;
+    if( bitasset.options.prediction_market ) return false;
 
     const call_order_index& call_index = get_index_type<call_order_index>();
     const auto& call_price_index = call_index.indices().get<by_price>();
@@ -1042,7 +1043,16 @@ bool database::fill_order( const short_order_object& order, const asset& pays, c
    auto issuer_fees = pay_market_fees( recv_asset, receives );
 
    bool filled               = pays == order.amount_for_sale();
-   auto seller_to_collateral = filled ? order.get_collateral() : pays * order.sell_price;
+   asset seller_to_collateral;
+   if( (*pays_asset.bitasset_data_id)(*this).options.prediction_market )
+   {
+      assert( pays.amount >= receives.amount );
+      seller_to_collateral = pays.amount - receives.amount;
+   }
+   else
+   {
+      seller_to_collateral = filled ? order.get_collateral() : pays * order.sell_price;
+   }
    auto buyer_to_collateral  = receives - issuer_fees;
 
    if( receives.asset_id == asset_id_type() )
@@ -2110,9 +2120,9 @@ void database::clear_expired_orders()
    //Cancel expired limit orders
    auto& limit_index = get_index_type<limit_order_index>().indices().get<by_expiration>();
    while( !limit_index.empty() && limit_index.begin()->expiration <= head_block_time() )
-   {
-      const limit_order_object& order = *limit_index.begin();
+   { 
       limit_order_cancel_operation canceler;
+      const limit_order_object& order = *limit_index.begin();
       canceler.fee_paying_account = order.seller;
       canceler.order = order.id;
       apply_operation(cancel_context, canceler);
@@ -2131,6 +2141,7 @@ void database::clear_expired_orders()
 
    //Process expired force settlement orders
    //TODO: Do this on an asset-by-asset basis, and skip the current asset if it's maximally settled or has settlements disabled
+   // or is a prediction_market
    auto& settlement_index = get_index_type<force_settlement_index>().indices().get<by_expiration>();
    if( !settlement_index.empty() )
    {

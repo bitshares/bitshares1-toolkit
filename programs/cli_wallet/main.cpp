@@ -84,7 +84,7 @@ int main( int argc, char** argv )
       cfg.loggers.back().level = fc::log_level::debug;
       cfg.loggers.back().appenders = {"rpc"};
 
-      fc::configure_logging( cfg );
+      //fc::configure_logging( cfg );
 
       fc::ecc::private_key genesis_private_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("genesis")));
 
@@ -149,6 +149,8 @@ int main( int argc, char** argv )
       if( options.count("rpc-endpoint") )
       {
          _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
+            std::cout << "here... \n";
+            wlog("." );
             auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
             wsc->register_api(wapi);
             c->set_session_data( wsc );
@@ -175,6 +177,9 @@ int main( int argc, char** argv )
          _websocket_tls_server->start_accept();
       }
 
+      wlog( ".");
+      ilog( ".");
+      dlog( ".");
       if( !options.count( "daemon" ) )
       {
          wallet_cli->register_api( wapi );

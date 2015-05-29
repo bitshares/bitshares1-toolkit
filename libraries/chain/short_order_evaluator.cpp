@@ -21,12 +21,27 @@ object_id_type short_order_create_evaluator::do_evaluate( const short_order_crea
    _receive_asset = &quote_asset;
    _sell_asset    = &base_asset;
 
+
    FC_ASSERT( !(base_asset.options.flags & white_list) || _seller->is_authorized_asset(base_asset) );
    FC_ASSERT( !(quote_asset.options.flags & white_list) || _seller->is_authorized_asset(quote_asset) );
 
-   // TODO: FC_ASSERT( op.initial_collateral_ratio >= CURRENT_INIT_COLLATERAL_RATIO_REQUIREMENTS )
-   // TODO: FC_ASSERT( op.maintenance_collateral_ratio >= CURRENT_INIT_COLLATERAL_RATIO_REQUIREMENTS )
-   // TODO: FC_ASSERT( op.sell_price() >= CURRENT_PRICE_LIMIT  )
+   const asset_bitasset_data_object& bitasset_data = _sell_asset->bitasset_data(d);
+   if( bitasset_data.options.prediction_market )
+   {
+      FC_ASSERT( op.initial_collateral_ratio == 0 );
+      FC_ASSERT( op.maintenance_collateral_ratio == 0 );
+      auto p = op.sell_price();
+
+      // the maximum price is 1:1, it does not make sense to charge more than
+      // the collateral backing the position.
+      FC_ASSERT( p.base.amount < p.quote.amount );
+   }
+   else
+   {
+      FC_ASSERT( op.initial_collateral_ratio >= bitasset_data.current_feed.required_initial_collateral );
+      FC_ASSERT( op.maintenance_collateral_ratio >= bitasset_data.current_feed.required_maintenance_collateral );
+      FC_ASSERT( op.sell_price() >= bitasset_data.current_feed.short_limit );
+   }
 
    return object_id_type();
 }
@@ -136,8 +151,19 @@ asset call_order_update_evaluator::do_evaluate(const call_order_update_operation
    FC_ASSERT( _debt_asset->is_market_issued(), "Unable to cover ${sym} as it is not a market-issued asset.",
               ("sym", _debt_asset->symbol) );
    FC_ASSERT( o.collateral_to_add.asset_id == bitasset_data.short_backing_asset );
-   FC_ASSERT( o.maintenance_collateral_ratio == 0 ||
-              o.maintenance_collateral_ratio > bitasset_data.current_feed.required_maintenance_collateral );
+
+   if( bitasset_data.options.prediction_market )
+   {
+      FC_ASSERT( o.collateral_to_add.amount <= 0 );
+      FC_ASSERT( -o.collateral_to_add.amount == o.amount_to_cover.amount );
+      FC_ASSERT( o.maintenance_collateral_ratio == 0 );
+   }
+   else
+   {
+      FC_ASSERT( o.maintenance_collateral_ratio == 0 ||
+                 o.maintenance_collateral_ratio > bitasset_data.current_feed.required_maintenance_collateral );
+   }
+
    FC_ASSERT( d.get_balance(*_paying_account, *_debt_asset) >= o.amount_to_cover,
               "Cannot cover by ${c} when payer has ${b}",
               ("c", o.amount_to_cover.amount)("b", d.get_balance(*_paying_account, *_debt_asset).amount) );

@@ -38,11 +38,14 @@ namespace bts { namespace chain {
         share_type       for_sale;
         share_type       available_collateral; ///< asset_id == sell_price.quote.asset_id
         price            sell_price; ///< the price the short is currently at = min(limit_price,feed)
-        price            call_price; ///< the price that will be used to trigger margin calls after match
+        price            call_price; ///< the price that will be used to trigger margin calls after match, must be 1:1 if prediction market
         uint16_t         initial_collateral_ratio    = 0; ///< may be higher than the network requires
         uint16_t         maintenance_collateral_ratio = 0; ///< may optionally be higher than the network requires
 
         asset get_collateral()const    { return asset( available_collateral, sell_price.quote.asset_id ); }
+        /** if the initial_collateral_ratio is 0, then this is a prediction market order which means the
+         * amount for sale depends upon price and available collateral.
+         */
         asset amount_for_sale()const   { return asset( for_sale, sell_price.base.asset_id ); }
         asset amount_to_receive()const { return amount_for_sale() * sell_price; }
   };
