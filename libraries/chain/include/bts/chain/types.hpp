@@ -51,13 +51,13 @@ namespace bts { namespace chain {
 
    enum asset_issuer_permission_flags
    {
-      charge_market_fee    = 0x01,
-      white_list           = 0x02,
-      override_authority   = 0x08,
-      transfer_restricted  = 0x10, /** require the issuer to be one party to every transfer   */
-      market_issued        = 0x20,
-      disable_force_settle = 0x40, /** diable force settleing */
-      global_settle        = 0x80 /** allow the bitasset issuer to force a global settling   */
+      charge_market_fee    = 0x01, /**< an issuer-specified percentage of all market trades in this asset is paid to the issuer */
+      white_list           = 0x02, /**< accounts must be whitelisted in order to hold this asset */
+      override_authority   = 0x08, /**< @todo issuer may transfer asset back to himself */
+      transfer_restricted  = 0x10, /**< require the issuer to be one party to every transfer */
+      market_issued        = 0x20, /** < true iff asset is a bitasset */
+      disable_force_settle = 0x40, /**< disable force settling */
+      global_settle        = 0x80 /**< allow the bitasset issuer to force a global settling */
    };
    const static uint32_t ASSET_ISSUER_PERMISSION_MASK = charge_market_fee|white_list|override_authority|transfer_restricted|market_issued|disable_force_settle|global_settle|transfer_restricted;
    const static uint32_t UIA_ASSET_ISSUER_PERMISSION_MASK = charge_market_fee|white_list|override_authority|transfer_restricted;
