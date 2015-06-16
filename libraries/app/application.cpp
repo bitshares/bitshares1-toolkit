@@ -43,7 +43,7 @@ namespace detail {
 
       void reset_p2p_node(const fc::path& data_dir)
       { try {
-         _p2p_network = std::make_shared<net::node>("Graphene Reference Implementation");
+         _p2p_network = std::make_shared<net::node>("BitShares Toolkit Reference Implementation");
 
          _p2p_network->load_configuration(data_dir / "p2p");
          _p2p_network->set_node_delegate(this);
@@ -351,7 +351,7 @@ namespace detail {
 
       virtual uint32_t estimate_last_known_fork_from_git_revision_timestamp(uint32_t unix_timestamp) const override
       {
-         return 0; // there are no forks in graphene
+         return 0;
       }
 
       virtual void error_encountered(const std::string& message, const fc::oexception& error) override

@@ -21,8 +21,8 @@ namespace bpo = boost::program_options;
 int main(int argc, char** argv) {
    try {
       app::application node;
-      bpo::options_description app_options("Graphene Witness Node");
-      bpo::options_description cfg_options("Graphene Witness Node");
+      bpo::options_description app_options("BitShares Toolkit Witness Node");
+      bpo::options_description cfg_options("BitShares Toolkit Witness Node");
       app_options.add_options()
             ("help,h", "Print this help message and exit.")
             ("data-dir,d", bpo::value<boost::filesystem::path>()->default_value("witness_node_data_dir"), "Directory containing databases, configuration file, etc.")

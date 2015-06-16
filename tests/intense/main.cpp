@@ -1,4 +1,4 @@
-//#define BOOST_TEST_MODULE "C++ Unit Tests for Graphene Blockchain Database"
+//#define BOOST_TEST_MODULE "C++ Unit Tests for BitShares Toolkit Blockchain Database"
 #include <cstdlib>
 #include <iostream>
 #include <boost/test/included/unit_test.hpp>

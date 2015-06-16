@@ -900,10 +900,10 @@ namespace bts { namespace chain {
    };
 
    /**
-     * @defgroup proposed_transactions  The Graphene Transaction Proposal Protocol
+     * @defgroup proposed_transactions  The BitShares Toolkit Transaction Proposal Protocol
      * @ingroup operations
      *
-     * Graphene allows users to propose a transaction which requires approval of multiple accounts in order to execute.
+     * BitShares Toolkit allows users to propose a transaction which requires approval of multiple accounts in order to execute.
      * The user proposes a transaction using proposal_create_operation, then signatory accounts use
      * proposal_update_operations to add or remove their approvals from this operation. When a sufficient number of
      * approvals have been granted, the operations in the proposal are used to create a virtual transaction which is
@@ -1462,7 +1462,7 @@ namespace bts { namespace chain {
     * @defgroup workers The Blockchain Worker System
     * @ingroup operations
     *
-    * Graphene blockchains allow the creation of special "workers" which are elected positions paid by the blockchain
+    * BitShares Toolkit blockchains allow the creation of special "workers" which are elected positions paid by the blockchain
     * for services they provide. There may be several types of workers, and the semantics of how and when they are paid
     * are defined by the @ref worker_type_enum enumeration. All workers are elected by core stakeholder approval, by
     * voting for or against them.
