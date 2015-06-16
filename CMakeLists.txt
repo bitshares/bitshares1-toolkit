@@ -184,7 +184,6 @@ if(ENABLE_COVERAGE_TESTING)
 endif()
 
 add_subdirectory( libraries )
-add_subdirectory( vendor/miniupnp/miniupnpc )
 add_subdirectory( programs )
 add_subdirectory( tests )
 

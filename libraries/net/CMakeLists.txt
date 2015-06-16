@@ -5,17 +5,15 @@ set(SOURCES node.cpp
             core_messages.cpp
             peer_database.cpp
             peer_connection.cpp
-            upnp.cpp
             message_oriented_connection.cpp)
 
 add_library( bts_net ${SOURCES} ${HEADERS} )
 
-target_link_libraries( bts_net 
-  PUBLIC fc bts_db leveldb upnpc-static )
-target_include_directories( bts_net 
+target_link_libraries( bts_net
+  PUBLIC fc bts_db leveldb )
+target_include_directories( bts_net
   PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
-  PRIVATE "${CMAKE_SOURCE_DIR}/vendor/miniupnp"
-          "${CMAKE_SOURCE_DIR}/libraries/chain/include"
+  PRIVATE "${CMAKE_SOURCE_DIR}/libraries/chain/include"
 )
 
 if(MSVC)
